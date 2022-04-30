@@ -1,14 +1,12 @@
 ﻿#include "writerbase.h"
 
-#include <QJsonObject>
-#include <QJsonArray>
 
 namespace {
 
-static const QStringList ignoreKeys = {
+static const std::vector<std::string> ignoreKeys = {
     "json_class", "@note", "@character_name", "@self_switch_ch", "@switches", "@title1_name"
 };
-static const std::map<QString, std::vector<QString>> ignoreForClassKeys = {
+static const std::map<std::string, std::vector<std::string>> ignoreForClassKeys = {
     {"RPG::UsableItem::Damage", {"@formula"}},
     {"RPG::Event",  {"@name"}},
     {"RPG::SE",     {"@name"}},
@@ -20,7 +18,7 @@ static const std::map<QString, std::vector<QString>> ignoreForClassKeys = {
 
 }
 
-writerbase::writerbase(std::vector<QLocale::Language> locales, QJsonDocument json)
+writerbase::writerbase(std::vector<std::string> locales, nlohmann::json json)
     : useLangList(std::move(locales))
 {
     json2tt(std::move(json));
@@ -29,9 +27,9 @@ writerbase::writerbase(std::vector<QLocale::Language> locales, QJsonDocument jso
 writerbase::~writerbase(){
 }
 
-void writerbase::addText(QString original, QString note)
+void writerbase::addText(std::string original, std::string note)
 {
-    if(original.isEmpty()){ return; }
+    if(original.empty()){ return; }
     
     TranslateText t;
     t.original = std::move(original);
@@ -47,29 +45,30 @@ void writerbase::addText(QString original, QString note)
         texts.emplace_back(std::move(t));
     }
     else{
-//        result->note += QString("同じテキストが複数で使用されています");
+//        result->note += std::string("同じテキストが複数で使用されています");
     }
 }
 
-void writerbase::json2tt(QJsonDocument json)
+void writerbase::json2tt(nlohmann::json json)
 {
-    if(json.isArray())
+    if(json.is_array())
     {
         convertJArray(json.array());
     }
-    else if(json.isObject())
+    else if(json.is_object())
     {
         convertJObject(json.object());
     }
 }
 
-bool writerbase::checkEventCommandCode(const QJsonObject &obj)
+bool writerbase::checkEventCommandCode(const nlohmann::json& obj)
 {
     for(auto s=obj.begin(); s!=obj.end(); ++s)
     {
         if(s.key() == "@code"){
             //許可するコード
-            auto v = s.value().toInt();
+            int v = 0;
+            s->get_to(v);
             if(v == 401){
                 return true;
             }
@@ -81,31 +80,33 @@ bool writerbase::checkEventCommandCode(const QJsonObject &obj)
     return false;
 }
 
-void writerbase::convertJArray(QJsonArray arr, QString parentClass, QString arrayinKey)
+void writerbase::convertJArray(nlohmann::json arr, std::string parentClass, std::string arrayinKey)
 {
     for(auto s=arr.begin(); s!=arr.end(); ++s)
     {
-        if(s->isArray()){ 
-            convertJArray(s->toArray(), parentClass, arrayinKey);
+        if(s->is_array()){
+            convertJArray(s->array(), parentClass, arrayinKey);
             continue; 
         }
-        else if(s->isObject()){
-            convertJObject(s->toObject());
+        else if(s->is_object()){
+            convertJObject(s->object());
         }
-        else if(s->isString()){
-            addText(s->toString(), parentClass+"=>"+arrayinKey);
+        else if(s->is_string()){
+            std::string text;
+            s->get_to(text);
+            addText(text, parentClass + "=>" + arrayinKey);
         }
     }
 }
 
-void writerbase::convertJObject(QJsonObject root)
+void writerbase::convertJObject(nlohmann::json root)
 {
-    QString currentClassName = "";
+    std::string currentClassName = "";
     bool hasSpecIgnoreKeys = false;
     for(auto s=root.begin(); s!=root.end(); ++s)
     {
         if(s.key() == "json_class"){
-            currentClassName = s.value().toString();
+            s->get_to(currentClassName);
             hasSpecIgnoreKeys = ignoreForClassKeys.find(currentClassName) != ignoreForClassKeys.end();
             break;
         }
@@ -120,17 +121,17 @@ void writerbase::convertJObject(QJsonObject root)
     {
         const auto& key = s.key();
         const auto& val = s.value();
-        if(val.isArray()){ 
-            convertJArray(val.toArray(), currentClassName, key); 
+        if(val.is_array()){ 
+            convertJArray(val.array(), currentClassName, key); 
             continue;
         }
-        else if(val.isObject()){
-            convertJObject(val.toObject());
+        else if(val.is_object()){
+            convertJObject(val.object());
             continue;
         }
-        else if(val.isString() == false){ continue; }
+        else if(val.is_string() == false){ continue; }
         
-        if(ignoreKeys.contains(key)){ continue; }
+        if(std::find(ignoreKeys.cbegin(), ignoreKeys.cend(), key) != ignoreKeys.cend()){ continue; }
         if(hasSpecIgnoreKeys){
             const auto& fields = ignoreForClassKeys.at(currentClassName);
             if(std::find(fields.cbegin(), fields.cend(), key) != fields.cend()){
@@ -138,13 +139,16 @@ void writerbase::convertJObject(QJsonObject root)
             }
         }
         
-        auto valStr = s->toString();
-        if(valStr.isEmpty()){ continue; }
+        std::string valStr;
+        s->get_to(valStr);
+        if(valStr.empty()){ continue; }
         
-        if(valStr.contains('\n')){
+        if(valStr.find('\n') != std::string::npos){
             valStr = "\"" + valStr + "\"";
         }
         
-        addText(s->toString(), currentClassName + ":" + key);
+        std::string text;
+        s->get_to(text);
+        addText(text, currentClassName + ":" + key);
     }
 }

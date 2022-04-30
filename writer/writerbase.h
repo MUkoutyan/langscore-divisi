@@ -2,9 +2,7 @@
 #define WRITERBASE_H
 
 #include <map>
-#include <QString>
-#include <QLocale>
-#include <QJsonDocument>
+#include "nlohmann/json.hpp"
 
 class writerbase
 {
@@ -12,26 +10,26 @@ public:
     
     struct TranslateText 
     {
-        QString original;
-        QString note;
-        std::map<QLocale::Language, QString> translates;
+        std::string original;
+        std::string note;
+        std::map<std::string, std::string> translates;
     };
     
-    writerbase(std::vector<QLocale::Language> locales, QJsonDocument json);
+    writerbase(std::vector<std::string> locales, nlohmann::json json);
     virtual ~writerbase();
     
-    virtual bool write(QString writePath) = 0;
+    virtual bool write(std::string writePath) = 0;
     
 protected:
-    std::vector<QLocale::Language> useLangList;
+    std::vector<std::string> useLangList;
     std::vector<TranslateText> texts;
     
-    void addText(QString original, QString note = "");
-    void json2tt(QJsonDocument json);
+    void addText(std::string original, std::string note = "");
+    void json2tt(nlohmann::json json);
     
-    bool checkEventCommandCode(const QJsonObject& obj);
-    void convertJArray(QJsonArray arr, QString parentClass = "", QString arrayinKey = "");
-    void convertJObject(QJsonObject root);
+    bool checkEventCommandCode(const nlohmann::json& obj);
+    void convertJArray(nlohmann::json arr, std::string parentClass = "", std::string arrayinKey = "");
+    void convertJObject(nlohmann::json root);
     
 };
 

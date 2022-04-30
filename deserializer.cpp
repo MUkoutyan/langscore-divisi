@@ -1,13 +1,17 @@
 ﻿#include "deserializer.h"
+#include "utility.hpp"
 
-#include <QDebug>
-#include <QProcess>
+#include <process.h>
 
 using namespace langscore;
 
+namespace
+{
+
+}
+
 deserializer::deserializer()
-    : QObject()
-    , appPath("")
+    : appPath("")
     , projectPath("")
     , currentProjectType(None)
 {
@@ -16,11 +20,11 @@ deserializer::deserializer()
 deserializer::~deserializer(){
 }
 
-void deserializer::setApplicationFolder(QString path){
+void deserializer::setApplicationFolder(std::string path){
     appPath = std::move(path);
 }
 
-void deserializer::setProjectPath(ProjectType type, QString path)
+void deserializer::setProjectPath(ProjectType type, std::string path)
 {
     this->currentProjectType = type;
     this->projectPath = std::move(path);
@@ -28,52 +32,62 @@ void deserializer::setProjectPath(ProjectType type, QString path)
 
 deserializer::Result deserializer::exec()
 {
-    auto ruby = new QProcess(this);
-    connect(ruby, &QProcess::readyReadStandardOutput, this, [this, ruby](){
-        auto mes = QString(ruby->readAllStandardOutput());
-        auto strList = mes.split("\r\n");
-        for(auto& str : strList){
-            qDebug() << str;
-        }
-        emit this->recvStdOut(mes);
-    });
+    //auto ruby = new QProcess(this);
+    //connect(ruby, &QProcess::readyReadStandardOutput, this, [this, ruby](){
+    //    auto mes = std::string(ruby->readAllStandardOutput());
+    //    auto strList = mes.split("\r\n");
+    //    for(auto& str : strList){
+    //        qDebug() << str;
+    //    }
+    //});
     auto rubyPath = appPath+"/ruby/bin/ruby.exe";
-    ruby->setProgram(rubyPath);
+    //ruby->setProgram(rubyPath);
 
+    std::string scriptPath = "";
     if(currentProjectType == VXAce){
-        auto scriptPath = appPath+"/rvdata2json/to_json2.rb";
-        ruby->setArguments({scriptPath,projectPath,outputPath()});
+        scriptPath = appPath+"/rvdata2json/to_json2.rb";
+        //ruby->setArguments({scriptPath,projectPath,outputPath()});
     }
     else //if(currentProjectType == None)
     {
         return Result(1);
     }
 
-    qDebug() << rubyPath << appPath+"/rvdata2json/to_json2.rb" << projectPath << appPath+"/tmp/";
-    ruby->start();
-    if(!ruby->waitForStarted(-1)){
-        Result r(255);
-        r.setSpecMsg(ruby->errorString());
-        return r;
+    //qDebug() << rubyPath << appPath+"/rvdata2json/to_json2.rb" << projectPath << appPath+"/tmp/";
+    //ruby->start();
+
+    char buffer[256] = {};
+    auto process = utility::join({rubyPath, scriptPath, projectPath, outputPath()}, " ");
+    if(process_stdout)
+    {
+        FILE* fp = _popen(process.c_str(), "r");
+        while(fgets(buffer, 256, fp) != NULL){
+            process_stdout(buffer);
+        }
     }
-    qDebug() << "Processing...";
+    //if(!ruby->waitForStarted(-1)){
+    //    Result r(255);
+    //    r.setSpecMsg(ruby->errorString());
+    //    return r;
+    //}
+    //qDebug() << "Processing...";
     
-    if(!ruby->waitForFinished(-1)){
-        Result r(255);
-        r.setSpecMsg(ruby->errorString());
-        return r;
-    }
-    qDebug() << "Success";
+    //if(!ruby->waitForFinished(-1)){
+    //    Result r(255);
+    //    r.setSpecMsg(ruby->errorString());
+    //    return r;
+    //}
+    //qDebug() << "Success";
 
     return Result(0);
 }
 
-QString deserializer::outputPath() const {
+std::string deserializer::outputPath() const {
     return appPath+"/tmp";
 }
 
 
-QString deserializer::Result::toStr() const
+std::string deserializer::Result::toStr() const
 {
     switch(code)
     {

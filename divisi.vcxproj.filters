@@ -5,10 +5,6 @@
       <UniqueIdentifier>{71ED8ED8-ACB9-4CE9-BBE1-E00B30144E11}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;moc;h;def;odl;idl;res;</Extensions>
     </Filter>
-    <Filter Include="Generated Files">
-      <UniqueIdentifier>{71ED8ED8-ACB9-4CE9-BBE1-E00B30144E11}</UniqueIdentifier>
-      <Extensions>cpp;c;cxx;moc;h;def;odl;idl;res;</Extensions>
-    </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
@@ -24,27 +20,43 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files\writer">
+      <UniqueIdentifier>{4b8c5c33-eea9-49c8-8efa-87f766c0b224}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\writer">
+      <UniqueIdentifier>{231af4b0-0c27-40b3-8a7a-ec3a3a6efac1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Divisi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="deserializer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="writer\csvwriter.cpp">
+      <Filter>Source Files\writer</Filter>
+    </ClCompile>
+    <ClCompile Include="writer\writerbase.cpp">
+      <Filter>Source Files\writer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Divisi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="divisi_global.h">
+    <ClInclude Include="deserializer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="debug\moc_predefs.h.cbt">
-      <Filter>Generated Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="release\moc_predefs.h.cbt">
-      <Filter>Generated Files</Filter>
-    </CustomBuild>
+    <ClInclude Include="writer\csvwriter.h">
+      <Filter>Header Files\writer</Filter>
+    </ClInclude>
+    <ClInclude Include="writer\writerbase.h">
+      <Filter>Header Files\writer</Filter>
+    </ClInclude>
+    <ClInclude Include="utility.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

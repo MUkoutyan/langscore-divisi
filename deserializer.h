@@ -1,25 +1,25 @@
 ﻿#ifndef LANGSCORE_DESERIALIZER_H
 #define LANGSCORE_DESERIALIZER_H
 
-#include <QObject>
+#include <string>
+#include <functional>
 
 namespace langscore
 {
 
-class deserializer : public QObject
+class deserializer
 {
-    Q_OBJECT
 public:
 
     struct Result {
     public:
         Result(int code = 0) : code(code), specMsg(""){}
         int val() const noexcept { return code; }
-        void setSpecMsg(QString m){ specMsg = std::move(m); }
-        QString toStr() const;
+        void setSpecMsg(std::string m){ specMsg = std::move(m); }
+        std::string toStr() const;
     private:
         int code;
-        QString specMsg;
+        std::string specMsg;
     };
 
     enum ProjectType {
@@ -32,18 +32,17 @@ public:
     deserializer();
     ~deserializer();
 
-    void setApplicationFolder(QString path);
-    void setProjectPath(ProjectType type, QString path);
+    void setApplicationFolder(std::string path);
+    void setProjectPath(ProjectType type, std::string path);
 
     Result exec();
-    QString outputPath() const;
+    std::string outputPath() const;
 
-signals:
-    void recvStdOut(QString);
+    std::function<void(std::string)> process_stdout;
 
 private:
-    QString appPath;
-    QString projectPath;
+    std::string appPath;
+    std::string projectPath;
     ProjectType currentProjectType;
 };
 

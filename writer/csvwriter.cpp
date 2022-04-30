@@ -1,40 +1,34 @@
 ﻿#include "csvwriter.h"
-#include <QFile>
+#include "utility.hpp"
+#include <filesystem>
+#include <fstream>
 
-#include <QDebug>
-
-bool csvwriter::write(QString path)
+bool csvwriter::write(std::string _path)
 {
-    qDebug() << "CSV Output File : " << path;
+    namespace fs = std::filesystem;
+    //qDebug() << "CSV Output File : " << path;
 //    auto csvFilePath = loadFile.fileName().remove(".json") + ".csv";
-    QFile outputCSVFile(path);
+    fs::path path(_path);
+   
+    std::ofstream outputCSVFile(path);
+    if(outputCSVFile.bad()){ return false; }
     
-    auto openMode = QIODevice::ReadWrite | QIODevice::Text;
-    if(outputCSVFile.exists()){
-        openMode |= QIODevice::Truncate;
-    }
-    
-    if(outputCSVFile.open(QIODevice::WriteOnly | QIODevice::Truncate) == false){ return false; }
-    QTextStream csvWriter(&outputCSVFile);
-    csvWriter.setEncoding(QStringConverter::Utf8);
-    csvWriter.setGenerateByteOrderMark(true);
-    
-    QStringList csvHeader = {"original"};
+    std::vector<std::string> csvHeader = {"original"};
     for(auto& lang : this->useLangList){
-        QLocale l(lang);
-        csvHeader.append(l.name());
+        csvHeader.emplace_back(lang);
     }
-    csvHeader.append("memo");
-    csvWriter << csvHeader.join(",") << "\n";
+    csvHeader.emplace_back("memo");
+    outputCSVFile << utility::join(csvHeader, ",") << "\n";
     
     for(const auto& text : this->texts)
     {
-        QStringList rowtext = {text.original};
+        std::vector<std::string> rowtext = {text.original};
         for(auto& t : text.translates){
-            rowtext.append(t.second);
+            rowtext.emplace_back(t.second);
         }
-        rowtext.append(text.note);
-        csvWriter << rowtext.join(",") << "\n";
+        rowtext.emplace_back(text.note);
+        
+        outputCSVFile << utility::join(rowtext, ",") << "\n";
     }
     
     return true;

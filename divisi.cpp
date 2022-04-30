@@ -1,12 +1,13 @@
 ﻿#include "divisi.h"
+#include "utility.hpp"
 #include "deserializer.h"
+#include "nlohmann/json.hpp"
 
 #include "writer/csvwriter.h"
-#include <QFileInfo>
-#include <QDir>
-#include <QDirIterator>
+#include <fstream>
 
 using namespace langscore;
+namespace fs = std::filesystem;
 
 class divisi::Impl
 {
@@ -14,31 +15,37 @@ public:
     deserializer deserializer;
 };
 
-divisi::divisi(QString appPath)
+divisi::divisi(std::string appPath)
     : pImpl(std::make_unique<Impl>())
+    , ignoreScriptPath()
 {
     pImpl->deserializer.setApplicationFolder(std::move(appPath));
-    auto outPath = pImpl->deserializer.outputPath();
-    QDirIterator it(outPath, QStringList() << "*.csv", QDir::Files, QDirIterator::Subdirectories);
-    while(it.hasNext()){
-        QFile::remove(it.next());
+    fs::path outPath = pImpl->deserializer.outputPath();
+
+    fs::directory_iterator it(outPath);
+    for(auto& f : it){
+        fs::remove(f.path());
     }
 }
 
 divisi::~divisi(){}
 
-void divisi::setProjectPath(QString projectPath)
-{
-    QDir dirs(projectPath);
-    const auto files = dirs.entryList();
+void divisi::setIgnoreScriptPath(std::vector<fs::path> ignoreScriptPath){
+    this->ignoreScriptPath = std::move(ignoreScriptPath);
+}
 
+void divisi::setProjectPath(std::string projectPath)
+{
+    auto p = fs::path(projectPath);
+    fs::directory_iterator it(p);
     auto type = deserializer::ProjectType::None;
-    if(std::find_if(files.cbegin(), files.cend(), [](QString x){
-        return x.contains(".rvproj2");
-    }) != files.end()){
-        type = deserializer::ProjectType::VXAce;
+    for(auto& file : it){
+        if(file.path().extension() == ".rvproj2"){
+            type = deserializer::ProjectType::VXAce;
+            break;
+        }
     }
-    pImpl->deserializer.setProjectPath(type, projectPath);
+    pImpl->deserializer.setProjectPath(type, std::move(projectPath));
 }
 
 void divisi::exec()
@@ -46,61 +53,62 @@ void divisi::exec()
     pImpl->deserializer.exec();
 
     const auto deserializeOutPath = pImpl->deserializer.outputPath();
-    QDirIterator it(deserializeOutPath, QStringList() << "*.json", QDir::Files, QDirIterator::Subdirectories);
 
-//    const QStringList ignoreFile = {"Animations.json", "Tilesets.json"};
-//    while (it.hasNext())
-//    {
-//        auto path = it.next();
-        
-//        auto result = std::find_if(ignoreFile.cbegin(), ignoreFile.cend(), [&path](const auto& x){
-//            return path.contains(x);
-//        });
-//        if(result != ignoreFile.cend()){ continue; }
-        
-//        QFile loadFile(path);
-//        if(loadFile.open(QIODevice::ReadOnly) == false){ continue; }
-        
-//        auto data = loadFile.readAll();
-//        QJsonDocument json = QJsonDocument::fromJson(data);
-        
-//        csvwriter writer({QLocale::Japanese, QLocale::English, QLocale::Chinese}, json);
-        
-//        auto csvFilePath = loadFile.fileName().remove(".json") + ".csv";
-//        writer.write(csvFilePath);
-//    }
+    std::vector<fs::path> jsonList;
+    fs::recursive_directory_iterator it(deserializeOutPath);
+    for(auto& f : it){
+        if(f.path().extension() == ".json"){
+            jsonList.emplace_back(f.path());
+        }
+    }
+
+    const utility::stringlist ignoreFile = {"Animations.json", "Tilesets.json"};
+    for(auto& path : jsonList)
+    { 
+        auto result = std::find_if(ignoreFile.cbegin(), ignoreFile.cend(), [f = path.filename()](const auto& x){
+            return f == x;
+        });
+        if(result != ignoreFile.cend()){ continue; }
+      
+        std::ifstream loadFile(path);
+        nlohmann::json json;
+        loadFile >> json;
+      
+        csvwriter writer({"ja", "en", "ch"}, json);
+      
+        auto csvFilePath = path.filename().replace_extension(".csv");
+        writer.write(csvFilePath.u8string());
+    }
     
-    
-    qDebug() << "Write Script.";
     
     auto scriptLocalize = deserializeOutPath + "/Scripts.csv";
-    QFile csvWrite(scriptLocalize);
-    csvWrite.open(QIODevice::WriteOnly | QIODevice::Text);
-    QTextStream writer(&csvWrite);
-    writer.setEncoding(QStringConverter::Utf8);
-    writer.setGenerateByteOrderMark(true);
+    std::ofstream csvWrite(scriptLocalize);
     
-    const QStringList ignoreScriptFile = {u8"TES基本.rb"};
-//    csvwriter writer({QLocale::Japanese, QLocale::English, QLocale::Chinese}, json);
-    QDirIterator scriptIt(deserializeOutPath, QStringList() << "*.rb", QDir::Files, QDirIterator::Subdirectories);
-    while (scriptIt.hasNext())
+    const utility::stringlist ignoreScriptFile = {u8"TES基本.rb"};
+
+    std::vector<fs::path> scriptList;
+    fs::recursive_directory_iterator scriptIt(deserializeOutPath);
+    for(auto& f : scriptIt){
+        if(f.path().extension() == ".rb"){
+            scriptList.emplace_back(f.path());
+        }
+    }
+
+    for(auto& path : scriptList)
     {
-        auto path = scriptIt.next();
-        auto result = std::find_if(ignoreScriptFile.cbegin(), ignoreScriptFile.cend(), [&path](const auto& x){
-            return path.contains(x);
-        });
+        auto osPath = path.filename().u8string();
+        auto result = std::find(ignoreScriptFile.cbegin(), ignoreScriptFile.cend(), osPath);
         if(result != ignoreScriptFile.cend()){ continue; }
         
-        QFile loadFile(path);
-        if(loadFile.open(QIODevice::ReadOnly | QIODevice::Text) == false){ continue; }
+        std::ifstream loadFile(path);
         
         size_t lineCount = 0;
         bool rangeComment = false;
-        while(loadFile.atEnd() == false)
+        while(loadFile.eof() == false)
         {
             lineCount++;
-            QString line(loadFile.readLine());
-            line = line.trimmed();
+            std::string line;
+            std::getline(loadFile, line);
             
             if(line == "=begin"){ 
                 rangeComment = true;
@@ -113,17 +121,16 @@ void divisi::exec()
                 else{ continue; }
             }
             
-            if(line.isEmpty()){ continue; }
+            if(line.empty()){ continue; }
             if(line[0] == '#'){ continue; }
             
-            if(line.contains("\""))
+            if(line.find("\"") != std::string::npos)
             {
-                line.remove(0, line.indexOf("\""));
-                line.remove(line.lastIndexOf("\"")+1, line.size());
+                line.erase(0, line.find("\""));
+                line.erase(line.find_last_of("\"")+1, line.size());
                 
-                writer << line << ",,,," << loadFile.fileName() << " Line : " << lineCount << "\n";
+                csvWrite << line << ",,,," << path.filename() << " Line : " << lineCount << "\n";
             }
         }
     }
-    qDebug() << "Finish Script.";
 }

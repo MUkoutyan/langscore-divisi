@@ -1,8 +1,9 @@
 ﻿#ifndef LANGSCORE_DIVISI_H
 #define LANGSCORE_DIVISI_H
 
-#include <QString>
+#include <string>
 #include <memory>
+#include <filesystem>
 
 namespace langscore
 {
@@ -10,15 +11,18 @@ namespace langscore
 class divisi
 {
 public:
-    divisi(QString appPath);
+    divisi(std::string appPath);
     ~divisi();
 
-    void setProjectPath(QString projectPath);
+    void setProjectPath(std::string projectPath);
     void exec();
+
+    void setIgnoreScriptPath(std::vector<std::filesystem::path> ignoreScriptPath);
 
 private:
     class Impl;
     std::unique_ptr<Impl> pImpl;
+    std::vector<std::filesystem::path> ignoreScriptPath;
 };
 
 }
