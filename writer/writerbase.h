@@ -2,6 +2,7 @@
 #define WRITERBASE_H
 
 #include <map>
+#include <filesystem>
 #include "nlohmann/json.hpp"
 
 class writerbase
@@ -18,7 +19,7 @@ public:
     writerbase(std::vector<std::string> locales, nlohmann::json json);
     virtual ~writerbase();
     
-    virtual bool write(std::string writePath) = 0;
+    virtual bool write(std::filesystem::path writePath) = 0;
     
 protected:
     std::vector<std::string> useLangList;

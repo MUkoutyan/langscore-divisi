@@ -57,7 +57,7 @@ deserializer::Result deserializer::exec()
     //ruby->start();
 
     char buffer[256] = {};
-    auto process = utility::join({rubyPath, scriptPath, projectPath, outputPath()}, " ");
+    auto process = utility::join(utility::stringlist{ rubyPath, scriptPath, projectPath, outputPath() }, std::string(" "));
     if(process_stdout)
     {
         FILE* fp = _popen(process.c_str(), "r");

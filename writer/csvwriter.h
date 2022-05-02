@@ -8,7 +8,7 @@ class csvwriter : public writerbase
 public:
     using writerbase::writerbase;
     
-    bool write(std::string path) override;
+    bool write(std::filesystem::path path) override;
 };
 
 #endif // CSVWRITER_H

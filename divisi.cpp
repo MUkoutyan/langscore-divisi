@@ -4,7 +4,9 @@
 #include "nlohmann/json.hpp"
 
 #include "writer/csvwriter.h"
+#include <iostream>
 #include <fstream>
+#include <regex>
 
 using namespace langscore;
 namespace fs = std::filesystem;
@@ -84,7 +86,7 @@ void divisi::exec()
     auto scriptLocalize = deserializeOutPath + "/Scripts.csv";
     std::ofstream csvWrite(scriptLocalize);
     
-    const utility::stringlist ignoreScriptFile = {u8"TES基本.rb"};
+    //const utility::u8stringlist ignoreScriptFile = {u8"TES基本.rb"};
 
     std::vector<fs::path> scriptList;
     fs::recursive_directory_iterator scriptIt(deserializeOutPath);
@@ -97,8 +99,8 @@ void divisi::exec()
     for(auto& path : scriptList)
     {
         auto osPath = path.filename().u8string();
-        auto result = std::find(ignoreScriptFile.cbegin(), ignoreScriptFile.cend(), osPath);
-        if(result != ignoreScriptFile.cend()){ continue; }
+        auto result = std::find(this->ignoreScriptPath.cbegin(), this->ignoreScriptPath.cend(), osPath);
+        if(result != this->ignoreScriptPath.cend()){ continue; }
         
         std::ifstream loadFile(path);
         
@@ -123,6 +125,14 @@ void divisi::exec()
             
             if(line.empty()){ continue; }
             if(line[0] == '#'){ continue; }
+
+            std::regex parseStr(R"(?<=").*?(?=")");
+            std::smatch matchList;
+            std::regex_match(line, matchList, parseStr);
+
+            for(auto& m : matchList){
+                std::cout << m.str() << std::endl;
+            }
             
             if(line.find("\"") != std::string::npos)
             {
