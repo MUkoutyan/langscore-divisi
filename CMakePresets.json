@@ -3,6 +3,7 @@
     "configurePresets": [
         {
             "name": "windows-base",
+            "description": "Visual Studio 開発環境のある Windows をターゲットにします。",
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
@@ -20,41 +21,32 @@
         {
             "name": "x64-debug",
             "displayName": "x64 Debug",
+            "description": "Visual Studio 開発環境を使用して Windows (64 ビット) をターゲットにします。(Debug)",
+            "inherits": "windows-base",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+        },
+        {
+            "name": "x64-release",
+            "displayName": "x64 Release",
+            "description": "Visual Studio 開発環境を使用して Windows (64 ビット) をターゲットにします。(RelWithDebInfo)",
+            "inherits": "x64-debug",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+        },
+        {
+            "name": "x64-debug-with-example",
+            "displayName": "x64 Debug With Example",
             "inherits": "windows-base",
             "architecture": {
                 "value": "x64",
                 "strategy": "external"
             },
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            }
-        },
-        {
-            "name": "x64-release",
-            "displayName": "x64 Release",
-            "inherits": "x64-debug",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            }
-        },
-        {
-            "name": "x86-debug",
-            "displayName": "x86 Debug",
-            "inherits": "windows-base",
-            "architecture": {
-                "value": "x86",
-                "strategy": "external"
-            },
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            }
-        },
-        {
-            "name": "x86-release",
-            "displayName": "x86 Release",
-            "inherits": "x86-debug",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "DIVISI_BUILD_EXAMPLE":  true
             }
         }
     ]

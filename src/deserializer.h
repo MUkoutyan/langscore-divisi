@@ -3,6 +3,7 @@
 
 #include <string>
 #include <functional>
+#include <filesystem>
 
 namespace langscore
 {
@@ -32,17 +33,17 @@ public:
     deserializer();
     ~deserializer();
 
-    void setApplicationFolder(std::string path);
-    void setProjectPath(ProjectType type, std::string path);
+    void setApplicationFolder(std::filesystem::path path);
+    void setProjectPath(ProjectType type, std::filesystem::path path);
 
     Result exec();
-    std::string outputPath() const;
+    std::filesystem::path outputPath() const;
 
     std::function<void(std::string)> process_stdout;
 
 private:
-    std::string appPath;
-    std::string projectPath;
+    std::filesystem::path appPath;
+    std::filesystem::path projectPath;
     ProjectType currentProjectType;
 };
 

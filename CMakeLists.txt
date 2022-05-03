@@ -4,29 +4,20 @@
 cmake_minimum_required (VERSION 3.22)
 set(CMAKE_CXX_STANDARD 20)
 
-project ("divisi" VERSION 0.5)
+project (divisi VERSION 0.5)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+set(DIVISI_TARGET_NAME              ${PROJECT_NAME})
 
-include_directories(
-	"./"
-	"./json/single_include"
-)
+add_subdirectory(src)
 
-# ソースをこのプロジェクトの実行可能ファイルに追加します。
-add_library (divisi STATIC
-	"divisi.cpp" 
-	"divisi.h"
-	"deserializer.cpp"
-	"deserializer.h"
-	"writer/csvwriter.cpp"
-	"writer/csvwriter.h"
-	"writer/writerbase.cpp"
-	"writer/writerbase.h"
-)
+if(DIVISI_BUILD_EXAMPLE)
+add_subdirectory(example)
+endif()
+
+
 
 # TODO: テストを追加し、必要な場合は、ターゲットをインストールします。

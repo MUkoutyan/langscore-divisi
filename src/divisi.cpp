@@ -24,9 +24,11 @@ divisi::divisi(std::string appPath)
     pImpl->deserializer.setApplicationFolder(std::move(appPath));
     fs::path outPath = pImpl->deserializer.outputPath();
 
-    fs::directory_iterator it(outPath);
-    for(auto& f : it){
-        fs::remove(f.path());
+    if(fs::exists(outPath)){
+        fs::directory_iterator it(outPath);
+        for(auto& f : it){
+            fs::remove(f.path());
+        }
     }
 }
 
@@ -83,7 +85,7 @@ void divisi::exec()
     }
     
     
-    auto scriptLocalize = deserializeOutPath + "/Scripts.csv";
+    auto scriptLocalize = deserializeOutPath / "Scripts.csv";
     std::ofstream csvWrite(scriptLocalize);
     
     //const utility::u8stringlist ignoreScriptFile = {u8"TES基本.rb"};
