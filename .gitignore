@@ -351,3 +351,5 @@ MigrationBackup/
 /out/build/x64-debug
 out
 rvdata2json
+ruby
+.vscode

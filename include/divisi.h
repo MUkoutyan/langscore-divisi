@@ -11,18 +11,18 @@ namespace langscore
 class divisi
 {
 public:
-    divisi(std::string appPath);
+    divisi(std::filesystem::path appPath);
     ~divisi();
 
-    void setProjectPath(std::string projectPath);
-    void exec();
+    void setProjectPath(std::filesystem::path projectPath);
+    void exec(std::filesystem::copy_options outputFileOption = std::filesystem::copy_options::none);
 
     void setIgnoreScriptPath(std::vector<std::filesystem::path> ignoreScriptPath);
+
 
 private:
     class Impl;
     std::unique_ptr<Impl> pImpl;
-    std::vector<std::filesystem::path> ignoreScriptPath;
 };
 
 }

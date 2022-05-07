@@ -12,14 +12,17 @@ namespace utility
     template<typename basetype>
     static basetype join(std::vector<basetype> list, basetype deci)
     {
-        auto size = 0;
-        for(const auto& s : list){ size += s.size() + deci.size(); }
+        auto result_size = 0;
+        for(const auto& s : list){ result_size += s.size() + deci.size(); }
 
         basetype result;
-        result.reserve(size);
-        for(const auto& s : list){
-            result += s;
-            result += deci;
+        result.reserve(result_size);
+        auto size = list.size();
+        for(decltype(size) i = 0; i < size; ++i){
+            result += list[i];
+            if(i < size-1){
+                result += deci;
+            }
         }
         return result;
     }

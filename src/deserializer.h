@@ -35,15 +35,19 @@ public:
 
     void setApplicationFolder(std::filesystem::path path);
     void setProjectPath(ProjectType type, std::filesystem::path path);
+    
+    std::filesystem::path outputTmpPath() const;
+    const std::filesystem::path& projectPath() const;
+    ProjectType projectType() const noexcept;
 
     Result exec();
-    std::filesystem::path outputPath() const;
+    
 
     std::function<void(std::string)> process_stdout;
 
 private:
     std::filesystem::path appPath;
-    std::filesystem::path projectPath;
+    std::filesystem::path _projectPath;
     ProjectType currentProjectType;
 };
 

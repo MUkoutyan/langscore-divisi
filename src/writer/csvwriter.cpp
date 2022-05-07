@@ -6,30 +6,31 @@
 namespace fs = std::filesystem;
 bool csvwriter::write(fs::path _path)
 {
-    //qDebug() << "CSV Output File : " << path;
-//    auto csvFilePath = loadFile.fileName().remove(".json") + ".csv";
+    if(this->texts.empty()){ return false; }
     fs::path path(_path);
    
     std::ofstream outputCSVFile(path);
     if(outputCSVFile.bad()){ return false; }
     
-    std::vector<std::string> csvHeader = {"original"};
+    std::vector<std::u8string> csvHeader = {u8"original"};
     for(auto& lang : this->useLangList){
-        csvHeader.emplace_back(lang);
+        csvHeader.emplace_back(lang.begin(), lang.end());
     }
-    csvHeader.emplace_back("memo");
-    const std::string delimiter(",");
-    outputCSVFile << utility::join(csvHeader, delimiter) << "\n";
+    csvHeader.emplace_back(u8"memo");
+    const std::u8string delimiter(u8",");
+    writeU8String(outputCSVFile, utility::join(csvHeader, delimiter));
+    outputCSVFile << "\n";
     
     for(const auto& text : this->texts)
     {
-        std::vector<std::string> rowtext = {text.original};
+        utility::u8stringlist rowtext = {text.original};
         for(auto& t : text.translates){
             rowtext.emplace_back(t.second);
         }
         rowtext.emplace_back(text.note);
-        
-        outputCSVFile << utility::join(rowtext, delimiter) << "\n";
+
+        writeU8String(outputCSVFile, utility::join(rowtext, delimiter));
+        outputCSVFile << "\n";
     }
     
     return true;

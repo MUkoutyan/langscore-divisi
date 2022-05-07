@@ -23,7 +23,6 @@ set(lib_files
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
 add_library (divisi_lib STATIC ${lib_files})
 
-message("Include : " ${PROJECT_SOURCE_DIR})
 target_include_directories(divisi_lib PUBLIC 
 	${PROJECT_SOURCE_DIR}/include
 	${PROJECT_SOURCE_DIR}/json

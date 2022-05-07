@@ -12,6 +12,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 
 set(DIVISI_TARGET_NAME              ${PROJECT_NAME})
 
+set(DIVISI_RESOURCE ruby/ rvdata2json/)
+
 add_subdirectory(src)
 
 if(DIVISI_BUILD_EXAMPLE)

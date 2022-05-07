@@ -12,7 +12,7 @@ namespace
 
 deserializer::deserializer()
     : appPath("")
-    , projectPath("")
+    , _projectPath("")
     , currentProjectType(None)
 {
 }
@@ -28,50 +28,87 @@ void deserializer::setApplicationFolder(std::filesystem::path path){
 void deserializer::setProjectPath(ProjectType type, std::filesystem::path path)
 {
     this->currentProjectType = type;
-    this->projectPath = std::move(path);
+    this->_projectPath = std::move(path);
 }
 
 deserializer::Result deserializer::exec()
 {
-    auto rubyPath = appPath / "/ruby/bin/ruby.exe";
+    auto rubyPath = (appPath / "ruby/bin/ruby.exe");
+    rubyPath.make_preferred();
 
     std::filesystem::path scriptPath = "";
     if(currentProjectType == VXAce){
-        scriptPath = appPath / "/rvdata2json/to_json2.rb";
+        scriptPath = appPath / "rvdata2json/to_json2.rb";
     }
     else //if(currentProjectType == None)
     {
         return Result(1);
     }
 
+    scriptPath.make_preferred();
+
+
+    if(std::filesystem::exists(rubyPath) == false){
+        return Result(2);
+    }
+    if(std::filesystem::exists(scriptPath) == false){
+        return Result(3);
+    }
+    auto outPath = outputTmpPath();
+    if(std::filesystem::exists(outPath) == false){
+        std::filesystem::create_directories(outPath);
+    }
 
     char buffer[256] = {};
-    auto process = utility::join({ rubyPath.string(), scriptPath.string(), projectPath.string(), outputPath().string()}, std::string(" "));
+    auto process = utility::join({ rubyPath.generic_string(), scriptPath.string(), _projectPath.string(), outputTmpPath().string()}, std::string(" "));
     FILE* fp = NULL;
     if(process_stdout)
     {
-        fp = _popen(process.c_str(), "r");
-        while(fgets(buffer, 256, fp) != NULL){
-            process_stdout(buffer);
+        if(fp = _popen(process.c_str(), "r"))
+        {
+            while(fgets(buffer, 256, fp) != NULL){
+                process_stdout(buffer);
+            }
+            _pclose(fp);
+        }
+        else{
+            return Result(4);
         }
     }
+    else
+    {
+        auto ret = system(process.c_str());
+        if(ret != -1){
+            return Result(4);
+        }
+        
+    }
 
-    _pclose(fp);
 
     return Result(0);
 }
 
-std::filesystem::path deserializer::outputPath() const {
-    return appPath/"tmp";
+std::filesystem::path deserializer::outputTmpPath() const {
+    return appPath/"tmp/Data/";
 }
 
+const std::filesystem::path& deserializer::projectPath() const {
+    return this->_projectPath;
+}
+
+deserializer::ProjectType deserializer::projectType() const noexcept {
+    return this->currentProjectType;
+}
 
 std::string deserializer::Result::toStr() const
 {
     switch(code)
     {
     case 0: return "";
-    case 1: return "Unsupport Project Type";
+    case 1: return "error code 1 : Unsupport Project Type";
+    case 2: return "error code 2 : Not Found Execute file.";
+    case 3: return "error code 3 : Not Found Convert file.";
+    case 4: return "error code 4 : Failed to convert.";
     case 255: return this->specMsg;
     }
 
