@@ -48,6 +48,7 @@ public:
 private:
     std::filesystem::path appPath;
     std::filesystem::path _projectPath;
+    std::vector<std::u8string> langs;
     ProjectType currentProjectType;
 };
 
