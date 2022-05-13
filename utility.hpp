@@ -26,5 +26,27 @@ namespace utility
         }
         return result;
     }
+
+    template<typename basetype, typename base>
+    static std::vector<basetype> split(basetype str, base deci)
+    {
+        auto result_size = std::count(str.begin(), str.end(), deci);
+
+        std::vector<basetype> result;
+        result.reserve(result_size);
+        auto offset = basetype::size_type(0);
+        while(true){
+            auto pos = str.find(deci, offset);
+            if(pos != basetype::npos){
+                result.emplace_back(str.substr(offset, pos - offset));
+                offset = pos + 1;
+            }
+            else{
+                result.emplace_back(str.substr(offset));
+                break;
+            }
+        }
+        return result;
+    }
 }
 
