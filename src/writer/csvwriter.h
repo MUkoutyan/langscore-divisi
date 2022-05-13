@@ -3,12 +3,17 @@
 
 #include "writerbase.h"
 
-class csvwriter : public writerbase
+namespace langscore
 {
-public:
-    using writerbase::writerbase;
-    
-    bool write(std::filesystem::path path) override;
-};
+    class csvwriter: public writerbase
+    {
+    public:
+        using writerbase::writerbase;
+        constexpr static const char* extension = "lscsv";
+
+        bool merge(std::filesystem::path filePath) override;
+        bool write(std::filesystem::path path, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) override;
+    };
+}
 
 #endif // CSVWRITER_H

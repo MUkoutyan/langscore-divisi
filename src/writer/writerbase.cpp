@@ -1,6 +1,7 @@
 ﻿#include "writerbase.h"
 #include <fstream>
 
+using namespace langscore;
 namespace
 {
 
@@ -22,10 +23,16 @@ namespace
 
 }
 
-writerbase::writerbase(std::vector<std::string> locales, const nlohmann::json& json)
-	: useLangList(std::move(locales))
+writerbase::writerbase(std::vector<std::u8string> langs, const nlohmann::json& json)
+	: useLangs(std::move(langs))
 {
 	json2tt(json);
+}
+
+langscore::writerbase::writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts)
+	: useLangs(std::move(langs))
+	, texts(std::move(texts))
+{
 }
 
 writerbase::~writerbase()
@@ -47,12 +54,7 @@ void writerbase::addText(const nlohmann::json& json, std::u8string note)
 	}
 	std::u8string original(valStr.begin(), valStr.end());
 
-	TranslateText t;
-	t.original = std::move(original);
-	t.note = std::move(note);
-	for(auto& lang : useLangList){
-		t.translates[lang] = u8"";
-	}
+	TranslateText t(std::move(original), useLangs);
 	auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
 		return x.original == t.original;
 	});
@@ -117,7 +119,6 @@ bool writerbase::checkEventCommandCode(const nlohmann::json& obj)
 			switch(v){
 				case 102: //選択肢
 				case 401: //文章の表示
-				case 231: //CGの表示
 					return true;
 				default:
 					break;
