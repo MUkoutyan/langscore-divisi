@@ -48,5 +48,9 @@ namespace utility
         }
         return result;
     }
+
+    const auto toString = [](const std::u8string& str){
+        return std::string(str.begin(), str.end());
+    };
 }
 

@@ -77,8 +77,9 @@ bool csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
     for(const auto& text : this->texts)
     {
         utility::u8stringlist rowtext = {text.original};
-        for(const auto& lang : this->useLangs){
-            rowtext.emplace_back(text.translates.at(lang));
+        //ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
+        for(const auto& lang : text.translates){
+            rowtext.emplace_back(lang.second);
         }
         if(hasMemo){
             rowtext.emplace_back(text.memo);

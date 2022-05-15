@@ -12,11 +12,13 @@ namespace langscore
         constexpr static const char* extension = "rb";
 
         bool write(std::filesystem::path path, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) override;
+        const std::map<std::filesystem::path, std::vector<TranslateText>>& getScriptTexts() const { return scriptTranslates; }
 
     private:
         std::map<std::filesystem::path, std::vector<TranslateText>> scriptTranslates;
 
         bool ConvertScriptToCSV(std::filesystem::path path);
+        void WriteVocab(std::ofstream& file, std::vector<TranslateText> texts);
     };
 }
 
