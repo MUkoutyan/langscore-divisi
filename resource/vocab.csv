@@ -1,0 +1,49 @@
+original,en,es,de,fr,it,ko,ru,zh-sc,zh-tc
+購入する,Buy,Comprar,Kaufen,Acheter,Comprare,구매,Покупать,购买,購買
+売却する,Sell,Vender,Verkaufen,Vendre,Vendere,매각하다,Продавать,卖,賣
+やめる,Cancel,Cancelar,Absagen,Annuler,Annulla,멈추다,останавливаться,取消,取消
+持っている数,Haves,numero que tienes,"Nummer, die Sie haben",Numéro que vous avez,Numero che hai,가지고 있는 수,Номер у вас есть,你有的号码,你有的號碼
+現在の経験値,Exp.,Exp. actual,Aktuelle Erfa.,Exp. actuelle,Esp. attuale,현재 경험치,Текущий опыт,目前的经验,目前的經驗
+次の%sまで,Next to A,Hasta el proximo %s,Bis zum nächsten %s,Jusqu'au prochain%s,Fino al prossimo%s,다음 %s까지,До следующего %s,直到下一个 %s,直到下一個 %s
+どのファイルにセーブしますか？,Which file do you want to save to?,¿En qué archivo desea guardar?,In welche Datei möchten Sie speichern?,Dans quel fichier souhaitez-vous enregistrer ?,In quale file vuoi salvare?,어떤 파일에 저장하시겠습니까?,В какой файл вы хотите сохранить?,您要保存到哪个文件？,您要保存到哪個文件？
+どのファイルをロードしますか？,Which files do you want to load?,¿Qué archivo quieres cargar?,Welche Datei möchten Sie laden?,Quel fichier voulez-vous charger ?,Quale file vuoi caricare?,어떤 파일을 로드하시겠습니까?,Какой файл вы хотите загрузить?,您要加载哪个文件？,您要加載哪個文件？
+ファイル,File,Archivo,Datei,Dossier,File,파일,Файл,文件,文件
+%sたち,%s's party,iesta de %s,%s s party,La fête de %s,La festa di %s,%s 파티,вечеринка %s,%s等人,%s等人
+%sが出現！,%s appears!,¡Aparece %s!,%s erscheint!,%s apparaît !,%s appare!,%s이 출현!,Появляется %s!,%s来了！,%s來了！
+%sは先手を取った！,%s took the initiative!,¡%s tomó la iniciativa!,%s hat die Initiative ergriffen!,%s a pris l'initiative !,%s ha preso l'iniziativa!,%s님이 선수를 잡았습니다!,%s проявил инициативу!,%s主动了！,%s主動了！
+%sは不意をつかれた！,%s was caught off guard!,¡%s se sorprendió!,%s war überrascht!,%s a été surpris !,%s è rimasto sorpreso!,%s님은 의도하지 않았습니다!,%s был удивлен!,%s大吃一惊！,%s大吃一驚！
+%sは逃げ出した！,%s got away!,¡%s ha escapado!,%s ist entkommen!,%s s'est échappé !,%s è scappato!,%s이 도망쳤습니다!,%s сбежал!,%s跑了！,%s跑了！
+しかし逃げることはできなかった！,But they couldn't run away!,¡Pero no podía escapar!,Aber ich konnte nicht entkommen!,Mais je n'ai pas pu m'échapper !,Ma non potevo scappare!,그러나 도망칠 수 없었다!,Но я не мог убежать!,但我无法逃脱！,但我無法逃脫！
+%sの勝利！,%s victory!,¡Victoria de %s!,%s Sieg!,%s victoire !,%s di vittoria!,%s 승리!,%s победа!,%s的胜利！,%s的勝利！
+%sは戦いに敗れた。,%s lost the battle.,%s perdió la batalla.,%s hat den Kampf verloren.,%s a perdu la bataille.,%s ha perso la battaglia.,%s는 전투에서 패했다.,%s проиграл битву.,%s战败。,%s戰敗。
+%s の経験値を獲得！,Earn %s experience points!,¡Gana%s puntos de experiencia!,Verdiene %s Erfahrungspunkte!,Gagnez% de points d'expérience !,Guadagna%s punti esperienza!,%s의 경험치 획득!,Заработайте очки опыта %s!,为 %s 赚取经验值！,為 %s 賺取經驗值！
+お金を %s\\G 手に入れた！,I got %s\\G money!,Tengo dinero%s \\ G!,Habe Geld%s \\ G!,Vous avez de l'argent%s \\ G !,Ho soldi%s \\ G!,돈을 %s\\G 얻었다!,Получил деньги %с\Г!,有钱%s\\G！,有錢%s\\G！
+%sを手に入れた！,Got %s !,¡Tengo%s!,Habe %s!,J'ai%s !,Ho%s!,%s를 받았습니다!,Получил%s!,有%s！,有%s！
+%sは%s %s に上がった！,%s went up to %s %s !,¡%s subió a %s%s!,%s stieg auf %s%s!,%s est passé à%s%s !,%s è salito a%s%s!,%s이 %s %s에 올랐습니다!,%s вырос до %s%s!,%s已经上了%s%s！,%s已經上了%s%s！
+%sを覚えた！,learned %s !,¡Recordé%s!,Ich erinnerte mich an %s!,Je me suis souvenu de%s!,Mi sono ricordato%s!,%s를 기억했다!,Я вспомнил %s!,我记得%s！,我記得%s！
+%sは%sを使った！,%s used %s !,%s usados%s!,%s verwendet%s!,%s utilisé%s !,%s utilizzato%s!,%s은 %s을 사용했습니다!,%s используется %s!,%s用了%s！,%s用了%s！
+会心の一撃！！,critical !!,¡Un golpe de conciencia! !!,Gewissensbisse! !!,Un coup de conscience ! !!,Un colpo di coscienza! !!,회심의 일격! !,Удар совести! !!,"良心的打击！ ",良心的打擊！
+痛恨の一撃！！,fatal strike !!,¡Un golpe de dolor! !!,Ein Kummerschlag! !!,Un coup de chagrin ! !!,Un colpo di dolore! !!,통한의 일격! !,Удар горя! !!,悲痛一击！,悲痛一擊！
+%sは %s のダメージを受けた！,%s received %s damage!,¡%s ha sido dañado por %s!,%s wurde von %s beschädigt!,%s a été endommagé par %s !,%s è stato danneggiato da%s!,%s이 %s의 피해를 입었습니다!,%s был поврежден %s!,%s被%s损坏了！,%s被%s損壞了！
+%sの%sが %s 回復した！,%s's %s has recovered by %s!,%s de%s se ha recuperado%s!,%s von%s hat sich erholt%s!,%s de%s a récupéré%s !,%s di%s ha recuperato%s!,%s의 %s이 %s 회복되었습니다!,%s of %s выздоровел %s!,%s的%s已经康复了！,%s的%s已經康復了！
+%sの%sが %s 増えた！,%s's %s has increased by %s!,¡%s de%s ha aumentado en%s!,%s von%s hat sich um %s erhöht!,%s de %s a augmenté de %s !,%s di%s è aumentato di%s!,%s의 %s이 %s 증가했습니다!,%s of %s увеличился на %s!,%s的%s增加了！,%s的%s增加了！
+%sの%sが %s 減った！,%s's %s has decreased by %s!,¡%s de%s ha disminuido en%s!,%s von%s ist um %s gesunken!,%s de %s a diminué de %s !,%s di%s è diminuito di%s!,%s의 %s이 %s 감소했습니다!,%s of %s уменьшилось на %s!,%s的%s减少了！,%s的%s減少了！
+%sは%sを %s 奪われた！,%1$s has been robbed of %3$s %2$s!,¡A %s le han robado %s!,%s wurde von %s ausgeraubt!,%s s'est fait voler %s !,%s è stato derubato di%s!,%s은 %s를 %s 빼앗겼다!,У %s украли %s!,%s被抢了%s！,%s被搶了%s！
+%sはダメージを受けていない！,%s is undamaged!,¡%s no ha sido dañado!,%s wurde nicht beschädigt!,%s n'a pas été endommagé !,%s non è stato danneggiato!,%s이 피해를 입지 않았습니다!,%s не поврежден!,%s没有损坏！,%s沒有損壞！
+ミス！　%sはダメージを受けていない！,Miss! %s is undamaged!,¡Señorita! ¡%s no se ha dañado!,Vermissen! %s wurde nicht beschädigt!,Manquer! %s n'a pas été endommagé !,Mancare! %S non è stato danneggiato!,실수! %s은 데미지를 입지 않았다!,Скучать! %s не поврежден!,错过！%s没有损坏！,錯過！%s沒有損壞！
+%sに %s のダメージを与えた！,%2$s damage to %1$s !,¡Infligido daño%s a%s!,%s Schaden an %s zugefügt!,Inflige%s de dégâts à%s !,Inflitto%s danno su%s!,%s에게 %s의 피해를 입혔습니다!,Нанесено %s урона %s!,对%s造成%s伤害！,對%s造成%s傷害！
+%sの%sが %s 回復した！,%s's %s has recovered by %s!,%s de%s se ha recuperado%s!,%s von%s hat sich erholt%s!,%s de%s a récupéré%s !,%s di%s ha recuperato%s!,%s의 %s이 %s 회복되었습니다!,%s of %s выздоровел %s!,%s的%s已经康复了！,%s的%s已經康復了！
+%sの%sが %s 増えた！,%s's %s has increased by %s!,¡%s de%s ha aumentado en%s!,%s von%s hat sich um %s erhöht!,%s de %s a augmenté de %s !,%s di%s è aumentato di%s!,%s의 %s이 %s 증가했습니다!,%s of %s увеличился на %s!,%s的%s增加了！,%s的%s增加了！
+%sの%sが %s 減った！,%s's %s has decreased by %s!,¡%s de%s ha disminuido en%s!,%s von%s ist um %s gesunken!,%s de %s a diminué de %s !,%s di%s è diminuito di%s!,%s의 %s이 %s 감소했습니다!,%s of %s уменьшилось на %s!,%s的%s减少了！,%s的%s減少了！
+%sの%sを %s 奪った！,%s's %s is taken away %s!,¡Robé %s de%s!,Ich habe %s von %s gestohlen!,J'ai volé%s de%s !,Ho derubato%s di%s!,%s의 %s를 %s 빼앗았다!,Я ограбил %s %s!,%s抢了%s！,%s搶了%s！
+%sにダメージを与えられない！,Can't damage %s!,¡No se puede dañar%s!,Kann %s nicht beschädigen!,Impossible d'endommager%s !,Impossibile danneggiare%s!,%s에게 피해를 입히지 않습니다!,Нельзя повредить %s!,不能伤害%s！,不能傷害%s！
+ミス！　%sにダメージを与えられない！,Miss! %s is undamaged!,¡Señorita! ¡No se puede dañar%s!,Vermissen! Kann %s nicht beschädigen!,Manquer! Impossible d'endommager%s !,Mancare! Impossibile danneggiare%s!,실수! %s 에게 피해를 입히지 않는다!,Скучать! Не может повредить %s!,错过！不能伤害%s！,錯過！不能傷害%s！
+%sは攻撃をかわした！,%s dodged the attack!,¡%s esquivó el ataque!,%s ist dem Angriff ausgewichen!,%s a esquivé l'attaque !,%s ha schivato l'attacco!,%s이 공격을 피했다!,%s уклонился от атаки!,%s躲过了攻击！,%s躲過了攻擊！
+%sは魔法を打ち消した！,%s cancelled the magic!,¡%s contrarrestó la magia!,%s hat der Magie entgegengewirkt!,%s a contrecarré la magie !,%s ha contrastato la magia!,%s이(가) 마법을 상쇄했습니다!,%s противодействовал магии!,%s反击了魔法！,%s反擊了魔法！
+%sは魔法を跳ね返した！,%s bounced off the magic!,¡%s rebotó en la magia!,%s prallte von Magie ab!,%s a rebondi sur la magie !,%s è rimbalzato sulla magia!,%s님이 마법을 되찾았습니다!,%s отскочил от магии!,%s从魔法中反弹！,%s從魔法中反彈！
+%sの反撃！,%s's counterattack!,¡Contraataque de %s!,%s Gegenangriff!,%s contre-attaque !,%s contrattacco!,%s의 반격!,%s контратака!,%s的反击！,%s的反擊！
+%sが%sをかばった！,%s defended %s!,%s cubiertos%s!,%s abgedeckt%s!,%s couvert%s !,%s coperti%s!,%s이 %s을 썼습니다!,%s покрыты %s!,%s保护%s！,%s保護%s！
+%sの%sが上がった！,%s's %s has increased!,¡%s de%s ha aumentado!,%s von%s hat zugenommen!,%s de %s a augmenté !,%s di%s è aumentato!,%s의 %s이 올랐습니다!,%s %s увеличился!,%s的%s起来了！,%s的%s起來了！
+%sの%sが下がった！,%s's %s has dropped!,¡%s de%s ha bajado!,%s von%s ist gefallen!,%s sur %s a chuté !,%s di%s è diminuito!,%s의 %s이(가) 떨어졌습니다!,%s из %s упало!,%s的%s掉下来了！,%s的%s掉下來了！
+%sの%sが元に戻った！,%s's %s is back!,¡%s de%s ha vuelto!,%s von %s ist zurück!,%s de %s est de retour !,%s di%s è tornato!,%s의 %s이(가) 취소되었습니다!,%s of %s вернулся!,%s的%s回来了！,%s的%s回來了！
+%sには効かなかった！,It didn't work for %s!,¡No funcionó para%s!,Es hat für%s nicht funktioniert!,Cela n'a pas fonctionné pendant %s !,Non ha funzionato per%s!,%s에는 효과가 없었습니다!,Это не сработало для %s!,它对 %s 不起作用！,它對 %s 不起作用！
