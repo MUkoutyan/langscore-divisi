@@ -12,21 +12,16 @@ enum class OverwriteTextMode;
 class divisi
 {
 public:
-    divisi(std::filesystem::path appPath);
+    divisi(std::filesystem::path appPath, std::vector<std::u8string> langs);
     ~divisi();
 
     void prepareAnalyzeProject(std::filesystem::path projectPath);
 
-    const std::vector<std::filesystem::path>& dataFileList() const;
-    const std::vector<std::filesystem::path>& scriptFileList() const;
-    const std::vector<std::filesystem::path>& graphicFileList() const;
 
     void setSupportLanguages(std::vector<std::u8string> langs);
     void setIgnoreScriptPath(std::vector<std::filesystem::path> ignoreScriptPath);
-    void setProjectPath(std::filesystem::path projectPath);
+    bool setProjectPath(std::filesystem::path projectPath);
     void exec(std::filesystem::copy_options outputFileOption = std::filesystem::copy_options::none);
-
-    void setOverwriteMode(OverwriteTextMode mode);
 
 private:
     class Impl;

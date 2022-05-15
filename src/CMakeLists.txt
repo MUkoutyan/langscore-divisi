@@ -26,6 +26,10 @@ set(lib_files
 	"reader/csvreader.cpp"
 	"writer/rbscriptwriter.h"
 	"writer/rbscriptwriter.cpp"
+	"platform/divisi_vxace.h" 
+    "platform/divisi_vxace.cpp" 
+	"platform/platform_base.h" 
+	"platform/platform_base.cpp"
 )
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
