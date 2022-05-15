@@ -1,4 +1,4 @@
-#include "rbscriptwriter.h"
+﻿#include "rbscriptwriter.h"
 #include "../../utility.hpp"
 #include <fstream>
 #include <regex>
@@ -203,7 +203,7 @@ void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<Tran
 {
     const static std::map<std::u8string, std::u8string> translates = {
         {u8"%s の経験値を獲得！",u8"ObtainExp"},
-        {u8"%sが%sをかばった！",u8"Sub""stitute"},
+        {u8"%sが%sをかばった！",u8"Substitute"},
         {u8"%sが出現！",u8"Emerge"},
         {u8"%sたち",u8"PartyName"},
         {u8"%sに %s のダメージを与えた！",u8"EnemyDamage"},
