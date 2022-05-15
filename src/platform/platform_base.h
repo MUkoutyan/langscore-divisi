@@ -40,7 +40,7 @@ namespace langscore
 		template<typename Writer, typename TsData>
 		void writeTranslateText(std::filesystem::path path, TsData texts)
 		{
-			//ÅI“I‚Èo—Íæ‚ÉCSV‚ª‘¶İ‚·‚é‚©
+			//æœ€çµ‚çš„ãªå‡ºåŠ›å…ˆã«CSVãŒå­˜åœ¨ã™ã‚‹ã‹
 			Writer csvWrite(supportLangs, std::move(texts));
 			const auto csvFileInProject = outputProjectDataPath(path.filename());
 			if(std::filesystem::exists(csvFileInProject)){

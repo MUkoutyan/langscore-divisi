@@ -30,7 +30,7 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 			line_buffer = u8"";
 		}
 		else{
-			line_buffer += line+u8'\n';	//getline‚É‰üs‚ÍŠÜ‚Ü‚ê‚È‚¢‚Ì‚Å‚±‚±‚Å‘«‚·
+			line_buffer += line+u8'\n';	//getlineã«æ”¹è¡Œã¯å«ã¾ã‚Œãªã„ã®ã§ã“ã“ã§è¶³ã™
 		}
 	}
 

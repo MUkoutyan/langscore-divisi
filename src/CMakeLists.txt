@@ -1,5 +1,5 @@
-# CMakeList.txt : divisi �� CMake �v���W�F�N�g�B�\�[�X���܂߂āA�����`���܂�:
-# �v���W�F�N�g��p���W�b�N�͂�����ł��B
+# CMakeList.txt : divisi の CMake プロジェクト。ソースを含めて、次を定義します:
+# プロジェクト専用ロジックはこちらです。
 #
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 set(CMAKE_CXX_STANDARD 23)
@@ -32,7 +32,7 @@ set(lib_files
 	"platform/platform_base.cpp"
 )
 
-# �\�[�X�����̃v���W�F�N�g�̎��s�\�t�@�C���ɒǉ����܂��B
+# ソースをこのプロジェクトの実行可能ファイルに追加します。
 add_library (divisi_lib STATIC ${lib_files})
 set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
 set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
@@ -42,4 +42,4 @@ target_include_directories(divisi_lib PUBLIC
 	${PROJECT_SOURCE_DIR}/json
 )
 
-# TODO: �e�X�g��ǉ����A�K�v�ȏꍇ�́A�^�[�Q�b�g���C���X�g�[�����܂��B
+# TODO: テストを追加し、必要な場合は、ターゲットをインストールします。

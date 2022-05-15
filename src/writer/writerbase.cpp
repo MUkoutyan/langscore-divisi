@@ -1,4 +1,4 @@
-﻿#include "writerbase.h"
+#include "writerbase.h"
 #include <fstream>
 
 using namespace langscore;

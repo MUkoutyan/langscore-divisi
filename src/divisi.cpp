@@ -1,4 +1,4 @@
-﻿#include "divisi.h"
+#include "divisi.h"
 #include "utility.hpp"
 #include "project_deserializer.h"
 #include "nlohmann/json.hpp"

@@ -1,4 +1,4 @@
-﻿#ifndef LANGSCORE_DESERIALIZER_H
+#ifndef LANGSCORE_DESERIALIZER_H
 #define LANGSCORE_DESERIALIZER_H
 
 #include <string>

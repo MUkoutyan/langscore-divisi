@@ -1,4 +1,4 @@
-﻿#include "project_deserializer.h"
+#include "project_deserializer.h"
 #include "utility.hpp"
 
 #include <process.h>

@@ -1,4 +1,4 @@
-﻿#include "csvwriter.h"
+#include "csvwriter.h"
 #include "utility.hpp"
 #include "../reader/csvreader.h"
 #include <filesystem>
