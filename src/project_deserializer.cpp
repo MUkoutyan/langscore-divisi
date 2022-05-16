@@ -89,8 +89,14 @@ deserializer::Result deserializer::exec()
     return Result(0);
 }
 
-std::filesystem::path deserializer::outputTmpPath() const {
-    return appPath/"tmp/Data/";
+std::filesystem::path deserializer::outputTmpPath() const 
+{
+    try {
+        return std::filesystem::temp_directory_path() / "Data/";
+    }
+    catch(...){
+    }
+    return appPath / "tmp/Data/";
 }
 
 const std::filesystem::path& deserializer::projectPath() const {
