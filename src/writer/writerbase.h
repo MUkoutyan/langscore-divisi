@@ -27,6 +27,9 @@ namespace langscore
         virtual bool write(std::filesystem::path writePath, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) = 0;
         virtual bool merge(std::filesystem::path srcPath) { return true; }
 
+        void setOverwriteMode(OverwriteTextMode overwriteMode){
+            this->overwriteMode = overwriteMode;
+        }
         std::vector<TranslateText>& curerntTexts() { return texts; }
 
     protected:

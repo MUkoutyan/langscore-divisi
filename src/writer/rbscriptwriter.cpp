@@ -30,16 +30,40 @@ rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std
     }
 }
 
+bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
+{
+    if(std::filesystem::exists(filePath) == false){ return true; }
+
+    switch(overwriteMode)
+    {
+        case OverwriteTextMode::OverwriteNew:
+            return true;
+            break;
+    }
+    return false;
+}
+
 bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextMode overwriteMode)
 {
     using namespace std::literals::string_literals;
     std::ofstream outFile(path);
 
+    const auto funcName = [](auto str)
+    {
+        for(auto i = str.find(" "); i != decltype(str)::npos; i = str.find(" ")){
+            str.replace(i, 1, "_");
+        }
+        return "Langscore.translate_" + str;
+    };
+
+    const auto functionDef = [&](auto str){
+        return decltype(str)("def " + funcName(str) + nl);
+    };
     const auto functionComment = [&](auto str)
     {
         return decltype(str)("\t#========================================") + nl +
-                             tab+"# " + str + nl +
-                             tab+"#========================================" + nl;
+                             tab + "# " + str + nl +
+                             tab + "#========================================" + nl;
     };
     constexpr char functionName[] = "Langscore.Translate_Script_Text";
 
@@ -48,29 +72,40 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
     outFile << nl;
     outFile << tab << "$data_langscore_scripts ||= LSCSV.to_hash(\"Data/Scripts.lscsv\")" << nl;
     outFile << nl;
+
+    for(auto& path : scriptTranslates){
+        if(path.second.empty()){ continue; }
+        auto filename = path.first.filename().stem();
+        outFile << tab << funcName(utility::toString(filename.u8string())) << nl;
+    }
+    outFile << "end" << nl << nl;
+
     for(auto& path : scriptTranslates)
     {
         if(path.second.empty()){ continue; }
-        auto filename = path.first.filename();
-        outFile << functionComment(utility::toString(filename.u8string()));
+        auto fsFilename = path.first.filename().stem();
+        auto filename = utility::toString(fsFilename.u8string());
+        outFile << functionComment(filename);
+        outFile << functionDef(filename);
 
-        if(filename == "Vocab.rb"){
+        if(path.first.filename() == "Vocab.rb"){
             WriteVocab(outFile, path.second);
         }
         else{
             for(auto& line : path.second)
             {
-                auto parsed = utility::split(line.original, u8':');
+                auto parsed = utility::split(line.memo, u8':');
                 auto filepath = std::format("project://Scripts/{0}#{1},{2}", utility::toString(parsed[0]), utility::toString(parsed[1]), utility::toString(parsed[2]));
                 outFile << tab << "#" + filepath << nl;
-                outFile << tab << "#Langscore.translate(\"" << utility::toString(line.memo) << "\")" << nl;
+                outFile << tab << "#original : " << utility::toString(line.original) << nl;
+                outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.memo) << "\")" << nl;
                 outFile << nl;
             }
         }
+        outFile << "end " << nl;
         outFile << nl;
     }
 
-    outFile << "end";
 
     return false;
 }
@@ -87,7 +122,7 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
 
     std::vector<TranslateText> transTextList;
 
-    const auto ConvertFromMatch = [&](const std::smatch& matchList)
+    const auto ConvertFromMatch = [&](const std::smatch& matchList, size_t col_diff)
     {
         for(size_t i = 0; i < matchList.size(); ++i)
         {
@@ -110,23 +145,24 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
             {
                 //, \nが含まれている場合は念のため""括りされているかチェック
                 if(line[0] != '\"'){ line.insert(0, "\""); }
-                if(line[line.size() - 1] != '\"'){ line.insert(line.size() - 1, "\""); }
+                if(line[line.size() - 1] != '\"'){ line.insert(line.size(), "\""); }
             }
 
             auto lineCountStr = std::to_string(lineCount);
             std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());
 
-            auto colCountStr = std::to_string(matchList.position(i));
+            //+2は (" の分
+            auto colCountStr = std::to_string(matchList.position(i) + col_diff + 2);
             std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
 
             std::u8string u8line(line.begin(), line.end());
 
             _list_mutex.lock();
             TranslateText t = {
-                fileName + u8":" + u8lineCount + u8":" + u8ColCountStr,
+                u8line,
                 this->useLangs
             };
-            t.memo = u8line;
+            t.memo = fileName + u8":" + u8lineCount + u8":" + u8ColCountStr;
 
             auto dup_result = std::find_if(transTextList.begin(), transTextList.end(), [&t](const auto& x){
                 return x.original == t.original;
@@ -147,6 +183,7 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
         lineCount++;
         std::string line;
         std::getline(loadFile, line);
+        const auto before_numchar = line.length();
 
         //行頭スペースの削除
         auto pos = std::find_if(line.begin(), line.end(), [](auto c){
@@ -180,16 +217,17 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
         if(line.empty()){ continue; }
         if(line[0] == '#'){ continue; }
 
+        auto col_diff = before_numchar - line.length();
         {
             std::smatch matchList;
             if(std::regex_search(line, matchList, parseStrDq)){
-                ConvertFromMatch(matchList);
+                ConvertFromMatch(matchList, col_diff);
             }
         }
         {
             std::smatch matchList;
             if(std::regex_search(line, matchList, parseStrSq)){
-                ConvertFromMatch(matchList);
+                ConvertFromMatch(matchList, col_diff);
             }
         }
     }
@@ -256,9 +294,9 @@ void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<Tran
 
     for(auto& t : texts)
     {
-        if(translates.find(t.memo) != translates.end())
+        if(translates.find(t.original) != translates.end())
         {
-            auto varName = translates.at(t.memo);
+            auto varName = translates.at(t.original);
             auto lvalue = "Vocab::" + utility::toString(varName) + ".replace";
             std::string space(maxVarLength - lvalue.length(), ' ');
             file << tab << lvalue << space << " Langscore.translate_for_script(\"" << utility::toString(t.memo) << "\")";

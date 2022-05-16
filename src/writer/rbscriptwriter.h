@@ -11,6 +11,7 @@ namespace langscore
         rbscriptwriter(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList);
         constexpr static const char* extension = "rb";
 
+        bool merge(std::filesystem::path filePath) override;
         bool write(std::filesystem::path path, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) override;
         const std::map<std::filesystem::path, std::vector<TranslateText>>& getScriptTexts() const { return scriptTranslates; }
 
