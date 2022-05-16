@@ -3,13 +3,18 @@ module Langscore
   
   %{SUPPORT_LANGUAGE}%
   %{DEFAULT_LANGUAGE}%
+
+  LS_FONT = {
+    "default" => {:name => "VL Gothic", :size => 22},
+    "zh-sc" => {:name => "SourceHanSansSC", :size => 18}
+  }
   
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
   $langscore_current_transrate_file = nil
 
   def self.translate(text, langscore_hash)
 
-    text if langscore_hash == nil
+    return text if langscore_hash == nil
 
     key = text 
     key = text.chop if text[text.size-1]=="\n" #メッセージの場合、改行していなくても末尾に必ず改行が含まれるっぽい
@@ -31,6 +36,20 @@ module Langscore
   def self.changeLanguage(lang)
     $langscore_current_language = lang
     Langscore.Translate_Script_Text
+    Langscore.updateFont(lang)
+  end
+
+  def self.updateFont(lang)
+
+    beforeFontName = Font.default_name
+    p "#{lang} : #{LS_FONT}"
+    if LS_FONT[lang] != nil
+      Font.default_name = LS_FONT[lang]
+    else
+      Font.default_name = LS_FONT["default"]
+    end
+    p "current font : #{Font}"
+    return beforeFontName != Font.default_name
   end
   
 end
@@ -38,15 +57,15 @@ end
 
 #-----------------------------------------------------
 String.class_eval <<-eval
-  def lstrans
-    text = Langscore.translate(self, $data_langscore_scripts)
+  def lstrans line_info
+    text = Langscore.translate_for_script(line_info)
     # p text
-    text 
     # caller_line = caller.first
     # if /^(.+?):(\d+)?/ =~ caller_line 
     #   p caller_line
     #   puts "#{$1}, #{$2.to_i}" 
     # end 
+    text 
   end
 eval
 
@@ -78,8 +97,6 @@ class LSCSV
       langs.each.with_index do |l, i|
         transhash[l] = trans[i]
       end
-
-      p transhash
 
       result[origin] = transhash
     end
@@ -247,3 +264,93 @@ Cache::module_eval <<-eval
     ls_base_load_bitmap(folder_name, filename, hue)
   end
 eval
+
+module Langscore
+
+  %{SYSTEM1}%
+  %{SYSTEM2}%
+
+
+class Window_Langscore < Window_Command
+
+  attr_accessor :recreate
+
+  def initialize
+    super(0,0)
+    self.x = (Graphics.width - self.window_width ) / 2
+    self.y = (Graphics.height - self.window_height) / 2
+    @_recreate = false
+    
+    SUPPORT_LANGUAGE.each.with_index do |l, i|
+      select(i) if $langscore_current_language == l
+    end
+
+    open
+  end
+
+  def window_width
+    return 210
+  end
+
+  def make_command_list
+    SUPPORT_LANGUAGE.each.with_index do |l, i|
+      add_command(SYSTEM2[l], l.to_sym)
+    end
+  end
+
+  def cursor_up(wrap = false)
+    super wrap
+    call_handler(:ls_update)
+  end
+
+  def cursor_down(wrap = false)
+    super wrap
+    call_handler(:ls_update)
+  end
+
+end
+
+class Scene_Language < Scene_MenuBase
+  def start
+    super
+    create_help_window
+    create_lsmain_window
+  end
+
+  def terminate
+    super
+    @command_window.dispose
+    Langscore.changeLanguage($langscore_current_language)
+  end
+
+  def create_lsmain_window    
+    @command_window.dispose unless @command_window.nil?
+    @command_window = Window_Langscore.new
+    @command_window.viewport = @viewport
+
+    @command_window.set_handler(:ls_update, method(:select_lang))
+    @command_window.set_handler(:cancel, method(:return_scene))
+    @help_window.set_text(Langscore.translate(SYSTEM1, $langscore_system))
+
+  end
+
+  def update_basic
+    super
+    if @command_window != nil && @command_window.recreate
+      @help_window.dispose unless @help_window.nil?
+      create_help_window
+      create_lsmain_window
+    end
+  end
+
+  def select_lang
+    return if @command_window.index == -1
+    $langscore_current_language = SUPPORT_LANGUAGE[@command_window.index]
+    @help_window.set_text(Langscore.translate(SYSTEM1, $langscore_system))
+    if Langscore.updateFont($langscore_current_language)
+      @command_window.recreate = true
+    end
+  end
+end
+
+end
