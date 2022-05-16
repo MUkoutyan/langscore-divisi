@@ -1,7 +1,7 @@
 #pragma once
 #include "../project_deserializer.h"
 #include "../../utility.hpp"
-#include <filesystem>
+#include "../writer/writerbase.h"
 
 namespace langscore
 {
@@ -38,16 +38,19 @@ namespace langscore
 		virtual std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "Data") = 0;
 
 		template<typename Writer, typename TsData>
-		void writeTranslateText(std::filesystem::path path, TsData texts)
+		void writeTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld)
 		{
 			//最終的な出力先にCSVが存在するか
-			Writer csvWrite(supportLangs, std::move(texts));
+			Writer writer(supportLangs, std::move(texts));
+			writer.setOverwriteMode(overwriteMode);
 			const auto csvFileInProject = outputProjectDataPath(path.filename());
 			if(std::filesystem::exists(csvFileInProject)){
-				csvWrite.merge(csvFileInProject);
+				if(writer.merge(csvFileInProject) == false){
+					return;
+				}
 			}
 
-			csvWrite.write(path);
+			writer.write(path, overwriteMode);
 		}
 	};
 }

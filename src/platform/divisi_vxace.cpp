@@ -1,10 +1,11 @@
-#include "divisi_vxace.h"
+﻿#include "divisi_vxace.h"
 
 #include "../writer/rbscriptwriter.h"
 #include "../writer/csvwriter.h"
 #include "../reader/csvreader.h"
 
 #include <nlohmann/json.hpp>
+#include <unordered_map>
 #include <fstream>
 #include <iostream>
 
@@ -12,7 +13,36 @@ using namespace langscore;
 using namespace std::literals::string_literals;
 namespace fs = std::filesystem;
 
-constexpr char Script_File_Name[] = "unison.rb";
+namespace
+{
+    constexpr char Script_File_Name[] = "unison.rb";
+
+    std::unordered_map<std::u8string, std::u8string> Help_Text = {
+        { u8"en",    u8"The currently selected language is displayed." },
+        { u8"es",    u8"Se muestra el idioma actualmente seleccionado." },
+        { u8"de",    u8"Die aktuell ausgewählte Sprache wird angezeigt." },
+        { u8"fr",    u8"La langue actuellement sélectionnée s'affiche." },
+        { u8"it",    u8"Viene visualizzata la lingua attualmente selezionata." },
+        { u8"ja",    u8"現在選択中の言語が表示されます。" },
+        { u8"ko",    u8"현재 선택한 언어가 표시됩니다." },
+        { u8"ru",    u8"Отображается текущий выбранный язык." },
+        { u8"zh-sc", u8"显示当前选择的语言。" },
+        { u8"zh-tc", u8"顯示當前選擇的語言。" },
+    };
+
+    std::unordered_map<std::u8string, std::u8string> Language_Items = {
+        { u8"en",    u8"English" },
+        { u8"es",    u8"Español" },
+        { u8"de",    u8"Deutsch" },
+        { u8"fr",    u8"Français" },
+        { u8"it",    u8"Italiano" },
+        { u8"ja",    u8"日本語" },
+        { u8"ko",    u8"한국어" },
+        { u8"ru",    u8"Русский язык" },
+        { u8"zh-sc", u8"中文(簡体)" },
+        { u8"zh-tc", u8"中文(繁体)" },
+    };
+}
 
 divisi_vxace::~divisi_vxace(){}
 
@@ -144,7 +174,7 @@ void divisi_vxace::convertRvScript()
         if(pathPair.first.filename() != "Vocab.rb"){ continue; }
 
         const auto searchFunc = [&](const auto& x){
-            return x.original.find(u8"Vocab.rb") != std::u8string::npos;
+            return x.memo.find(u8"Vocab.rb") != std::u8string::npos;
         };
         auto begin = std::find_if(transTexts.begin(), transTexts.end(), searchFunc);
         auto end = std::find_if(transTexts.rbegin(), transTexts.rend(), searchFunc).base();
@@ -152,7 +182,7 @@ void divisi_vxace::convertRvScript()
         std::for_each(begin, end, [&](auto& texts)
         {
             auto result = std::find_if(vocabs.begin(), vocabs.end(), [&texts](const auto& x){
-                return x.original == texts.memo;
+                return x.original == texts.original;
             });
             if(result == vocabs.end()){ return; }
             for(const auto& key : this->supportLangs){
@@ -170,10 +200,16 @@ void divisi_vxace::convertRvScript()
 
     const auto deserializeOutPath = this->deserializer.outputTmpPath();
     auto outputPath = deserializeOutPath / "Scripts";
+
+    for(auto& t : transTexts){
+        t.memo.swap(t.original);
+    }
+
     writeTranslateText<csvwriter>(outputPath, transTexts);
     
     writeTranslateText<rbscriptwriter>(outputPath / "unison_custom.rb", scriptList);
 
+    //unison.rbの出力
     auto outputScriptFilePath = outputPath / Script_File_Name;
     fs::copy(resourceFolder / Script_File_Name, outputScriptFilePath, std::filesystem::copy_options::overwrite_existing);
     std::ifstream inScriptFile(outputScriptFilePath);
@@ -183,14 +219,35 @@ void divisi_vxace::convertRvScript()
     while(std::getline(inScriptFile, _linTmp))
     {
         std::u8string _line(_linTmp.begin(), _linTmp.end());
-        if(_line.find(u8"%{SUPPORT_LANGUAGE}%") != std::string::npos){
+        if(_line.find(u8"%{SUPPORT_LANGUAGE}%") != std::u8string::npos){
             auto list = this->supportLangs;
             for(auto& t : list){ t = u8"\"" + t + u8"\""; }
             auto langs = utility::join(list, u8","s);
             _line = u8"\tSUPPORT_LANGUAGE = [" + langs + u8"]";
         }
-        else  if(_line.find(u8"%{DEFAULT_LANGUAGE}%") != std::string::npos){
+        else if(_line.find(u8"%{DEFAULT_LANGUAGE}%") != std::u8string::npos){
             _line = u8"\tDEFAULT_LANGUAGE = \"" + this->defaultLanguage + u8"\"";
+        }
+        else if(_line.find(u8"%{SYSTEM1}%") != std::u8string::npos){
+            _line  = u8"\tSYSTEM1 = \"" + ::Help_Text[u8"ja"] + u8"\"\n";
+            _line += u8"\t$langscore_system = {\n";
+            _line += u8"\t\tSYSTEM1 => {\n";
+            for(auto& l : this->supportLangs){
+                if(::Help_Text.find(l) != ::Help_Text.end()){
+                    _line += u8"\t\t\t\"" + l + u8"\" => \"" + ::Help_Text[l] + u8"\",\n";
+                }
+            }
+            _line += u8"\t\t}\n";
+            _line += u8"\t}";
+        }
+        else if(_line.find(u8"%{SYSTEM2}%") != std::u8string::npos){
+            _line = u8"\tSYSTEM2 = {\n";
+            for(auto& l : this->supportLangs){
+                if(::Language_Items.find(l) != ::Language_Items.end()){
+                    _line += u8"\t\t\"" + l + u8"\" => \"" + ::Language_Items[l] + u8"\",\n";
+                }
+            }
+            _line += u8"\t}";
         }
         result.emplace_back(std::move(_line));
     }
