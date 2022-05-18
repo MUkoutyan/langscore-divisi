@@ -4,11 +4,8 @@ module Langscore
   %{SUPPORT_LANGUAGE}%
   %{DEFAULT_LANGUAGE}%
 
-  LS_FONT = {
-    "default" => {:name => "VL Gothic", :size => 22},
-    "zh-sc" => {:name => "SourceHanSansSC", :size => 18}
-  }
-  
+  %{SUPPORT_FONTS}%
+
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
   $langscore_current_transrate_file = nil
 
@@ -42,13 +39,13 @@ module Langscore
   def self.updateFont(lang)
 
     beforeFontName = Font.default_name
-    p "#{lang} : #{LS_FONT}"
     if LS_FONT[lang] != nil
-      Font.default_name = LS_FONT[lang]
+      Font.default_name = LS_FONT[lang][:name]
+      Font.default_size = LS_FONT[lang][:size]
     else
-      Font.default_name = LS_FONT["default"]
+      Font.default_name = LS_FONT["default"][:name]
+      Font.default_size = LS_FONT["default"][:size]
     end
-    p "current font : #{Font}"
     return beforeFontName != Font.default_name
   end
   

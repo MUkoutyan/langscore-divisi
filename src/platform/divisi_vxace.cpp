@@ -1,4 +1,5 @@
 ﻿#include "divisi_vxace.h"
+#include "config.h"
 
 #include "../writer/rbscriptwriter.h"
 #include "../writer/csvwriter.h"
@@ -42,6 +43,9 @@ namespace
         { u8"zh-sc", u8"中文(簡体)" },
         { u8"zh-tc", u8"中文(繁体)" },
     };
+
+    const auto nl = u8"\n"s;
+    const auto tab = u8"\t"s;
 }
 
 divisi_vxace::~divisi_vxace(){}
@@ -212,35 +216,75 @@ void divisi_vxace::convertRvScript()
     //unison.rbの出力
     auto outputScriptFilePath = outputPath / Script_File_Name;
     fs::copy(resourceFolder / Script_File_Name, outputScriptFilePath, std::filesystem::copy_options::overwrite_existing);
-    std::ifstream inScriptFile(outputScriptFilePath);
+
+    auto fileLines = formatSystemVariable(outputScriptFilePath);
+
+    if(fs::exists(outputScriptFilePath) == false)
+    {
+        std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
+        for(const auto& l : fileLines){
+            outScriptFile << utility::toString(l) << "\n";
+        }
+    }
+
+    std::cout << "Finish." << std::endl;
+}
+
+utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path path)
+{
+    std::ifstream inScriptFile(path);
 
     std::string _linTmp;
     utility::u8stringlist result;
+    config config;
+    auto defLanguage = config.defaultLanguage();
+
+    const auto findStr = [](const std::u8string& _line, std::u8string_view str){
+        return _line.find(str) != std::u8string::npos;
+    };
+
     while(std::getline(inScriptFile, _linTmp))
     {
         std::u8string _line(_linTmp.begin(), _linTmp.end());
-        if(_line.find(u8"%{SUPPORT_LANGUAGE}%") != std::u8string::npos){
+        if(findStr(_line, u8"%{SUPPORT_LANGUAGE}%"))
+        {
             auto list = this->supportLangs;
             for(auto& t : list){ t = u8"\"" + t + u8"\""; }
             auto langs = utility::join(list, u8","s);
-            _line = u8"\tSUPPORT_LANGUAGE = [" + langs + u8"]";
+            _line = tab + u8"SUPPORT_LANGUAGE = [" + langs + u8"]";
         }
-        else if(_line.find(u8"%{DEFAULT_LANGUAGE}%") != std::u8string::npos){
-            _line = u8"\tDEFAULT_LANGUAGE = \"" + this->defaultLanguage + u8"\"";
+        else if(findStr(_line, u8"%{DEFAULT_LANGUAGE}%")){
+            _line = tab + u8"DEFAULT_LANGUAGE = \"" + utility::cnvStr<std::u8string>(defLanguage) + u8"\"";
         }
-        else if(_line.find(u8"%{SYSTEM1}%") != std::u8string::npos){
-            _line  = u8"\tSYSTEM1 = \"" + ::Help_Text[u8"ja"] + u8"\"\n";
-            _line += u8"\t$langscore_system = {\n";
-            _line += u8"\t\tSYSTEM1 => {\n";
+        else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
+        {
+            auto fonts = config.vxaceFonts();
+            _line = tab + u8"LS_FONT = {" + nl;
+            for(auto& pair : fonts)
+            {
+                auto lang = utility::cnvStr<std::u8string>(pair.first);
+                auto sizeStr = utility::cnvStr<std::u8string>(std::to_string(pair.second.size));
+                _line += tab + tab;
+                _line += u8"\"" + lang + u8"\" => {:name => \"" + pair.second.name + u8"\", :size => " + sizeStr + u8"}," + nl;
+            }
+            _line += tab + u8"}\n";
+        }
+        else if(findStr(_line, u8"%{SYSTEM1}%"))
+        {
+            _line  = tab + u8"SYSTEM1 = \"" + ::Help_Text[u8"ja"] + u8"\"" + nl;
+            _line += tab + u8"$langscore_system = {" + nl;
+            _line += tab + tab + u8"SYSTEM1 => {" + nl;
             for(auto& l : this->supportLangs){
                 if(::Help_Text.find(l) != ::Help_Text.end()){
-                    _line += u8"\t\t\t\"" + l + u8"\" => \"" + ::Help_Text[l] + u8"\",\n";
+                    _line += tab + tab + tab;
+                    _line += u8"\"" + l + u8"\" => \"" + ::Help_Text[l] + u8"\"," + nl;
                 }
             }
-            _line += u8"\t\t}\n";
-            _line += u8"\t}";
+            _line += tab + tab + u8"}" + nl;
+            _line += tab + u8"}";
         }
-        else if(_line.find(u8"%{SYSTEM2}%") != std::u8string::npos){
+        else if(findStr(_line, u8"%{SYSTEM2}%"))
+        {
             _line = u8"\tSYSTEM2 = {\n";
             for(auto& l : this->supportLangs){
                 if(::Language_Items.find(l) != ::Language_Items.end()){
@@ -253,12 +297,7 @@ void divisi_vxace::convertRvScript()
     }
     inScriptFile.close();
 
-    std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
-    for(const auto& l : result){
-        outScriptFile << utility::toString(l) << "\n";
-    }
-
-    std::cout << "Finish." << std::endl;
+    return result;
 }
 
 void divisi_vxace::convertGraphFileNameData()
