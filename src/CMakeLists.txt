@@ -14,6 +14,7 @@ set(lib_files
 	"divisi.cpp" 
 	"../include/divisi.h"
 	"../include/config.h"
+	"config.cpp"
 	"project_deserializer.cpp"
 	"project_deserializer.h"
 	"serialize_base.h"
