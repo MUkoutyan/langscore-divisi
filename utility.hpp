@@ -49,6 +49,22 @@ namespace utility
         return result;
     }
 
+    template<class From, class To>
+    static std::vector<To> convert(std::vector<From> list)
+    {
+        std::vector<To> result;
+        result.reserve(list.size());
+        for(auto& s : list){
+            result.emplace_back(s.begin(), s.end());
+        }
+        return result;
+    }
+
+    template<class To, class From>
+    To cnvStr(From str){
+        return To{str.begin(), str.end()};
+    }
+
     const auto toString = [](const std::u8string& str){
         return std::string(str.begin(), str.end());
     };
