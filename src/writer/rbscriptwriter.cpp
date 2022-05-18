@@ -1,4 +1,5 @@
 ﻿#include "rbscriptwriter.h"
+#include "config.h"
 #include "../../utility.hpp"
 #include <fstream>
 #include <regex>
@@ -46,8 +47,8 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
 bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextMode overwriteMode)
 {
     using namespace std::literals::string_literals;
-    std::ofstream outFile(path);
 
+    //======================================
     const auto funcName = [](auto str)
     {
         for(auto i = str.find(" "); i != decltype(str)::npos; i = str.find(" ")){
@@ -66,7 +67,9 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
                              tab + "#========================================" + nl;
     };
     constexpr char functionName[] = "Langscore.Translate_Script_Text";
+    //======================================
 
+    std::ofstream outFile(path);
     outFile << nl;
     outFile << "def " << functionName << nl;
     outFile << nl;
@@ -80,6 +83,8 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
     }
     outFile << "end" << nl << nl;
 
+    config config;
+    auto funcComment = config.usScriptFuncComment();
     for(auto& path : scriptTranslates)
     {
         if(path.second.empty()){ continue; }
@@ -91,11 +96,12 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
         if(path.first.filename() == "Vocab.rb"){
             WriteVocab(outFile, path.second);
         }
-        else{
+        else
+        {
             for(auto& line : path.second)
             {
                 auto parsed = utility::split(line.memo, u8':');
-                auto filepath = std::format("project://Scripts/{0}#{1},{2}", utility::toString(parsed[0]), utility::toString(parsed[1]), utility::toString(parsed[2]));
+                auto filepath = std::vformat(funcComment, std::make_format_args(utility::toString(parsed[0]), utility::toString(parsed[1]), utility::toString(parsed[2])));
                 outFile << tab << "#" + filepath << nl;
                 outFile << tab << "#original : " << utility::toString(line.original) << nl;
                 outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.memo) << "\")" << nl;
@@ -183,13 +189,17 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
         lineCount++;
         std::string line;
         std::getline(loadFile, line);
-        const auto before_numchar = line.length();
-
-        //行頭スペースの削除
-        auto pos = std::find_if(line.begin(), line.end(), [](auto c){
-            return c != '\t' && c != ' ';
-        });
-        line.erase(line.begin(), pos);
+        //コメントのみの行かをチェック
+        {
+            auto check_comment_line = line;
+            auto pos = std::find_if(check_comment_line.begin(), check_comment_line.end(), [](auto c){
+                return c != '\t' && c != ' ';
+            });
+            check_comment_line.erase(check_comment_line.begin(), pos);
+            if(check_comment_line.empty() == false && check_comment_line[0] == '#'){
+                continue;
+            }
+        }
         //途中のコメントを削除
         auto begin_cm = line.begin();
         for(; begin_cm != line.end(); ++begin_cm){
@@ -215,21 +225,26 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
         }
 
         if(line.empty()){ continue; }
-        if(line[0] == '#'){ continue; }
 
-        auto col_diff = before_numchar - line.length();
+        const auto RegexMatch = [&](const std::regex& rgx)
         {
             std::smatch matchList;
-            if(std::regex_search(line, matchList, parseStrDq)){
-                ConvertFromMatch(matchList, col_diff);
+            int col_diff_tmp = 0;
+            int i = 0;
+            while(std::regex_search(line, matchList, rgx))
+            {
+                if(i > 0){
+                    i = i;
+                }
+                i++;
+                ConvertFromMatch(matchList, col_diff_tmp);
+                auto length_diff = matchList.position(0) + matchList.length(0);
+                line = {line.begin() + length_diff, line.end()};
+                col_diff_tmp += length_diff;
             }
-        }
-        {
-            std::smatch matchList;
-            if(std::regex_search(line, matchList, parseStrSq)){
-                ConvertFromMatch(matchList, col_diff);
-            }
-        }
+        };
+        RegexMatch(parseStrDq);
+        RegexMatch(parseStrSq);
     }
 
     std::copy(transTextList.begin(), transTextList.end(), std::back_inserter(this->texts));
