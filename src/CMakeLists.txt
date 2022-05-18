@@ -13,6 +13,7 @@ include_directories(
 set(lib_files 
 	"divisi.cpp" 
 	"../include/divisi.h"
+	"../include/config.h"
 	"project_deserializer.cpp"
 	"project_deserializer.h"
 	"serialize_base.h"
@@ -29,8 +30,7 @@ set(lib_files
 	"platform/divisi_vxace.h" 
     "platform/divisi_vxace.cpp" 
 	"platform/platform_base.h" 
-	"platform/platform_base.cpp"
-)
+	"platform/platform_base.cpp")
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
 add_library (divisi_lib STATIC ${lib_files})
