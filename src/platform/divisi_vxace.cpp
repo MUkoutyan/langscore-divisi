@@ -62,9 +62,18 @@ void divisi_vxace::setProjectPath(std::filesystem::path path)
 
 std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir)
 {
+    if(dir.empty()){
+        config config;
+        dir = config.rpgmakerOutputPath();
+    }
     const auto& projectPath = this->deserializer.projectPath();
 
     fs::path to = projectPath / dir;
+
+    if(std::filesystem::exists(to) == false){
+        std::filesystem::create_directories(to);
+    }
+
     return to /= fileName;
 }
 
@@ -92,8 +101,8 @@ void divisi_vxace::prepareAnalyzeProject()
     {
         if(f.is_directory()){ continue; }
 
-        auto relative_path = f.path().lexically_relative(projectPath);
         //パス区切り文字は\\ではなく/に統一(\\はRubyで読み取れない)
+        auto relative_path = f.path().lexically_relative(projectPath);
         this->graphicFileList.emplace_back(relative_path.replace_extension(""));
     }
 
@@ -131,7 +140,7 @@ void divisi_vxace::convertRvData()
         loadFile >> json;
 
         auto csvFilePath = path.make_preferred().replace_extension(".csv");
-        writeTranslateText<csvwriter>(csvFilePath, json);
+        writeTranslateText<csvwriter>(csvFilePath, json, langscore::OverwriteTextMode::LeaveOldNonBlank);
 
 #ifndef _DEBUG
         fs::remove(path);
@@ -169,6 +178,13 @@ void divisi_vxace::convertRvScript()
     auto& scriptTrans = scriptWriter.getScriptTexts();
     auto& transTexts = scriptWriter.curerntTexts();
 
+    config config;
+    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+    for(auto& t : transTexts){
+        if(t.translates.find(def_lang) == t.translates.end()){ continue; }
+        t.translates[def_lang] = t.original;
+    }
+
     //デフォルトスクリプトのVocab.rb内の文字列は予め対応
     auto resourceFolder = this->appPath.parent_path() / "resource";
     csvreader reader;
@@ -204,6 +220,9 @@ void divisi_vxace::convertRvScript()
 
     const auto deserializeOutPath = this->deserializer.outputTmpPath();
     auto outputPath = deserializeOutPath / "Scripts";
+    if(std::filesystem::exists(outputPath) == false){
+        std::filesystem::create_directories(outputPath);
+    }
 
     for(auto& t : transTexts){
         t.memo.swap(t.original);
@@ -211,7 +230,9 @@ void divisi_vxace::convertRvScript()
 
     writeTranslateText<csvwriter>(outputPath, transTexts);
     
-    writeTranslateText<rbscriptwriter>(outputPath / "unison_custom.rb", scriptList);
+    if(fs::exists(outputPath / "unison_custom.rb") == false){
+        writeTranslateText<rbscriptwriter>(outputPath / "unison_custom.rb", scriptList, langscore::OverwriteTextMode::LeaveOldNonBlank);
+    }
 
     //unison.rbの出力
     auto outputScriptFilePath = outputPath / Script_File_Name;
@@ -219,7 +240,7 @@ void divisi_vxace::convertRvScript()
 
     auto fileLines = formatSystemVariable(outputScriptFilePath);
 
-    if(fs::exists(outputScriptFilePath) == false)
+    if(fs::exists(outputScriptFilePath))
     {
         std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
         for(const auto& l : fileLines){
@@ -310,7 +331,8 @@ void divisi_vxace::convertGraphFileNameData()
     }
 
     const auto& projectPath = deserializer.projectPath();
-    writeTranslateText<csvwriter>(projectPath / "Data/Graphics", transTextList);
+    config config;
+    writeTranslateText<csvwriter>(projectPath / config.rpgmakerOutputPath() / "Graphics.csv", transTextList);
     std::cout << "Finish." << std::endl;
 }
 
@@ -318,6 +340,7 @@ void divisi_vxace::copyData(std::filesystem::copy_options option)
 {
     const auto deserializeOutPath = this->deserializer.outputTmpPath();
     fs::directory_iterator it(deserializeOutPath);
+    //翻訳ファイルのコピー
     for(auto& f : it)
     {
         auto srcPath = f.path().filename();
@@ -330,10 +353,12 @@ void divisi_vxace::copyData(std::filesystem::copy_options option)
         fs::copy(f, to, option);
     }
 
+    //rbスクリプトのコピー
     fs::directory_iterator it2{deserializeOutPath / "Scripts"};
     for(auto& f : it2)
     {
         auto srcPath = f.path().filename();
+        //unison以外は無視
         if(srcPath != "unison_custom.rb" && srcPath != Script_File_Name){
             continue;
         }

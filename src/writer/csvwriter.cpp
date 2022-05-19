@@ -1,4 +1,5 @@
 #include "csvwriter.h"
+#include "config.h"
 #include "utility.hpp"
 #include "../reader/csvreader.h"
 #include <filesystem>
@@ -64,25 +65,24 @@ bool csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
     const std::u8string delimiter(u8",");
     auto headers = this->texts[0].createHeader();
 
-    auto hasMemo = !std::all_of(texts.begin(), texts.end(), [](const auto& t){
-        return t.memo.empty();
-    });
-    if(hasMemo){
-        headers.emplace_back(u8"memo");
-    }
-
     writeU8String(outputCSVFile, utility::join(headers, delimiter));
     outputCSVFile << "\n";
     
+    config config;
+    auto def_lang_str = config.defaultLanguage();
+    auto def_lang = utility::cnvStr<std::u8string>(def_lang_str);
     for(const auto& text : this->texts)
     {
         utility::u8stringlist rowtext = {text.original};
         //ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
-        for(const auto& lang : text.translates){
-            rowtext.emplace_back(lang.second);
-        }
-        if(hasMemo){
-            rowtext.emplace_back(text.memo);
+        for(const auto& lang : text.translates)
+        {
+            if(def_lang == lang.first && lang.second.empty()){
+                rowtext.emplace_back(text.original);
+            }
+            else{
+                rowtext.emplace_back(lang.second);
+            }
         }
 
         writeU8String(outputCSVFile, utility::join(rowtext, delimiter));

@@ -1,4 +1,5 @@
 #include "project_deserializer.h"
+#include "config.h"
 #include "utility.hpp"
 
 #include <process.h>
@@ -92,11 +93,12 @@ deserializer::Result deserializer::exec()
 std::filesystem::path deserializer::outputTmpPath() const 
 {
     try {
-        return std::filesystem::temp_directory_path() / "Data/";
+        config config;
+        return config.tempDirectorty();
     }
     catch(...){
     }
-    return appPath / "tmp/Data/";
+    return appPath / "tmp/Translate/";
 }
 
 const std::filesystem::path& deserializer::projectPath() const {

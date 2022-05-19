@@ -230,13 +230,8 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
         {
             std::smatch matchList;
             int col_diff_tmp = 0;
-            int i = 0;
             while(std::regex_search(line, matchList, rgx))
             {
-                if(i > 0){
-                    i = i;
-                }
-                i++;
                 ConvertFromMatch(matchList, col_diff_tmp);
                 auto length_diff = matchList.position(0) + matchList.length(0);
                 line = {line.begin() + length_diff, line.end()};

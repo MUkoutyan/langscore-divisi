@@ -35,7 +35,7 @@ namespace langscore
 		std::vector<std::filesystem::path> scriptFileList;
 		std::vector<std::filesystem::path> graphicFileList;
 
-		virtual std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "Data") = 0;
+		virtual std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "") = 0;
 
 		template<typename Writer, typename TsData>
 		void writeTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld)

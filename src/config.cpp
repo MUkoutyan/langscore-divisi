@@ -38,23 +38,26 @@ config::config()
 		std::stringstream ss;
 		ss << "{\n";
 		ss << "\t\"" << KEY_LANGUAGES << R"(": ["ja", "en", "zh-sc"])" << ", \n";
-		ss << "\t\"" << KEY_TEMP_DIR << "\": \"" << (std::filesystem::temp_directory_path() / "Data/").generic_string() << "\", \n";
+		ss << "\t\"" << KEY_DEFAULT_LANGUAGE << "\": \"ja\", \n";
+		ss << "\t\"" << KEY_TEMP_DIR << "\": \"" << (std::filesystem::temp_directory_path() / "ls-tmp/Translate").generic_string() << "\", \n";
 		ss << "\t\"" << KEY_US_CUSTOM_FUNC_COMMENT << "\": \"project://Scripts/{0}#{1},{2}\",\n";
-		ss << "\t\"" << KEY_RPGMAKER_OUTPUT_PATH << "\": \"Translate/\", \n";
+		ss << "\t\"" << KEY_RPGMAKER_OUTPUT_PATH << "\": \"Translate\", \n";
 		ss << R"(
 	"vxace": {
 		"fonts": {
 			"default": {
 				"name": "VL Gothic",
-				"size": 22
+				"size": 24
 			},
 			"zh-sc": {
 				"name": "SourceHanSansSC",
-				"size": 20
+				"size": 21
 			}
 		}
 	})";
 		ss << "\n}";
+
+		auto str = ss.str();
 
 		ss >> pImpl->json;
 	}

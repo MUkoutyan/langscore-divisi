@@ -24,7 +24,7 @@ namespace langscore
 		void convertRvScript();
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 
-		std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "Data") override;
+		std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "") override;
 
 	};
 }
