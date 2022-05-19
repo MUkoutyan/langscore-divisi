@@ -8,61 +8,14 @@ module Langscore
 
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
   $langscore_current_transrate_file = nil
-
-  def self.translate(text, langscore_hash)
-
-    return text if langscore_hash == nil
-
-    key = text 
-    key = text.chop if text[text.size-1]=="\n" #メッセージの場合、改行していなくても末尾に必ず改行が含まれるっぽい
-
-    translist = langscore_hash[key]
-    if translist != nil
-      t = translist[$langscore_current_language]
-      if t != nil && t != ""
-        text = t
-      end
-    end
-    text
-  end
-
-  def self.translate_for_script(text)
-    self.translate(text, $data_langscore_scripts)
-  end
-
-  def self.changeLanguage(lang)
-    $langscore_current_language = lang
-    Langscore.Translate_Script_Text
-    Langscore.updateFont(lang)
-  end
-
-  def self.updateFont(lang)
-
-    beforeFontName = Font.default_name
-    if LS_FONT[lang] != nil
-      Font.default_name = LS_FONT[lang][:name]
-      Font.default_size = LS_FONT[lang][:size]
-    else
-      Font.default_name = LS_FONT["default"][:name]
-      Font.default_size = LS_FONT["default"][:size]
-    end
-    return beforeFontName != Font.default_name
-  end
-  
+ 
 end
 
 
 #-----------------------------------------------------
 String.class_eval <<-eval
   def lstrans line_info
-    text = Langscore.translate_for_script(line_info)
-    # p text
-    # caller_line = caller.first
-    # if /^(.+?):(\d+)?/ =~ caller_line 
-    #   p caller_line
-    #   puts "#{$1}, #{$2.to_i}" 
-    # end 
-    text 
+    Langscore.translate_for_script(line_info)
   end
 eval
 
@@ -78,6 +31,8 @@ class LSCSV
     size = rows[0].size
     mismatch_cells = rows.select{ |r| r.size != size }
     if mismatch_cells.empty? == false
+      p "Error! : Missmatch Num Cells : #{file_name},#{mismatch_cells.to_s}" 
+      p "Header size : #{size}, Languages : #{rows[0]}"
       raise "Error! : Missmatch Num Cells : #{file_name},#{mismatch_cells.to_s}" 
     end
 
@@ -190,6 +145,67 @@ class LSCSV
   end
 end
 
+#-----------------------------------------------------
+
+module Langscore
+  def self.translate(text, langscore_hash, lang = $langscore_current_language)
+
+    return text if langscore_hash == nil
+
+    key = text 
+    key = text.chop if text[text.size-1]=="\n" #メッセージの場合、改行していなくても末尾に必ず改行が含まれるっぽい
+
+    translist = langscore_hash[key]
+    if translist != nil
+      t = translist[lang]
+      if t != nil && t != ""
+        text = t
+      end
+    end
+    text
+  end
+
+  def self.translate_for_script(text)
+    result = self.translate(text, $data_langscore_scripts)
+    if result == text && $DEBUG 
+      return "!!!Langscore : Invalid!!!"
+    end
+    result
+  end
+
+  def self.changeLanguage(lang)
+    $langscore_current_language = lang
+    Langscore.Translate_Script_Text
+    Langscore.updateFont(lang)
+    Langscore.updateActor
+  end
+
+  def self.updateFont(lang)
+
+    beforeFontName = Font.default_name
+    if LS_FONT[lang] != nil
+      Font.default_name = LS_FONT[lang][:name]
+      Font.default_size = LS_FONT[lang][:size]
+    else
+      Font.default_name = LS_FONT["default"][:name]
+      Font.default_size = LS_FONT["default"][:size]
+    end
+    return beforeFontName != Font.default_name
+  end
+
+  def self.updateActor
+    actor_tr = LSCSV.to_hash("./Data/Actors.lscsv")
+
+    $data_actors = $data_actors.map do |actor|
+      next if actor.nil?
+      actor.name = Langscore.translate(actor.name, actor_tr)
+      actor.description = Langscore.translate(actor.description, actor_tr)
+      p "Name : #{actor.name}, Desc : #{actor.description}"
+      return actor
+    end
+  end
+
+end
 
 #-----------------------------------------------------
 
