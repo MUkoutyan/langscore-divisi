@@ -19,6 +19,7 @@ String.class_eval <<-eval
   end
 eval
 
+
 class LSCSV
 
   def self.to_hash(file_name)
@@ -27,27 +28,23 @@ class LSCSV
 
     rows = parse_col(parse_row(file))
 
-    #Varidate
-    size = rows[0].size
-    mismatch_cells = rows.select{ |r| r.size != size }
-    if mismatch_cells.empty? == false
-      p "Error! : Missmatch Num Cells : #{file_name},#{mismatch_cells.to_s}" 
-      p "Header size : #{size}, Languages : #{rows[0]}"
-      raise "Error! : Missmatch Num Cells : #{file_name},#{mismatch_cells.to_s}" 
-    end
+    varidate(rows)
 
     #To Hash
     header = rows[0]
-    langs = header[1...header.size-1]
-
+    row_index = (1...header.size).select do |i|
+      Langscore::SUPPORT_LANGUAGE.include?(header[i])
+    end
+ 
+    #改行コードを全てRGSS側の\r\nに統一
     result = {}
     rows[1...rows.size].each do |r|
-      origin = r[0]
+      origin = r[0].gsub("\n\n", "\r\n")
       trans  = r[1...header.size]
 
       transhash = {}
-      langs.each.with_index do |l, i|
-        transhash[l] = trans[i]
+      row_index.each do |i|
+        transhash[header[i]] = r[i].gsub("\n\n", "\r\n")
       end
 
       result[origin] = transhash
@@ -55,8 +52,25 @@ class LSCSV
 
     result
   end
+  
+
+  def self.to_array_without_origin(file_name)
+    hash = to_hash(file_name)
+    return hash.values
+  end
 
   private 
+
+  def self.varidate(rows)
+    size = rows[0].size
+    mismatch_cells = rows.select{ |r| r.size != size }
+    if mismatch_cells.empty? == false
+      p "Error! : Missmatch Num Cells : #{mismatch_cells.to_s}" 
+      p "Header size : #{size}, Languages : #{rows[0]}"
+      raise "Error! : Missmatch Num Cells : #{mismatch_cells.to_s}" 
+    end
+  end
+
   def self.open(file_name)
     begin
       trans_file = load_data(file_name)
@@ -121,7 +135,6 @@ class LSCSV
           next
         elsif c=="\n"
           find_quote = false
-          cols.push(col)
           col = ""
           break
         end
@@ -145,6 +158,7 @@ class LSCSV
   end
 end
 
+
 #-----------------------------------------------------
 
 module Langscore
@@ -161,6 +175,27 @@ module Langscore
       if t != nil && t != ""
         text = t
       end
+    end
+    text
+  end
+
+  def self.translate_array(text, langscore_array, lang = $langscore_current_language)
+
+    return text if langscore_array == nil
+
+    p "Search : #{text}"
+
+    transhash = langscore_array.select do |l|
+      p l.values
+      l.value?(text)
+    end.first
+
+    p "Transhash : #{transhash}"
+    return text if transhash.nil? || transhash.empty?
+
+    t = transhash[lang]
+    if t != nil && t != ""
+      text = t
     end
     text
   end
@@ -194,19 +229,19 @@ module Langscore
   end
 
   def self.updateActor
-    actor_tr = LSCSV.to_hash("./Data/Actors.lscsv")
+    $actor_tr ||= LSCSV.to_array_without_origin("./Translate/Actors.lscsv")
 
+    $game_actors = Game_Actors.new
     $data_actors = $data_actors.map do |actor|
       next if actor.nil?
-      actor.name = Langscore.translate(actor.name, actor_tr)
-      actor.description = Langscore.translate(actor.description, actor_tr)
+      actor.name = Langscore.translate_array(actor.name, $actor_tr)
+      actor.description = Langscore.translate_array(actor.description, $actor_tr)
       p "Name : #{actor.name}, Desc : #{actor.description}"
       return actor
     end
   end
 
 end
-
 #-----------------------------------------------------
 
 class Game_Map
@@ -215,7 +250,7 @@ class Game_Map
   def setup(map_id)
     ls_base_setup(map_id)
     
-    file_name  = sprintf("./Data/Map%03d.lscsv", @map_id)
+    file_name  = sprintf("./Translate/Map%03d.lscsv", @map_id)
 
     $langscore_current_transrate_file = LSCSV.to_hash(file_name)
     # p $langscore_current_transrate_file
@@ -253,9 +288,9 @@ DataManager::module_eval <<-eval
   #戦闘テスト用は未対応
   def self.load_normal_database
     ls_base_load_normal_database
-    $data_langscore_graphics ||= LSCSV.to_hash("Data/Graphics.lscsv")
+    $data_langscore_graphics ||= LSCSV.to_hash("Translate/Graphics.lscsv")
     p "Load Graphics.lscsv"# + $data_langscore_graphics.to_s
-    $data_langscore_scripts ||= LSCSV.to_hash("Data/Scripts.lscsv")
+    $data_langscore_scripts ||= LSCSV.to_hash("Translate/Scripts.lscsv")
     p "Load Scripts.lscsv" if $data_langscore_scripts
   end
 
