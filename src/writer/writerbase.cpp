@@ -1,4 +1,5 @@
 #include "writerbase.h"
+#include "utility.hpp"
 #include <fstream>
 
 using namespace langscore;
@@ -6,7 +7,7 @@ namespace
 {
 
 	static const std::vector<std::u8string> ignoreKeys = {
-		u8"json_class", u8"@note", u8"@character_name", 
+		u8"class", u8"@note", u8"@character_name", 
 		u8"@self_switch_ch", u8"@switches", u8"@title1_name", u8"@variables"
 	};
 	static const std::map<std::u8string, std::vector<std::u8string>> ignoreForClassKeys = {
@@ -32,6 +33,7 @@ writerbase::writerbase(std::vector<std::u8string> langs, const nlohmann::json& j
 langscore::writerbase::writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts)
 	: useLangs(std::move(langs))
 	, texts(std::move(texts))
+	, overwriteMode(OverwriteTextMode::LeaveOld)
 {
 }
 
@@ -49,7 +51,16 @@ void writerbase::addText(const nlohmann::json& json, std::u8string note)
 	json.get_to(valStr);
 	if(valStr.empty()){ return; }
 
+	bool wrapDq = false;
 	if(valStr.find('\n') != std::string::npos){
+		wrapDq = true;
+	}
+	else if(valStr.find('\"') != std::string::npos){
+		wrapDq = true;
+		valStr = utility::replace(valStr, "\"", "\"\"");
+	}
+
+	if(wrapDq){
 		valStr = "\"" + valStr + "\"";
 	}
 	std::u8string original(valStr.begin(), valStr.end());
@@ -83,9 +94,9 @@ std::tuple<std::u8string, bool> writerbase::getObjectClass(const nlohmann::json&
 {
 	bool hasSpecIgnoreKeys = false;
 	std::u8string currentClassName = u8"";
-	if(root.find("json_class") != root.end())
+	if(root.find("class") != root.end())
 	{
-		const std::string _currentClassName = root["json_class"];
+		const std::string _currentClassName = root["class"];
 		currentClassName = std::u8string(_currentClassName.begin(), _currentClassName.end());
 		if(currentClassName != u8"")
 		{

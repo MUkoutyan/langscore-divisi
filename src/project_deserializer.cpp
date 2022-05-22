@@ -35,12 +35,10 @@ void deserializer::setProjectPath(ProjectType type, std::filesystem::path path)
 
 deserializer::Result deserializer::exec()
 {
-    auto rubyPath = (appPath / "ruby/bin/ruby.exe");
-    rubyPath.make_preferred();
 
     std::filesystem::path scriptPath = "";
     if(currentProjectType == VXAce){
-        scriptPath = appPath / "rvdata2json/to_json2.rb";
+        scriptPath = (appPath / "rvcnv/rvcnv.exe");
     }
     else //if(currentProjectType == None)
     {
@@ -49,10 +47,6 @@ deserializer::Result deserializer::exec()
 
     scriptPath.make_preferred();
 
-
-    if(std::filesystem::exists(rubyPath) == false){
-        return Result(2);
-    }
     if(std::filesystem::exists(scriptPath) == false){
         return Result(3);
     }
@@ -62,7 +56,7 @@ deserializer::Result deserializer::exec()
     }
 
     char buffer[256] = {};
-    auto process = utility::join({ rubyPath.generic_string(), scriptPath.string(), _projectPath.string(), outputTmpPath().string()}, std::string(" "));
+    auto process = utility::join({ scriptPath.string(), "-i", _projectPath.string(), "-o", outputTmpPath().string()}, std::string(" "));
     FILE* fp = NULL;
     if(process_stdout)
     {

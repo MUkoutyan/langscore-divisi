@@ -69,8 +69,7 @@ bool csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
     outputCSVFile << "\n";
     
     config config;
-    auto def_lang_str = config.defaultLanguage();
-    auto def_lang = utility::cnvStr<std::u8string>(def_lang_str);
+    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     for(const auto& text : this->texts)
     {
         utility::u8stringlist rowtext = {text.original};
