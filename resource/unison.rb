@@ -6,11 +6,12 @@ module Langscore
 
   %{SUPPORT_FONTS}%
 
+  %{TRANSLATE_FOLDER}%
+
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
   $langscore_current_transrate_file = nil
  
 end
-
 
 #-----------------------------------------------------
 String.class_eval <<-eval
@@ -19,145 +20,7 @@ String.class_eval <<-eval
   end
 eval
 
-
-class LSCSV
-
-  def self.to_hash(file_name)
-    file = open(file_name)
-    return {} if file == nil
-
-    rows = parse_col(parse_row(file))
-
-    varidate(rows)
-
-    #To Hash
-    header = rows[0]
-    row_index = (1...header.size).select do |i|
-      Langscore::SUPPORT_LANGUAGE.include?(header[i])
-    end
- 
-    #改行コードを全てRGSS側の\r\nに統一
-    result = {}
-    rows[1...rows.size].each do |r|
-      origin = r[0].gsub("\n\n", "\r\n")
-      trans  = r[1...header.size]
-
-      transhash = {}
-      row_index.each do |i|
-        transhash[header[i]] = r[i].gsub("\n\n", "\r\n")
-      end
-
-      result[origin] = transhash
-    end
-
-    result
-  end
-  
-
-  def self.to_array_without_origin(file_name)
-    hash = to_hash(file_name)
-    return hash.values
-  end
-
-  private 
-
-  def self.varidate(rows)
-    size = rows[0].size
-    mismatch_cells = rows.select{ |r| r.size != size }
-    if mismatch_cells.empty? == false
-      p "Error! : Missmatch Num Cells : #{mismatch_cells.to_s}" 
-      p "Header size : #{size}, Languages : #{rows[0]}"
-      raise "Error! : Missmatch Num Cells : #{mismatch_cells.to_s}" 
-    end
-  end
-
-  def self.open(file_name)
-    begin
-      trans_file = load_data(file_name)
-    rescue
-      begin
-        trans_file = File.open(file_name)
-      rescue
-        p "Warning : Not Found Transcript File #{file_name}"
-        return nil
-      end
-    end
-    trans_file
-  end
-
-  def self.parse_row(file)
-    return if file == nil
-    csv_text = file.readlines()
-    lines = []
-    line_buffer = ""
-    csv_text.each do |l|
-      dq_count = l.count('\"');
-
-      if line_buffer != ""
-        dq_count += 1
-      end
-
-      if (dq_count%2) == 0
-        line_buffer += l
-        lines.push(line_buffer)
-        line_buffer = ""
-      else
-        line_buffer += l
-      end
-    end
-
-    return lines
-  end
-
-  def self.parse_col(rows)
-    return if rows == nil
-    result = []
-    cols = []
-    find_quote = false
-    rows.each do |r|
-      col = ""
-      r.each_char do |c|
-
-        if c=="\""
-          find_quote = !find_quote
-          next
-        end
-
-        if find_quote
-          col += c
-          next
-        end
-
-        if c==","
-          find_quote = false
-          cols.push(col)
-          col = ""
-          next
-        elsif c=="\n"
-          find_quote = false
-          col = ""
-          break
-        end
-
-        col += c
-      end
-      
-      if col.empty? == false
-        cols.push(col)
-      end
-
-      result.push(cols)
-      cols = []
-
-    end
-    if cols.empty? == false
-      result.push(cols)
-    end
-
-    result
-  end
-end
-
+%{UNISON_LSCSV}%
 
 #-----------------------------------------------------
 
@@ -183,14 +46,10 @@ module Langscore
 
     return text if langscore_array == nil
 
-    p "Search : #{text}"
-
     transhash = langscore_array.select do |l|
-      p l.values
       l.value?(text)
     end.first
 
-    p "Transhash : #{transhash}"
     return text if transhash.nil? || transhash.empty?
 
     t = transhash[lang]
@@ -202,19 +61,38 @@ module Langscore
 
   def self.translate_for_script(text)
     result = self.translate(text, $data_langscore_scripts)
-    if result == text && $DEBUG 
+    if result == text && $DEBUG || $TEST
       return "!!!Langscore : Invalid!!!"
     end
     result
+  end
+  
+  def self.translate_list_clear
+    return if $TEST == false
+    $ls_actor_tr.clear
+    $ls_system_tr.clear
+    $ls_classes_tr.clear
+    $ls_skill_tr.clear
+    $ls_state_tr.clear
+    $ls_weapons_tr.clear
+    $ls_armors_tr.clear
+    $ls_item_tr.clear
+    $ls_enemies_tr.clear
   end
 
   def self.changeLanguage(lang)
     $langscore_current_language = lang
     Langscore.Translate_Script_Text
     Langscore.updateFont(lang)
+    
+    Langscore.updateSkills
+    Langscore.updateClasses
+
     Langscore.updateActor
+    Langscore.updateSystem
   end
 
+  private
   def self.updateFont(lang)
 
     beforeFontName = Font.default_name
@@ -227,21 +105,107 @@ module Langscore
     end
     return beforeFontName != Font.default_name
   end
-
-  def self.updateActor
-    $actor_tr ||= LSCSV.to_array_without_origin("./Translate/Actors.lscsv")
-
-    $game_actors = Game_Actors.new
-    $data_actors = $data_actors.map do |actor|
-      next if actor.nil?
-      actor.name = Langscore.translate_array(actor.name, $actor_tr)
-      actor.description = Langscore.translate_array(actor.description, $actor_tr)
-      p "Name : #{actor.name}, Desc : #{actor.description}"
-      return actor
+  
+  def self.updateForNameAndDesc(data_list, tr_list)
+    elm_trans = lambda do |el|
+      el = Langscore.translate_array(el, tr_list)
+    end
+    data_list.each.with_index do |obj,i|
+      next if data_list[i].nil?
+      data_list[i].name        = elm_trans.call(obj.name)
+      data_list[i].description = elm_trans.call(obj.description)
+    end
+  end
+  
+  def self.updateForName(data_list, tr_list)
+    elm_trans = lambda do |el|
+      el = Langscore.translate_array(el, tr_list)
+    end
+    data_list.each.with_index do |obj,i|
+      next if data_list[i].nil?
+      data_list[i].name        = elm_trans.call(obj.name)
     end
   end
 
+  def self.updateActor
+    $ls_actor_tr ||= LSCSV.to_array_without_origin("Actors.lscsv")
+    $game_actors = Game_Actors.new  #アクター情報をクリアして次回取得時に翻訳されたテキストが入るようにする
+    updateForNameAndDesc($data_actors, $ls_actor_tr)
+  end
+
+  def self.updateSystem
+    $ls_system_tr ||= LSCSV.to_array_without_origin("System.lscsv")
+
+    elm_trans = lambda do |el| 
+      el = Langscore.translate_array(el, $ls_system_tr)
+    end
+    $data_system.elements.map! &elm_trans
+    $data_system.skill_types.map! &elm_trans
+    $data_system.terms.params.map! &elm_trans
+    $data_system.terms.etypes.map! &elm_trans
+    $data_system.terms.commands.map! &elm_trans
+
+    $data_system.currency_unit = Langscore.translate_array($data_system.currency_unit, $system_tr)
+  end
+
+  def self.updateClasses
+    $ls_classes_tr ||= LSCSV.to_array_without_origin("Classes.lscsv")
+    updateForName($data_classes, $ls_classes_tr)
+  end
+
+  def self.updateSkills
+    $ls_skill_tr ||= LSCSV.to_array_without_origin("Skills.lscsv")
+
+    elm_trans = lambda do |el|
+      el = Langscore.translate_array(el, $ls_skill_tr)
+    end
+    $data_skills.each.with_index do |skill,i|
+      next if $data_skills[i].nil?
+      $data_skills[i].name        = elm_trans.call(skill.name)
+      $data_skills[i].description = elm_trans.call(skill.description)
+      $data_skills[i].message1    = elm_trans.call(skill.message1)
+      $data_skills[i].message2    = elm_trans.call(skill.message2)
+    end
+  end
+  
+  def self.updateStates
+    $ls_state_tr ||= LSCSV.to_array_without_origin("States.lscsv")
+    
+    elm_trans = lambda do |el|
+      el = Langscore.translate_array(el, $ls_state_tr)
+    end
+    $data_states.each.with_index do |skill,i|
+      next if $data_states[i].nil?
+      $data_states[i].name        = elm_trans.call(skill.name)
+      $data_states[i].message1    = elm_trans.call(skill.message1)
+      $data_states[i].message2    = elm_trans.call(skill.message2)
+      $data_states[i].message3    = elm_trans.call(skill.message3)
+      $data_states[i].message4    = elm_trans.call(skill.message4)
+    end
+  end
+
+  def self.updateWeapons
+    $ls_weapons_tr ||= LSCSV.to_array_without_origin("Weapons.lscsv")
+    updateForNameAndDesc($data_weapons, $ls_weapons_tr)
+  end
+
+  def self.updateArmors
+    $ls_armors_tr ||= LSCSV.to_array_without_origin("Armors.lscsv")
+    updateForNameAndDesc($data_armors, $ls_armors_tr)
+  end
+  
+  def self.updateItems
+    $ls_item_tr ||= LSCSV.to_array_without_origin("Items.lscsv")
+    updateForNameAndDesc($data_items, $ls_item_tr)
+  end
+
+  def self.updateEnemies
+    $ls_enemies_tr ||= LSCSV.to_array_without_origin("Enemies.lscsv")
+    updateForName($data_enemies, $ls_enemies_tr)
+  end
+
 end
+
 #-----------------------------------------------------
 
 class Game_Map
@@ -250,7 +214,7 @@ class Game_Map
   def setup(map_id)
     ls_base_setup(map_id)
     
-    file_name  = sprintf("./Translate/Map%03d.lscsv", @map_id)
+    file_name  = sprintf("Map%03d.lscsv", @map_id)
 
     $langscore_current_transrate_file = LSCSV.to_hash(file_name)
     # p $langscore_current_transrate_file
@@ -274,7 +238,6 @@ class Window_Base < Window
   def draw_text(*args)
     ls_base_draw_text(*args)
   end
-  
 end
 
 
@@ -288,10 +251,12 @@ DataManager::module_eval <<-eval
   #戦闘テスト用は未対応
   def self.load_normal_database
     ls_base_load_normal_database
-    $data_langscore_graphics ||= LSCSV.to_hash("Translate/Graphics.lscsv")
+    $data_langscore_graphics ||= LSCSV.to_hash("Graphics.lscsv")
     p "Load Graphics.lscsv"# + $data_langscore_graphics.to_s
-    $data_langscore_scripts ||= LSCSV.to_hash("Translate/Scripts.lscsv")
+    $data_langscore_scripts ||= LSCSV.to_hash("Scripts.lscsv")
     p "Load Scripts.lscsv" if $data_langscore_scripts
+
+    Langscore.changeLanguage($langscore_current_language)
   end
 
 eval
@@ -369,6 +334,7 @@ class Scene_Language < Scene_MenuBase
     super
     @command_window.dispose
     Langscore.changeLanguage($langscore_current_language)
+    LSSetting.save()
   end
 
   def create_lsmain_window    
@@ -401,4 +367,30 @@ class Scene_Language < Scene_MenuBase
   end
 end
 
+
+class LSSetting
+  GetPrivateProfileString = Win32API.new('kernel32', 'GetPrivateProfileString', %w(p p p p l p), 'L')
+  WritePrivateProfileString = Win32API.new('kernel32', 'WritePrivateProfileString', %w(p p p p), 'i')
+
+  BufferSize = 16+1
+
+  def self.load
+    result = ' ' * BufferSize
+    r = GetPrivateProfileString.call("Langscore", "Lang", "ja", result, BufferSize, "./Game.ini")
+    if r == BufferSize-2
+      $langscore_current_language = "ja"
+    else
+      $langscore_current_language = result.slice(0...r)
+      p "Langscore Load ini : #{$langscore_current_language}"
+    end
+  end
+
+  def self.save
+    WritePrivateProfileString.call("Langscore", "Lang", $langscore_current_language, "./Game.ini")
+  end
 end
+
+LSSetting.load()
+
+
+end # module Langscore
