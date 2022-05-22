@@ -14,16 +14,17 @@ class LSCSV
     row_index = (1...header.size).select do |i|
       Langscore::SUPPORT_LANGUAGE.include?(header[i])
     end
+
  
     #改行コードを全てRGSS側の\r\nに統一
     result = {}
     rows[1...rows.size].each do |r|
-      origin = r[0].gsub("\n\n", "\r\n")
+      origin = r[0]
       trans  = r[1...header.size]
 
       transhash = {}
       row_index.each do |i|
-        transhash[header[i]] = r[i].gsub("\n\n", "\r\n")
+        transhash[header[i]] = r[i]
       end
 
       result[origin] = transhash
@@ -91,6 +92,15 @@ class LSCSV
     result = []
     cols = []
     find_quote = false
+
+    add_col = lambda do |col|
+      if col.start_with?("\"") && col.end_with?("\"")
+        col = col.slice!(1..col.length-2)
+      end
+      col.gsub!("\n\n", "\r\n")
+      cols.push(col)
+    end
+
     rows.each do |r|
       col = ""
       r.each_char do |c|
@@ -106,7 +116,7 @@ class LSCSV
 
         if c==","
           find_quote = false
-          cols.push(col)
+          add_col.call(col)
           col = ""
           next
         elsif c=="\n"
@@ -117,7 +127,7 @@ class LSCSV
         col += c
       end
 
-      cols.push(col)
+      add_col.call(col)
 
       result.push(cols)
       cols = []
