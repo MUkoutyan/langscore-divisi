@@ -290,6 +290,21 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
             }
             _line += tab + u8"}\n";
         }
+        else if(findStr(_line, u8"%{TRANSLATE_FOLDER}%"))
+        {
+            auto outPath = config.rpgmakerOutputPath();
+            _line = tab + u8"TRANSLATE_FOLDER = \"./" + utility::cnvStr<std::u8string>(outPath) + u8"\"" + nl;
+        }
+        else if(findStr(_line, u8"%{UNISON_LSCSV}%"))
+        {
+            auto resourceFolder = this->appPath.parent_path() / "resource";
+            std::stringstream ss;
+            std::ifstream lscsv(resourceFolder/"lscsv.rb");
+            assert(lscsv.good());
+            ss << lscsv.rdbuf();
+            lscsv.close();
+            _line = utility::cnvStr<std::u8string>(ss.str());
+        }
         else if(findStr(_line, u8"%{SYSTEM1}%"))
         {
             _line  = tab + u8"SYSTEM1 = \"" + ::Help_Text[u8"ja"] + u8"\"" + nl;
