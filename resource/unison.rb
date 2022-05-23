@@ -64,33 +64,49 @@ module Langscore
     result
   end
   
-  def self.translate_list_clear
+  def self.translate_list_reset
     return if $TEST == false
     $ls_actor_tr.clear
     $ls_system_tr.clear
     $ls_classes_tr.clear
     $ls_skill_tr.clear
-    $ls_state_tr.clear
+    $ls_states_tr.clear
     $ls_weapons_tr.clear
     $ls_armors_tr.clear
     $ls_item_tr.clear
     $ls_enemies_tr.clear
+    $data_langscore_graphics = LSCSV.to_hash("Graphics.lscsv")
+    $data_langscore_scripts = LSCSV.to_hash("Scripts.lscsv")
+
+    changeLanguage($langscore_current_language)
   end
 
   def self.changeLanguage(lang)
+
     $langscore_current_language = lang
     Langscore.Translate_Script_Text
     Langscore.updateFont(lang)
-    
-    Langscore.updateSkills
-    Langscore.updateClasses
-    Langscore.updateEnemies
-    Langscore.updateItems
-    Langscore.updateArmors
-    Langscore.updateWeapons
 
+    functions = [
+      lambda{Langscore.updateSkills},
+      lambda{Langscore.updateClasses},
+      lambda{Langscore.updateStates},
+      lambda{Langscore.updateEnemies},
+      lambda{Langscore.updateItems},
+      lambda{Langscore.updateArmors},
+      lambda{Langscore.updateWeapons},
+      lambda{Langscore.updateSystem}
+    ]
+    updateThreads = []
+    functions.each do |f|
+      updateThreads << Thread.new do
+        f.call
+      end
+    end
+    updateThreads.each do |t| t.join end
+
+    #Game_Actors.newをしているため並列処理から除外
     Langscore.updateActor
-    Langscore.updateSystem
   end
 
   private
@@ -170,10 +186,10 @@ module Langscore
   end
   
   def self.updateStates
-    $ls_state_tr ||= LSCSV.to_array_without_origin("States.lscsv")
+    $ls_states_tr ||= LSCSV.to_array_without_origin("States.lscsv")
     
     elm_trans = lambda do |el|
-      el = Langscore.translate_array(el, $ls_state_tr)
+      el = Langscore.translate_array(el, $ls_states_tr)
     end
     $data_states.each.with_index do |skill,i|
       next if $data_states[i].nil?
@@ -289,7 +305,8 @@ class Window_Langscore < Window_Command
 
   attr_accessor :recreate
 
-  def initialize
+  def initialize lang
+    @mark_lang = lang
     super(0,0)
     self.x = (Graphics.width - self.window_width ) / 2
     self.y = (Graphics.height - self.window_height) / 2
@@ -308,7 +325,8 @@ class Window_Langscore < Window_Command
 
   def make_command_list
     SUPPORT_LANGUAGE.each.with_index do |l, i|
-      add_command(SYSTEM2[l], l.to_sym)
+      mark = (l == @mark_lang) ? "* " : ""
+      add_command(mark + SYSTEM2[l], l.to_sym)
     end
   end
 
@@ -327,6 +345,7 @@ end
 class Scene_Language < Scene_MenuBase
   def start
     super
+    @before_lang = $langscore_current_language
     create_help_window
     create_lsmain_window
   end
@@ -334,13 +353,15 @@ class Scene_Language < Scene_MenuBase
   def terminate
     super
     @command_window.dispose
-    Langscore.changeLanguage($langscore_current_language)
-    LSSetting.save()
+    if @before_lang != $langscore_current_language
+      Langscore.changeLanguage($langscore_current_language)
+      LSSetting.save()
+    end
   end
 
   def create_lsmain_window    
     @command_window.dispose unless @command_window.nil?
-    @command_window = Window_Langscore.new
+    @command_window = Window_Langscore.new(@before_lang)
     @command_window.viewport = @viewport
 
     @command_window.set_handler(:ls_update, method(:select_lang))
