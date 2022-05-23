@@ -25,15 +25,17 @@ namespace
 }
 
 writerbase::writerbase(std::vector<std::u8string> langs, const nlohmann::json& json)
-	: useLangs(std::move(langs))
+	: writerbase(std::move(langs), std::vector<TranslateText>{})
 {
 	json2tt(json);
 }
 
-langscore::writerbase::writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts)
+writerbase::writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts)
 	: useLangs(std::move(langs))
 	, texts(std::move(texts))
 	, overwriteMode(OverwriteTextMode::LeaveOld)
+	, stackText(false)
+	, stackTextStr(u8"")
 {
 }
 
@@ -51,30 +53,37 @@ void writerbase::addText(const nlohmann::json& json, std::u8string note)
 	json.get_to(valStr);
 	if(valStr.empty()){ return; }
 
+	std::u8string original(valStr.begin(), valStr.end());
+	addText(std::move(original), std::move(note));
+}
+
+void writerbase::addText(std::u8string text, std::u8string note)
+{
+	if(stackText){
+		stackTextStr += text + u8'\n';
+		return;
+	}
+
 	bool wrapDq = false;
-	if(valStr.find('\n') != std::string::npos){
+	if(text.find(u8'\n') != std::u8string::npos){
 		wrapDq = true;
 	}
-	else if(valStr.find('\"') != std::string::npos){
+	else if(text.find(u8'\"') != std::u8string::npos){
 		wrapDq = true;
-		valStr = utility::replace(valStr, "\"", "\"\"");
+		text = utility::replace<std::u8string>(text, u8"\"", u8"\"\"");
 	}
 
 	if(wrapDq){
-		valStr = "\"" + valStr + "\"";
+		text = u8"\"" + text + u8"\"";
 	}
-	std::u8string original(valStr.begin(), valStr.end());
 
-	TranslateText t(std::move(original), useLangs);
+	TranslateText t(std::move(text), useLangs);
 	auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
 		return x.original == t.original;
 	});
 
 	if(result == texts.end()){
 		texts.emplace_back(std::move(t));
-	}
-	else{
-		//        result->note += std::string("同じテキストが複数で使用されています");
 	}
 }
 
@@ -119,30 +128,28 @@ bool writerbase::checkIgnoreKey(const std::u8string& currentClassName, const std
 	return false;
 }
 
-bool writerbase::checkEventCommandCode(const nlohmann::json& obj)
+std::tuple<bool, int> writerbase::checkEventCommandCode(const nlohmann::json& obj)
 {
+	bool result = false;
+	int code = 0;
 	for(auto s = obj.begin(); s != obj.end(); ++s)
 	{
 		if(s.key() == "@code"){
 			//許可するコード
-			int v = 0;
-			s->get_to(v);
-			switch(v){
+			s->get_to(code);
+			switch(code){
 				case 102: //選択肢
 				case 401: //文章の表示
-					return true;
+				case 231: //画像の表示
+					result = true;
 				default:
 					break;
 			}
-			if(v == 401){
-				return true;
-			}
-			else if(v == 231){
-				return true;
-			}
 		}
+
+		if(result){ break; }
 	}
-	return false;
+	return std::forward_as_tuple(result, code);
 }
 
 void writerbase::convertJArray(const nlohmann::json& arr, std::u8string parentClass, std::u8string arrayinKey)
@@ -172,7 +179,16 @@ void writerbase::convertJObject(const nlohmann::json& root)
 	auto [currentClassName, hasSpecIgnoreKeys] = getObjectClass(root);
 
 	if(currentClassName == u8"RPG::EventCommand"){
-		if(checkEventCommandCode(root) == false){ return; }
+		auto [result, code] = checkEventCommandCode(root);
+		if(stackText == false && code == 401){
+			stackText = true;
+		}
+		else if(stackText && code != 401){
+			stackText = false;
+			addText(stackTextStr);
+			stackTextStr.clear();
+		}
+		if(result == false){ return; }
 	}
 
 	for(auto s = root.begin(); s != root.end(); ++s)
