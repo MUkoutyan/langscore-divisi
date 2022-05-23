@@ -61,9 +61,6 @@ module Langscore
 
   def self.translate_for_script(text)
     result = self.translate(text, $data_langscore_scripts)
-    if result == text && $DEBUG || $TEST
-      return "!!!Langscore : Invalid!!!"
-    end
     result
   end
   
@@ -87,6 +84,10 @@ module Langscore
     
     Langscore.updateSkills
     Langscore.updateClasses
+    Langscore.updateEnemies
+    Langscore.updateItems
+    Langscore.updateArmors
+    Langscore.updateWeapons
 
     Langscore.updateActor
     Langscore.updateSystem
