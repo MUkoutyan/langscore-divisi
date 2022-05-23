@@ -49,9 +49,10 @@ namespace utility
         return result;
     }
 
-    static std::string replace(std::string str, std::string old, std::string newStr)
+    template<typename str_type>
+    static str_type replace(str_type str, str_type old, str_type newStr)
     {
-        for(auto begin = str.find(old); begin != std::string::npos; begin = str.find(old, begin)){
+        for(auto begin = str.find(old); begin != str_type::npos; begin = str.find(old, begin)){
             str.replace(begin, old.size(), newStr);
             begin += newStr.size();
         }
