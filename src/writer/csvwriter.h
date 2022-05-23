@@ -9,7 +9,7 @@ namespace langscore
     {
     public:
         using writerbase::writerbase;
-        constexpr static const char* extension = "lscsv";
+        constexpr static const char* extension = "csv";
 
         bool merge(std::filesystem::path filePath) override;
         bool write(std::filesystem::path path, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) override;
