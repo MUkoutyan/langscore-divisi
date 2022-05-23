@@ -1,8 +1,11 @@
 git clone https://github.com/nlohmann/json.git
 
-git clone https://github.com/DICE2000/rvdata2json.git
+@REM git clone https://github.com/google/googletest.git
 
-git clone https://github.com/treeder/jsonable ./rvdata2json/jsonable
+@REM cd %~dp0/googletest
+@REM mkdir build
+@REM cd build
+@REM cmake -DCMAKE_BUILD_TYPE=Release -G "NMake Makefiles" ..
+@REM nmake
 
-cd ./json
-cmake 
+cd %~dp0
