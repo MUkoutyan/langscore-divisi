@@ -38,11 +38,12 @@ namespace langscore
 		virtual std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "") = 0;
 
 		template<typename Writer, typename TsData>
-		void writeTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld)
+		void writeTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld, bool isDebug = true)
 		{
 			//最終的な出力先にCSVが存在するか
 			Writer writer(supportLangs, std::move(texts));
 			writer.setOverwriteMode(overwriteMode);
+			writer.isDebug = isDebug;
 			const auto csvFileInProject = outputProjectDataPath(path.filename());
 			if(std::filesystem::exists(csvFileInProject)){
 				if(writer.merge(csvFileInProject) == false){

@@ -31,6 +31,7 @@ namespace langscore
             this->overwriteMode = overwriteMode;
         }
         std::vector<TranslateText>& curerntTexts() { return texts; }
+        bool isDebug = false;
 
     protected:
         std::vector<std::u8string> useLangs;

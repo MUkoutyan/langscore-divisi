@@ -228,7 +228,27 @@ void divisi_vxace::convertRvScript()
         t.memo.swap(t.original);
     }
 
-    writeTranslateText<csvwriter>(outputPath, transTexts);
+#ifdef _DEBUG
+    for(auto& txt : transTexts){
+        for(auto& tl : txt.translates)
+        {
+            auto t = tl.second;
+            if(def_lang != tl.first)
+            {
+                t = txt.memo;
+                if(t[0] == u8'\"'){
+                    t.insert(1, tl.first + u8"-");
+                }
+                else {
+                    t = tl.first + u8"-" + t;
+                }
+            }
+            tl.second = t;
+        }
+    }
+#endif
+
+    writeTranslateText<csvwriter>(outputPath, transTexts, OverwriteTextMode::LeaveOld, false);
     
     if(fs::exists(outputPath / "unison_custom.rb") == false){
         writeTranslateText<rbscriptwriter>(outputPath / "unison_custom.rb", scriptList, langscore::OverwriteTextMode::LeaveOldNonBlank);
@@ -347,7 +367,7 @@ void divisi_vxace::convertGraphFileNameData()
 
     const auto& projectPath = deserializer.projectPath();
     config config;
-    writeTranslateText<csvwriter>(projectPath / config.rpgmakerOutputPath() / "Graphics.csv", transTextList);
+    writeTranslateText<csvwriter>(projectPath / config.rpgmakerOutputPath() / "Graphics.csv", transTextList, OverwriteTextMode::LeaveOld, false);
     std::cout << "Finish." << std::endl;
 }
 
