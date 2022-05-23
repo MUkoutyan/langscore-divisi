@@ -9,7 +9,7 @@ module Langscore
   %{TRANSLATE_FOLDER}%
 
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
-  $langscore_current_transrate_file = nil
+  $ls_current_map = nil
  
 end
 
@@ -30,7 +30,6 @@ module Langscore
     return text if langscore_hash == nil
 
     key = text 
-    key = text.chop if text[text.size-1]=="\n" #メッセージの場合、改行していなくても末尾に必ず改行が含まれるっぽい
 
     translist = langscore_hash[key]
     if translist != nil
@@ -233,8 +232,8 @@ class Game_Map
     
     file_name  = sprintf("Map%03d.lscsv", @map_id)
 
-    $langscore_current_transrate_file = LSCSV.to_hash(file_name)
-    # p $langscore_current_transrate_file
+    $ls_current_map = LSCSV.to_hash(file_name)
+    # p $ls_current_map
   end
 end
   
@@ -242,11 +241,11 @@ class Window_Base < Window
   
   alias ls_base_convert_escape_characters convert_escape_characters
   def convert_escape_characters(text)
-    if $langscore_current_transrate_file == nil
+    if $ls_current_map == nil
       ls_base_convert_escape_characters(text)
     end
 
-    text = Langscore.translate(text, $langscore_current_transrate_file)
+    text = Langscore.translate(text, $ls_current_map)
 
     ls_base_convert_escape_characters(text)
   end
