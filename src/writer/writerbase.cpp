@@ -68,7 +68,7 @@ void writerbase::addText(std::u8string text, std::u8string note)
 	if(text.find(u8'\n') != std::u8string::npos){
 		wrapDq = true;
 	}
-	else if(text.find(u8'\"') != std::u8string::npos){
+	if(text.find(u8'\"') != std::u8string::npos){
 		wrapDq = true;
 		text = utility::replace<std::u8string>(text, u8"\"", u8"\"\"");
 	}
