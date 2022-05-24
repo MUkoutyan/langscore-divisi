@@ -74,8 +74,8 @@ module Langscore
     $ls_armors_tr.clear
     $ls_item_tr.clear
     $ls_enemies_tr.clear
-    $data_langscore_graphics = LSCSV.to_hash("Graphics.lscsv")
-    $data_langscore_scripts = LSCSV.to_hash("Scripts.lscsv")
+    $data_langscore_graphics = LSCSV.to_hash("Graphics.csv")
+    $data_langscore_scripts = LSCSV.to_hash("Scripts.csv")
 
     changeLanguage($langscore_current_language)
   end
@@ -94,7 +94,13 @@ module Langscore
       lambda{Langscore.updateItems},
       lambda{Langscore.updateArmors},
       lambda{Langscore.updateWeapons},
-      lambda{Langscore.updateSystem}
+      lambda{Langscore.updateSystem},
+      lambda{
+        $ls_troop_tr ||= LSCSV.to_array_without_origin("Troops.csv")
+      },
+      lambda{
+        $ls_current_map ||= LSCSV.to_array_without_origin("CommonEvents.csv")
+      },
     ]
     updateThreads = []
     functions.each do |f|
@@ -144,13 +150,13 @@ module Langscore
   end
 
   def self.updateActor
-    $ls_actor_tr ||= LSCSV.to_array_without_origin("Actors.lscsv")
+    $ls_actor_tr ||= LSCSV.to_array_without_origin("Actors.csv")
     $game_actors = Game_Actors.new  #アクター情報をクリアして次回取得時に翻訳されたテキストが入るようにする
     updateForNameAndDesc($data_actors, $ls_actor_tr)
   end
 
   def self.updateSystem
-    $ls_system_tr ||= LSCSV.to_array_without_origin("System.lscsv")
+    $ls_system_tr ||= LSCSV.to_array_without_origin("System.csv")
 
     elm_trans = lambda do |el| 
       el = Langscore.translate_array(el, $ls_system_tr)
@@ -165,12 +171,12 @@ module Langscore
   end
 
   def self.updateClasses
-    $ls_classes_tr ||= LSCSV.to_array_without_origin("Classes.lscsv")
+    $ls_classes_tr ||= LSCSV.to_array_without_origin("Classes.csv")
     updateForName($data_classes, $ls_classes_tr)
   end
 
   def self.updateSkills
-    $ls_skill_tr ||= LSCSV.to_array_without_origin("Skills.lscsv")
+    $ls_skill_tr ||= LSCSV.to_array_without_origin("Skills.csv")
 
     elm_trans = lambda do |el|
       el = Langscore.translate_array(el, $ls_skill_tr)
@@ -185,7 +191,7 @@ module Langscore
   end
   
   def self.updateStates
-    $ls_states_tr ||= LSCSV.to_array_without_origin("States.lscsv")
+    $ls_states_tr ||= LSCSV.to_array_without_origin("States.csv")
     
     elm_trans = lambda do |el|
       el = Langscore.translate_array(el, $ls_states_tr)
@@ -201,22 +207,22 @@ module Langscore
   end
 
   def self.updateWeapons
-    $ls_weapons_tr ||= LSCSV.to_array_without_origin("Weapons.lscsv")
+    $ls_weapons_tr ||= LSCSV.to_array_without_origin("Weapons.csv")
     updateForNameAndDesc($data_weapons, $ls_weapons_tr)
   end
 
   def self.updateArmors
-    $ls_armors_tr ||= LSCSV.to_array_without_origin("Armors.lscsv")
+    $ls_armors_tr ||= LSCSV.to_array_without_origin("Armors.csv")
     updateForNameAndDesc($data_armors, $ls_armors_tr)
   end
   
   def self.updateItems
-    $ls_item_tr ||= LSCSV.to_array_without_origin("Items.lscsv")
+    $ls_item_tr ||= LSCSV.to_array_without_origin("Items.csv")
     updateForNameAndDesc($data_items, $ls_item_tr)
   end
 
   def self.updateEnemies
-    $ls_enemies_tr ||= LSCSV.to_array_without_origin("Enemies.lscsv")
+    $ls_enemies_tr ||= LSCSV.to_array_without_origin("Enemies.csv")
     updateForName($data_enemies, $ls_enemies_tr)
   end
 
@@ -230,7 +236,7 @@ class Game_Map
   def setup(map_id)
     ls_base_setup(map_id)
     
-    file_name  = sprintf("Map%03d.lscsv", @map_id)
+    file_name  = sprintf("Map%03d.csv", @map_id)
 
     $ls_current_map = LSCSV.to_hash(file_name)
     # p $ls_current_map
@@ -241,13 +247,43 @@ class Window_Base < Window
   
   alias ls_base_convert_escape_characters convert_escape_characters
   def convert_escape_characters(text)
-    if $ls_current_map == nil
-      ls_base_convert_escape_characters(text)
+
+    if text.empty?
+      return ls_base_convert_escape_characters(text)
     end
 
-    text = Langscore.translate(text, $ls_current_map)
+    if $ls_current_map == nil
+      return ls_base_convert_escape_characters(text)
+    end
 
-    ls_base_convert_escape_characters(text)
+    #マップ・バトル・コモンイベントかを判別できないので苦肉の策
+    result_text = ["", "", ""]
+    updateThreads = []
+    updateThreads << Thread.new do
+      result_text[0] = Langscore.translate(text, $ls_current_map)
+    end
+    updateThreads << Thread.new do
+      result_text[1] = Langscore.translate(text, $ls_troop_tr)
+    end
+    updateThreads << Thread.new do
+      result_text[2] = Langscore.translate(text, $ls_current_map)
+    end
+    updateThreads.each { |t| t.join }
+
+    result = result_text.select do |t| 
+      t != text
+    end
+
+    if result.empty? 
+      return ls_base_convert_escape_characters(text)
+    end
+
+    if result[0].start_with?($langscore_current_language+'-') == false
+      p "Invalid Text : #{text}"
+      p caller
+    end
+
+    ls_base_convert_escape_characters(result[0])
   end
 
   alias ls_base_draw_text draw_text
@@ -267,10 +303,10 @@ DataManager::module_eval <<-eval
   #戦闘テスト用は未対応
   def self.load_normal_database
     ls_base_load_normal_database
-    $data_langscore_graphics ||= LSCSV.to_hash("Graphics.lscsv")
-    p "Load Graphics.lscsv"# + $data_langscore_graphics.to_s
-    $data_langscore_scripts ||= LSCSV.to_hash("Scripts.lscsv")
-    p "Load Scripts.lscsv" if $data_langscore_scripts
+    $data_langscore_graphics ||= LSCSV.to_hash("Graphics.csv")
+    p "Load Graphics.csv"# + $data_langscore_graphics.to_s
+    $data_langscore_scripts ||= LSCSV.to_hash("Scripts.csv")
+    p "Load Scripts.csv" if $data_langscore_scripts
 
     Langscore.changeLanguage($langscore_current_language)
   end
@@ -299,13 +335,12 @@ module Langscore
   %{SYSTEM1}%
   %{SYSTEM2}%
 
-
+module UI
 class Window_Langscore < Window_Command
 
   attr_accessor :recreate
 
-  def initialize lang
-    @mark_lang = lang
+  def initialize
     super(0,0)
     self.x = (Graphics.width - self.window_width ) / 2
     self.y = (Graphics.height - self.window_height) / 2
@@ -324,8 +359,7 @@ class Window_Langscore < Window_Command
 
   def make_command_list
     SUPPORT_LANGUAGE.each.with_index do |l, i|
-      mark = (l == @mark_lang) ? "* " : ""
-      add_command(mark + SYSTEM2[l], l.to_sym)
+      add_command(SYSTEM2[l], l.to_sym)
     end
   end
 
@@ -341,32 +375,76 @@ class Window_Langscore < Window_Command
 
 end
 
+
+class Window_Langscore_OKCancel < Window_HorzCommand
+  def initialize(y)
+
+    @gray_color = $game_system.window_tone
+    @gray_color.gray = 255
+    @def_color = $game_system.window_tone
+
+    super((Graphics.width - self.window_width ) / 2, y)
+    select(1)
+
+    deactivate
+    open
+  end
+
+  def make_command_list
+    add_command("OK",       :ok)
+    add_command("Reselect", :select)
+    add_command("Cancel",   :cancel)
+  end
+  
+  def window_width
+    return 380
+  end
+
+  def col_max
+    return 3
+  end
+
+  def activate
+    self.tone.set(@def_color)
+    super
+  end
+
+  def deactivate
+    self.tone.set(@gray_color)
+    super
+  end
+
+end
+
 class Scene_Language < Scene_MenuBase
   def start
     super
     @before_lang = $langscore_current_language
     create_help_window
     create_lsmain_window
+    create_ok_cancel_window
+
+    @okcancel_window.deactivate
+
   end
 
   def terminate
     super
     @command_window.dispose
-    if @before_lang != $langscore_current_language
-      Langscore.changeLanguage($langscore_current_language)
-      LSSetting.save()
-    end
+    Langscore.changeLanguage($langscore_current_language)
+    LSSetting.save()
   end
+  
 
   def create_lsmain_window    
     @command_window.dispose unless @command_window.nil?
-    @command_window = Window_Langscore.new(@before_lang)
+    @command_window = Window_Langscore.new
     @command_window.viewport = @viewport
 
+    @command_window.set_handler(:ok, method(:to_okcancel))
     @command_window.set_handler(:ls_update, method(:select_lang))
     @command_window.set_handler(:cancel, method(:return_scene))
     @help_window.set_text(Langscore.translate(SYSTEM1, $langscore_system))
-
   end
 
   def update_basic
@@ -386,7 +464,39 @@ class Scene_Language < Scene_MenuBase
       @command_window.recreate = true
     end
   end
+  
+  def to_okcancel
+    @command_window.deactivate
+    @okcancel_window.activate
+  end
+
+  def create_ok_cancel_window
+    @okcancel_window.dispose unless @okcancel_window.nil?
+    y_pos = @command_window.y + @command_window.height + 8
+    @okcancel_window = Window_Langscore_OKCancel.new(y_pos)
+    @okcancel_window.viewport = @viewport
+
+    @okcancel_window.set_handler(:select, method(:reselect))
+    @okcancel_window.set_handler(:ok, method(:accept))
+    @okcancel_window.set_handler(:cancel, method(:reject))
+  end
+  
+  def reselect
+    @command_window.activate
+    @okcancel_window.deactivate
+  end
+
+  def accept
+    self.return_scene
+  end
+
+  def reject
+    $langscore_current_language = @before_lang
+    self.return_scene
+  end
 end
+
+end #module UI
 
 
 class LSSetting
@@ -412,6 +522,5 @@ class LSSetting
 end
 
 LSSetting.load()
-
 
 end # module Langscore
