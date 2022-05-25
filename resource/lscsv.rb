@@ -32,12 +32,6 @@ class LSCSV
 
     result
   end
-  
-
-  def self.to_array_without_origin(file_name)
-    hash = to_hash(file_name)
-    return hash.values
-  end
 
   def self.varidate(file_name, rows)
     size = rows[0].size

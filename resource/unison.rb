@@ -41,23 +41,6 @@ module Langscore
     text
   end
 
-  def self.translate_array(text, langscore_array, lang = $langscore_current_language)
-
-    return text if langscore_array == nil
-
-    transhash = langscore_array.select do |l|
-      l.value?(text)
-    end.first
-
-    return text if transhash.nil? || transhash.empty?
-
-    t = transhash[lang]
-    if t != nil && t != ""
-      text = t
-    end
-    text
-  end
-
   def self.translate_for_script(text)
     result = self.translate(text, $data_langscore_scripts)
     result
@@ -76,6 +59,8 @@ module Langscore
     $ls_enemies_tr.clear
     $data_langscore_graphics = LSCSV.to_hash("Graphics.csv")
     $data_langscore_scripts = LSCSV.to_hash("Scripts.csv")
+    $ls_troop_tr ||= LSCSV.to_hash("Troops.csv")
+    $ls_current_map ||= LSCSV.to_hash("CommonEvents.csv")
 
     changeLanguage($langscore_current_language)
   end
@@ -86,6 +71,9 @@ module Langscore
     Langscore.Translate_Script_Text
     Langscore.updateFont(lang)
 
+    #データベースを初期化
+    DataManager.ls_base_load_normal_database
+
     functions = [
       lambda{Langscore.updateSkills},
       lambda{Langscore.updateClasses},
@@ -95,12 +83,6 @@ module Langscore
       lambda{Langscore.updateArmors},
       lambda{Langscore.updateWeapons},
       lambda{Langscore.updateSystem},
-      lambda{
-        $ls_troop_tr ||= LSCSV.to_array_without_origin("Troops.csv")
-      },
-      lambda{
-        $ls_current_map ||= LSCSV.to_array_without_origin("CommonEvents.csv")
-      },
     ]
     updateThreads = []
     functions.each do |f|
@@ -130,7 +112,7 @@ module Langscore
   
   def self.updateForNameAndDesc(data_list, tr_list)
     elm_trans = lambda do |el|
-      el = Langscore.translate_array(el, tr_list)
+      el = Langscore.translate(el, tr_list)
     end
     data_list.each.with_index do |obj,i|
       next if data_list[i].nil?
@@ -141,7 +123,7 @@ module Langscore
   
   def self.updateForName(data_list, tr_list)
     elm_trans = lambda do |el|
-      el = Langscore.translate_array(el, tr_list)
+      el = Langscore.translate(el, tr_list)
     end
     data_list.each.with_index do |obj,i|
       next if data_list[i].nil?
@@ -150,16 +132,33 @@ module Langscore
   end
 
   def self.updateActor
-    $ls_actor_tr ||= LSCSV.to_array_without_origin("Actors.csv")
-    $game_actors = Game_Actors.new  #アクター情報をクリアして次回取得時に翻訳されたテキストが入るようにする
+    $ls_actor_tr ||= LSCSV.to_hash("Actors.csv")
+
+    #大元のデータベースを更新。Game_Actor作成時に使用されるため必要。
     updateForNameAndDesc($data_actors, $ls_actor_tr)
+    
+    elm_trans = lambda do |el|
+        el = Langscore.translate(el, $ls_actor_tr)
+    end
+
+    #既にGame_Actorが作成されている場合、インスタンス側も更新。
+    #他のデータベースと同様に初期化を行うと、パラメータ値等も全部初期化されるので、名前以外の内容は保持する。
+    actors = $game_actors.instance_variable_get(:@data)
+    return unless actors
+    actors.each.with_index do |actor|
+        next unless actor #空アクターの場合はnil
+        actor_id = actor.instance_variable_get(:@actor_id)
+        $game_actors[actor_id].name = elm_trans.call($data_actors[actor_id].name)
+        $game_actors[actor_id].nickname = elm_trans.call($data_actors[actor_id].nickname)
+    end
+
   end
 
   def self.updateSystem
-    $ls_system_tr ||= LSCSV.to_array_without_origin("System.csv")
+    $ls_system_tr ||= LSCSV.to_hash("System.csv")
 
     elm_trans = lambda do |el| 
-      el = Langscore.translate_array(el, $ls_system_tr)
+      el = Langscore.translate(el, $ls_system_tr)
     end
     $data_system.elements.map! &elm_trans
     $data_system.skill_types.map! &elm_trans
@@ -167,19 +166,19 @@ module Langscore
     $data_system.terms.etypes.map! &elm_trans
     $data_system.terms.commands.map! &elm_trans
 
-    $data_system.currency_unit = Langscore.translate_array($data_system.currency_unit, $system_tr)
+    $data_system.currency_unit = Langscore.translate($data_system.currency_unit, $system_tr)
   end
 
   def self.updateClasses
-    $ls_classes_tr ||= LSCSV.to_array_without_origin("Classes.csv")
+    $ls_classes_tr ||= LSCSV.to_hash("Classes.csv")
     updateForName($data_classes, $ls_classes_tr)
   end
 
   def self.updateSkills
-    $ls_skill_tr ||= LSCSV.to_array_without_origin("Skills.csv")
+    $ls_skill_tr ||= LSCSV.to_hash("Skills.csv")
 
     elm_trans = lambda do |el|
-      el = Langscore.translate_array(el, $ls_skill_tr)
+      el = Langscore.translate(el, $ls_skill_tr)
     end
     $data_skills.each.with_index do |skill,i|
       next if $data_skills[i].nil?
@@ -191,10 +190,10 @@ module Langscore
   end
   
   def self.updateStates
-    $ls_states_tr ||= LSCSV.to_array_without_origin("States.csv")
+    $ls_states_tr ||= LSCSV.to_hash("States.csv")
     
     elm_trans = lambda do |el|
-      el = Langscore.translate_array(el, $ls_states_tr)
+      el = Langscore.translate(el, $ls_states_tr)
     end
     $data_states.each.with_index do |skill,i|
       next if $data_states[i].nil?
@@ -207,26 +206,27 @@ module Langscore
   end
 
   def self.updateWeapons
-    $ls_weapons_tr ||= LSCSV.to_array_without_origin("Weapons.csv")
+    $ls_weapons_tr ||= LSCSV.to_hash("Weapons.csv")
     updateForNameAndDesc($data_weapons, $ls_weapons_tr)
   end
 
   def self.updateArmors
-    $ls_armors_tr ||= LSCSV.to_array_without_origin("Armors.csv")
+    $ls_armors_tr ||= LSCSV.to_hash("Armors.csv")
     updateForNameAndDesc($data_armors, $ls_armors_tr)
   end
   
   def self.updateItems
-    $ls_item_tr ||= LSCSV.to_array_without_origin("Items.csv")
+    $ls_item_tr ||= LSCSV.to_hash("Items.csv")
     updateForNameAndDesc($data_items, $ls_item_tr)
   end
 
   def self.updateEnemies
-    $ls_enemies_tr ||= LSCSV.to_array_without_origin("Enemies.csv")
+    $ls_enemies_tr ||= LSCSV.to_hash("Enemies.csv")
     updateForName($data_enemies, $ls_enemies_tr)
   end
 
 end
+
 
 #-----------------------------------------------------
 
@@ -307,6 +307,8 @@ DataManager::module_eval <<-eval
     p "Load Graphics.csv"# + $data_langscore_graphics.to_s
     $data_langscore_scripts ||= LSCSV.to_hash("Scripts.csv")
     p "Load Scripts.csv" if $data_langscore_scripts
+    $ls_troop_tr ||= LSCSV.to_hash("Troops.csv")
+    $ls_current_map ||= LSCSV.to_hash("CommonEvents.csv")
 
     Langscore.changeLanguage($langscore_current_language)
   end
@@ -324,6 +326,14 @@ Cache::module_eval <<-eval
     ts_path = Langscore.translate(path, $data_langscore_graphics)
     if ts_path != path
       filename = ts_path
+    else
+      #翻訳テキスト内で明示的に画像が指定されていない場合、ファイル名検索
+      #filenameは元から拡張子なしなのでそのまま結合
+      new_filename = filename + '_' + $langscore_current_language
+      
+      if Dir.glob(folder_name+new_filename+".*").empty? == false
+        filename = new_filename
+      end
     end
 
     ls_base_load_bitmap(folder_name, filename, hue)
