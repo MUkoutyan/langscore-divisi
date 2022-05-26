@@ -10,6 +10,7 @@ module Langscore
 
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
   $ls_current_map = nil
+  $ls_graphic_cache = {}
  
 end
 
@@ -44,6 +45,19 @@ module Langscore
   def self.translate_for_script(text)
     result = self.translate(text, $data_langscore_scripts)
     result
+  end
+
+  def self.fetch_original_text(transed_text, langscore_hash)
+
+    origin = transed_text
+    result = langscore_hash.each do |k,hash|
+      if hash.values.include?(transed_text)
+        origin = k
+        break
+      end
+    end
+
+    origin
   end
   
   def self.translate_list_reset
@@ -94,6 +108,10 @@ module Langscore
 
     #Game_Actors.newをしているため並列処理から除外
     Langscore.updateActor
+    
+    $ls_graphic_cache ||= {}
+    $ls_graphic_cache.clear
+    GC.start
   end
 
   private
@@ -145,13 +163,14 @@ module Langscore
     #他のデータベースと同様に初期化を行うと、パラメータ値等も全部初期化されるので、名前以外の内容は保持する。
     actors = $game_actors.instance_variable_get(:@data)
     return unless actors
-    actors.each.with_index do |actor|
-        next unless actor #空アクターの場合はnil
-        actor_id = actor.instance_variable_get(:@actor_id)
-        $game_actors[actor_id].name = elm_trans.call($data_actors[actor_id].name)
-        $game_actors[actor_id].nickname = elm_trans.call($data_actors[actor_id].nickname)
+    actors.each do |actor|
+      next unless actor #空アクターの場合はnil
+      actor_id = actor.instance_variable_get(:@actor_id)
+      name = Langscore.fetch_original_text(actor.name, $ls_actor_tr)
+      nickname = Langscore.fetch_original_text(actor.nickname, $ls_actor_tr)
+      $game_actors[actor_id].name     = elm_trans.call(name)
+      $game_actors[actor_id].nickname = elm_trans.call(nickname)
     end
-
   end
 
   def self.updateSystem
@@ -313,6 +332,28 @@ DataManager::module_eval <<-eval
     Langscore.changeLanguage($langscore_current_language)
   end
 
+  #セーブを行う際は原文で保存
+  #プラグインを外した際に変に翻訳文が残ることを避ける。
+  def self.make_save_contents
+
+    data_temp = Marshal.dump($game_actors)
+
+    actors = $game_actors.instance_variable_get(:@data)
+    actors.each.with_index do |actor,i|
+      next unless actor #空アクターの場合はnil
+      actor_id = actor.instance_variable_get(:@actor_id)
+      $game_actors[actor_id].name     = Langscore.fetch_original_text(actor.name, $ls_actor_tr)
+      $game_actors[actor_id].nickname = Langscore.fetch_original_text(actor.nickname, $ls_actor_tr)
+    end
+
+    #セーブ本処理
+    result = ls_make_save_contents
+
+    $game_actors = Marshal.load(data_temp)
+
+    result
+  end
+
 eval
 
 Cache::module_eval <<-eval
@@ -330,14 +371,19 @@ Cache::module_eval <<-eval
       #翻訳テキスト内で明示的に画像が指定されていない場合、ファイル名検索
       #filenameは元から拡張子なしなのでそのまま結合
       new_filename = filename + '_' + $langscore_current_language
-      
-      if Dir.glob(folder_name+new_filename+".*").empty? == false
+      has_key = $ls_graphic_cache.has_key?(filename)
+      if has_key == false
+        $ls_graphic_cache[filename] = Dir.glob(folder_name+new_filename+".*").empty? == false
+      end
+
+      if $ls_graphic_cache[filename]
         filename = new_filename
       end
     end
 
     ls_base_load_bitmap(folder_name, filename, hue)
   end
+  #ロード時の変換処理も必須
 eval
 
 module Langscore
