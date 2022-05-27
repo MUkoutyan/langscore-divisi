@@ -93,10 +93,12 @@ class LSCSV
     find_quote = false
 
     add_col = lambda do |col|
+      #セルに分けた時点で先頭・末尾の""が不要になるため、削除する
       if col.start_with?("\"") && col.end_with?("\"")
         col = col.slice!(1..col.length-2)
       end
-      col.gsub!("\n\n", "\r\n")
+      col.gsub!("\n\n", "\r\n") #VX Ace用に改行を再解釈
+      col.gsub!("\"\"", "\"") #値中の""は"と解釈
       cols.push(col)
     end
 
