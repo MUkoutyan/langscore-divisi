@@ -74,7 +74,7 @@ module Langscore
     $data_langscore_graphics = LSCSV.to_hash("Graphics.csv")
     $data_langscore_scripts = LSCSV.to_hash("Scripts.csv")
     $ls_troop_tr ||= LSCSV.to_hash("Troops.csv")
-    $ls_current_map ||= LSCSV.to_hash("CommonEvents.csv")
+    $ls_common_event ||= LSCSV.to_hash("CommonEvents.csv")
 
     changeLanguage($langscore_current_language)
   end
@@ -271,22 +271,21 @@ class Window_Base < Window
       return ls_base_convert_escape_characters(text)
     end
 
-    if $ls_current_map == nil
-      return ls_base_convert_escape_characters(text)
-    end
-
     #マップ・バトル・コモンイベントかを判別できないので苦肉の策
-    result_text = ["", "", ""]
+    result_text = [text, text, text]
     updateThreads = []
-    updateThreads << Thread.new do
-      result_text[0] = Langscore.translate(text, $ls_current_map)
+    if $ls_current_map
+      updateThreads << Thread.new do
+        result_text[0] = Langscore.translate(text, $ls_current_map)
+      end
     end
     updateThreads << Thread.new do
       result_text[1] = Langscore.translate(text, $ls_troop_tr)
     end
     updateThreads << Thread.new do
-      result_text[2] = Langscore.translate(text, $ls_current_map)
+      result_text[2] = Langscore.translate(text, $ls_common_event)
     end
+
     updateThreads.each { |t| t.join }
 
     result = result_text.select do |t| 
@@ -322,12 +321,30 @@ DataManager::module_eval <<-eval
   #戦闘テスト用は未対応
   def self.load_normal_database
     ls_base_load_normal_database
-    $data_langscore_graphics ||= LSCSV.to_hash("Graphics.csv")
-    p "Load Graphics.csv"# + $data_langscore_graphics.to_s
-    $data_langscore_scripts ||= LSCSV.to_hash("Scripts.csv")
-    p "Load Scripts.csv" if $data_langscore_scripts
-    $ls_troop_tr ||= LSCSV.to_hash("Troops.csv")
-    $ls_current_map ||= LSCSV.to_hash("CommonEvents.csv")
+    
+    updateThreads = []
+    
+    updateThreads << Thread.new do
+      $data_langscore_graphics ||= LSCSV.to_hash("Graphics.csv")
+      p "Load Graphics.csv"# + $data_langscore_graphics.to_s
+    end
+
+    updateThreads << Thread.new do
+      $data_langscore_scripts ||= LSCSV.to_hash("Scripts.csv")
+      p "Load Scripts.csv" if $data_langscore_scripts
+    end
+    
+    updateThreads << Thread.new do
+      $ls_troop_tr ||= LSCSV.to_hash("Troops.csv")
+      p "Load Troops.csv" if $ls_troop_tr
+    end
+    
+    updateThreads << Thread.new do
+      $ls_common_event ||= LSCSV.to_hash("CommonEvents.csv")
+      p "Load CommonEvents.csv" if $ls_common_event
+    end
+
+    updateThreads.each { |t| t.join }
 
     Langscore.changeLanguage($langscore_current_language)
   end
