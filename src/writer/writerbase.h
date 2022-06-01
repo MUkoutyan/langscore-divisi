@@ -8,14 +8,6 @@
 
 namespace langscore
 {
-    enum class OverwriteTextMode
-    {
-        LeaveOld,
-        LeaveOldNonBlank,
-        OverwriteNew,
-        Both
-    };
-
     class writerbase
     {
     public:
@@ -52,7 +44,9 @@ namespace langscore
         std::tuple<bool, int> checkEventCommandCode(const nlohmann::json& obj);
         void convertJArray(const nlohmann::json& arr, std::u8string parentClass = u8"", std::u8string arrayinKey = u8"");
         void convertJObject(const nlohmann::json& root);
-
+#ifdef ENABLE_TEST
+        friend class Langscore_Test_WriterBase;
+#endif
     };
 }
 

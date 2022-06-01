@@ -1,6 +1,6 @@
 #pragma once
 #include "../project_deserializer.h"
-#include "../../utility.hpp"
+#include "../utility.hpp"
 #include "../writer/writerbase.h"
 
 namespace langscore
@@ -8,8 +8,7 @@ namespace langscore
 	class platform_base
 	{
 	public:
-		platform_base(utility::u8stringlist supportLangs)
-			: supportLangs(std::move(supportLangs)), defaultLanguage(this->supportLangs[0]) {}
+		platform_base() :appPath("") {}
 		virtual ~platform_base() {}
 
 		void setAppPath(std::filesystem::path path){
@@ -20,8 +19,8 @@ namespace langscore
 		virtual void prepareAnalyzeProject() = 0;
 
 		virtual void convertGraphFileNameData() = 0;
-		virtual void copyData(std::filesystem::copy_options option) = 0;
-		virtual void convert(std::filesystem::copy_options option = std::filesystem::copy_options::none) = 0;
+		virtual void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) = 0;
+		virtual void convert() = 0;
 
 		virtual void setIgnoreScriptPath(utility::filelist ignoreScriptPath) = 0;
 	protected:
@@ -35,6 +34,7 @@ namespace langscore
 		std::vector<std::filesystem::path> scriptFileList;
 		std::vector<std::filesystem::path> graphicFileList;
 
+		std::filesystem::copy_options convertCopyOption(OverwriteTextMode mode);
 		virtual std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "") = 0;
 
 		template<typename Writer, typename TsData>

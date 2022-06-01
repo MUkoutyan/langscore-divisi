@@ -5,6 +5,14 @@
 
 namespace langscore
 {
+    enum class OverwriteTextMode
+    {
+        LeaveOld,           //元のファイルを残す
+        LeaveOldNonBlank,   //(CSVのセルが)編集済みなら残す
+        OverwriteNew,       //上書きする
+        Both                //両方残す
+    };
+
     class TranslateText
     {
     public:

@@ -7,15 +7,15 @@ namespace langscore
 	class divisi_vxace: public platform_base
 	{
 	public:
-		using platform_base::platform_base;
+		divisi_vxace();
 		~divisi_vxace() override;
 
 		void setProjectPath(std::filesystem::path path) override;
 		void prepareAnalyzeProject() override;
 
-		void copyData(std::filesystem::copy_options option) override;
+		void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) override;
 		void convertGraphFileNameData() override;
-		void convert(std::filesystem::copy_options option = std::filesystem::copy_options::none) override;
+		void convert() override;
 
 		void setIgnoreScriptPath(utility::filelist ignoreScriptPath) override;
 

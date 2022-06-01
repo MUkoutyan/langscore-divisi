@@ -21,43 +21,26 @@ namespace fs = std::filesystem;
 class divisi::Impl
 {
 public:
-    utility::filelist ignoreScriptPath;
-    utility::u8stringlist supportLangs;
     fs::path appPath;
 
     std::unique_ptr<platform_base> converter;
 };
 
-divisi::divisi(fs::path appPath, std::vector<std::u8string> langs)
+divisi::divisi(fs::path appPath)
     : pImpl(std::make_unique<Impl>())
 {
     pImpl->converter = nullptr;
     pImpl->appPath = std::move(appPath);
-    if(langs.empty()){
-        pImpl->supportLangs = {u8"ja",u8"en",u8"zh-sc"};
-    }
-    else{
-        pImpl->supportLangs = std::move(langs);
-    }
 }
 
 divisi::~divisi(){}
 
-void langscore::divisi::prepareAnalyzeProject(std::filesystem::path projectPath)
+void divisi::prepareAnalyzeProject(std::filesystem::path projectPath)
 {
     if(this->setProjectPath(projectPath)){
         pImpl->converter->prepareAnalyzeProject();
     }
 
-}
-
-void divisi::setIgnoreScriptPath(std::vector<fs::path> ignoreScriptPath){
-    this->pImpl->ignoreScriptPath = std::move(ignoreScriptPath);
-}
-
-
-void divisi::setSupportLanguages(std::vector<std::u8string> langs){
-    this->pImpl->supportLangs = std::move(langs);
 }
 
 bool divisi::setProjectPath(std::filesystem::path projectPath)
@@ -78,7 +61,7 @@ bool divisi::setProjectPath(std::filesystem::path projectPath)
         auto ext = file.path().extension();
         if(ext == ".rvproj2"){
             type = deserializer::ProjectType::VXAce;
-            pImpl->converter = std::make_unique<divisi_vxace>(this->pImpl->supportLangs);
+            pImpl->converter = std::make_unique<divisi_vxace>();
             break;
         }
         else if(ext == ".rmmzproject")
@@ -97,17 +80,16 @@ bool divisi::setProjectPath(std::filesystem::path projectPath)
 
     if(pImpl->converter){
         pImpl->converter->setAppPath(pImpl->appPath);
-        pImpl->converter->setIgnoreScriptPath(pImpl->ignoreScriptPath);
         pImpl->converter->setProjectPath(std::move(projectPath));
         return true;
     }
     return false;
 }
 
-void divisi::exec(std::filesystem::copy_options option)
+void divisi::exec()
 {
     if(pImpl->converter){
-        pImpl->converter->convert(option);
+        pImpl->converter->convert();
     }
 }
 

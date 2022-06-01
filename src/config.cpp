@@ -26,10 +26,10 @@ public:
 
 };
 
-config::config()
+config::config(std::filesystem::path path)
 	: pImpl(std::make_unique<Impl>())
 {
-	std::ifstream loadFile("./config");
+	std::ifstream loadFile(path);
 	if(loadFile.good()){
 		loadFile >> pImpl->json;
 	}
@@ -53,7 +53,12 @@ config::config()
 				"name": "SourceHanSansSC",
 				"size": 21
 			}
-		}
+		},
+		"RPGMakerIgnoreScripts" : ["DataManager.rb", "BattleManager.rb", "Game_Interpreter.rb",
+		   "Game_Map.rb", "Game_Message.rb", "Spriteset_Battle.rb",
+		   "Window_Base.rb", "Window_ShopStatus.rb", "Window_Status.rb",
+		   "Window_DebugRight.rb", "Window_DebugLeft.rb", "Window_Message.rb",
+		   "Window_NameInput.rb", "Window_NumberInput.rb", "Window_SaveFile.rb"]
 	})";
 		ss << "\n}";
 
@@ -107,4 +112,9 @@ std::unordered_map<std::string, config::FontData> config::vxaceFonts()
 	}
 
 	return result;
+}
+
+std::vector<std::string> langscore::config::vxaceIgnoreScripts()
+{
+	return std::vector<std::string>();
 }

@@ -1,6 +1,6 @@
 ﻿#include "rbscriptwriter.h"
 #include "config.h"
-#include "../../utility.hpp"
+#include "utility.hpp"
 #include <fstream>
 #include <regex>
 #include <mutex>

@@ -13,6 +13,10 @@ namespace langscore
 
         bool merge(std::filesystem::path filePath) override;
         bool write(std::filesystem::path path, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) override;
+
+#ifdef ENABLE_TEST
+        friend class Langscore_Test_WriterBase;
+#endif
     };
 }
 

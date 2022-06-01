@@ -48,6 +48,14 @@ namespace
     const auto tab = u8"\t"s;
 }
 
+divisi_vxace::divisi_vxace()
+    : platform_base()
+{
+    config config;
+    this->supportLangs = utility::convert<std::string, std::u8string>(config.languages());
+    this->setIgnoreScriptPath(utility::convert<std::string, std::filesystem::path>(config.vxaceIgnoreScripts()));
+}
+
 divisi_vxace::~divisi_vxace(){}
 
 void divisi_vxace::setProjectPath(std::filesystem::path path)
@@ -108,12 +116,12 @@ void divisi_vxace::prepareAnalyzeProject()
 
 }
 
-void langscore::divisi_vxace::convert(std::filesystem::copy_options option)
+void langscore::divisi_vxace::convert()
 {    
     this->convertRvData();
     this->convertRvScript();
     this->convertGraphFileNameData();
-    this->copyData(option);
+    this->copyData();
 }
 
 void langscore::divisi_vxace::setIgnoreScriptPath(utility::filelist ignoreScriptPath)
@@ -371,7 +379,7 @@ void divisi_vxace::convertGraphFileNameData()
     std::cout << "Finish." << std::endl;
 }
 
-void divisi_vxace::copyData(std::filesystem::copy_options option)
+void divisi_vxace::copyData(langscore::OverwriteTextMode option)
 {
     const auto deserializeOutPath = this->deserializer.outputTmpPath();
     fs::directory_iterator it(deserializeOutPath);
@@ -385,7 +393,9 @@ void divisi_vxace::copyData(std::filesystem::copy_options option)
         if(srcPath.extension().string().find(csvwriter::extension) == std::string::npos){ continue; }
 
         fs::path to = outputProjectDataPath(srcPath);
-        fs::copy(f, to, option);
+
+        auto fsOption = convertCopyOption(option);
+        fs::copy(f, to, fsOption);
     }
 
     //rbスクリプトのコピー
@@ -400,6 +410,7 @@ void divisi_vxace::copyData(std::filesystem::copy_options option)
         if(srcPath.extension().string().find(rbscriptwriter::extension) == std::string::npos){ continue; }
 
         fs::path to = outputProjectDataPath(srcPath, "Scripts");
-        fs::copy(f, to, option);
+        auto fsOption = convertCopyOption(option);
+        fs::copy(f, to, fsOption);
     }
 }
