@@ -1,0 +1,6 @@
+[submodule "json"]
+	path = json
+	url = https://github.com/nlohmann/json.git
+[submodule "iutest"]
+	path = iutest
+	url = https://github.com/srz-zumix/iutest.git
