@@ -18,9 +18,10 @@ namespace langscore
 		constexpr static char KEY_DEFAULT_LANGUAGE[] = "DefaultLanguage";
 		constexpr static char KEY_TEMP_DIR[] = "TmpDir";
 		constexpr static char KEY_US_CUSTOM_FUNC_COMMENT[] = "UsCustomFuncComment";
-		constexpr static char KEY_RPGMAKER_OUTPUT_PATH[] = "RPGMAKER_OUTPUT_PATH";
+		constexpr static char KEY_RPGMAKER_OUTPUT_PATH[] = "RPGMakerOutputPath";
+		constexpr static char KEY_RPGMAKER_IGNORE_SCRIPTS[] = "RPGMakerIgnoreScripts";
 
-		config();
+		config(std::filesystem::path path = "./config.json");
 		~config();
 
 		utility::stringlist languages();
@@ -29,6 +30,7 @@ namespace langscore
 		std::string usScriptFuncComment();
 		std::string rpgmakerOutputPath();
 		std::unordered_map<std::string, FontData> vxaceFonts();
+		std::vector<std::string> vxaceIgnoreScripts();
 
 	private:
 		class Impl;
