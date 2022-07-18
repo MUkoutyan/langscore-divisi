@@ -507,7 +507,9 @@ opt.on('-o OUTPUTPATH', '-output OUTPUTPATH'){ |v|
 }
 
 repack = false
+compress = false
 opt.on('-p'){|v| repack = v }
+opt.on('-c'){|v| compress = v }
 
 opt.parse!(ARGV)
 
@@ -516,6 +518,32 @@ data_folder   = project_path+'/Data'
 script_folder = output_folder+'/Scripts'
 
 #================================================
+
+if compress
+  
+  compressData = []
+  script_list_path = project_path+'/Scripts/_list.csv'
+  CSV.foreach(script_list_path) do | row |
+    filepath = project_path+'/'+row[1].to_s
+    filename = File.basename(filepath, ".*")
+    if File.exists?(filepath) == false
+      filename = "" if filename.include?("(NONAME)")
+      compressData.push([row[0], filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
+    else 
+      File.open(filepath) do |file|
+        contents = file.readlines().join()
+        compressed = Zlib::Deflate.deflate(contents, Zlib::DEFAULT_COMPRESSION );
+        compressData.push([row[0], filename, compressed])
+      end
+    end
+  end
+
+  File.open(data_folder+'/Scripts.rvdata2', 'wb') do |file|
+    file.write(Marshal.dump(compressData))
+  end
+
+  exit
+end
 
 if project_path.empty?
   p "Need Project Folder" 
@@ -583,10 +611,10 @@ if repack
 
   compressData = []
   CSV.foreach(script_list_path) do | row |
-    filepath = row[1].to_s
+    filepath = project_path+'/'+row[1].to_s
     filename = File.basename(filepath, ".*")
     if File.exists?(filepath) == false
-      filename = "" if filename.include?("_NONAME_")
+      filename = "" if filename.include?("(NONAME)")
       compressData.push([row[0], filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
     else 
       File.open(filepath) do |file|
