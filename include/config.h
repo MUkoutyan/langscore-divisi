@@ -1,5 +1,7 @@
+#pragma once
 #include <filesystem>
 #include <unordered_map>
+
 #include "utility.hpp"
 
 namespace langscore
@@ -10,8 +12,21 @@ namespace langscore
 
 		struct FontData
 		{
-			std::u8string name;
-			int size;
+			std::u8string name = u8"";
+			int size = 22;
+		};
+		struct Language
+		{
+			std::string name;
+			FontData font;
+		};
+
+		struct ScriptData
+		{
+			std::u8string filename = u8"";
+			bool ignore = false;
+			int writeMode = 0;
+			std::vector<std::pair<int, int>> ignoreLines;
 		};
 
 		constexpr static char KEY_LANGUAGES[] = "Languages";
@@ -21,16 +36,21 @@ namespace langscore
 		constexpr static char KEY_RPGMAKER_OUTPUT_PATH[] = "RPGMakerOutputPath";
 		constexpr static char KEY_RPGMAKER_IGNORE_SCRIPTS[] = "RPGMakerIgnoreScripts";
 
-		config(std::filesystem::path path = "./config.json");
+		static void attachConfigFile(std::filesystem::path path);
+		static void detachConfigFile();
+
+		config(std::filesystem::path path);
+		config();
 		~config();
 
-		utility::stringlist languages();
+		std::vector<Language> languages();
 		std::string defaultLanguage();
+		std::string projectPath();
 		std::string tempDirectorty();
 		std::string usScriptFuncComment();
-		std::string rpgmakerOutputPath();
-		std::unordered_map<std::string, FontData> vxaceFonts();
-		std::vector<std::string> vxaceIgnoreScripts();
+		std::string outputTranslateFilePathForRPGMaker();
+		std::vector<ScriptData> vxaceIgnoreScripts();
+		utility::u8stringlist ignorePictures();
 
 	private:
 		class Impl;
