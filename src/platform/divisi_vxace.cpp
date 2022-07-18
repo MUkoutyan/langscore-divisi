@@ -27,8 +27,8 @@ namespace
         { u8"ja",    u8"現在選択中の言語が表示されます。" },
         { u8"ko",    u8"현재 선택한 언어가 표시됩니다." },
         { u8"ru",    u8"Отображается текущий выбранный язык." },
-        { u8"zh-sc", u8"显示当前选择的语言。" },
-        { u8"zh-tc", u8"顯示當前選擇的語言。" },
+        { u8"zh-cn", u8"显示当前选择的语言。" },
+        { u8"zh-tw", u8"顯示當前選擇的語言。" },
     };
 
     std::unordered_map<std::u8string, std::u8string> Language_Items = {
@@ -40,8 +40,8 @@ namespace
         { u8"ja",    u8"日本語" },
         { u8"ko",    u8"한국어" },
         { u8"ru",    u8"Русский язык" },
-        { u8"zh-sc", u8"中文(簡体)" },
-        { u8"zh-tc", u8"中文(繁体)" },
+        { u8"zh-cn", u8"中文(簡体)" },
+        { u8"zh-tw", u8"中文(繁体)" },
     };
 
     const auto nl = u8"\n"s;
@@ -52,8 +52,10 @@ divisi_vxace::divisi_vxace()
     : platform_base()
 {
     config config;
-    this->supportLangs = utility::convert<std::string, std::u8string>(config.languages());
-    this->setIgnoreScriptPath(utility::convert<std::string, std::filesystem::path>(config.vxaceIgnoreScripts()));
+   
+    for(auto langs = config.languages(); auto lang : langs){
+        this->supportLangs.emplace_back(utility::cnvStr<std::u8string>(lang.name));
+    }
 }
 
 divisi_vxace::~divisi_vxace(){}
@@ -61,18 +63,13 @@ divisi_vxace::~divisi_vxace(){}
 void divisi_vxace::setProjectPath(std::filesystem::path path)
 {
     this->deserializer.setProjectPath(deserializer::ProjectType::VXAce, std::move(path));
-
-    fs::path outPath = this->deserializer.outputTmpPath();
-    if(fs::exists(outPath)){
-        fs::remove_all(outPath);
-    }
 }
 
 std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir)
 {
     if(dir.empty()){
         config config;
-        dir = config.rpgmakerOutputPath();
+        dir = config.outputTranslateFilePathForRPGMaker();
     }
     const auto& projectPath = this->deserializer.projectPath();
 
@@ -85,10 +82,65 @@ std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesy
     return to /= fileName;
 }
 
-void divisi_vxace::prepareAnalyzeProject()
+void divisi_vxace::analyze()
 {
-    this->deserializer.exec();
+    auto runResult = this->deserializer.exec();
+    if(runResult.val() != 0){
+        std::cerr << runResult.toStr() << std::endl;
+        return;
+    }
 
+    fetchFilePathList();
+
+    this->writeAnalyzedData();
+    this->writeAnalyzedRvScript();
+    this->convertGraphFileNameData();
+
+    std::cout << "AnalyzeProject Done." << std::endl;
+}
+
+void langscore::divisi_vxace::write()
+{
+    fetchFilePathList(); 
+
+    writeFixedData();
+    writeFixedRvScript();
+    convertGraphFileNameData();
+
+    const auto deserializeOutPath = this->deserializer.outputTmpPath();
+    auto outputPath = deserializeOutPath / "Scripts";
+    if(std::filesystem::exists(outputPath) == false){
+        std::filesystem::create_directories(outputPath);
+    }
+
+    //unison_custom.rbの出力
+    if(fs::exists(outputPath / "unison_custom.rb") == false){
+        std::cout << "Write unison_custom : " << outputPath / "unison_custom.rb" << std::endl;
+        writeTranslateText<rbscriptwriter>(outputPath / "unison_custom.rb", scriptFileList, langscore::OverwriteTextMode::LeaveOldNonBlank);
+    }
+
+    //unison.rbの出力
+    auto outputScriptFilePath = outputPath / Script_File_Name;
+    auto resourceFolder = this->appPath.parent_path() / "resource";
+    std::cout << "Copy unison : From " << resourceFolder / Script_File_Name << " To : " << outputScriptFilePath << std::endl;
+    fs::copy(resourceFolder / Script_File_Name, outputScriptFilePath, std::filesystem::copy_options::overwrite_existing);
+
+    auto fileLines = formatSystemVariable(outputScriptFilePath);
+
+    if(fs::exists(outputScriptFilePath))
+    {
+        std::cout << "Replace unison : " << outputScriptFilePath << std::endl;
+        std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
+        for(const auto& l : fileLines){
+            outScriptFile << utility::toString(l) << "\n";
+        }
+    }
+
+    std::cout << "Write Translate File Done." << std::endl;
+}
+
+void langscore::divisi_vxace::fetchFilePathList()
+{
     const auto deserializeOutPath = this->deserializer.outputTmpPath();
     fs::recursive_directory_iterator dataItr(deserializeOutPath);
     for(auto& f : dataItr)
@@ -113,77 +165,34 @@ void divisi_vxace::prepareAnalyzeProject()
         auto relative_path = f.path().lexically_relative(projectPath);
         this->graphicFileList.emplace_back(relative_path.replace_extension(""));
     }
-
 }
 
-void langscore::divisi_vxace::convert()
-{    
-    this->convertRvData();
-    this->convertRvScript();
-    this->convertGraphFileNameData();
-    this->copyData();
-}
-
-void langscore::divisi_vxace::setIgnoreScriptPath(utility::filelist ignoreScriptPath)
+void divisi_vxace::writeAnalyzedData()
 {
-    this->ignoreScriptPath = std::move(ignoreScriptPath);
-    const auto AddIgnore = [&](fs::path file){
-        auto result = std::find(this->ignoreScriptPath.begin(), this->ignoreScriptPath.end(), file);
-        if(result == this->ignoreScriptPath.end()){
-            this->ignoreScriptPath.emplace_back(file);
-        }
-    };
-    AddIgnore(Script_File_Name);
-    AddIgnore("unison_custom.rb");
-}
-
-void divisi_vxace::convertRvData()
-{
-    std::cout << "convertRvData" << std::endl;
-
-    auto writeRvCsv = [this](fs::path path)
+    std::cout << "writeAnalyzedData" << std::endl;
+    for(auto& path : dataFileList)
     {
         std::ifstream loadFile(path);
         nlohmann::json json;
         loadFile >> json;
 
-        auto csvFilePath = path.make_preferred().replace_extension(".csv");
-        writeTranslateText<csvwriter>(csvFilePath, json, langscore::OverwriteTextMode::LeaveOldNonBlank);
-
-#ifndef _DEBUG
-        fs::remove(path);
-#endif
-    };
-
-    const utility::stringlist ignoreFile = {"Animations.json", "Tilesets.json"};
-    for(auto& path : dataFileList)
-    {
-        auto result = std::find_if(ignoreFile.cbegin(), ignoreFile.cend(), [f = path.filename()](const auto& x){
-            return f == x;
-        });
-        if(result != ignoreFile.cend()){ continue; }
-
-        writeRvCsv(path);
+        auto csvFilePath = path;
+        csvFilePath.make_preferred().replace_extension(".csv");
+        std::cout << "Write CSV : " << csvFilePath << std::endl;
+        writeTranslateText<csvwriter>(csvFilePath, json, langscore::OverwriteTextMode::OverwriteNew);
     }
     std::cout << "Finish." << std::endl;
 }
 
-
-void divisi_vxace::convertRvScript()
+void divisi_vxace::writeAnalyzedRvScript()
 {
-    std::cout << "convertRvScript" << std::endl;
-
-    auto scriptList = scriptFileList;
-    auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [this](auto path){
-        auto osPath = path.filename();
-        auto result = std::find(this->ignoreScriptPath.cbegin(), this->ignoreScriptPath.cend(), osPath);
-        return result != this->ignoreScriptPath.cend();
-    });
-    scriptList.erase(rm_result, scriptList.end());
+    //解析直後の素のデータを書き出す。
+    //無視リスト等は考慮せず、書き出し先はTempフォルダ以下になる。
+    std::cout << "writeAnalyzedRvScript" << std::endl;
 
     //Rubyスクリプトを予め解析してテキストを生成しておく。
+    auto scriptList = scriptFileList;
     rbscriptwriter scriptWriter(this->supportLangs, scriptList);
-    auto& scriptTrans = scriptWriter.getScriptTexts();
     auto& transTexts = scriptWriter.curerntTexts();
 
     config config;
@@ -197,6 +206,7 @@ void divisi_vxace::convertRvScript()
     auto resourceFolder = this->appPath.parent_path() / "resource";
     csvreader reader;
     auto vocabs = reader.parse(resourceFolder/"vocab.csv");
+    auto& scriptTrans = scriptWriter.getScriptTexts();
     for(auto& pathPair : scriptTrans)
     {
         if(pathPair.first.filename() != "Vocab.rb"){ continue; }
@@ -232,8 +242,99 @@ void divisi_vxace::convertRvScript()
         std::filesystem::create_directories(outputPath);
     }
 
+    //memoに行数が格納されているため入れ替え
     for(auto& t : transTexts){
         t.memo.swap(t.original);
+        t.translates[u8"memo"s] = t.memo;
+    }
+
+    std::cout << "Write CSV : " << outputPath << std::endl;
+    writeTranslateText<csvwriter>(outputPath, transTexts, OverwriteTextMode::LeaveOld, false);
+
+    std::cout << "Finish." << std::endl;
+}
+
+void langscore::divisi_vxace::writeFixedData()
+{
+    std::cout << "writeFixedData" << std::endl;
+
+    config config;
+    const auto translateFolder = fs::path{config.projectPath()} / fs::path{config.outputTranslateFilePathForRPGMaker()};
+
+    auto writeRvCsv = [this, &translateFolder](fs::path path)
+    {
+        std::ifstream loadFile(path);
+        nlohmann::json json;
+        loadFile >> json;
+
+        auto csvFilePath = path.filename();
+        csvFilePath.make_preferred().replace_extension(".csv");
+        csvFilePath = translateFolder / csvFilePath;
+        std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
+        writeTranslateText<csvwriter>(csvFilePath, json, langscore::OverwriteTextMode::LeaveOldNonBlank);
+    };
+
+    auto ignoreScripts = config.vxaceIgnoreScripts();
+    for(auto& path : dataFileList)
+    {
+        auto result = std::find_if(ignoreScripts.cbegin(), ignoreScripts.cend(), [f = path.filename()](const auto& x){
+            return x.ignore && x.filename == f.u8string();
+        });
+        if(result != ignoreScripts.cend()){ continue; }
+
+        writeRvCsv(path);
+    }
+    std::cout << "Finish." << std::endl;
+}
+
+void langscore::divisi_vxace::writeFixedRvScript()
+{
+    std::cout << "writeFixedRvScript" << std::endl;
+    //無視リスト等を反映させて書き出す。
+    //書き出し先はプロジェクト直下のTranslateになる。
+
+    //Rubyスクリプトを予め解析してテキストを生成しておく。
+    auto scriptList = scriptFileList;
+    {
+        auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [this](const auto& path){
+            auto osPath = path.stem();
+            auto result = std::find_if(this->ignoreScriptPath.cbegin(), this->ignoreScriptPath.cend(), [&osPath](const auto& script){
+                return script.filename == osPath && script.ignore;
+            });
+            return result != this->ignoreScriptPath.cend();
+        });
+        scriptList.erase(rm_result, scriptList.end());
+    }
+
+    rbscriptwriter scriptWriter(this->supportLangs, scriptList);
+    auto& transTexts = scriptWriter.curerntTexts();
+
+    config config;
+    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+    for(auto& t : transTexts){
+        if(t.translates.find(def_lang) == t.translates.end()){ continue; }
+        t.translates[def_lang] = t.original;
+        t.original = t.memo;
+    }
+
+    //無視する行の判定
+    utility::u8stringlist ignoreRowName;
+    for(auto& scriptInfo : this->ignoreScriptPath)
+    {
+        //ファイルごと無視した場合は上で取り除いているので何もしない
+        if(scriptInfo.ignore){ continue; }
+
+        for(const auto& pair : scriptInfo.ignoreLines)
+        {
+            auto name = scriptInfo.filename + u8".rb"s + utility::cnvStr<std::u8string>(":" + std::to_string(pair.first) + ":" + std::to_string(pair.second));
+            ignoreRowName.emplace_back(std::move(name));
+        }
+    }
+    {
+        auto rm_result = std::remove_if(transTexts.begin(), transTexts.end(), [&ignoreRowName](const auto& t){
+            return std::find(ignoreRowName.cbegin(), ignoreRowName.cend(), t.original) != ignoreRowName.cend();
+        });
+        transTexts.erase(rm_result, transTexts.end());
     }
 
 #ifdef _DEBUG
@@ -256,25 +357,11 @@ void divisi_vxace::convertRvScript()
     }
 #endif
 
-    writeTranslateText<csvwriter>(outputPath, transTexts, OverwriteTextMode::LeaveOld, false);
-    
-    if(fs::exists(outputPath / "unison_custom.rb") == false){
-        writeTranslateText<rbscriptwriter>(outputPath / "unison_custom.rb", scriptList, langscore::OverwriteTextMode::LeaveOldNonBlank);
-    }
 
-    //unison.rbの出力
-    auto outputScriptFilePath = outputPath / Script_File_Name;
-    fs::copy(resourceFolder / Script_File_Name, outputScriptFilePath, std::filesystem::copy_options::overwrite_existing);
+    const auto translateFolder = fs::path{config.projectPath()} / fs::path{config.outputTranslateFilePathForRPGMaker()};
 
-    auto fileLines = formatSystemVariable(outputScriptFilePath);
-
-    if(fs::exists(outputScriptFilePath))
-    {
-        std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
-        for(const auto& l : fileLines){
-            outScriptFile << utility::toString(l) << "\n";
-        }
-    }
+    std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
+    writeTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, OverwriteTextMode::LeaveOld, false);
 
     std::cout << "Finish." << std::endl;
 }
@@ -307,27 +394,28 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
         }
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {
-            auto fonts = config.vxaceFonts();
+            auto fonts = config.languages();
             _line = tab + u8"LS_FONT = {" + nl;
             for(auto& pair : fonts)
             {
-                auto lang = utility::cnvStr<std::u8string>(pair.first);
-                auto sizeStr = utility::cnvStr<std::u8string>(std::to_string(pair.second.size));
+                auto lang = utility::cnvStr<std::u8string>(pair.font.name);
+                auto sizeStr = utility::cnvStr<std::u8string>(std::to_string(pair.font.size));
                 _line += tab + tab;
-                _line += u8"\"" + lang + u8"\" => {:name => \"" + pair.second.name + u8"\", :size => " + sizeStr + u8"}," + nl;
+                _line += u8"\"" + lang + u8"\" => {:name => \"" + pair.font.name + u8"\", :size => " + sizeStr + u8"}," + nl;
             }
             _line += tab + u8"}\n";
         }
         else if(findStr(_line, u8"%{TRANSLATE_FOLDER}%"))
         {
-            auto outPath = config.rpgmakerOutputPath();
+            auto outPath = config.outputTranslateFilePathForRPGMaker();
             _line = tab + u8"TRANSLATE_FOLDER = \"./" + utility::cnvStr<std::u8string>(outPath) + u8"\"" + nl;
         }
         else if(findStr(_line, u8"%{UNISON_LSCSV}%"))
         {
             auto resourceFolder = this->appPath.parent_path() / "resource";
             std::stringstream ss;
-            std::ifstream lscsv(resourceFolder/"lscsv.rb");
+            std::cout << "Include LSCSV : " << resourceFolder / "lscsv.rb" << std::endl;
+            std::ifstream lscsv(resourceFolder / "lscsv.rb");
             assert(lscsv.good());
             ss << lscsv.rdbuf();
             lscsv.close();
@@ -368,18 +456,22 @@ void divisi_vxace::convertGraphFileNameData()
 {
     std::cout << "convertGraphFileNameData" << std::endl;
 
+    config config;
+    auto ignorePictures = config.ignorePictures();
     std::vector<TranslateText> transTextList;
     for(auto& f : graphicFileList){
+        auto result = std::find(ignorePictures.cbegin(), ignorePictures.cend(), f.u8string());
+        if(result != ignorePictures.cend()){ continue; }
         transTextList.emplace_back(f.generic_u8string(), supportLangs);
     }
 
     const auto& projectPath = deserializer.projectPath();
-    config config;
-    writeTranslateText<csvwriter>(projectPath / config.rpgmakerOutputPath() / "Graphics.csv", transTextList, OverwriteTextMode::LeaveOld, false);
+    std::cout << "Write Graphics : " << projectPath / config.outputTranslateFilePathForRPGMaker() / "Graphics.csv" << std::endl;
+    writeTranslateText<csvwriter>(projectPath / config.outputTranslateFilePathForRPGMaker() / "Graphics.csv", transTextList, OverwriteTextMode::LeaveOld, false);
     std::cout << "Finish." << std::endl;
 }
 
-void divisi_vxace::copyData(langscore::OverwriteTextMode option)
+void divisi_vxace::copyDataToTemp()
 {
     const auto deserializeOutPath = this->deserializer.outputTmpPath();
     fs::directory_iterator it(deserializeOutPath);
@@ -394,12 +486,52 @@ void divisi_vxace::copyData(langscore::OverwriteTextMode option)
 
         fs::path to = outputProjectDataPath(srcPath);
 
-        auto fsOption = convertCopyOption(option);
+        auto fsOption = convertCopyOption(langscore::OverwriteTextMode::OverwriteNew);
+        std::cout << "Copy Translate File To : " << to << std::endl;
         fs::copy(f, to, fsOption);
     }
 
     //rbスクリプトのコピー
     fs::directory_iterator it2{deserializeOutPath / "Scripts"};
+    for(auto& f : it2)
+    {
+        auto srcPath = f.path().filename();
+        //unison以外は無視
+        if(srcPath != "unison_custom.rb" && srcPath != Script_File_Name){
+            continue;
+        }
+        if(srcPath.extension().string().find(rbscriptwriter::extension) == std::string::npos){ continue; }
+
+        fs::path to = outputProjectDataPath(srcPath, "Scripts");
+        auto fsOption = convertCopyOption(langscore::OverwriteTextMode::OverwriteNew);
+        fs::copy(f, to, fsOption);
+    }
+}
+
+void langscore::divisi_vxace::copyData(langscore::OverwriteTextMode option)
+{
+    config config;
+    const auto projectPath = fs::path(config.projectPath());
+    const auto deserializeOutPath = projectPath / fs::path(config.outputTranslateFilePathForRPGMaker());
+    fs::directory_iterator it(deserializeOutPath);
+    //翻訳ファイルのコピー
+    for(auto& f : it)
+    {
+        auto srcPath = f.path().filename();
+        if(f.is_directory() && srcPath == "Script"){
+            continue;
+        }
+        if(srcPath.extension().string().find(csvwriter::extension) == std::string::npos){ continue; }
+
+        fs::path to = outputProjectDataPath(srcPath);
+
+        auto fsOption = convertCopyOption(option);
+        std::cout << "Copy Translate File To : " << to << std::endl;
+        fs::copy(f, to, fsOption);
+    }
+
+    //rbスクリプトのコピー
+    fs::directory_iterator it2{this->deserializer.outputTmpPath() / "Scripts"};
     for(auto& f : it2)
     {
         auto srcPath = f.path().filename();

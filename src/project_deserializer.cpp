@@ -35,19 +35,18 @@ void deserializer::setProjectPath(ProjectType type, std::filesystem::path path)
 
 deserializer::Result deserializer::exec()
 {
-
-    std::filesystem::path scriptPath = "";
+    std::filesystem::path rvcnvPath = "";
     if(currentProjectType == VXAce){
-        scriptPath = (appPath / "rvcnv/rvcnv.exe");
+        rvcnvPath = (appPath / "rvcnv.exe");
     }
     else //if(currentProjectType == None)
     {
         return Result(1);
     }
 
-    scriptPath.make_preferred();
+    rvcnvPath.make_preferred();
 
-    if(std::filesystem::exists(scriptPath) == false){
+    if(std::filesystem::exists(rvcnvPath) == false){
         return Result(3);
     }
     auto outPath = outputTmpPath();
@@ -56,7 +55,9 @@ deserializer::Result deserializer::exec()
     }
 
     char buffer[256] = {};
-    auto process = utility::join({ scriptPath.string(), "-i", _projectPath.string(), "-o", outputTmpPath().string()}, std::string(" "));
+    auto process = utility::join({ 
+        rvcnvPath.string(), "-i", _projectPath.string(), "-o", outputTmpPath().string()
+    }, std::string(" "));
     FILE* fp = NULL;
     if(process_stdout)
     {
@@ -74,7 +75,7 @@ deserializer::Result deserializer::exec()
     else
     {
         auto ret = system(process.c_str());
-        if(ret != -1){
+        if(ret != 0){
             return Result(4);
         }
         

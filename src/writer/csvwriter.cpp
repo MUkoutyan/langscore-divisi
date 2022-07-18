@@ -79,27 +79,27 @@ bool csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
             if(def_lang == lang.first && lang.second.empty()){
                 rowtext.emplace_back(text.original);
             }
-#ifdef _DEBUG
-            else if(isDebug){
-                auto t = text.original;
-                if(t.empty() == false){
-                    if(t[0] == u8'\"'){
-                        t.insert(1, lang.first + u8"-");
-                    }
-                    else {
-                        t = lang.first + u8"-" + t;
-                    }
-                }
-                rowtext.emplace_back(t);
-            }
-            else{
-                rowtext.emplace_back(lang.second);
-            }
-#else
+//#ifdef _DEBUG
+//            else if(isDebug){
+//                auto t = text.original;
+//                if(t.empty() == false){
+//                    if(t[0] == u8'\"'){
+//                        t.insert(1, lang.first + u8"-");
+//                    }
+//                    else {
+//                        t = lang.first + u8"-" + t;
+//                    }
+//                }
+//                rowtext.emplace_back(t);
+//            }
+//            else{
+//                rowtext.emplace_back(lang.second);
+//            }
+//#else
             else {
                 rowtext.emplace_back(lang.second);
             }
-#endif
+//#endif
         }
 
         writeU8String(outputCSVFile, utility::join(rowtext, delimiter));

@@ -13,13 +13,11 @@ enum class OverwriteTextMode;
 class divisi
 {
 public:
-    divisi(std::filesystem::path appPath);
+    divisi(std::filesystem::path appPath, std::filesystem::path configPath);
     ~divisi();
 
-    void prepareAnalyzeProject(std::filesystem::path projectPath);
-
-    bool setProjectPath(std::filesystem::path projectPath);
-    void exec();
+    void analyze();
+    void write();
 
 private:
     class Impl;

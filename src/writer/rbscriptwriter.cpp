@@ -123,8 +123,8 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
     size_t lineCount = 0;
 
     //スマートにしたい
-    std::regex parseStrDq(R"((".+?")(?!^\s*#))");
-    std::regex parseStrSq(R"(('.+?')(?!^\s*#))");
+    std::regex parseStrDq(R"((".*?")(?!^\s*#))");
+    std::regex parseStrSq(R"(('.*?')(?!^\s*#))");
 
     std::vector<TranslateText> transTextList;
 
