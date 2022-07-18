@@ -27,7 +27,6 @@ namespace langscore
 	protected:
 		std::filesystem::path appPath;
 		deserializer deserializer;
-		std::vector<config::ScriptData> ignoreScriptPath;
 		utility::u8stringlist supportLangs;
 		std::u8string defaultLanguage;
 

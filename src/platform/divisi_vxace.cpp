@@ -63,6 +63,7 @@ divisi_vxace::~divisi_vxace(){}
 void divisi_vxace::setProjectPath(std::filesystem::path path)
 {
     this->deserializer.setProjectPath(deserializer::ProjectType::VXAce, std::move(path));
+
 }
 
 std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir)
@@ -149,7 +150,12 @@ void langscore::divisi_vxace::fetchFilePathList()
         if(extension == ".json"){
             this->dataFileList.emplace_back(f.path());
         }
-        else if(extension == ".rb"){
+        else if(extension == ".rb")
+        {
+            auto fileName = f.path().stem();
+            if(fileName == "unison"){ continue; }
+            else if(fileName == "unison_custom"){ continue; }
+
             this->scriptFileList.emplace_back(f.path());
         }
     }
@@ -294,14 +300,16 @@ void langscore::divisi_vxace::writeFixedRvScript()
     //書き出し先はプロジェクト直下のTranslateになる。
 
     //Rubyスクリプトを予め解析してテキストを生成しておく。
+    config config;
+    auto ignoreScriptPath = config.vxaceIgnoreScripts();
     auto scriptList = scriptFileList;
     {
-        auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [this](const auto& path){
+        auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&ignoreScriptPath](const auto& path){
             auto osPath = path.stem();
-            auto result = std::find_if(this->ignoreScriptPath.cbegin(), this->ignoreScriptPath.cend(), [&osPath](const auto& script){
+            auto result = std::find_if(ignoreScriptPath.cbegin(), ignoreScriptPath.cend(), [&osPath](const auto& script){
                 return script.filename == osPath && script.ignore;
             });
-            return result != this->ignoreScriptPath.cend();
+            return result != ignoreScriptPath.cend();
         });
         scriptList.erase(rm_result, scriptList.end());
     }
@@ -309,7 +317,6 @@ void langscore::divisi_vxace::writeFixedRvScript()
     rbscriptwriter scriptWriter(this->supportLangs, scriptList);
     auto& transTexts = scriptWriter.curerntTexts();
 
-    config config;
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     for(auto& t : transTexts){
         if(t.translates.find(def_lang) == t.translates.end()){ continue; }
@@ -319,7 +326,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
 
     //無視する行の判定
     utility::u8stringlist ignoreRowName;
-    for(auto& scriptInfo : this->ignoreScriptPath)
+    for(auto& scriptInfo : ignoreScriptPath)
     {
         //ファイルごと無視した場合は上で取り除いているので何もしない
         if(scriptInfo.ignore){ continue; }
