@@ -6,7 +6,6 @@
 struct ARGS
 {
 	std::filesystem::path appPath;
-	std::filesystem::path gameProjPath;
 	std::filesystem::path configFile;
 	bool analyze = false;
 	bool write = false;
@@ -20,55 +19,58 @@ ARGS analyzeOption(int argc, const char* argv[])
 	for(int i = 1; i < argc; ++i)
 	{
 		std::string_view str = argv[i];
-		if(str.find("-i") != std::string_view::npos){
-			++i;
-			args.gameProjPath = argv[i];
-		}
-		else if(str.find("-c") != std::string_view::npos){
+		if(str.find("-c") != std::string_view::npos){
 			++i;
 			args.configFile = argv[i];
 		}
 		else if(str.find("--analyze") != std::string_view::npos){
 			args.analyze = true;
 		}
-		else if(str.find("--write")){
+		else if(str.find("--write") != std::string_view::npos){
 			args.write = true;
 		}
-		else if(str.find("--leaveold")){
+		else if(str.find("--leaveold") != std::string_view::npos){
 			args.overwriteMode = langscore::OverwriteTextMode::LeaveOld;
 		}
-		else if(str.find("--leaveoldnonblank")){
+		else if(str.find("--leaveoldnonblank") != std::string_view::npos){
 			args.overwriteMode = langscore::OverwriteTextMode::LeaveOldNonBlank;
 		}
-		else if(str.find("--overwritenew")){
+		else if(str.find("--overwritenew") != std::string_view::npos){
 			args.overwriteMode = langscore::OverwriteTextMode::OverwriteNew;
 		}
-		else if(str.find("--both")){
+		else if(str.find("--both") != std::string_view::npos){
 			args.overwriteMode = langscore::OverwriteTextMode::Both;
 		}
 	}
-
 	return args;
 }
 
 int main(int argc, const char* argv[])
 {
 	if(argc < 2){
+#ifdef _DEBUG
+		std::cerr << "Need Argments..." << std::endl;
+#endif
 		return -1;
 	}
 
-	auto args = analyzeOption(argc, argv);
+	const auto args = analyzeOption(argc, argv);
 	if(args.analyze == false && args.write == false){
 		return 0;
 	}
 
-	langscore::divisi divisi(args.appPath);
+	langscore::divisi divisi(args.appPath, args.configFile);
 
 	if(args.analyze){
-		divisi.prepareAnalyzeProject(argv[1]);
+		if(divisi.analyze() == false){
+			return -2;
+		}
 	}
-
-	divisi.exec();
+	if(args.write){
+		if(divisi.write() == false){
+			return -3;
+		}
+	}
 
 	return 0;
 }
