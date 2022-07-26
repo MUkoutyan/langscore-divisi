@@ -477,6 +477,13 @@ end
 class RPG::SE < RPG::AudioFile
 end
 
+class ScriptData
+  attr_accessor :id
+  attr_accessor :name
+  attr_accessor :data
+end
+
+
 
 ObjectSpace.each_object(Class) do |c|
   if c.name.nil? == false && c.name.include?("RPG::")
@@ -522,15 +529,17 @@ script_folder = output_folder+'/Scripts'
 if compress
   
   compressData = []
-  script_list_path = input_folder_path+'/langscore_proj/tmp/Scripts/_list.csv'
+  exported_script_folder = input_folder_path+'/langscore_proj/tmp/Scripts'
+  script_list_path = exported_script_folder + '/_list.csv'
   CSV.foreach(script_list_path) do | row |
-    filepath = input_folder_path+'/'+row[1].to_s
+    filepath = exported_script_folder+'/'+row[1].to_s
     filename = File.basename(filepath, ".*")
     if File.exists?(filepath) == false
-      filename = "" if filename.include?("(NONAME)")
+      filename = "" if filename.include?("_NONAME_")
       compressData.push([row[0], filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
     else 
       File.open(filepath) do |file|
+        filename = "" if filename.include?("_NONAME_")
         contents = file.readlines().join()
         compressed = Zlib::Deflate.deflate(contents, Zlib::DEFAULT_COMPRESSION );
         compressData.push([row[0], filename, compressed])
