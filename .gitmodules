@@ -4,3 +4,6 @@
 [submodule "iutest"]
 	path = iutest
 	url = https://github.com/srz-zumix/iutest.git
+[submodule "hash-library"]
+	path = hash-library
+	url = https://github.com/stbrumme/hash-library.git
