@@ -491,11 +491,11 @@ end
 opt = OptionParser.new
 Version = "1.0.0"
 
-project_path = ""
-opt.on_head('-i PROJPATH', '--project PROJPATH'){ |v| 
-  project_path = File.absolute_path(v)
-  project_path.gsub!("\\", "/")
-  project_path.chop! if project_path.end_with?('/')
+input_folder_path = ""
+opt.on_head('-i PROJPATH', '--input PROJPATH'){ |v| 
+  input_folder_path = File.absolute_path(v)
+  input_folder_path.gsub!("\\", "/")
+  input_folder_path.chop! if input_folder_path.end_with?('/')
 }
 
 output_folder = ""
@@ -514,7 +514,7 @@ opt.on('-c'){|v| compress = v }
 opt.parse!(ARGV)
 
 #パースでブロック内の処理が評価されるため、パース後に代入すること
-data_folder   = project_path+'/Data'
+data_folder   = input_folder_path+'/Data'
 script_folder = output_folder+'/Scripts'
 
 #================================================
@@ -522,9 +522,9 @@ script_folder = output_folder+'/Scripts'
 if compress
   
   compressData = []
-  script_list_path = project_path+'/Scripts/_list.csv'
+  script_list_path = input_folder_path+'/langscore_proj/tmp/Scripts/_list.csv'
   CSV.foreach(script_list_path) do | row |
-    filepath = project_path+'/'+row[1].to_s
+    filepath = input_folder_path+'/'+row[1].to_s
     filename = File.basename(filepath, ".*")
     if File.exists?(filepath) == false
       filename = "" if filename.include?("(NONAME)")
@@ -545,7 +545,7 @@ if compress
   exit
 end
 
-if project_path.empty?
+if input_folder_path.empty?
   p "Need Project Folder" 
   return
 end
@@ -611,7 +611,7 @@ if repack
 
   compressData = []
   CSV.foreach(script_list_path) do | row |
-    filepath = project_path+'/'+row[1].to_s
+    filepath = input_folder_path+'/'+row[1].to_s
     filename = File.basename(filepath, ".*")
     if File.exists?(filepath) == false
       filename = "" if filename.include?("(NONAME)")
