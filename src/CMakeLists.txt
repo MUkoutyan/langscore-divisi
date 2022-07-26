@@ -37,6 +37,7 @@ set(lib_files
     "platform/divisi_vxace.cpp" 
 	"platform/platform_base.h" 
 	"platform/platform_base.cpp"
+	${PROJECT_SOURCE_DIR}/hash-library/md5.cpp
 )
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
@@ -48,12 +49,9 @@ target_include_directories(divisi_lib PUBLIC
 	./
 	${PROJECT_SOURCE_DIR}/include
 	${PROJECT_SOURCE_DIR}/json
+	${PROJECT_SOURCE_DIR}/hash-library
 )
 
-target_include_directories(divisi_lib PUBLIC
-	${PROJECT_BINARY_DIR}/test/googletest-src/googletest/include
-	${PROJECT_BINARY_DIR}/test/googletest-src/googlemock/include
-)
 
 install(TARGETS divisi_lib
         LIBRARY DESTINATION ${PROJECT_SOURCE_DIR}/lib)
