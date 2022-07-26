@@ -33,6 +33,8 @@ namespace langscore
 		constexpr static char KEY_DEFAULT_LANGUAGE[] = "DefaultLanguage";
 		constexpr static char KEY_TEMP_DIR[] = "TmpDir";
 		constexpr static char KEY_US_CUSTOM_FUNC_COMMENT[] = "UsCustomFuncComment";
+		constexpr static char KEY_EXPORT_DIRECTORY[] = "ExportDirectory";
+		constexpr static char KEY_EXPORT_BY_LANG[] = "ExportByLang";
 		constexpr static char KEY_RPGMAKER_OUTPUT_PATH[] = "RPGMakerOutputPath";
 		constexpr static char KEY_RPGMAKER_IGNORE_SCRIPTS[] = "RPGMakerIgnoreScripts";
 
@@ -48,6 +50,8 @@ namespace langscore
 		std::string projectPath();
 		std::string tempDirectorty();
 		std::string usScriptFuncComment();
+		std::vector<std::string> exportDirectory();
+		bool exportByLanguage();
 		std::string outputTranslateFilePathForRPGMaker();
 		std::vector<ScriptData> vxaceIgnoreScripts();
 		utility::u8stringlist ignorePictures();

@@ -110,6 +110,8 @@ std::vector<config::Language> config::languages()
 	for(auto s = langs.begin(); s != langs.end(); ++s)
 	{
 		auto lang = s.value();
+		if(pImpl->get(lang["enable"], false) == false){ continue; }
+
 		result.emplace_back(
 			pImpl->get(lang["languageName"], "ja"s),
 			FontData{
@@ -137,6 +139,27 @@ std::string config::tempDirectorty() {
 
 std::string config::usScriptFuncComment(){
 	return pImpl->get(pImpl->json["write"][KEY_US_CUSTOM_FUNC_COMMENT], "project://Scripts/{0}#{1},{2}"s);
+}
+
+std::vector<std::string> langscore::config::exportDirectory()
+{
+	auto baseFolder = pImpl->get(pImpl->json["write"][KEY_EXPORT_DIRECTORY], ""s);
+	if(this->exportByLanguage() == false){
+		return {baseFolder};
+	}
+
+	auto langs = this->languages();
+	std::vector<std::string> result;
+	for(auto& lang : langs){
+		result.emplace_back(baseFolder + "/" + lang.name);
+	}
+
+	return result;
+}
+
+bool langscore::config::exportByLanguage()
+{
+	return pImpl->get(pImpl->json["write"][KEY_EXPORT_BY_LANG], false);
 }
 
 std::string config::outputTranslateFilePathForRPGMaker(){
