@@ -16,8 +16,8 @@ public:
     divisi(std::filesystem::path appPath, std::filesystem::path configPath);
     ~divisi();
 
-    void analyze();
-    void write();
+    bool analyze();
+    bool write();
 
 private:
     class Impl;

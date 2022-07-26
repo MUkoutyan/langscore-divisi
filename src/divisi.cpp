@@ -1,6 +1,6 @@
 #include "divisi.h"
 #include "utility.hpp"
-#include "project_deserializer.h"
+#include "invoker.h"
 #include "nlohmann/json.hpp"
 
 #include "writer/rbscriptwriter.h"
@@ -40,24 +40,24 @@ public:
         };
 
         fs::directory_iterator it(projectPath);
-        auto type = deserializer::ProjectType::None;
+        auto type = invoker::ProjectType::None;
         for(auto& file : it){
             auto ext = file.path().extension();
             if(ext == ".rvproj2"){
-                type = deserializer::ProjectType::VXAce;
+                type = invoker::ProjectType::VXAce;
                 this->converter = std::make_unique<divisi_vxace>();
                 break;
             }
             else if(ext == ".rmmzproject")
             {
                 if(hasHeader(file.path(), "RPGMZ")){
-                    type = deserializer::ProjectType::MZ;
+                    type = invoker::ProjectType::MZ;
                 }
             }
             else if(ext == ".pgmproject")
             {
                 if(hasHeader(file.path(), "RPGMV")){
-                    type = deserializer::ProjectType::MV;
+                    type = invoker::ProjectType::MV;
                 }
             }
         }
@@ -74,11 +74,11 @@ divisi::divisi(fs::path appPath, std::filesystem::path configPath)
 
 divisi::~divisi(){}
 
-void divisi::analyze()
+bool divisi::analyze()
 {
     config config;
     auto projectPath = config.projectPath();
-    if(projectPath.empty()){ return; }
+    if(projectPath.empty()){ return false; }
     pImpl->createConverter(projectPath);
 
     if(pImpl->converter){
@@ -87,13 +87,14 @@ void divisi::analyze()
         pImpl->converter->analyze();
     }
 
+    return true;
 }
 
-void langscore::divisi::write()
+bool langscore::divisi::write()
 {
     config config;
     auto projectPath = config.projectPath();
-    if(projectPath.empty()){ return; }
+    if(projectPath.empty()){ return false; }
     pImpl->createConverter(projectPath);
 
     if(pImpl->converter){
@@ -101,6 +102,8 @@ void langscore::divisi::write()
         pImpl->converter->setProjectPath(std::move(projectPath));
         pImpl->converter->write();
     }
+
+    return true;
 
 }
 

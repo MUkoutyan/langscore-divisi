@@ -62,7 +62,7 @@ divisi_vxace::~divisi_vxace(){}
 
 void divisi_vxace::setProjectPath(std::filesystem::path path)
 {
-    this->deserializer.setProjectPath(deserializer::ProjectType::VXAce, std::move(path));
+    this->invoker.setProjectPath(invoker::ProjectType::VXAce, std::move(path));
 
 }
 
@@ -72,7 +72,7 @@ std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesy
         config config;
         dir = config.outputTranslateFilePathForRPGMaker();
     }
-    const auto& projectPath = this->deserializer.projectPath();
+    const auto& projectPath = this->invoker.projectPath();
 
     fs::path to = projectPath / dir;
 
@@ -85,7 +85,7 @@ std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesy
 
 void divisi_vxace::analyze()
 {
-    auto runResult = this->deserializer.exec();
+    auto runResult = this->invoker.analyze();
     if(runResult.val() != 0){
         std::cerr << runResult.toStr() << std::endl;
         return;
@@ -102,13 +102,14 @@ void divisi_vxace::analyze()
 
 void langscore::divisi_vxace::write()
 {
+    std::cout << "Write..." << std::endl;
     fetchFilePathList(); 
 
     writeFixedData();
     writeFixedRvScript();
     convertGraphFileNameData();
 
-    const auto deserializeOutPath = this->deserializer.outputTmpPath();
+    const auto deserializeOutPath = this->invoker.outputTmpPath();
     auto outputPath = deserializeOutPath / "Scripts";
     if(std::filesystem::exists(outputPath) == false){
         std::filesystem::create_directories(outputPath);
@@ -137,12 +138,18 @@ void langscore::divisi_vxace::write()
         }
     }
 
+    auto runResult = this->invoker.recompressVXAce();
+    if(runResult.val() != 0){
+        std::cerr << runResult.toStr() << std::endl;
+        return;
+    }
+
     std::cout << "Write Translate File Done." << std::endl;
 }
 
 void langscore::divisi_vxace::fetchFilePathList()
 {
-    const auto deserializeOutPath = this->deserializer.outputTmpPath();
+    const auto deserializeOutPath = this->invoker.outputTmpPath();
     fs::recursive_directory_iterator dataItr(deserializeOutPath);
     for(auto& f : dataItr)
     {
@@ -160,7 +167,7 @@ void langscore::divisi_vxace::fetchFilePathList()
         }
     }
 
-    auto projectPath = this->deserializer.projectPath();
+    auto projectPath = this->invoker.projectPath();
     auto graphicsPath = projectPath / "Graphics";
     fs::recursive_directory_iterator graphItr(graphicsPath);
     for(auto& f : graphItr)
@@ -242,7 +249,7 @@ void divisi_vxace::writeAnalyzedRvScript()
     }
     //=================================
 
-    const auto deserializeOutPath = this->deserializer.outputTmpPath();
+    const auto deserializeOutPath = this->invoker.outputTmpPath();
     auto outputPath = deserializeOutPath / "Scripts";
     if(std::filesystem::exists(outputPath) == false){
         std::filesystem::create_directories(outputPath);
@@ -265,19 +272,22 @@ void langscore::divisi_vxace::writeFixedData()
     std::cout << "writeFixedData" << std::endl;
 
     config config;
-    const auto translateFolder = fs::path{config.projectPath()} / fs::path{config.outputTranslateFilePathForRPGMaker()};
+    //const auto translateFolder = fs::path{config.projectPath()} / fs::path{config.outputTranslateFilePathForRPGMaker()};
+    const auto translateFolderList = config.exportDirectory();
 
-    auto writeRvCsv = [this, &translateFolder](fs::path path)
+    auto writeRvCsv = [this, &translateFolderList](fs::path inputPath)
     {
-        std::ifstream loadFile(path);
+        std::ifstream loadFile(inputPath);
         nlohmann::json json;
         loadFile >> json;
 
-        auto csvFilePath = path.filename();
+        auto csvFilePath = inputPath.filename();
         csvFilePath.make_preferred().replace_extension(".csv");
-        csvFilePath = translateFolder / csvFilePath;
-        std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
-        writeTranslateText<csvwriter>(csvFilePath, json, langscore::OverwriteTextMode::LeaveOldNonBlank);
+        for(auto& translateFolder : translateFolderList){
+            csvFilePath = translateFolder / csvFilePath;
+            std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
+            writeTranslateText<csvwriter>(csvFilePath, json, langscore::OverwriteTextMode::LeaveOldNonBlank);
+        }
     };
 
     auto ignoreScripts = config.vxaceIgnoreScripts();
@@ -365,10 +375,13 @@ void langscore::divisi_vxace::writeFixedRvScript()
 #endif
 
 
-    const auto translateFolder = fs::path{config.projectPath()} / fs::path{config.outputTranslateFilePathForRPGMaker()};
+    //const auto translateFolder = fs::path{config.projectPath()} / fs::path{config.outputTranslateFilePathForRPGMaker()};
+    const auto translateFolderList = config.exportDirectory();
 
-    std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-    writeTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, OverwriteTextMode::LeaveOld, false);
+    for(auto& translateFolder : translateFolderList){
+        std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
+        writeTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, OverwriteTextMode::LeaveOld, false);
+    }
 
     std::cout << "Finish." << std::endl;
 }
@@ -472,7 +485,7 @@ void divisi_vxace::convertGraphFileNameData()
         transTextList.emplace_back(f.generic_u8string(), supportLangs);
     }
 
-    const auto& projectPath = deserializer.projectPath();
+    const auto& projectPath = invoker.projectPath();
     std::cout << "Write Graphics : " << projectPath / config.outputTranslateFilePathForRPGMaker() / "Graphics.csv" << std::endl;
     writeTranslateText<csvwriter>(projectPath / config.outputTranslateFilePathForRPGMaker() / "Graphics.csv", transTextList, OverwriteTextMode::LeaveOld, false);
     std::cout << "Finish." << std::endl;
@@ -480,7 +493,7 @@ void divisi_vxace::convertGraphFileNameData()
 
 void divisi_vxace::copyDataToTemp()
 {
-    const auto deserializeOutPath = this->deserializer.outputTmpPath();
+    const auto deserializeOutPath = this->invoker.outputTmpPath();
     fs::directory_iterator it(deserializeOutPath);
     //翻訳ファイルのコピー
     for(auto& f : it)
@@ -538,7 +551,7 @@ void langscore::divisi_vxace::copyData(langscore::OverwriteTextMode option)
     }
 
     //rbスクリプトのコピー
-    fs::directory_iterator it2{this->deserializer.outputTmpPath() / "Scripts"};
+    fs::directory_iterator it2{this->invoker.outputTmpPath() / "Scripts"};
     for(auto& f : it2)
     {
         auto srcPath = f.path().filename();

@@ -1,5 +1,5 @@
-#ifndef LANGSCORE_DESERIALIZER_H
-#define LANGSCORE_DESERIALIZER_H
+#ifndef LANGSCORE_INVOKER_H
+#define LANGSCORE_INVOKER_H
 
 #include <string>
 #include <functional>
@@ -8,7 +8,7 @@
 namespace langscore
 {
 
-class deserializer
+class invoker
 {
 public:
 
@@ -30,8 +30,8 @@ public:
         MZ,
     };
 
-    deserializer();
-    ~deserializer();
+    invoker();
+    ~invoker();
 
     void setApplicationFolder(std::filesystem::path path);
     void setProjectPath(ProjectType type, std::filesystem::path path);
@@ -40,7 +40,8 @@ public:
     const std::filesystem::path& projectPath() const;
     ProjectType projectType() const noexcept;
 
-    Result exec();
+    Result analyze();
+    Result recompressVXAce();
     
 
     std::function<void(std::string)> process_stdout;
@@ -50,6 +51,8 @@ private:
     std::filesystem::path _projectPath;
     std::vector<std::u8string> langs;
     ProjectType currentProjectType;
+
+    Result exec(std::vector<std::string> args);
 };
 
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include "../project_deserializer.h"
+#include "../invoker.h"
 #include "../include/config.h"
 #include "../utility.hpp"
 #include "../writer/writerbase.h"
@@ -14,7 +14,7 @@ namespace langscore
 
 		void setAppPath(std::filesystem::path path){
 			appPath = path;
-			this->deserializer.setApplicationFolder(std::move(path));
+			this->invoker.setApplicationFolder(std::move(path));
 		}
 		virtual void setProjectPath(std::filesystem::path path) = 0;
 		virtual void analyze() = 0;
@@ -26,7 +26,7 @@ namespace langscore
 
 	protected:
 		std::filesystem::path appPath;
-		deserializer deserializer;
+		invoker invoker;
 		utility::u8stringlist supportLangs;
 		std::u8string defaultLanguage;
 

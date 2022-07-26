@@ -1,4 +1,4 @@
-#include "project_deserializer.h"
+#include "invoker.h"
 #include "config.h"
 #include "utility.hpp"
 
@@ -11,29 +11,37 @@ namespace
 
 }
 
-deserializer::deserializer()
+invoker::invoker()
     : appPath("")
     , _projectPath("")
     , currentProjectType(None)
 {
 }
 
-deserializer::~deserializer(){
+invoker::~invoker(){
 }
 
-void deserializer::setApplicationFolder(std::filesystem::path path){
+void invoker::setApplicationFolder(std::filesystem::path path){
     appPath = std::move(path);
     appPath = appPath.parent_path();
 }
 
-void deserializer::setProjectPath(ProjectType type, std::filesystem::path path)
+void invoker::setProjectPath(ProjectType type, std::filesystem::path path)
 {
     this->currentProjectType = type;
     this->_projectPath = std::move(path);
 }
 
 
-deserializer::Result deserializer::exec()
+invoker::Result invoker::analyze(){
+    return exec({"-i", _projectPath.string(), "-o", outputTmpPath().string()});
+}
+
+invoker::Result langscore::invoker::recompressVXAce(){
+    return exec({"-i", _projectPath.string(), "-c"});
+}
+
+invoker::Result langscore::invoker::exec(std::vector<std::string> args)
 {
     std::filesystem::path rvcnvPath = "";
     if(currentProjectType == VXAce){
@@ -54,15 +62,13 @@ deserializer::Result deserializer::exec()
         std::filesystem::create_directories(outPath);
     }
 
-    char buffer[256] = {};
-    auto process = utility::join({ 
-        rvcnvPath.string(), "-i", _projectPath.string(), "-o", outputTmpPath().string()
-    }, std::string(" "));
+    auto process = rvcnvPath.string() + " " + utility::join(args, std::string(" "));
     FILE* fp = NULL;
     if(process_stdout)
     {
         if(fp = _popen(process.c_str(), "r"))
         {
+            char buffer[256] = {};
             while(fgets(buffer, 256, fp) != NULL){
                 process_stdout(buffer);
             }
@@ -78,14 +84,13 @@ deserializer::Result deserializer::exec()
         if(ret != 0){
             return Result(4);
         }
-        
     }
 
 
     return Result(0);
 }
 
-std::filesystem::path deserializer::outputTmpPath() const 
+std::filesystem::path invoker::outputTmpPath() const 
 {
     try {
         config config;
@@ -96,15 +101,15 @@ std::filesystem::path deserializer::outputTmpPath() const
     return appPath / "tmp/Translate/";
 }
 
-const std::filesystem::path& deserializer::projectPath() const {
+const std::filesystem::path& invoker::projectPath() const {
     return this->_projectPath;
 }
 
-deserializer::ProjectType deserializer::projectType() const noexcept {
+invoker::ProjectType invoker::projectType() const noexcept {
     return this->currentProjectType;
 }
 
-std::string deserializer::Result::toStr() const
+std::string invoker::Result::toStr() const
 {
     switch(code)
     {
