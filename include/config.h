@@ -21,22 +21,59 @@ namespace langscore
 			FontData font;
 		};
 
-		struct ScriptData
+		struct BasicData
 		{
 			std::u8string filename = u8"";
 			bool ignore = false;
 			int writeMode = 0;
-			std::vector<std::pair<int, int>> ignoreLines;
 		};
 
-		constexpr static char KEY_LANGUAGES[] = "Languages";
-		constexpr static char KEY_DEFAULT_LANGUAGE[] = "DefaultLanguage";
-		constexpr static char KEY_TEMP_DIR[] = "TmpDir";
-		constexpr static char KEY_US_CUSTOM_FUNC_COMMENT[] = "UsCustomFuncComment";
-		constexpr static char KEY_EXPORT_DIRECTORY[] = "ExportDirectory";
-		constexpr static char KEY_EXPORT_BY_LANG[] = "ExportByLang";
-		constexpr static char KEY_RPGMAKER_OUTPUT_PATH[] = "RPGMakerOutputPath";
-		constexpr static char KEY_RPGMAKER_IGNORE_SCRIPTS[] = "RPGMakerIgnoreScripts";
+		struct ScriptData : public BasicData
+		{
+			struct TextPoint
+			{
+				int row = 0;
+				int col = 0;
+				bool disable = false;	//元スクリプト変更によって位置が噛み合わなくなった場合true
+				bool ignore = false;
+				int writeMode = 0;
+				std::u8string text;
+			};
+			std::vector<TextPoint> texts;
+		};
+
+		enum class JsonKey : size_t
+		{
+			Languages,
+			LanguageName,
+			Enable,
+			Disable,
+			FontName,
+			FontSize,
+			Project,
+			Analyze,
+			Write,
+			Name,
+			Ignore,
+			IgnorePoints,
+			Row,
+			Col,
+			WriteType,
+			Text,
+			IgnorePictures,
+			DefaultLanguage,
+			TmpDir,
+			UsCustomFuncComment,
+			ExportDirectory,
+			ExportByLang,
+			RPGMakerOutputPath,
+			RPGMakerBasicData,
+			RPGMakerScripts,
+
+			NumKeys,
+		};
+
+		static const char* key(JsonKey key);
 
 		static void attachConfigFile(std::filesystem::path path);
 		static void detachConfigFile();
@@ -53,7 +90,8 @@ namespace langscore
 		std::vector<std::string> exportDirectory();
 		bool exportByLanguage();
 		std::string outputTranslateFilePathForRPGMaker();
-		std::vector<ScriptData> vxaceIgnoreScripts();
+		std::vector<BasicData> vxaceBasicData();
+		std::vector<ScriptData> vxaceScripts();
 		utility::u8stringlist ignorePictures();
 
 	private:

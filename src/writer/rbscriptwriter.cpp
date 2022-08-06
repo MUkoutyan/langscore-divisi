@@ -31,6 +31,7 @@ rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std
     }
 }
 
+
 bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
 {
     if(std::filesystem::exists(filePath) == false){ return true; }

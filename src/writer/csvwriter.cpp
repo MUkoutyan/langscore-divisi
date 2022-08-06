@@ -17,17 +17,18 @@ bool csvwriter::merge(std::filesystem::path filePath)
 
     for(auto& newT : this->texts)
     {
-        auto result = std::find_if(oldTexts.begin(), oldTexts.end(), [&newT](const auto& x){
+        auto oldText = std::find_if(oldTexts.begin(), oldTexts.end(), [&newT](const auto& x){
             return x.original == newT.original;
         });
-        if(result == oldTexts.end()){ continue; }
+        if(oldText == oldTexts.end()){ continue; }
         for(auto& pair : newT.translates)
         {
-            if(result->translates.find(pair.first) == result->translates.end()){
+            //言語チェック
+            if(oldText->translates.find(pair.first) == oldText->translates.end()){
                 continue;
             }
 
-            auto text = result->translates[pair.first];
+            auto text = oldText->translates[pair.first];
 
             if(overwriteMode == OverwriteTextMode::LeaveOldNonBlank){
                 if(text != u8""){  //既に文字が入っていたら残す

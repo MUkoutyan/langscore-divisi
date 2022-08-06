@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../invoker.h"
 #include "../include/config.h"
 #include "../utility.hpp"
@@ -38,17 +38,26 @@ namespace langscore
 		virtual std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "") = 0;
 
 		template<typename Writer, typename TsData>
-		void writeTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld, bool isDebug = true)
+		void writeAnalyzeTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld, bool isDebug = true)
+		{
+			//最終的な出力先にCSVが存在するか
+			Writer writer(supportLangs, std::move(texts));
+			writer.write(path, overwriteMode);
+		}
+
+		template<typename Writer, typename TsData>
+		void writeFixedTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld)
 		{
 			//最終的な出力先にCSVが存在するか
 			Writer writer(supportLangs, std::move(texts));
 			writer.setOverwriteMode(overwriteMode);
-			writer.isDebug = isDebug;
+			//既に編集済みのCSVがある場合はマージを行う。
 			const auto csvFileInProject = outputProjectDataPath(path.filename());
 			if(std::filesystem::exists(csvFileInProject)){
 				if(writer.merge(csvFileInProject) == false){
 					return;
 				}
+				path += ".merged";
 			}
 
 			writer.write(path, overwriteMode);
