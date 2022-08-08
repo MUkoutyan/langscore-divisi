@@ -166,30 +166,30 @@ std::string langscore::config::defaultLanguage() {
 	return pImpl->get(pImpl->json[key(JsonKey::DefaultLanguage)], "ja"s);
 }
 
-std::string langscore::config::projectPath()
+std::u8string langscore::config::projectPath()
 {
-	return pImpl->get(pImpl->json[key(JsonKey::Project)], ""s);
+	return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Project)], ""s));
 }
 
-std::string config::tempDirectorty() {
-	return pImpl->get(pImpl->json[key(JsonKey::Analyze)][key(JsonKey::TmpDir)], (std::filesystem::temp_directory_path() / "Data/").string());
+std::u8string config::tempDirectorty() {
+	return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Analyze)][key(JsonKey::TmpDir)], (std::filesystem::temp_directory_path() / "Data/").string()));
 }
 
 std::string config::usScriptFuncComment(){
 	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::UsCustomFuncComment)], "project://Scripts/{0}#{1},{2}"s);
 }
 
-std::vector<std::string> langscore::config::exportDirectory()
+std::vector<std::u8string> langscore::config::exportDirectory()
 {
 	auto baseFolder = pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportDirectory)], ""s);
 	if(this->exportByLanguage() == false){
-		return {baseFolder};
+		return {utility::cnvStr<std::u8string>(baseFolder)};
 	}
 
 	auto langs = this->languages();
-	std::vector<std::string> result;
+	std::vector<std::u8string> result;
 	for(auto& lang : langs){
-		result.emplace_back(baseFolder + "/" + lang.name);
+		result.emplace_back(utility::cnvStr<std::u8string>(baseFolder + "/" + lang.name));
 	}
 
 	return result;
@@ -200,8 +200,8 @@ bool langscore::config::exportByLanguage()
 	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportByLang)], false);
 }
 
-std::string config::outputTranslateFilePathForRPGMaker(){
-	return pImpl->get(pImpl->json[key(JsonKey::Analyze)][key(JsonKey::RPGMakerOutputPath)], "Translate/"s);
+std::u8string config::outputTranslateFilePathForRPGMaker(){
+	return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Analyze)][key(JsonKey::RPGMakerOutputPath)], "Translate/"s));
 }
 
 std::vector<config::BasicData> langscore::config::vxaceBasicData()

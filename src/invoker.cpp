@@ -3,12 +3,21 @@
 #include "utility.hpp"
 
 #include <process.h>
+#include <iostream>
+#include <Windows.h>
 
 using namespace langscore;
 
 namespace
 {
-
+    std::wstring Utf8ToWStr(std::u8string str)
+    {
+        auto s = utility::cnvStr<std::string>(str);
+        auto size = MultiByteToWideChar(CP_UTF8, 0, s.data(), -1, nullptr, 0);
+        std::wstring wstr(size, 0x0);
+        MultiByteToWideChar(CP_UTF8, 0, s.c_str(), s.length(), wstr.data(), wstr.size());
+        return wstr;
+    }
 }
 
 invoker::invoker()
@@ -34,7 +43,9 @@ void invoker::setProjectPath(ProjectType type, std::filesystem::path path)
 
 
 invoker::Result invoker::analyze(){
-    return exec({"-i", _projectPath.string(), "-o", outputTmpPath().string()});
+    config config;
+    auto tempPath = std::filesystem::path(config.tempDirectorty());
+    return exec({"-i", _projectPath.string(), "-o", tempPath.string()});
 }
 
 invoker::Result langscore::invoker::recompressVXAce(){
@@ -44,8 +55,9 @@ invoker::Result langscore::invoker::recompressVXAce(){
 invoker::Result langscore::invoker::exec(std::vector<std::string> args)
 {
     std::filesystem::path rvcnvPath = "";
+    auto basePath = appPath.empty() ? "./" : appPath;
     if(currentProjectType == VXAce){
-        rvcnvPath = (appPath / "rvcnv.exe");
+        rvcnvPath = (basePath / "rvcnv.exe");
     }
     else //if(currentProjectType == None)
     {
@@ -57,52 +69,20 @@ invoker::Result langscore::invoker::exec(std::vector<std::string> args)
     if(std::filesystem::exists(rvcnvPath) == false){
         return Result(3);
     }
-    auto outPath = outputTmpPath();
+    config config;
+    auto outPath = config.tempDirectorty();
     if(std::filesystem::exists(outPath) == false){
         std::filesystem::create_directories(outPath);
     }
 
     auto process = rvcnvPath.string() + " " + utility::join(args, std::string(" "));
-    FILE* fp = NULL;
-    if(process_stdout)
-    {
-        if(fp = _popen(process.c_str(), "r"))
-        {
-            char buffer[256] = {};
-            while(fgets(buffer, 256, fp) != NULL){
-                process_stdout(buffer);
-            }
-            _pclose(fp);
-        }
-        else{
-            return Result(4);
-        }
-    }
-    else
-    {
-        auto ret = system(process.c_str());
-        if(ret != 0){
-            return Result(4);
-        }
+    auto ret = system(process.c_str());
+    if(ret != 0){
+        return Result(4);
     }
 
 
     return Result(0);
-}
-
-std::filesystem::path invoker::outputTmpPath() const 
-{
-    try {
-        config config;
-        return config.tempDirectorty();
-    }
-    catch(...){
-    }
-    return appPath / "tmp/Translate/";
-}
-
-const std::filesystem::path& invoker::projectPath() const {
-    return this->_projectPath;
 }
 
 invoker::ProjectType invoker::projectType() const noexcept {

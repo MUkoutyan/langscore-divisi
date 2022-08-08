@@ -69,11 +69,11 @@ void divisi_vxace::setProjectPath(std::filesystem::path path)
 
 std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir)
 {
+    config config;
     if(dir.empty()){
-        config config;
         dir = config.outputTranslateFilePathForRPGMaker();
     }
-    const auto& projectPath = this->invoker.projectPath();
+    const auto& projectPath = config.projectPath();
 
     fs::path to = projectPath / dir;
 
@@ -96,7 +96,6 @@ void divisi_vxace::analyze()
 
     this->writeAnalyzedData();
     this->writeAnalyzedRvScript();
-    this->convertGraphFileNameData();
 
     std::cout << "AnalyzeProject Done." << std::endl;
 }
@@ -108,10 +107,11 @@ void langscore::divisi_vxace::write()
 
     writeFixedData();
     writeFixedRvScript();
-    convertGraphFileNameData();
+    writeFixedGraphFileNameData();
 
-    const auto deserializeOutPath = this->invoker.outputTmpPath();
-    auto outputPath = deserializeOutPath / "Scripts";
+    config config;
+    const auto deserializeOutPath = fs::path(config.tempDirectorty());
+    auto outputPath = std::filesystem::path(deserializeOutPath / "Scripts");
     if(std::filesystem::exists(outputPath) == false){
         std::filesystem::create_directories(outputPath);
     }
@@ -150,7 +150,8 @@ void langscore::divisi_vxace::write()
 
 void langscore::divisi_vxace::fetchFilePathList()
 {
-    const auto deserializeOutPath = this->invoker.outputTmpPath();
+    config config;
+    const auto deserializeOutPath = config.tempDirectorty();
     fs::recursive_directory_iterator dataItr(deserializeOutPath);
     for(auto& f : dataItr)
     {
@@ -168,7 +169,7 @@ void langscore::divisi_vxace::fetchFilePathList()
         }
     }
 
-    auto projectPath = this->invoker.projectPath();
+    auto projectPath = fs::path(config.projectPath());
     auto graphicsPath = projectPath / "Graphics";
     fs::recursive_directory_iterator graphItr(graphicsPath);
     for(auto& f : graphItr)
@@ -251,7 +252,7 @@ void divisi_vxace::writeAnalyzedRvScript()
     }
     //=================================
 
-    const auto deserializeOutPath = this->invoker.outputTmpPath();
+    const auto deserializeOutPath = fs::path(config.tempDirectorty());
     auto outputPath = deserializeOutPath / "Scripts";
     if(std::filesystem::exists(outputPath) == false){
         std::filesystem::create_directories(outputPath);
@@ -268,6 +269,7 @@ void divisi_vxace::writeAnalyzedRvScript()
 
     std::cout << "Finish." << std::endl;
 }
+
 
 void langscore::divisi_vxace::writeFixedData()
 {
@@ -476,9 +478,9 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
     return result;
 }
 
-void divisi_vxace::convertGraphFileNameData()
+void divisi_vxace::writeFixedGraphFileNameData()
 {
-    std::cout << "convertGraphFileNameData" << std::endl;
+    std::cout << "writeFixedGraphFileNameData" << std::endl;
 
     config config;
     auto ignorePictures = config.ignorePictures();
@@ -489,7 +491,7 @@ void divisi_vxace::convertGraphFileNameData()
         transTextList.emplace_back(f.generic_u8string(), supportLangs);
     }
 
-    const auto& projectPath = invoker.projectPath();
+    const auto& projectPath = fs::path(config.projectPath());
     std::cout << "Write Graphics : " << projectPath / config.outputTranslateFilePathForRPGMaker() / "Graphics.csv" << std::endl;
     writeFixedTranslateText<csvwriter>(projectPath / config.outputTranslateFilePathForRPGMaker() / "Graphics.csv", transTextList, OverwriteTextMode::LeaveOld);
     std::cout << "Finish." << std::endl;
@@ -497,7 +499,8 @@ void divisi_vxace::convertGraphFileNameData()
 
 void divisi_vxace::copyDataToTemp()
 {
-    const auto deserializeOutPath = this->invoker.outputTmpPath();
+    config config;
+    const auto deserializeOutPath = fs::path(config.tempDirectorty());
     fs::directory_iterator it(deserializeOutPath);
     //翻訳ファイルのコピー
     for(auto& f : it)
@@ -555,7 +558,7 @@ void langscore::divisi_vxace::copyData(langscore::OverwriteTextMode option)
     }
 
     //rbスクリプトのコピー
-    fs::directory_iterator it2{this->invoker.outputTmpPath() / "Scripts"};
+    fs::directory_iterator it2{fs::path(config.tempDirectorty()) / "Scripts"};
     for(auto& f : it2)
     {
         auto srcPath = f.path().filename();

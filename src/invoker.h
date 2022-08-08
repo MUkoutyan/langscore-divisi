@@ -36,8 +36,6 @@ public:
     void setApplicationFolder(std::filesystem::path path);
     void setProjectPath(ProjectType type, std::filesystem::path path);
     
-    std::filesystem::path outputTmpPath() const;
-    const std::filesystem::path& projectPath() const;
     ProjectType projectType() const noexcept;
 
     Result analyze();

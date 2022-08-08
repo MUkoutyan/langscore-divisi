@@ -84,12 +84,12 @@ namespace langscore
 
 		std::vector<Language> languages();
 		std::string defaultLanguage();
-		std::string projectPath();
-		std::string tempDirectorty();
+		std::u8string projectPath();
+		std::u8string tempDirectorty();
 		std::string usScriptFuncComment();
-		std::vector<std::string> exportDirectory();
+		std::vector<std::u8string> exportDirectory();
 		bool exportByLanguage();
-		std::string outputTranslateFilePathForRPGMaker();
+		std::u8string outputTranslateFilePathForRPGMaker();
 		std::vector<BasicData> vxaceBasicData();
 		std::vector<ScriptData> vxaceScripts();
 		utility::u8stringlist ignorePictures();

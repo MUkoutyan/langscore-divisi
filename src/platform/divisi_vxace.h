@@ -16,7 +16,6 @@ namespace langscore
 
 		void copyDataToTemp() override;
 		void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) override;
-		void convertGraphFileNameData() override;
 
 	private:
 		void fetchFilePathList();
@@ -26,6 +25,7 @@ namespace langscore
 
 		void writeFixedData();
 		void writeFixedRvScript();
+		void writeFixedGraphFileNameData();
 
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 

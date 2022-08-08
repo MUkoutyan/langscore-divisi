@@ -20,7 +20,6 @@ namespace langscore
 		virtual void analyze() = 0;
 		virtual void write() = 0;
 
-		virtual void convertGraphFileNameData() = 0;
 		virtual void copyDataToTemp() = 0;
 		virtual void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) = 0;
 

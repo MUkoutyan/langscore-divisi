@@ -25,7 +25,7 @@ public:
 
     std::unique_ptr<platform_base> converter;
 
-    void createConverter(std::string projectPath)
+    void createConverter(fs::path projectPath)
     {
         this->converter = nullptr;
         const auto hasHeader = [](fs::path path, std::string_view headerText)
