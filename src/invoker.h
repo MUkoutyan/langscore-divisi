@@ -40,9 +40,6 @@ public:
 
     Result analyze();
     Result recompressVXAce();
-    
-
-    std::function<void(std::string)> process_stdout;
 
 private:
     std::filesystem::path appPath;

@@ -3,22 +3,11 @@
 #include "utility.hpp"
 
 #include <process.h>
-#include <iostream>
-#include <Windows.h>
+#include <fstream>
+#include "../rvcnv/rvcnv_hash.cpp"
+#include "md5.h"
 
 using namespace langscore;
-
-namespace
-{
-    std::wstring Utf8ToWStr(std::u8string str)
-    {
-        auto s = utility::cnvStr<std::string>(str);
-        auto size = MultiByteToWideChar(CP_UTF8, 0, s.data(), -1, nullptr, 0);
-        std::wstring wstr(size, 0x0);
-        MultiByteToWideChar(CP_UTF8, 0, s.c_str(), s.length(), wstr.data(), wstr.size());
-        return wstr;
-    }
-}
 
 invoker::invoker()
     : appPath("")
@@ -45,6 +34,12 @@ void invoker::setProjectPath(ProjectType type, std::filesystem::path path)
 invoker::Result invoker::analyze(){
     config config;
     auto tempPath = std::filesystem::path(config.tempDirectorty());
+    tempPath.make_preferred();
+    if(std::filesystem::exists(tempPath) == false){
+        if(std::filesystem::create_directories(tempPath) == false){
+            return Result(6);
+        }
+    }
     return exec({"-i", _projectPath.string(), "-o", tempPath.string()});
 }
 
@@ -54,31 +49,42 @@ invoker::Result langscore::invoker::recompressVXAce(){
 
 invoker::Result langscore::invoker::exec(std::vector<std::string> args)
 {
-    std::filesystem::path rvcnvPath = "";
     auto basePath = appPath.empty() ? "./" : appPath;
-    if(currentProjectType == VXAce){
-        rvcnvPath = (basePath / "rvcnv.exe");
+    if(currentProjectType == VXAce)
+    {
+        auto rvcnvPath = (basePath / "rvcnv.exe");
+
+        rvcnvPath.make_preferred();
+        if(std::filesystem::exists(rvcnvPath) == false){
+            return Result(3);
+        }
+
+#if !defined(_DEBUG)
+        {
+            MD5 md5;
+            std::ifstream rvcnv_bin(rvcnvPath, std::ios::binary | std::ios::in);
+            rvcnv_bin.seekg(0, std::ios_base::end);
+            auto size = rvcnv_bin.tellg();
+            rvcnv_bin.seekg(0, std::ios_base::beg);
+            std::vector<std::uint8_t> bin(size, 0);
+            rvcnv_bin.read((char*)bin.data(), size);
+
+            auto hash = md5((void*)bin.data(), bin.size());
+            if(hash != rvcnv_hash){
+                return Result(5);
+            }
+        }
+#endif
+
+        auto process = "\"" + rvcnvPath.string() + "\"" + " " + utility::join(args, std::string(" "));
+        auto ret = system(process.c_str());
+        if(ret != 0){
+            return Result(4);
+        }
     }
     else //if(currentProjectType == None)
     {
         return Result(1);
-    }
-
-    rvcnvPath.make_preferred();
-
-    if(std::filesystem::exists(rvcnvPath) == false){
-        return Result(3);
-    }
-    config config;
-    auto outPath = config.tempDirectorty();
-    if(std::filesystem::exists(outPath) == false){
-        std::filesystem::create_directories(outPath);
-    }
-
-    auto process = rvcnvPath.string() + " " + utility::join(args, std::string(" "));
-    auto ret = system(process.c_str());
-    if(ret != 0){
-        return Result(4);
     }
 
 
@@ -98,6 +104,8 @@ std::string invoker::Result::toStr() const
     case 2: return "error code 2 : Not Found Execute file.";
     case 3: return "error code 3 : Not Found Convert file.";
     case 4: return "error code 4 : Failed to convert.";
+    case 5: return "error code 5 : Invalid ExecuteFile!!!!";
+    case 6: return "error code 6 : Failed Create Output File.";
     case 255: return this->specMsg;
     }
 
