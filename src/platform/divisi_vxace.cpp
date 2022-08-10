@@ -61,10 +61,8 @@ divisi_vxace::divisi_vxace()
 
 divisi_vxace::~divisi_vxace(){}
 
-void divisi_vxace::setProjectPath(std::filesystem::path path)
-{
+void divisi_vxace::setProjectPath(std::filesystem::path path){
     this->invoker.setProjectPath(invoker::ProjectType::VXAce, std::move(path));
-
 }
 
 std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir)
@@ -84,12 +82,12 @@ std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesy
     return to /= fileName;
 }
 
-void divisi_vxace::analyze()
+bool divisi_vxace::analyze()
 {
     auto runResult = this->invoker.analyze();
     if(runResult.val() != 0){
         std::cerr << runResult.toStr() << std::endl;
-        return;
+        return false;
     }
 
     fetchFilePathList();
@@ -98,9 +96,10 @@ void divisi_vxace::analyze()
     this->writeAnalyzedRvScript();
 
     std::cout << "AnalyzeProject Done." << std::endl;
+    return true;
 }
 
-void langscore::divisi_vxace::write()
+bool langscore::divisi_vxace::write()
 {
     std::cout << "Write..." << std::endl;
     fetchFilePathList(); 
@@ -116,13 +115,13 @@ void langscore::divisi_vxace::write()
         std::filesystem::create_directories(outputPath);
     }
 
-    //unison_custom.rbの出力
+    //langscore_custom.rbの出力
     if(fs::exists(outputPath / ::Custom_Script_File_Name) == false){
         std::cout << "Write langscore_custom : " << outputPath / ::Custom_Script_File_Name << std::endl;
         writeFixedTranslateText<rbscriptwriter>(outputPath / ::Custom_Script_File_Name, scriptFileList, langscore::OverwriteTextMode::LeaveOldNonBlank);
     }
 
-    //unison.rbの出力
+    //langscore.rbの出力
     auto outputScriptFilePath = outputPath / Script_File_Name;
     auto resourceFolder = this->appPath.parent_path() / "resource";
     std::cout << "Copy langscore : From " << resourceFolder / Script_File_Name << " To : " << outputScriptFilePath << std::endl;
@@ -142,10 +141,11 @@ void langscore::divisi_vxace::write()
     auto runResult = this->invoker.recompressVXAce();
     if(runResult.val() != 0){
         std::cerr << runResult.toStr() << std::endl;
-        return;
+        return false;
     }
 
     std::cout << "Write Translate File Done." << std::endl;
+    return true;
 }
 
 void langscore::divisi_vxace::fetchFilePathList()
@@ -153,7 +153,16 @@ void langscore::divisi_vxace::fetchFilePathList()
     config config;
     const auto deserializeOutPath = config.tempDirectorty();
     fs::recursive_directory_iterator dataItr(deserializeOutPath);
-    for(auto& f : dataItr)
+    size_t numScripts = 0;
+    for(const auto& f : fs::recursive_directory_iterator{deserializeOutPath+u8"/Scripts"}){
+        auto extension = f.path().extension();
+        if(extension == ".rb"){ numScripts++; }
+    }
+    this->scriptFileList.resize(numScripts);
+
+    csvreader scriptCsvReader;
+    auto scriptCsv = scriptCsvReader.parsePlain(deserializeOutPath + u8"/Scripts/_list.csv"s);
+    for(auto& f : fs::recursive_directory_iterator{deserializeOutPath})
     {
         auto extension = f.path().extension();
         if(extension == ".json"){
@@ -165,9 +174,20 @@ void langscore::divisi_vxace::fetchFilePathList()
             if(fileName == ::Script_File_Name){ continue; }
             else if(fileName == ::Custom_Script_File_Name){ continue; }
 
-            this->scriptFileList.emplace_back(f.path());
+            auto itr = std::find_if(scriptCsv.cbegin(), scriptCsv.cend(), [name = fileName.stem()](const auto& x){
+                return name == x[0];
+            });
+            auto pos = std::distance(scriptCsv.cbegin(), itr);
+            if(0 <= pos && pos < numScripts){
+                this->scriptFileList[pos] = f.path();
+            }
+            else{
+                this->scriptFileList.emplace_back(f.path());
+            }
         }
     }
+
+
 
     auto projectPath = fs::path(config.projectPath());
     auto graphicsPath = projectPath / "Graphics";
@@ -207,8 +227,7 @@ void divisi_vxace::writeAnalyzedRvScript()
     std::cout << "writeAnalyzedRvScript" << std::endl;
 
     //Rubyスクリプトを予め解析してテキストを生成しておく。
-    auto scriptList = scriptFileList;
-    rbscriptwriter scriptWriter(this->supportLangs, scriptList);
+    rbscriptwriter scriptWriter(this->supportLangs, scriptFileList);
     auto& transTexts = scriptWriter.curerntTexts();
 
     config config;
@@ -222,13 +241,26 @@ void divisi_vxace::writeAnalyzedRvScript()
     auto resourceFolder = this->appPath.parent_path() / "resource";
     csvreader reader;
     auto vocabs = reader.parse(resourceFolder/"vocab.csv");
+    
+    csvreader csvReader;
+    auto scriptFileNameMap = csvReader.parsePlain(config.tempDirectorty()+u8"/Scripts/_list.csv"s);
+    const auto GetScriptName = [&scriptFileNameMap](std::u8string scriptName)
+    {
+        for(const auto& row : scriptFileNameMap){
+            if(row[1] == scriptName){ return row[2]; }
+        }
+        return u8""s;
+    };
+
     auto& scriptTrans = scriptWriter.getScriptTexts();
     for(auto& pathPair : scriptTrans)
     {
-        if(pathPair.first.filename() != "Vocab.rb"){ continue; }
+        auto scriptFileName = pathPair.first.stem().u8string();
+        auto scriptName = GetScriptName(scriptFileName);
+        if(scriptName != u8"Vocab"s){ continue; }
 
         const auto searchFunc = [&](const auto& x){
-            return x.memo.find(u8"Vocab.rb") != std::u8string::npos;
+            return x.memo.find(scriptFileName) != std::u8string::npos;
         };
         auto begin = std::find_if(transTexts.begin(), transTexts.end(), searchFunc);
         auto end = std::find_if(transTexts.rbegin(), transTexts.rend(), searchFunc).base();
@@ -315,15 +347,15 @@ void langscore::divisi_vxace::writeFixedRvScript()
 
     //Rubyスクリプトを予め解析してテキストを生成しておく。
     config config;
-    auto ignoreScriptPath = config.vxaceScripts();
+    auto scriptInfoList = config.vxaceScripts();
     auto scriptList = scriptFileList;
     {
-        auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&ignoreScriptPath](const auto& path){
+        auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&scriptInfoList](const auto& path){
             auto osPath = path.stem();
-            auto result = std::find_if(ignoreScriptPath.cbegin(), ignoreScriptPath.cend(), [&osPath](const auto& script){
+            auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&osPath](const auto& script){
                 return script.filename == osPath && script.ignore;
             });
-            return result != ignoreScriptPath.cend();
+            return result != scriptInfoList.cend();
         });
         scriptList.erase(rm_result, scriptList.end());
     }
@@ -340,7 +372,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
 
     //無視する行の判定
     utility::u8stringlist ignoreRowName;
-    for(auto& scriptInfo : ignoreScriptPath)
+    for(auto& scriptInfo : scriptInfoList)
     {
         //ファイルごと無視した場合は上で取り除いているので何もしない
         if(scriptInfo.ignore){ continue; }

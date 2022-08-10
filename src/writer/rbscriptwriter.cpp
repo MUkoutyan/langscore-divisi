@@ -84,8 +84,16 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
     }
     outFile << "end" << nl << nl;
 
+
     config config;
     auto funcComment = config.usScriptFuncComment();
+
+    std::vector<utility::u8stringlist> scriptFileNameMap;
+    {
+        csvreader csvReader;
+        scriptFileNameMap = csvReader.parsePlain(config.tempDirectorty() + u8"/Scripts/_list.csv"s);
+    }
+
     for(auto& path : scriptTranslates)
     {
         if(path.second.empty()){ continue; }
@@ -94,7 +102,15 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
         outFile << functionComment(filename);
         outFile << functionDef(filename);
 
-        if(path.first.filename() == "Vocab.rb"){
+        auto scriptName = [&](){
+            auto result = std::find_if(scriptFileNameMap.cbegin(), scriptFileNameMap.cend(), [&](const auto& x){
+                return fsFilename == x[0];
+            });
+            if(result != scriptFileNameMap.cend()){ return (*result)[1]; }
+            return u8""s;
+        }();
+
+        if(scriptName == u8"Vocab"){
             WriteVocab(outFile, path.second);
         }
         else

@@ -1,5 +1,5 @@
 #include "csvreader.h"
-#include "utility.hpp"
+#include "csvreader.h"
 #include <fstream>
 
 using namespace langscore;
@@ -8,6 +8,27 @@ csvreader::~csvreader()
 {}
 
 std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
+{
+	auto csv = parsePlain(std::move(path));
+	if(csv.size() < 2){ return {}; }
+
+	const auto& header = csv[0];
+	if(header.size() < 3){ return {}; }
+	useLangList = {header.begin() + 1, header.end()};
+
+	std::vector<TranslateText> result;
+	std::for_each(csv.cbegin() + 1, csv.cend(), [this, &header, &result](const auto& row){
+		TranslateText t{row[0], useLangList};
+		for(int i = 1; i < row.size(); ++i){
+			t.translates[header[i]] = row[i];
+		}
+		result.emplace_back(std::move(t));
+	});
+
+	return result;
+}
+
+std::vector<utility::u8stringlist> csvreader::parsePlain(std::filesystem::path path)
 {
 	std::ifstream file(path);
 	if(file.bad()){ return {}; }
@@ -30,7 +51,7 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 			line_buffer = u8"";
 		}
 		else{
-			line_buffer += line+u8'\n';	//getlineに改行は含まれないのでここで足す
+			line_buffer += line + u8'\n';	//getlineに改行は含まれないのでここで足す
 		}
 	}
 
@@ -44,8 +65,8 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 		{
 			if(c == u8'\"'){ find_dq = !find_dq; }
 
-			if(find_dq){ 
-				tmp.append(1, c); 
+			if(find_dq){
+				tmp.append(1, c);
 				continue;
 			}
 
@@ -68,20 +89,5 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 		csv.emplace_back(std::move(cols));
 	}
 
-	if(csv.size() < 2){ return {}; }
-
-	const auto& header = csv[0];
-	if(header.size() < 3){ return {}; }
-	useLangList = {header.begin() + 1, header.end()};
-
-	std::vector<TranslateText> result;
-	std::for_each(csv.cbegin() + 1, csv.cend(), [this, &header, &result](const auto& row){
-		TranslateText t{row[0], useLangList};
-		for(int i = 1; i < row.size(); ++i){
-			t.translates[header[i]] = row[i];
-		}
-		result.emplace_back(std::move(t));
-	});
-
-	return result;
+	return csv;
 }

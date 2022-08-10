@@ -17,8 +17,8 @@ namespace langscore
 			this->invoker.setApplicationFolder(std::move(path));
 		}
 		virtual void setProjectPath(std::filesystem::path path) = 0;
-		virtual void analyze() = 0;
-		virtual void write() = 0;
+		virtual bool analyze() = 0;
+		virtual bool write() = 0;
 
 		virtual void copyDataToTemp() = 0;
 		virtual void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) = 0;

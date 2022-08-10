@@ -1,4 +1,5 @@
 #include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -48,6 +49,7 @@ class config::Impl
 public:
 	nlohmann::json json;
 	static std::filesystem::path configPath;
+	std::filesystem::path path;
 
 	template<typename Value>
 	Value get(nlohmann::json::reference j, Value defValue = 0)
@@ -66,11 +68,29 @@ public:
 	{
 		std::ifstream loadFile(path);
 		if(loadFile.good()){
+			this->path = std::move(path);
 			loadFile >> json;
 		}
 		else{
 			throw "Can't Open File";
 		}
+	}
+
+	std::filesystem::path toAbsolutePathWeak(std::filesystem::path p)
+	{
+		if(p.is_relative()){
+			auto joinPath = this->path.parent_path() / p;
+			p = std::filesystem::weakly_canonical(joinPath);
+		}
+		return p;
+	}
+	std::filesystem::path toAbsolutePath(std::filesystem::path p)
+	{
+		if(p.is_relative()){
+			auto joinPath = this->path.parent_path() / p;
+			p = std::filesystem::canonical(joinPath);
+		}
+		return p;
 	}
 
 };
@@ -100,39 +120,6 @@ langscore::config::config()
 {
 	if(Impl::configPath != ""){
 		pImpl->load(Impl::configPath);
-	}
-	else
-	{
-		std::stringstream ss;
-		ss << "{\n";
-		ss << "\t\"" << key(JsonKey::Languages) << R"(": ["ja", "en", "zh-cn"])" << ", \n";
-		ss << "\t\"" << key(JsonKey::DefaultLanguage) << "\": \"ja\", \n";
-		ss << "\t\"" << key(JsonKey::TmpDir) << "\": \"" << (std::filesystem::temp_directory_path() / "ls-tmp/Translate").generic_string() << "\", \n";
-		ss << R"(
-	key(JsonKey::Write): {
-		"RPGMakerOutputPath": "Translate",
-		"UsCustomFuncComment": "project://Scripts/{0}#{1},{2}",
-		"fonts": {
-			"default": {
-				"name": "VL Gothic",
-				"size": 24
-			},
-			"zh-cn": {
-				"name": "SourceHanSansSC",
-				"size": 21
-			}
-		},
-		"RPGMakerIgnoreScripts" : ["DataManager.rb", "BattleManager.rb", "Game_Interpreter.rb",
-		   "Game_Map.rb", "Game_Message.rb", "Spriteset_Battle.rb",
-		   "Window_Base.rb", "Window_ShopStatus.rb", "Window_Status.rb",
-		   "Window_DebugRight.rb", "Window_DebugLeft.rb", "Window_Message.rb",
-		   "Window_NameInput.rb", "Window_NumberInput.rb", "Window_SaveFile.rb"]
-	})";
-		ss << "\n}";
-
-		auto str = ss.str();
-
-		ss >> pImpl->json;
 	}
 }
 
@@ -168,11 +155,17 @@ std::string langscore::config::defaultLanguage() {
 
 std::u8string langscore::config::projectPath()
 {
-	return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Project)], ""s));
+	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Project)], ""s));
+	auto path = pImpl->toAbsolutePath(u8Path);
+	path.make_preferred();
+	return path.u8string();
 }
 
 std::u8string config::tempDirectorty() {
-	return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Analyze)][key(JsonKey::TmpDir)], (std::filesystem::temp_directory_path() / "Data/").string()));
+	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Analyze)][key(JsonKey::TmpDir)], ""s));
+	auto path = pImpl->toAbsolutePathWeak(u8Path);
+	path.make_preferred();
+	return path.u8string();
 }
 
 std::string config::usScriptFuncComment(){
@@ -181,15 +174,17 @@ std::string config::usScriptFuncComment(){
 
 std::vector<std::u8string> langscore::config::exportDirectory()
 {
-	auto baseFolder = pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportDirectory)], ""s);
+	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportDirectory)], ""s));
+	u8Path = pImpl->toAbsolutePathWeak(u8Path).u8string();
+
 	if(this->exportByLanguage() == false){
-		return {utility::cnvStr<std::u8string>(baseFolder)};
+		return {u8Path};
 	}
 
 	auto langs = this->languages();
 	std::vector<std::u8string> result;
 	for(auto& lang : langs){
-		result.emplace_back(utility::cnvStr<std::u8string>(baseFolder + "/" + lang.name));
+		result.emplace_back(u8Path + utility::cnvStr<std::u8string>("/" + lang.name));
 	}
 
 	return result;
@@ -265,3 +260,4 @@ utility::u8stringlist langscore::config::ignorePictures()
 	}
 	return result;
 }
+

@@ -84,7 +84,7 @@ bool divisi::analyze()
     if(pImpl->converter){
         pImpl->converter->setAppPath(pImpl->appPath);
         pImpl->converter->setProjectPath(std::move(projectPath));
-        pImpl->converter->analyze();
+        return pImpl->converter->analyze();
     }
 
     return true;
@@ -100,7 +100,7 @@ bool langscore::divisi::write()
     if(pImpl->converter){
         pImpl->converter->setAppPath(pImpl->appPath);
         pImpl->converter->setProjectPath(std::move(projectPath));
-        pImpl->converter->write();
+        return pImpl->converter->write();
     }
 
     return true;

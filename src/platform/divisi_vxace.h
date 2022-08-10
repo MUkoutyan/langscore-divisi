@@ -11,8 +11,8 @@ namespace langscore
 		~divisi_vxace() override;
 
 		void setProjectPath(std::filesystem::path path) override;
-		void analyze() override;
-		void write() override;
+		bool analyze() override;
+		bool write() override;
 
 		void copyDataToTemp() override;
 		void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) override;
