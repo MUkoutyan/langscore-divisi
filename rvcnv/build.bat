@@ -1,1 +1,1 @@
-ocra rvcnv.rb --dll ruby_builtin_dlls\libssp-0.dll --dll ruby_builtin_dlls\libgmp-10.dll --dll ruby_builtin_dlls\zlib1.dll
+ocra rvcnv.rb --dll ruby_builtin_dlls\libssp-0.dll --dll ruby_builtin_dlls\libgmp-10.dll --dll ruby_builtin_dlls\zlib1.dll && ruby generate_hash.rb

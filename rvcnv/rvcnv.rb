@@ -529,20 +529,20 @@ script_folder = output_folder+'/Scripts'
 if compress
   
   compressData = []
-  exported_script_folder = input_folder_path+'/langscore_proj/tmp/Scripts'
+  exported_script_folder = input_folder_path+'_langscore/analyze/Scripts'
   script_list_path = exported_script_folder + '/_list.csv'
   CSV.foreach(script_list_path) do | row |
-    filepath = exported_script_folder+'/'+row[1].to_s
+    filepath = exported_script_folder+'/'+row[0].to_s+'.rb'
     filename = File.basename(filepath, ".*")
     if File.exists?(filepath) == false
       filename = "" if filename.include?("_NONAME_")
-      compressData.push([row[0], filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
+      compressData.push([row[1], filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
     else 
       File.open(filepath) do |file|
         filename = "" if filename.include?("_NONAME_")
         contents = file.readlines().join()
         compressed = Zlib::Deflate.deflate(contents, Zlib::DEFAULT_COMPRESSION );
-        compressData.push([row[0], filename, compressed])
+        compressData.push([row[1], filename, compressed])
       end
     end
   end
@@ -563,6 +563,11 @@ if output_folder.empty?
   p "Need Output Folder" 
 end
 
+SCRIPTLIST_ID = 0
+SCRIPTLIST_PATH = 1
+SCRIPTLIST_NAME = 2
+SCRIPTLIST_DATA = 3
+
 #スクリプトの展開
 script_list = []
 File.open(data_folder+"/Scripts.rvdata2", 'rb') do |file|
@@ -570,9 +575,12 @@ File.open(data_folder+"/Scripts.rvdata2", 'rb') do |file|
     d = Zlib::Inflate.inflate(script)
     
     name = "_NONAME_" if name.empty?
+
+    next if name == "langscore"
+    next if name == "langscore_custom"
     
-    script_path = script_folder+'/'+name+'.rb'
-    script_list.push([id.to_s, script_path, d])
+    script_path = script_folder+'/'+id.to_s+'.rb'
+    script_list.push([id.to_s, script_path, name, d])
   end
 end
 
@@ -585,10 +593,11 @@ File.delete(script_list_path) if File.exists?(script_list_path)
 
 CSV.open(script_list_path, 'w') do |file|
   script_list.each do |r|
-    file.puts([r[0], File.basename(r[1])])
+    #ID, NAME
+    file.puts([r[SCRIPTLIST_ID], r[SCRIPTLIST_NAME]])
     
-    File.open(r[1], "wb") do |out|
-      out.write(r[2]) 
+    File.open(r[SCRIPTLIST_PATH], "wb") do |out|
+      out.write(r[SCRIPTLIST_DATA]) 
     end
   end
 end
@@ -620,16 +629,16 @@ if repack
 
   compressData = []
   CSV.foreach(script_list_path) do | row |
-    filepath = input_folder_path+'/'+row[1].to_s
+    filepath = input_folder_path+'/'+row[0].to_s
     filename = File.basename(filepath, ".*")
     if File.exists?(filepath) == false
       filename = "" if filename.include?("(NONAME)")
-      compressData.push([row[0], filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
+      compressData.push([row[1], filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
     else 
       File.open(filepath) do |file|
         contents = file.readlines().join()
         compressed = Zlib::Deflate.deflate(contents, Zlib::DEFAULT_COMPRESSION );
-        compressData.push([row[0], filename, compressed])
+        compressData.push([row[1], filename, compressed])
       end
     end
   end

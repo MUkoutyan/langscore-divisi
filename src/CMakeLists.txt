@@ -37,6 +37,7 @@ set(lib_files
     "platform/divisi_vxace.cpp" 
 	"platform/platform_base.h" 
 	"platform/platform_base.cpp"
+	${PROJECT_SOURCE_DIR}/rvcnv/rvcnv_hash.cpp
 	${PROJECT_SOURCE_DIR}/hash-library/md5.cpp
 )
 
