@@ -20,8 +20,7 @@ namespace langscore
 		virtual bool analyze() = 0;
 		virtual bool write() = 0;
 
-		virtual void copyDataToTemp() = 0;
-		virtual void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) = 0;
+		//virtual void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) = 0;
 
 	protected:
 		std::filesystem::path appPath;
@@ -34,7 +33,7 @@ namespace langscore
 		std::vector<std::filesystem::path> graphicFileList;
 
 		std::filesystem::copy_options convertCopyOption(OverwriteTextMode mode);
-		virtual std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "") = 0;
+		virtual std::filesystem::path exportFolderPath(std::filesystem::path fileName, std::filesystem::path dir = "") = 0;
 
 		template<typename Writer, typename TsData>
 		void writeAnalyzeTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld, bool isDebug = true)
@@ -51,12 +50,14 @@ namespace langscore
 			Writer writer(supportLangs, std::move(texts));
 			writer.setOverwriteMode(overwriteMode);
 			//既に編集済みのCSVがある場合はマージを行う。
-			const auto csvFileInProject = outputProjectDataPath(path.filename());
-			if(std::filesystem::exists(csvFileInProject)){
-				if(writer.merge(csvFileInProject) == false){
-					return;
+			if(overwriteMode == OverwriteTextMode::LeaveOld || overwriteMode == OverwriteTextMode::LeaveOldNonBlank)
+			{
+				const auto csvFileInProject = exportFolderPath(path.filename());
+				if(std::filesystem::exists(csvFileInProject)){
+					if(writer.merge(csvFileInProject) == false){
+						return;
+					}
 				}
-				path += ".merged";
 			}
 
 			writer.write(path, overwriteMode);

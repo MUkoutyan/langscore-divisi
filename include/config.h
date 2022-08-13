@@ -50,6 +50,9 @@ namespace langscore
 			Disable,
 			FontName,
 			FontSize,
+			FontPath,
+			Global,
+			Local,
 			Project,
 			Analyze,
 			Write,
@@ -85,7 +88,7 @@ namespace langscore
 		std::vector<Language> languages();
 		std::string defaultLanguage();
 		std::u8string projectPath();
-		std::u8string tempDirectorty();
+		std::u8string langscoreAnalyzeDirectorty();
 		std::string usScriptFuncComment();
 		std::vector<std::u8string> exportDirectory();
 		bool exportByLanguage();
@@ -93,6 +96,8 @@ namespace langscore
 		std::vector<BasicData> vxaceBasicData();
 		std::vector<ScriptData> vxaceScripts();
 		utility::u8stringlist ignorePictures();
+		utility::u8stringlist globalFontList();
+		utility::u8stringlist localFontList();
 
 	private:
 		class Impl;

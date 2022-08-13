@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <fstream>
 #include <iostream>
+#include <random>
 
 using namespace langscore;
 using namespace std::literals::string_literals;
@@ -16,8 +17,8 @@ namespace fs = std::filesystem;
 
 namespace
 {
-    constexpr char Script_File_Name[] = "langscore.rb";
-    constexpr char Custom_Script_File_Name[] = "langscore_custom.rb";
+    constexpr char8_t Script_File_Name[] = u8"langscore";
+    constexpr char8_t Custom_Script_File_Name[] = u8"langscore_custom";
 
     std::unordered_map<std::u8string, std::u8string> Help_Text = {
         { u8"en",    u8"The currently selected language is displayed." },
@@ -47,6 +48,30 @@ namespace
 
     const auto nl = u8"\n"s;
     const auto tab = u8"\t"s;
+
+    utility::u8stringlist GetScriptFileName(config& config, utility::u8stringlist scriptNameList)
+    {
+        const auto deserializeOutPath = config.langscoreAnalyzeDirectorty();
+        csvreader scriptCsvReader;
+        auto scriptCsv = scriptCsvReader.parsePlain(deserializeOutPath + u8"/Scripts/_list.csv"s);
+        utility::u8stringlist result;
+        for(const auto& name : scriptNameList)
+        {
+            auto scriptListResult = std::find_if(scriptCsv.cbegin(), scriptCsv.cend(), [&name](const auto& x)
+            {
+                if(x.size() < 2){ return false; }
+                const auto& scriptName = x[1];
+                return scriptName == name;
+            });
+            if(scriptListResult != scriptCsv.cend()){
+                result.emplace_back((*scriptListResult)[0]);
+            }
+            else{
+                result.emplace_back(u8"");
+            }
+        }
+        return result;
+    }
 }
 
 divisi_vxace::divisi_vxace()
@@ -65,14 +90,13 @@ void divisi_vxace::setProjectPath(std::filesystem::path path){
     this->invoker.setProjectPath(invoker::ProjectType::VXAce, std::move(path));
 }
 
-std::filesystem::path langscore::divisi_vxace::outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir)
+std::filesystem::path langscore::divisi_vxace::exportFolderPath(std::filesystem::path fileName, std::filesystem::path dir)
 {
     config config;
     if(dir.empty()){
         dir = config.outputTranslateFilePathForRPGMaker();
     }
-    const auto& projectPath = config.projectPath();
-
+    fs::path projectPath = config.projectPath();
     fs::path to = projectPath / dir;
 
     if(std::filesystem::exists(to) == false){
@@ -102,31 +126,100 @@ bool divisi_vxace::analyze()
 bool langscore::divisi_vxace::write()
 {
     std::cout << "Write..." << std::endl;
+    config config;
+    auto exportFolderList = config.exportDirectory();
+    for(auto& folder : exportFolderList)
+    {
+        if(fs::exists(folder)){ continue; }
+        fs::create_directories(folder);
+    }
+
     fetchFilePathList(); 
 
     writeFixedData();
     writeFixedRvScript();
     writeFixedGraphFileNameData();
 
-    config config;
-    const auto deserializeOutPath = fs::path(config.tempDirectorty());
-    auto outputPath = std::filesystem::path(deserializeOutPath / "Scripts");
+    const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
+    auto outputPath = lsAnalyzePath / "Scripts";
     if(std::filesystem::exists(outputPath) == false){
         std::filesystem::create_directories(outputPath);
     }
+    
+    //フォントのコピー
+    auto fontDestPath = config.projectPath() + u8"/Fonts"s;
+    auto globalFonts = config.globalFontList();
+    auto globalFontFolder = appPath / "../resources/fonts";
+    for(auto& relativePath : globalFonts)
+    {
+        auto path = globalFontFolder / relativePath;
+        fs::copy_file(path, fontDestPath + relativePath);
+    }
+    auto localFonts = config.localFontList();
+    auto localFontFolder = lsAnalyzePath / "Fonts";
+    for(auto& relativePath : localFonts)
+    {
+        auto path = localFontFolder / relativePath;
+        fs::copy_file(path, fontDestPath + relativePath);
+    }
+
+    //_list.csvの編集　追加する位置を見つける
+    csvreader scriptList;
+    auto scriptListCsv = scriptList.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
+    utility::u8stringlist targetScriptName = {u8"( ここに追加 )", u8"▼ メイン"s, u8"Main"s};
+    auto scriptListInsertPos = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&targetScriptName](const auto& x)
+    {
+        if(x.size() < 2){ return false; }
+        const auto& scriptName = x[1];
+        if(std::find(targetScriptName.cbegin(), targetScriptName.cend(), scriptName) != targetScriptName.cend()){
+            return true;
+        }
+        return false;
+    });
+    //Langscoreスクリプトの追加
+
+    const auto GetID = [&scriptListCsv]()
+    {    
+        std::vector<size_t> idList;
+        idList.reserve(scriptListCsv.size());
+        for(auto& row : scriptListCsv){ idList.emplace_back(std::stoll(utility::cnvStr<std::string>(row[0]))); }
+
+        std::mt19937 mt(std::random_device{}());
+        size_t num = 0;
+        do{
+            num = 10000ll+size_t(double(mt()) * double(99999999-10000)+1.0)/(1.0+double(mt.max()));
+        } while(std::find(idList.cbegin(), idList.cend(), num) != idList.cend());
+        return num;
+    };
+    //_list.csvにlsのスクリプトがあるかチェック。なければCSVに追加
+    auto scriptFileNameList = GetScriptFileName(config, {::Script_File_Name, ::Custom_Script_File_Name});
+
+    if(scriptFileNameList[1] == u8""){
+        auto lsCustomScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
+        scriptFileNameList[1] = lsCustomScriptID;
+        scriptListInsertPos = scriptListCsv.insert(scriptListInsertPos, {lsCustomScriptID, ::Custom_Script_File_Name});
+    }
+    if(scriptFileNameList[0] == u8""){
+        auto lsScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
+        scriptFileNameList[0] = lsScriptID;
+        scriptListCsv.insert(scriptListInsertPos, {lsScriptID, ::Script_File_Name});
+    }
+
+    csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", scriptListCsv, OverwriteTextMode::OverwriteNew);
 
     //langscore_custom.rbの出力
-    if(fs::exists(outputPath / ::Custom_Script_File_Name) == false){
+    if(fs::exists(outputPath / (scriptFileNameList[1] + u8".rb"s)) == false){
         std::cout << "Write langscore_custom : " << outputPath / ::Custom_Script_File_Name << std::endl;
-        writeFixedTranslateText<rbscriptwriter>(outputPath / ::Custom_Script_File_Name, scriptFileList, langscore::OverwriteTextMode::LeaveOldNonBlank);
+        writeFixedTranslateText<rbscriptwriter>(outputPath / (scriptFileNameList[1] + u8".rb"s), scriptFileList, langscore::OverwriteTextMode::LeaveOldNonBlank);
     }
 
     //langscore.rbの出力
-    auto outputScriptFilePath = outputPath / Script_File_Name;
+    auto outputScriptFilePath = outputPath / (scriptFileNameList[0]+u8".rb"s);
     auto resourceFolder = this->appPath.parent_path() / "resource";
-    std::cout << "Copy langscore : From " << resourceFolder / Script_File_Name << " To : " << outputScriptFilePath << std::endl;
-    fs::copy(resourceFolder / Script_File_Name, outputScriptFilePath, std::filesystem::copy_options::overwrite_existing);
+    std::cout << "Copy langscore : From " << resourceFolder / (::Script_File_Name + u8".rb"s) << " To : " << outputScriptFilePath << std::endl;
+    fs::copy(resourceFolder / (::Script_File_Name+u8".rb"s), outputScriptFilePath, std::filesystem::copy_options::overwrite_existing);
 
+    //現在の設定を元にlangscore.rbのカスタマイズ
     auto fileLines = formatSystemVariable(outputScriptFilePath);
 
     if(fs::exists(outputScriptFilePath))
@@ -151,7 +244,7 @@ bool langscore::divisi_vxace::write()
 void langscore::divisi_vxace::fetchFilePathList()
 {
     config config;
-    const auto deserializeOutPath = config.tempDirectorty();
+    const auto deserializeOutPath = config.langscoreAnalyzeDirectorty();
     fs::recursive_directory_iterator dataItr(deserializeOutPath);
     size_t numScripts = 0;
     for(const auto& f : fs::recursive_directory_iterator{deserializeOutPath+u8"/Scripts"}){
@@ -171,12 +264,18 @@ void langscore::divisi_vxace::fetchFilePathList()
         else if(extension == ".rb")
         {
             auto fileName = f.path().filename();
-            if(fileName == ::Script_File_Name){ continue; }
-            else if(fileName == ::Custom_Script_File_Name){ continue; }
-
             auto itr = std::find_if(scriptCsv.cbegin(), scriptCsv.cend(), [name = fileName.stem()](const auto& x){
                 return name == x[0];
             });
+
+            if(itr != scriptCsv.cend())
+            {
+                if(2 < itr->size()){
+                    if((*itr)[1] == ::Script_File_Name) { continue; }
+                    else if((*itr)[1] == ::Custom_Script_File_Name){ continue; }
+                }
+            }
+
             auto pos = std::distance(scriptCsv.cbegin(), itr);
             if(0 <= pos && pos < numScripts){
                 this->scriptFileList[pos] = f.path();
@@ -187,18 +286,15 @@ void langscore::divisi_vxace::fetchFilePathList()
         }
     }
 
-
-
     auto projectPath = fs::path(config.projectPath());
     auto graphicsPath = projectPath / "Graphics";
     fs::recursive_directory_iterator graphItr(graphicsPath);
     for(auto& f : graphItr)
     {
         if(f.is_directory()){ continue; }
-
         //パス区切り文字は\\ではなく/に統一(\\はRubyで読み取れない)
-        auto relative_path = f.path().lexically_relative(projectPath);
-        this->graphicFileList.emplace_back(relative_path.replace_extension(""));
+        auto relative_path = "./"/f.path().lexically_relative(graphicsPath);
+        this->graphicFileList.emplace_back(relative_path);
     }
 }
 
@@ -243,7 +339,7 @@ void divisi_vxace::writeAnalyzedRvScript()
     auto vocabs = reader.parse(resourceFolder/"vocab.csv");
     
     csvreader csvReader;
-    auto scriptFileNameMap = csvReader.parsePlain(config.tempDirectorty()+u8"/Scripts/_list.csv"s);
+    auto scriptFileNameMap = csvReader.parsePlain(config.langscoreAnalyzeDirectorty()+u8"/Scripts/_list.csv"s);
     const auto GetScriptName = [&scriptFileNameMap](std::u8string scriptName)
     {
         for(const auto& row : scriptFileNameMap){
@@ -284,7 +380,7 @@ void divisi_vxace::writeAnalyzedRvScript()
     }
     //=================================
 
-    const auto deserializeOutPath = fs::path(config.tempDirectorty());
+    const auto deserializeOutPath = fs::path(config.langscoreAnalyzeDirectorty());
     auto outputPath = deserializeOutPath / "Scripts";
     if(std::filesystem::exists(outputPath) == false){
         std::filesystem::create_directories(outputPath);
@@ -308,7 +404,6 @@ void langscore::divisi_vxace::writeFixedData()
     std::cout << "writeFixedData" << std::endl;
 
     config config;
-    //const auto translateFolder = fs::path{config.projectPath()} / fs::path{config.outputTranslateFilePathForRPGMaker()};
     const auto translateFolderList = config.exportDirectory();
 
     auto writeRvCsv = [this, &translateFolderList](fs::path inputPath)
@@ -412,10 +507,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
     }
 #endif
 
-
-    //const auto translateFolder = fs::path{config.projectPath()} / fs::path{config.outputTranslateFilePathForRPGMaker()};
     const auto translateFolderList = config.exportDirectory();
-
     for(auto& translateFolder : translateFolderList){
         std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
         writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, OverwriteTextMode::LeaveOld);
@@ -518,55 +610,18 @@ void divisi_vxace::writeFixedGraphFileNameData()
     auto ignorePictures = config.ignorePictures();
     std::vector<TranslateText> transTextList;
     for(auto& f : graphicFileList){
-        auto result = std::find(ignorePictures.cbegin(), ignorePictures.cend(), f.u8string());
+        auto result = std::find(ignorePictures.cbegin(), ignorePictures.cend(), f.generic_u8string());
         if(result != ignorePictures.cend()){ continue; }
         transTextList.emplace_back(f.generic_u8string(), supportLangs);
     }
 
-    const auto& projectPath = fs::path(config.projectPath());
-    std::cout << "Write Graphics : " << projectPath / config.outputTranslateFilePathForRPGMaker() / "Graphics.csv" << std::endl;
-    writeFixedTranslateText<csvwriter>(projectPath / config.outputTranslateFilePathForRPGMaker() / "Graphics.csv", transTextList, OverwriteTextMode::LeaveOld);
+    auto csvPath = exportFolderPath("Graphics.csv");
+    std::cout << "Write Graphics : " << csvPath << std::endl;
+    writeFixedTranslateText<csvwriter>(csvPath, transTextList, OverwriteTextMode::LeaveOld);
     std::cout << "Finish." << std::endl;
 }
 
-void divisi_vxace::copyDataToTemp()
-{
-    config config;
-    const auto deserializeOutPath = fs::path(config.tempDirectorty());
-    fs::directory_iterator it(deserializeOutPath);
-    //翻訳ファイルのコピー
-    for(auto& f : it)
-    {
-        auto srcPath = f.path().filename();
-        if(f.is_directory() && srcPath == "Script"){
-            continue;
-        }
-        if(srcPath.extension().string().find(csvwriter::extension) == std::string::npos){ continue; }
-
-        fs::path to = outputProjectDataPath(srcPath);
-
-        auto fsOption = convertCopyOption(langscore::OverwriteTextMode::OverwriteNew);
-        std::cout << "Copy Translate File To : " << to << std::endl;
-        fs::copy(f, to, fsOption);
-    }
-
-    //rbスクリプトのコピー
-    fs::directory_iterator it2{deserializeOutPath / "Scripts"};
-    for(auto& f : it2)
-    {
-        auto srcPath = f.path().filename();
-        //unison以外は無視
-        if(srcPath != ::Custom_Script_File_Name && srcPath != Script_File_Name){
-            continue;
-        }
-        if(srcPath.extension().string().find(rbscriptwriter::extension) == std::string::npos){ continue; }
-
-        fs::path to = outputProjectDataPath(srcPath, "Scripts");
-        auto fsOption = convertCopyOption(langscore::OverwriteTextMode::OverwriteNew);
-        fs::copy(f, to, fsOption);
-    }
-}
-
+/*
 void langscore::divisi_vxace::copyData(langscore::OverwriteTextMode option)
 {
     config config;
@@ -590,7 +645,7 @@ void langscore::divisi_vxace::copyData(langscore::OverwriteTextMode option)
     }
 
     //rbスクリプトのコピー
-    fs::directory_iterator it2{fs::path(config.tempDirectorty()) / "Scripts"};
+    fs::directory_iterator it2{fs::path(config.langscoreAnalyzeDirectorty()) / "Scripts"};
     for(auto& f : it2)
     {
         auto srcPath = f.path().filename();
@@ -605,3 +660,4 @@ void langscore::divisi_vxace::copyData(langscore::OverwriteTextMode option)
         fs::copy(f, to, fsOption);
     }
 }
+*/

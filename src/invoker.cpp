@@ -33,7 +33,7 @@ void invoker::setProjectPath(ProjectType type, std::filesystem::path path)
 
 invoker::Result invoker::analyze(){
     config config;
-    auto tempPath = std::filesystem::path(config.tempDirectorty());
+    auto tempPath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
     tempPath.make_preferred();
     if(std::filesystem::exists(tempPath) == false){
         if(std::filesystem::create_directories(tempPath) == false){

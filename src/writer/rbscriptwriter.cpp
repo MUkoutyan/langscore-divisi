@@ -26,8 +26,22 @@ namespace
 rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)
     : writerbase(std::move(langs), std::vector<TranslateText>{})
 {
-    for(auto& path : scriptFileList){
-        ConvertScriptToCSV(path);
+    utility::u8stringlist scriptNameList;
+    csvreader scriptList;
+    config config;
+    const auto lsAnalyzePath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
+    auto scriptListCsv = scriptList.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
+
+    for(auto& path : scriptFileList)
+    {
+        auto fileName = path.filename().stem().u8string();
+        auto result = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&fileName](const auto& x){
+            return x[0] == fileName;
+        });
+        if(result == scriptListCsv.cend()){ continue; }
+        scriptNameMap.emplace(path, (*result)[1]);
+
+        ConvertScriptToCSV(path, (*result)[1]);
     }
 }
 
@@ -48,6 +62,7 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
 bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextMode overwriteMode)
 {
     using namespace std::literals::string_literals;
+    auto scriptName = scriptNameMap[path];
 
     //======================================
     const auto funcName = [](auto str)
@@ -74,25 +89,18 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
     outFile << nl;
     outFile << "def " << functionName << nl;
     outFile << nl;
-    outFile << tab << "$data_langscore_scripts ||= LSCSV.to_hash(\"Data/Scripts.lscsv\")" << nl;
+    outFile << tab << "$data_langscore_scripts ||= LSCSV.to_hash(\"Data/Translates/Scripts.lscsv\")" << nl;
     outFile << nl;
 
     for(auto& path : scriptTranslates){
         if(path.second.empty()){ continue; }
-        auto filename = path.first.filename().stem();
-        outFile << tab << funcName(utility::toString(filename.u8string())) << nl;
+        outFile << tab << funcName(utility::toString(scriptName)) << nl;
     }
     outFile << "end" << nl << nl;
 
 
     config config;
     auto funcComment = config.usScriptFuncComment();
-
-    std::vector<utility::u8stringlist> scriptFileNameMap;
-    {
-        csvreader csvReader;
-        scriptFileNameMap = csvReader.parsePlain(config.tempDirectorty() + u8"/Scripts/_list.csv"s);
-    }
 
     for(auto& path : scriptTranslates)
     {
@@ -101,14 +109,6 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
         auto filename = utility::toString(fsFilename.u8string());
         outFile << functionComment(filename);
         outFile << functionDef(filename);
-
-        auto scriptName = [&](){
-            auto result = std::find_if(scriptFileNameMap.cbegin(), scriptFileNameMap.cend(), [&](const auto& x){
-                return fsFilename == x[0];
-            });
-            if(result != scriptFileNameMap.cend()){ return (*result)[1]; }
-            return u8""s;
-        }();
 
         if(scriptName == u8"Vocab"){
             WriteVocab(outFile, path.second);
@@ -133,10 +133,8 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
     return false;
 }
 
-bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
+bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path, std::u8string scriptName)
 {
-    auto fileName = path.filename().u8string();
-
     size_t lineCount = 0;
 
     //スマートにしたい
@@ -185,7 +183,7 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
                 u8line,
                 this->useLangs
             };
-            t.memo = fileName + u8":" + u8lineCount + u8":" + u8ColCountStr;
+            t.memo = scriptName + u8":" + u8lineCount + u8":" + u8ColCountStr;
 
             auto dup_result = std::find_if(transTextList.begin(), transTextList.end(), [&t](const auto& x){
                 return x.original == t.original;

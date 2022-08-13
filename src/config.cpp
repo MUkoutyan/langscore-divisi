@@ -1,5 +1,7 @@
 #include "config.h"
 #include "config.h"
+#include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -17,6 +19,9 @@ static std::map<config::JsonKey, const char*> jsonKeys = {
 	MAKE_KEYVALUE(Disable),
 	MAKE_KEYVALUE(FontName),
 	MAKE_KEYVALUE(FontSize),
+	MAKE_KEYVALUE(FontPath),
+	MAKE_KEYVALUE(Global),
+	MAKE_KEYVALUE(Local),
 	MAKE_KEYVALUE(Project),
 	MAKE_KEYVALUE(Analyze),
 	MAKE_KEYVALUE(Write),
@@ -161,7 +166,7 @@ std::u8string langscore::config::projectPath()
 	return path.u8string();
 }
 
-std::u8string config::tempDirectorty() {
+std::u8string config::langscoreAnalyzeDirectorty() {
 	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Analyze)][key(JsonKey::TmpDir)], ""s));
 	auto path = pImpl->toAbsolutePathWeak(u8Path);
 	path.make_preferred();
@@ -195,8 +200,9 @@ bool langscore::config::exportByLanguage()
 	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportByLang)], false);
 }
 
-std::u8string config::outputTranslateFilePathForRPGMaker(){
-	return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Analyze)][key(JsonKey::RPGMakerOutputPath)], "Translate/"s));
+std::u8string config::outputTranslateFilePathForRPGMaker()
+{
+	return u8"Data/Translate"s;
 }
 
 std::vector<config::BasicData> langscore::config::vxaceBasicData()
@@ -256,6 +262,28 @@ utility::u8stringlist langscore::config::ignorePictures()
 	auto& pictures = write[key(JsonKey::IgnorePictures)];
 	utility::u8stringlist result;
 	for(auto s = pictures.begin(); s != pictures.end(); ++s){
+		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
+	}
+	return result;
+}
+
+utility::u8stringlist langscore::config::globalFontList()
+{
+	auto& write = pImpl->json[key(JsonKey::Write)];
+	auto& globals = write[key(JsonKey::Global)];
+	utility::u8stringlist result;
+	for(auto s = globals.begin(); s != globals.end(); ++s){
+		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
+	}
+	return result;
+}
+
+utility::u8stringlist langscore::config::localFontList()
+{
+	auto& write = pImpl->json[key(JsonKey::Write)];
+	auto& locals = write[key(JsonKey::Local)];
+	utility::u8stringlist result;
+	for(auto s = locals.begin(); s != locals.end(); ++s){
 		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
 	}
 	return result;

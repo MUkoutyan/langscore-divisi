@@ -32,7 +32,7 @@ namespace langscore
         bool stackText;
         std::u8string stackTextStr;
 
-        void writeU8String(std::ofstream& out, std::u8string text);
+        static void writeU8String(std::ofstream& out, std::u8string text);
 
         void addText(const nlohmann::json& json, std::u8string note = u8"");
         void addText(std::u8string text, std::u8string note = u8"");

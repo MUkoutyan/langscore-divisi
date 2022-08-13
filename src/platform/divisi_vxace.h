@@ -14,8 +14,7 @@ namespace langscore
 		bool analyze() override;
 		bool write() override;
 
-		void copyDataToTemp() override;
-		void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) override;
+		//void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) override;
 
 	private:
 		void fetchFilePathList();
@@ -28,8 +27,8 @@ namespace langscore
 		void writeFixedGraphFileNameData();
 
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
-
-		std::filesystem::path outputProjectDataPath(std::filesystem::path fileName, std::filesystem::path dir = "") override;
+		
+		std::filesystem::path exportFolderPath(std::filesystem::path fileName, std::filesystem::path dir = "") override;
 
 	};
 }
