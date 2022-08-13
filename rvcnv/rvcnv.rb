@@ -526,23 +526,32 @@ script_folder = output_folder+'/Scripts'
 
 #================================================
 
+SCRIPTLIST_ID       = 0
+SCRIPTLIST_PATH     = 1
+SCRIPTLIST_NAME     = 2
+SCRIPTLIST_DATA     = 3
+CSV_SCRIPTLIST_ID   = 0
+CSV_SCRIPTLIST_NAME = 1
+EMPTY_SCRIPT_NAME   = "_NONAME_"
+
 if compress
   
   compressData = []
   exported_script_folder = input_folder_path+'_langscore/analyze/Scripts'
   script_list_path = exported_script_folder + '/_list.csv'
   CSV.foreach(script_list_path) do | row |
-    filepath = exported_script_folder+'/'+row[0].to_s+'.rb'
-    filename = File.basename(filepath, ".*")
+    id       = row[CSV_SCRIPTLIST_ID]
+    filename = row[CSV_SCRIPTLIST_NAME]
+    filepath = exported_script_folder+'/'+id.to_s+'.rb'
     if File.exists?(filepath) == false
-      filename = "" if filename.include?("_NONAME_")
-      compressData.push([row[1], filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
+      filename = "" if filename.include?(EMPTY_SCRIPT_NAME)
+      compressData.push([id, filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
     else 
       File.open(filepath) do |file|
-        filename = "" if filename.include?("_NONAME_")
+        filename = "" if filename.include?(EMPTY_SCRIPT_NAME)
         contents = file.readlines().join()
         compressed = Zlib::Deflate.deflate(contents, Zlib::DEFAULT_COMPRESSION );
-        compressData.push([row[1], filename, compressed])
+        compressData.push([id, filename, compressed])
       end
     end
   end
@@ -563,18 +572,13 @@ if output_folder.empty?
   p "Need Output Folder" 
 end
 
-SCRIPTLIST_ID = 0
-SCRIPTLIST_PATH = 1
-SCRIPTLIST_NAME = 2
-SCRIPTLIST_DATA = 3
-
 #スクリプトの展開
 script_list = []
 File.open(data_folder+"/Scripts.rvdata2", 'rb') do |file|
   Marshal.load(file.read).each do |id, name, script|
     d = Zlib::Inflate.inflate(script)
     
-    name = "_NONAME_" if name.empty?
+    name = EMPTY_SCRIPT_NAME if name.empty?
 
     next if name == "langscore"
     next if name == "langscore_custom"
@@ -629,16 +633,17 @@ if repack
 
   compressData = []
   CSV.foreach(script_list_path) do | row |
-    filepath = input_folder_path+'/'+row[0].to_s
-    filename = File.basename(filepath, ".*")
+    id       = row[CSV_SCRIPTLIST_ID]
+    filepath = input_folder_path+'/'+id.to_s
+    filename = row[CSV_SCRIPTLIST_NAME]
     if File.exists?(filepath) == false
-      filename = "" if filename.include?("(NONAME)")
-      compressData.push([row[1], filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
+      filename = "" if filename.include?(EMPTY_SCRIPT_NAME)
+      compressData.push([id, filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
     else 
       File.open(filepath) do |file|
         contents = file.readlines().join()
         compressed = Zlib::Deflate.deflate(contents, Zlib::DEFAULT_COMPRESSION );
-        compressData.push([row[1], filename, compressed])
+        compressData.push([id, filename, compressed])
       end
     end
   end
