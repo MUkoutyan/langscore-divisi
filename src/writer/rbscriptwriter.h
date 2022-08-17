@@ -19,7 +19,7 @@ namespace langscore
         std::map<std::filesystem::path, std::vector<TranslateText>> scriptTranslates;
         std::map<std::filesystem::path, std::u8string> scriptNameMap;
 
-        bool ConvertScriptToCSV(std::filesystem::path path, std::u8string scriptName);
+        bool ConvertScriptToCSV(std::filesystem::path path);
         void WriteVocab(std::ofstream& file, std::vector<TranslateText> texts);
     };
 }

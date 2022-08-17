@@ -39,9 +39,10 @@ rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std
             return x[0] == fileName;
         });
         if(result == scriptListCsv.cend()){ continue; }
-        scriptNameMap.emplace(path, (*result)[1]);
 
-        ConvertScriptToCSV(path, (*result)[1]);
+        auto scriptName = (*result)[1];
+        scriptNameMap.emplace(path, scriptName);
+        ConvertScriptToCSV(path);
     }
 }
 
@@ -59,10 +60,9 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
     return false;
 }
 
-bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextMode overwriteMode)
+bool langscore::rbscriptwriter::write(std::filesystem::path filePath, OverwriteTextMode overwriteMode)
 {
     using namespace std::literals::string_literals;
-    auto scriptName = scriptNameMap[path];
 
     //======================================
     const auto funcName = [](auto str)
@@ -83,18 +83,32 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
                              tab + "#========================================" + nl;
     };
     constexpr char functionName[] = "Langscore.Translate_Script_Text";
+
+    const auto GetScriptName = [this](auto filePath){
+        const auto& scriptName = scriptNameMap[filePath];
+        if(scriptName.empty()){ return u8""s; }
+        if(scriptName == u8"langscore"){ return u8""s; }
+        if(scriptName == u8"langscore_custom"){ return u8""s; }
+        return scriptName;
+    };
     //======================================
 
-    std::ofstream outFile(path);
+    std::ofstream outFile(filePath);
     outFile << nl;
     outFile << "def " << functionName << nl;
     outFile << nl;
     outFile << tab << "$data_langscore_scripts ||= LSCSV.to_hash(\"Data/Translates/Scripts.lscsv\")" << nl;
     outFile << nl;
 
-    for(auto& path : scriptTranslates){
+    for(auto& path : scriptTranslates)
+    {
         if(path.second.empty()){ continue; }
-        outFile << tab << funcName(utility::toString(scriptName)) << nl;
+        auto scriptName = GetScriptName(path.first);
+        if(scriptName.empty()){ continue; }
+
+        auto functionName = funcName(path.first.filename().stem().string());
+
+        outFile << tab << functionName << tab << "#" << utility::toString(scriptName) << nl;
     }
     outFile << "end" << nl << nl;
 
@@ -105,10 +119,10 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
     for(auto& path : scriptTranslates)
     {
         if(path.second.empty()){ continue; }
-        auto fsFilename = path.first.filename().stem();
-        auto filename = utility::toString(fsFilename.u8string());
-        outFile << functionComment(filename);
-        outFile << functionDef(filename);
+        auto scriptName = GetScriptName(path.first);
+        if(scriptName.empty()){ continue; }
+        outFile << functionComment(utility::toString(scriptName));
+        outFile << functionDef(path.first.filename().stem().string());
 
         if(scriptName == u8"Vocab"){
             WriteVocab(outFile, path.second);
@@ -133,7 +147,7 @@ bool langscore::rbscriptwriter::write(std::filesystem::path path, OverwriteTextM
     return false;
 }
 
-bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path, std::u8string scriptName)
+bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
 {
     size_t lineCount = 0;
 
@@ -143,7 +157,7 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path, std::u8strin
 
     std::vector<TranslateText> transTextList;
 
-    const auto ConvertFromMatch = [&](const std::smatch& matchList, size_t col_diff)
+    const auto ConvertFromMatch = [&, fileName = path.filename().stem()](const std::smatch& matchList, size_t col_diff)
     {
         for(size_t i = 0; i < matchList.size(); ++i)
         {
@@ -183,7 +197,7 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path, std::u8strin
                 u8line,
                 this->useLangs
             };
-            t.memo = scriptName + u8":" + u8lineCount + u8":" + u8ColCountStr;
+            t.memo = fileName.u8string() + u8":" + u8lineCount + u8":" + u8ColCountStr;
 
             auto dup_result = std::find_if(transTextList.begin(), transTextList.end(), [&t](const auto& x){
                 return x.original == t.original;
@@ -256,6 +270,8 @@ bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path, std::u8strin
         RegexMatch(parseStrDq);
         RegexMatch(parseStrSq);
     }
+
+    if(transTextList.empty()){ return true; }
 
     std::copy(transTextList.begin(), transTextList.end(), std::back_inserter(this->texts));
     scriptTranslates[path] = std::move(transTextList);

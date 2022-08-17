@@ -208,9 +208,12 @@ bool langscore::divisi_vxace::write()
     csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", scriptListCsv, OverwriteTextMode::OverwriteNew);
 
     //langscore_custom.rbの出力
-    if(fs::exists(outputPath / (scriptFileNameList[1] + u8".rb"s)) == false){
+    auto lsCustomScriptPath = outputPath / (scriptFileNameList[1] + u8".rb"s);
+    bool replaceLsCustom = fs::exists(lsCustomScriptPath) == false;
+    replaceLsCustom |= (fs::file_size(lsCustomScriptPath) <= 0);
+    if(replaceLsCustom){
         std::cout << "Write langscore_custom : " << outputPath / ::Custom_Script_File_Name << std::endl;
-        writeFixedTranslateText<rbscriptwriter>(outputPath / (scriptFileNameList[1] + u8".rb"s), scriptFileList, langscore::OverwriteTextMode::LeaveOldNonBlank);
+        writeFixedTranslateText<rbscriptwriter>(lsCustomScriptPath, scriptFileList, langscore::OverwriteTextMode::OverwriteNew);
     }
 
     //langscore.rbの出力
