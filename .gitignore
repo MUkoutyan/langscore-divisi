@@ -355,3 +355,4 @@ ruby
 .vscode
 
 iutest/*
+test/data

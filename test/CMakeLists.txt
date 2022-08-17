@@ -3,6 +3,7 @@
 #
 cmake_minimum_required (VERSION 3.22)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project (divisi_test VERSION 1)
 add_definitions(-DENABLE_TEST)
@@ -28,10 +29,12 @@ set(Test_Includes
 	"../src"
     "../iutest/include"
 	"../json/single_include"
+	"../hash-library"
 )
 
 file(GLOB_RECURSE DIVISI_SOURCES
 	../src/*.cpp
+    ../hash-library/md5.cpp
 )
 
 set(test_sources 
@@ -40,6 +43,11 @@ set(test_sources
 )
 
 set(TestProjectName ${PROJECT_NAME}-test)
+
+set(DIVISI_TEST_RESOURCE data/)
+foreach(dir ${DIVISI_TEST_RESOURCE})
+file(COPY ./${dir} DESTINATION ${PROJECT_BINARY_DIR}/../${dir})
+endforeach()
 
 # Now simply link against gtest or gtest_main as needed. Eg
 add_executable(${TestProjectName} ${test_sources})
