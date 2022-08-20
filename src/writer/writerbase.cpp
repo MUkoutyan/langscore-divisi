@@ -1,6 +1,7 @@
-#include "writerbase.h"
+﻿#include "writerbase.h"
 #include "utility.hpp"
 #include <fstream>
+#include "scriptRegex.hpp"
 
 using namespace langscore;
 namespace
@@ -22,6 +23,7 @@ namespace
 		{ u8"RPG::System",    {u8"@battleback1_name", u8"@battleback2_name"} },
 	};
 
+
 }
 
 writerbase::writerbase(std::vector<std::u8string> langs, const nlohmann::json& json)
@@ -36,6 +38,7 @@ writerbase::writerbase(std::vector<std::u8string> langs, std::vector<TranslateTe
 	, overwriteMode(OverwriteTextMode::LeaveOld)
 	, stackText(false)
 	, stackTextStr(u8"")
+	, rangeComment(false)
 {
 }
 
@@ -213,3 +216,54 @@ void writerbase::convertJObject(const nlohmann::json& root)
 		addText(*s, currentClassName + u8":" + key);
 	}
 }
+
+std::vector<TranslateText> writerbase::convertScriptToCSV(std::filesystem::path path)
+{
+	size_t lineCount = 0;
+
+	std::vector<TranslateText> transTextList;
+
+	std::ifstream loadFile(path);
+	if(loadFile.is_open() == false){ return {}; }
+	auto fileName = path.filename().stem();
+
+	ScriptRegex scriptRegex;
+	rangeComment = false;
+	while(loadFile.eof() == false)
+	{
+		lineCount++;
+		std::string lineTemp;
+		std::getline(loadFile, lineTemp);
+		auto line = utility::cnvStr<std::u8string>(lineTemp);
+
+		auto isContinue = checkCommentLine(line);
+		if(isContinue == ProgressNextStep::Continue){
+			continue;
+		}
+		else if(isContinue == ProgressNextStep::Break){
+			break;
+		}
+
+		auto dqResult = scriptRegex.findStrings(line);
+
+		auto lineCountStr = std::to_string(lineCount);
+		std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());
+
+		for(auto& str : dqResult)
+		{			
+			auto colCountStr = std::to_string(std::get<1>(str));
+			std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
+
+			langscore::TranslateText t = {
+				std::get<0>(str),
+				this->useLangs
+			};
+			auto scriptPos = fileName.u8string() + u8":" + u8lineCount + u8":" + u8ColCountStr;
+			t.memo = scriptPos;
+			transTextList.emplace_back(std::move(t));
+		}
+	}
+	return transTextList;
+
+}
+

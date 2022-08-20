@@ -1,26 +1,26 @@
 ﻿#include "rbscriptwriter.h"
 #include "config.h"
 #include "utility.hpp"
+#include "scriptRegex.hpp"
 #include <fstream>
-#include <regex>
-#include <mutex>
-#include <future>
 #include <format>
 
 #include "csvwriter.h"
 #include "../reader/csvreader.h"
 
-static std::mutex _list_mutex;
 static std::mutex _mutex;
 static bool processing = false;
 static std::condition_variable cond;
 
+
 using namespace langscore;
+using namespace std::string_literals;
 
 namespace
 {
     const auto nl = '\n';
     const auto tab = '\t';
+
 }
 
 rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)
@@ -42,7 +42,10 @@ rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std
 
         auto scriptName = (*result)[1];
         scriptNameMap.emplace(path, scriptName);
-        ConvertScriptToCSV(path);
+        auto transTextList = convertScriptToCSV(path);
+
+        std::copy(transTextList.begin(), transTextList.end(), std::back_inserter(this->texts));
+        scriptTranslates[path] = std::move(transTextList);
     }
 }
 
@@ -147,135 +150,46 @@ bool langscore::rbscriptwriter::write(std::filesystem::path filePath, OverwriteT
     return false;
 }
 
-bool rbscriptwriter::ConvertScriptToCSV(std::filesystem::path path)
-{
-    size_t lineCount = 0;
-
-    //スマートにしたい
-    std::regex parseStrDq(R"((".*?")(?!^\s*#))");
-    std::regex parseStrSq(R"(('.*?')(?!^\s*#))");
-
-    std::vector<TranslateText> transTextList;
-
-    const auto ConvertFromMatch = [&, fileName = path.filename().stem()](const std::smatch& matchList, size_t col_diff)
+writerbase::ProgressNextStep rbscriptwriter::checkCommentLine(TextCodec line)
+{		
+    //コメントのみの行かをチェック
     {
-        for(size_t i = 0; i < matchList.size(); ++i)
-        {
-            auto& m = matchList[i];
-            auto line = m.str();
-            //文字列に,も改行もなければダブルクォーテーションを削除
-            if(line.find(',') == std::string::npos &&
-               line.find('\n') == std::string::npos)
-            {
-                auto start = line[0];
-                if(start == '\"' || start == '\''){
-                    line.erase(0, 1);
-                }
-                auto end = line[line.size() - 1];
-                if(end == '\"' || end == '\''){
-                    line.erase(line.size() - 1, 1);
-                }
-            }
-            else if(line.empty() == false)
-            {
-                //, \nが含まれている場合は念のため""括りされているかチェック
-                if(line[0] != '\"'){ line.insert(0, "\""); }
-                if(line[line.size() - 1] != '\"'){ line.insert(line.size(), "\""); }
-            }
-
-            auto lineCountStr = std::to_string(lineCount);
-            std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());
-
-            //+2は (" の分
-            auto colCountStr = std::to_string(matchList.position(i) + col_diff + 2);
-            std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
-
-            std::u8string u8line(line.begin(), line.end());
-
-            _list_mutex.lock();
-            TranslateText t = {
-                u8line,
-                this->useLangs
-            };
-            t.memo = fileName.u8string() + u8":" + u8lineCount + u8":" + u8ColCountStr;
-
-            auto dup_result = std::find_if(transTextList.begin(), transTextList.end(), [&t](const auto& x){
-                return x.original == t.original;
-            });
-            if(dup_result == transTextList.end()){
-                transTextList.emplace_back(std::move(t));
-            }
-            _list_mutex.unlock();
+        auto check_comment_line = line;
+        auto pos = std::find_if(check_comment_line.begin(), check_comment_line.end(), [](auto c){
+            return c != '\t' && c != ' ';
+        });
+        check_comment_line.erase(check_comment_line.begin(), pos);
+        if(check_comment_line.empty() == false && check_comment_line[0] == '#'){
+            return ProgressNextStep::Continue;
         }
-    };
-
-    std::ifstream loadFile(path);
-    if(loadFile.is_open() == false){ return false; }
-
-    bool rangeComment = false;
-    while(loadFile.eof() == false)
-    {
-        lineCount++;
-        std::string line;
-        std::getline(loadFile, line);
-        //コメントのみの行かをチェック
-        {
-            auto check_comment_line = line;
-            auto pos = std::find_if(check_comment_line.begin(), check_comment_line.end(), [](auto c){
-                return c != '\t' && c != ' ';
-            });
-            check_comment_line.erase(check_comment_line.begin(), pos);
-            if(check_comment_line.empty() == false && check_comment_line[0] == '#'){
-                continue;
+    }
+    //途中のコメントを削除
+    auto begin_cm = line.begin();
+    for(; begin_cm != line.end(); ++begin_cm){
+        if(*begin_cm == '#'){
+            auto next = (begin_cm + 1);
+            if(next != line.end() && *next != '{'){
+                break;
             }
         }
-        //途中のコメントを削除
-        auto begin_cm = line.begin();
-        for(; begin_cm != line.end(); ++begin_cm){
-            if(*begin_cm == '#'){
-                auto next = (begin_cm + 1);
-                if(next != line.end() && *next != '{'){
-                    break;
-                }
-            }
-        }
-        if(begin_cm != line.end()){
-            line.erase(begin_cm, line.end());
-        }
-
-        if(line == "=begin"){
-            rangeComment = true;
-            continue;
-        }
-        else if(rangeComment)
-        {
-            if(line == "=end"){ rangeComment = false; }
-            else{ continue; }
-        }
-
-        if(line.empty()){ continue; }
-
-        const auto RegexMatch = [&](const std::regex& rgx)
-        {
-            std::smatch matchList;
-            int col_diff_tmp = 0;
-            while(std::regex_search(line, matchList, rgx))
-            {
-                ConvertFromMatch(matchList, col_diff_tmp);
-                auto length_diff = matchList.position(0) + matchList.length(0);
-                line = {line.begin() + length_diff, line.end()};
-                col_diff_tmp += length_diff;
-            }
-        };
-        RegexMatch(parseStrDq);
-        RegexMatch(parseStrSq);
+    }
+    if(begin_cm != line.end()){
+        line.erase(begin_cm, line.end());
     }
 
-    if(transTextList.empty()){ return true; }
+    if(line == u8"=begin"){
+        rangeComment = true;
+        return ProgressNextStep::Continue;
+    }
+    else if(rangeComment)
+    {
+        if(line == u8"=end"){ rangeComment = false; }
+        return ProgressNextStep::Continue;
+    }
 
-    std::copy(transTextList.begin(), transTextList.end(), std::back_inserter(this->texts));
-    scriptTranslates[path] = std::move(transTextList);
-    return true;
+    if(line.empty()){ ProgressNextStep::Continue; }
+
+    return ProgressNextStep::Throught;
 }
 
 void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<TranslateText> texts)

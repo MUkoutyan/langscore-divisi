@@ -4,12 +4,15 @@
 #include "invoker.h"
 #include "divisi.h"
 #include "..\\src\\reader\\csvreader.h"
+#include "..\\src\\writer\\rbscriptwriter.h"
 #include "..\\src\\utility.hpp"
+#include "..\\src\\writer\\scriptRegex.hpp"
 #include <iostream>
 #include <filesystem>
 #include <Windows.h>
 
 using namespace std::string_literals;
+using namespace std::string_view_literals;
 namespace fs = std::filesystem;
 
 IUTEST(Langscore_Config, TmpDir)
@@ -139,6 +142,8 @@ IUTEST(Langscore_Divisi, CheckScriptCSV)
 	auto scriptCsv = csvreader.parse(outputPath / "Scripts.csv");
 	auto scriptList = csvreader.parsePlain(outputPath / "Scripts/_list.csv");
 
+	IUTEST_ASSERT(scriptCsv.empty() == false);
+
 	for(auto& obj : scriptCsv)
 	{
 		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [&obj](const auto& x){
@@ -151,6 +156,138 @@ IUTEST(Langscore_Divisi, CheckScriptCSV)
 	}
 
 	IUTEST_SUCCEED();
+}
+
+IUTEST(Langscore_Writer, UTF8WordCount)
+{
+	ScriptRegex scriptRegex;
+	IUTEST_ASSERT_EQ(scriptRegex.wordCountUTF8(u8"Honi"s), 4);		//ASCII
+	IUTEST_ASSERT_EQ(scriptRegex.wordCountUTF8(u8"©ÀʸΦ"s), 4);		//2Byte
+	IUTEST_ASSERT_EQ(scriptRegex.wordCountUTF8(u8"あいうえお"s), 5);	//3Byte
+	IUTEST_ASSERT_EQ(scriptRegex.wordCountUTF8(u8"𦹀𧃴𧚄𨉷𨏍𪆐"s), 6);	//4Byte
+}
+
+IUTEST(Langscore_Writer, ConvertWorkList)
+{
+	using namespace std::string_view_literals;
+	ScriptRegex scriptRegex;
+	{
+		auto baseStr = u8"HoniHoni"s;
+		auto result = scriptRegex.ConvertWordList(baseStr);
+		IUTEST_ASSERT(result.size() == 8);
+		size_t i = 0;
+		IUTEST_ASSERT_EQ(std::get<0>(result[i++]), u8"H"sv);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"o"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"n"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"i"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"H"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"o"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"n"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"i"sv) == 0);
+	}
+
+	{
+		auto baseStr = u8"あいうえおoooかきくけこ"s;
+		auto result = scriptRegex.ConvertWordList(baseStr);
+		IUTEST_ASSERT(result.size() == 13);
+		size_t i = 0;
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"あ"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"い"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"う"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"え"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"お"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"o"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"o"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"o"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"か"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"き"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"く"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"け"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"こ"sv) == 0);
+	}
+
+	{
+		auto baseStr = u8"𦹀𧃴𧚄𨉷𨏍𪆐🙁😇"s;
+		auto result = scriptRegex.ConvertWordList(baseStr);
+		IUTEST_ASSERT(result.size() == 8);
+		size_t i = 0;
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"𦹀"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"𧃴"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"𧚄"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"𨉷"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"𨏍"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"𪆐"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"🙁"sv) == 0);
+		IUTEST_ASSERT(std::get<0>(result[i++]).compare(u8"😇"sv) == 0);
+	}
+
+}
+
+IUTEST(Langscore_Writer, DetectStringPosition)
+{
+	ScriptRegex scriptRegex;
+	{
+		auto result = scriptRegex.findStrings(u8"Test Line Script");
+		IUTEST_ASSERT(result.empty());
+	}
+	{
+		auto result = scriptRegex.findStrings(u8"Test \"Line\" Script");
+		IUTEST_ASSERT_EQ(result.size(), 1);
+		IUTEST_ASSERT_EQ(std::get<0>(result[0]), u8"Line"s);
+		IUTEST_ASSERT_EQ(std::get<1>(result[0]), 7);
+	}
+	{
+		auto result = scriptRegex.findStrings(u8"\"Test\" Line S\"cript\"");
+		IUTEST_ASSERT_EQ(result.size(), 2);
+		IUTEST_ASSERT_EQ(std::get<0>(result[0]), u8"Test"s);
+		IUTEST_ASSERT_EQ(std::get<1>(result[0]), 2);
+		IUTEST_ASSERT_EQ(std::get<0>(result[1]), u8"cript"s);
+		IUTEST_ASSERT_EQ(std::get<1>(result[1]), 15);
+	}
+	{
+		auto result = scriptRegex.findStrings(u8"auto text = \"あいうえお\"; auto text2 = \"aiueo\""s);
+		IUTEST_ASSERT_EQ(result.size(), 2);
+		IUTEST_ASSERT_EQ(std::get<0>(result[0]), u8"あいうえお"s);
+		IUTEST_ASSERT_EQ(std::get<1>(result[0]), 14);
+		IUTEST_ASSERT_EQ(std::get<0>(result[1]), u8"aiueo"s);
+		IUTEST_ASSERT_EQ(std::get<1>(result[1]), 36);
+	}
+}
+
+IUTEST(Langscore_Writer, DetectStringPositionFromFile)
+{
+	std::u8string fileName = u8"chstring";
+	//IUTEST_ASSERT(fs::exists(u8"./data/"s + fileName));
+	langscore::rbscriptwriter scriptWriter({}, {});
+
+	auto result = scriptWriter.convertScriptToCSV(u8"./data/" + fileName + u8".rb");
+
+	IUTEST_ASSERT_EQ(result.size(), 10);
+	
+	size_t i = 0;
+	IUTEST_ASSERT_EQ(result[i++].original, u8"あHoniい"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"𦹀𧃴𧚄𨉷𨏍𪆐🙁😇"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"trans #{text}"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"call initialize_clone"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"call initialize_clone"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"call to_str"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"あいうえお"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"A"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"B"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"A"s);
+
+	i = 0;
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":8:4");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":8:16");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":14:10");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":21:8");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":26:8");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":31:8");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":36:6");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":41:13");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":42:4");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":43:4");
+
 }
 
 int main(int argc, char** argv)

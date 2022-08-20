@@ -46,8 +46,39 @@
             },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "DIVISI_BUILD_EXAMPLE":  true
+                "DIVISI_BUILD_EXAMPLE": true
             }
+        },
+        {
+            "name": "x64-release-with-example",
+            "displayName": "x64 Release With Example",
+            "inherits": "windows-base",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "DIVISI_BUILD_EXAMPLE": true
+            }
+        },
+        {
+            "description": "Visual Studio 開発環境を使用して Windows (64 ビット) をターゲットにします。(RelWithDebInfo)",
+            "displayName": "Test",
+            "inherits": "x64-release",
+            "name": "Test",
+            "cacheVariables": {
+                "ENABLE_TEST":  true
+            } 
+        },
+        {
+            "description": "Visual Studio 開発環境を使用して Windows (64 ビット) をターゲットにします。(RelWithDebInfo)",
+            "displayName": "Test_Debug",
+            "inherits": "x64-debug",
+            "name": "Test_Debug",
+            "cacheVariables": {
+                "ENABLE_TEST":  true
+            } 
         }
     ]
 }

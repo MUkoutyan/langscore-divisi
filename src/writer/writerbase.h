@@ -6,11 +6,30 @@
 #include <filesystem>
 #include "nlohmann/json.hpp"
 
+#ifdef ENABLE_TEST
+#include "iutest.hpp"
+
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
+class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, DetectStringPositionFromFile);
+
+#endif
+
 namespace langscore
 {
     class writerbase
     {
+#ifdef ENABLE_TEST
+        IUTEST_FRIEND_TEST(Langscore_Writer, DetectStringPositionFromFile);
+#endif
     public:
+
+        using TextCodec = std::u8string;
 
         writerbase(std::vector<std::u8string> langs, const nlohmann::json& json);
         writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts);
@@ -31,6 +50,7 @@ namespace langscore
         OverwriteTextMode overwriteMode;
         bool stackText;
         std::u8string stackTextStr;
+        bool rangeComment;
 
         static void writeU8String(std::ofstream& out, std::u8string text);
 
@@ -44,9 +64,16 @@ namespace langscore
         std::tuple<bool, int> checkEventCommandCode(const nlohmann::json& obj);
         void convertJArray(const nlohmann::json& arr, std::u8string parentClass = u8"", std::u8string arrayinKey = u8"");
         void convertJObject(const nlohmann::json& root);
-#ifdef ENABLE_TEST
-        friend class Langscore_Test_WriterBase;
-#endif
+
+        std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path);
+        enum class ProgressNextStep
+        {
+            Continue,
+            Break,
+            Throught
+        };
+        virtual ProgressNextStep checkCommentLine(TextCodec) { return ProgressNextStep::Throught;  }
+
     };
 }
 

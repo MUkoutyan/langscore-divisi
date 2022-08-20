@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(ENABLE_TEST)
 add_definitions(-DENABLE_TEST)
+include_directories(
+	"../iutest/include"
+)
 endif()
 
 include_directories(
@@ -27,6 +30,7 @@ set(lib_files
 	"writer/csvwriter.h"
 	"writer/writerbase.cpp"
 	"writer/writerbase.h"
+	"writer/scriptRegex.hpp"
 	"reader/readerbase.h"
 	"reader/readerbase.cpp"
 	"reader/csvreader.h"
