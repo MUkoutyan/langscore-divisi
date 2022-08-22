@@ -513,9 +513,7 @@ opt.on('-o OUTPUTPATH', '-output OUTPUTPATH'){ |v|
   Dir.mkdir(output_folder) unless File.exists?(output_folder)
 }
 
-repack = false
 compress = false
-opt.on('-p'){|v| repack = v }
 opt.on('-c'){|v| compress = v }
 
 opt.parse!(ARGV)
@@ -540,18 +538,17 @@ if compress
   exported_script_folder = input_folder_path+'_langscore/analyze/Scripts'
   script_list_path = exported_script_folder + '/_list.csv'
   CSV.foreach(script_list_path) do | row |
-    id       = row[CSV_SCRIPTLIST_ID]
-    filename = row[CSV_SCRIPTLIST_NAME]
-    filepath = exported_script_folder+'/'+id.to_s+'.rb'
+    id         = row[CSV_SCRIPTLIST_ID]
+    scriptname = row[CSV_SCRIPTLIST_NAME]
+    scriptname = "" if scriptname.include?(EMPTY_SCRIPT_NAME)
+    filepath   = exported_script_folder+'/'+id.to_s+'.rb'
     if File.exists?(filepath) == false
-      filename = "" if filename.include?(EMPTY_SCRIPT_NAME)
-      compressData.push([id, filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
+      compressData.push([id, scriptname, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
     else 
       File.open(filepath) do |file|
-        filename = "" if filename.include?(EMPTY_SCRIPT_NAME)
         contents = file.readlines().join()
         compressed = Zlib::Deflate.deflate(contents, Zlib::DEFAULT_COMPRESSION );
-        compressData.push([id, filename, compressed])
+        compressData.push([id, scriptname, compressed])
       end
     end
   end
@@ -628,29 +625,3 @@ rvdata_list.each do |rvdata|
     end
   end
 end
-
-if repack
-
-  compressData = []
-  CSV.foreach(script_list_path) do | row |
-    id       = row[CSV_SCRIPTLIST_ID]
-    filepath = input_folder_path+'/'+id.to_s
-    filename = row[CSV_SCRIPTLIST_NAME]
-    if File.exists?(filepath) == false
-      filename = "" if filename.include?(EMPTY_SCRIPT_NAME)
-      compressData.push([id, filename, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
-    else 
-      File.open(filepath) do |file|
-        contents = file.readlines().join()
-        compressed = Zlib::Deflate.deflate(contents, Zlib::DEFAULT_COMPRESSION );
-        compressData.push([id, filename, compressed])
-      end
-    end
-  end
-
-  File.open(data_folder+'/Scripts.rvdata2', 'wb') do |file|
-    file.write(Marshal.dump(compressData))
-  end
-
-end
-
