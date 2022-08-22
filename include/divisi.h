@@ -1,4 +1,4 @@
-﻿#ifndef LANGSCORE_DIVISI_H
+#ifndef LANGSCORE_DIVISI_H
 #define LANGSCORE_DIVISI_H
 
 #include <string>
@@ -16,8 +16,8 @@ public:
     divisi(std::filesystem::path appPath, std::filesystem::path configPath);
     ~divisi();
 
-    bool analyze();
-    bool write();
+    int analyze();
+    int write();
 
 private:
     class Impl;

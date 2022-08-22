@@ -74,36 +74,36 @@ divisi::divisi(fs::path appPath, std::filesystem::path configPath)
 
 divisi::~divisi(){}
 
-bool divisi::analyze()
+int divisi::analyze()
 {
     config config;
     auto projectPath = config.projectPath();
-    if(projectPath.empty()){ return false; }
+    if(projectPath.empty()){ return 1; }
     pImpl->createConverter(projectPath);
 
     if(pImpl->converter){
         pImpl->converter->setAppPath(pImpl->appPath);
         pImpl->converter->setProjectPath(std::move(projectPath));
-        return pImpl->converter->analyze();
+        return pImpl->converter->analyze() ? 0 : 1;
     }
 
-    return true;
+    return 0;
 }
 
-bool langscore::divisi::write()
+int langscore::divisi::write()
 {
     config config;
     auto projectPath = config.projectPath();
-    if(projectPath.empty()){ return false; }
+    if(projectPath.empty()){ return 1; }
     pImpl->createConverter(projectPath);
 
     if(pImpl->converter){
         pImpl->converter->setAppPath(pImpl->appPath);
         pImpl->converter->setProjectPath(std::move(projectPath));
-        return pImpl->converter->write();
+        return pImpl->converter->write() ? 0 : 1;
     }
 
-    return true;
+    return 0;
 
 }
 
