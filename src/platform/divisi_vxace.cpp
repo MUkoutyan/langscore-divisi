@@ -21,29 +21,29 @@ namespace
     constexpr char8_t Custom_Script_File_Name[] = u8"langscore_custom";
 
     std::unordered_map<std::u8string, std::u8string> Help_Text = {
-        { u8"en",    u8"The currently selected language is displayed." },
-        { u8"es",    u8"Se muestra el idioma actualmente seleccionado." },
-        { u8"de",    u8"Die aktuell ausgewählte Sprache wird angezeigt." },
-        { u8"fr",    u8"La langue actuellement sélectionnée s'affiche." },
-        { u8"it",    u8"Viene visualizzata la lingua attualmente selezionata." },
-        { u8"ja",    u8"現在選択中の言語が表示されます。" },
-        { u8"ko",    u8"현재 선택한 언어가 표시됩니다." },
-        { u8"ru",    u8"Отображается текущий выбранный язык." },
-        { u8"zh-cn", u8"显示当前选择的语言。" },
-        { u8"zh-tw", u8"顯示當前選擇的語言。" },
+        { u8"en"s,    u8"The currently selected language is displayed."s },
+        { u8"es"s,    u8"Se muestra el idioma actualmente seleccionado."s },
+        { u8"de"s,    u8"Die aktuell ausgewählte Sprache wird angezeigt."s },
+        { u8"fr"s,    u8"La langue actuellement sélectionnée s'affiche."s },
+        { u8"it"s,    u8"Viene visualizzata la lingua attualmente selezionata."s },
+        { u8"ja"s,    u8"現在選択中の言語が表示されます。"s },
+        { u8"ko"s,    u8"현재 선택한 언어가 표시됩니다."s },
+        { u8"ru"s,    u8"Отображается текущий выбранный язык."s },
+        { u8"zh-cn"s, u8"显示当前选择的语言。"s },
+        { u8"zh-tw"s, u8"顯示當前選擇的語言。"s },
     };
 
     std::unordered_map<std::u8string, std::u8string> Language_Items = {
-        { u8"en",    u8"English" },
-        { u8"es",    u8"Español" },
-        { u8"de",    u8"Deutsch" },
-        { u8"fr",    u8"Français" },
-        { u8"it",    u8"Italiano" },
-        { u8"ja",    u8"日本語" },
-        { u8"ko",    u8"한국어" },
-        { u8"ru",    u8"Русский язык" },
-        { u8"zh-cn", u8"中文(簡体)" },
-        { u8"zh-tw", u8"中文(繁体)" },
+        { u8"en"s,    u8"English"s },
+        { u8"es"s,    u8"Español"s },
+        { u8"de"s,    u8"Deutsch"s },
+        { u8"fr"s,    u8"Français"s },
+        { u8"it"s,    u8"Italiano"s },
+        { u8"ja"s,    u8"日本語"s },
+        { u8"ko"s,    u8"한국어"s },
+        { u8"ru"s,    u8"Русский язык"s },
+        { u8"zh-cn"s, u8"中文(簡体)"s },
+        { u8"zh-tw"s, u8"中文(繁体)"s },
     };
 
     const auto nl = u8"\n"s;
@@ -141,10 +141,6 @@ bool langscore::divisi_vxace::write()
     writeFixedGraphFileNameData();
 
     const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
-    auto outputPath = lsAnalyzePath / "Scripts";
-    if(std::filesystem::exists(outputPath) == false){
-        std::filesystem::create_directories(outputPath);
-    }
     
     //フォントのコピー
     auto fontDestPath = config.projectPath() + u8"/Fonts"s;
@@ -153,6 +149,10 @@ bool langscore::divisi_vxace::write()
     for(auto& relativePath : globalFonts)
     {
         auto path = globalFontFolder / relativePath;
+        if(fs::exists(path)){
+            std::cerr << "Warning! : not found global font file : " << path << std::endl;
+            continue;
+        }
         fs::copy_file(path, fontDestPath + relativePath);
     }
     auto localFonts = config.localFontList();
@@ -160,85 +160,24 @@ bool langscore::divisi_vxace::write()
     for(auto& relativePath : localFonts)
     {
         auto path = localFontFolder / relativePath;
+        if(fs::exists(path)){
+            std::cerr << "Warning! : not found local font file : " << path << std::endl;
+            continue;
+        }
         fs::copy_file(path, fontDestPath + relativePath);
     }
 
-    //_list.csvの編集　追加する位置を見つける
-    csvreader scriptList;
-    auto scriptListCsv = scriptList.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
-    utility::u8stringlist targetScriptName = {u8"( ここに追加 )", u8"▼ メイン"s, u8"Main"s};
-    auto scriptListInsertPos = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&targetScriptName](const auto& x)
-    {
-        if(x.size() < 2){ return false; }
-        const auto& scriptName = x[1];
-        if(std::find(targetScriptName.cbegin(), targetScriptName.cend(), scriptName) != targetScriptName.cend()){
-            return true;
-        }
-        return false;
-    });
-    //Langscoreスクリプトの追加
+    std::cout << "Export script files." << std::endl;
+    rewriteScriptList();
+    std::cout << "Done." << std::endl;
 
-    const auto GetID = [&scriptListCsv]()
-    {    
-        std::vector<size_t> idList;
-        idList.reserve(scriptListCsv.size());
-        for(auto& row : scriptListCsv){ idList.emplace_back(std::stoll(utility::cnvStr<std::string>(row[0]))); }
-
-        std::mt19937 mt(std::random_device{}());
-        size_t num = 0;
-        do{
-            num = 10000ll+size_t(double(mt()) * double(99999999-10000)+1.0)/(1.0+double(mt.max()));
-        } while(std::find(idList.cbegin(), idList.cend(), num) != idList.cend());
-        return num;
-    };
-    //_list.csvにlsのスクリプトがあるかチェック。なければCSVに追加
-    auto scriptFileNameList = GetScriptFileName(config, {::Script_File_Name, ::Custom_Script_File_Name});
-
-    if(scriptFileNameList[1] == u8""){
-        auto lsCustomScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
-        scriptFileNameList[1] = lsCustomScriptID;
-        scriptListInsertPos = scriptListCsv.insert(scriptListInsertPos, {lsCustomScriptID, ::Custom_Script_File_Name});
-    }
-    if(scriptFileNameList[0] == u8""){
-        auto lsScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
-        scriptFileNameList[0] = lsScriptID;
-        scriptListCsv.insert(scriptListInsertPos, {lsScriptID, ::Script_File_Name});
-    }
-
-    csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", scriptListCsv, OverwriteTextMode::OverwriteNew);
-
-    //langscore_custom.rbの出力
-    auto lsCustomScriptPath = outputPath / (scriptFileNameList[1] + u8".rb"s);
-    bool replaceLsCustom = fs::exists(lsCustomScriptPath) == false;
-    replaceLsCustom |= (fs::file_size(lsCustomScriptPath) <= 0);
-    if(replaceLsCustom){
-        std::cout << "Write langscore_custom : " << outputPath / ::Custom_Script_File_Name << std::endl;
-        writeFixedTranslateText<rbscriptwriter>(lsCustomScriptPath, scriptFileList, langscore::OverwriteTextMode::OverwriteNew);
-    }
-
-    //langscore.rbの出力
-    auto outputScriptFilePath = outputPath / (scriptFileNameList[0]+u8".rb"s);
-    auto resourceFolder = this->appPath.parent_path() / "resource";
-    std::cout << "Copy langscore : From " << resourceFolder / (::Script_File_Name + u8".rb"s) << " To : " << outputScriptFilePath << std::endl;
-    fs::copy(resourceFolder / (::Script_File_Name+u8".rb"s), outputScriptFilePath, std::filesystem::copy_options::overwrite_existing);
-
-    //現在の設定を元にlangscore.rbのカスタマイズ
-    auto fileLines = formatSystemVariable(outputScriptFilePath);
-
-    if(fs::exists(outputScriptFilePath))
-    {
-        std::cout << "Replace langscore : " << outputScriptFilePath << std::endl;
-        std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
-        for(const auto& l : fileLines){
-            outScriptFile << utility::toString(l) << "\n";
-        }
-    }
-
+    std::cout << "Compress." << std::endl;
     auto runResult = this->invoker.recompressVXAce();
     if(runResult.val() != 0){
         std::cerr << runResult.toStr() << std::endl;
         return false;
     }
+    std::cout << "Done." << std::endl;
 
     std::cout << "Write Translate File Done." << std::endl;
     return true;
@@ -354,7 +293,8 @@ void divisi_vxace::writeAnalyzedRvScript()
     auto& scriptTrans = scriptWriter.getScriptTexts();
     for(auto& pathPair : scriptTrans)
     {
-        auto scriptFileName = pathPair.first.stem().u8string();
+        const auto& path = std::get<0>(pathPair);
+        auto scriptFileName = path.stem().u8string();
         auto scriptName = GetScriptName(scriptFileName);
         if(scriptName != u8"Vocab"s){ continue; }
 
@@ -624,43 +564,104 @@ void divisi_vxace::writeFixedGraphFileNameData()
     std::cout << "Finish." << std::endl;
 }
 
-/*
-void langscore::divisi_vxace::copyData(langscore::OverwriteTextMode option)
+void divisi_vxace::rewriteScriptList()
 {
     config config;
-    const auto projectPath = fs::path(config.projectPath());
-    const auto deserializeOutPath = projectPath / fs::path(config.outputTranslateFilePathForRPGMaker());
-    fs::directory_iterator it(deserializeOutPath);
-    //翻訳ファイルのコピー
-    for(auto& f : it)
+    const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
+
+    csvreader scriptList;
+    auto scriptListCsv = scriptList.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
+    const auto GetID = [&scriptListCsv]()
     {
-        auto srcPath = f.path().filename();
-        if(f.is_directory() && srcPath == "Script"){
-            continue;
+        std::vector<size_t> idList;
+        idList.reserve(scriptListCsv.size());
+        for(auto& row : scriptListCsv){ idList.emplace_back(std::stoll(utility::cnvStr<std::string>(row[0]))); }
+
+        std::mt19937 mt(std::random_device{}());
+        size_t num = 0;
+        do{
+            num = 10000ll + size_t(double(mt()) * double(99999999 - 10000) + 1.0) / (1.0 + double(mt.max()));
+        } while(std::find(idList.cbegin(), idList.cend(), num) != idList.cend());
+        return num;
+    };
+
+    //_list.csvの編集　追加する位置を見つける
+    const auto FindInsertPos = [&](const utility::u8stringlist& scriptList){
+        auto scriptListInsertPos = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&scriptList](const auto& x)
+        {
+            if(x.size() < 2){ return false; }
+            const auto& scriptName = x[1];
+            if(std::find(scriptList.cbegin(), scriptList.cend(), scriptName) != scriptList.cend()){
+                return true;
+            }
+            return false;
+        });
+        return scriptListInsertPos;
+    };
+    //Langscoreスクリプトの追加
+    //_list.csvにlsのスクリプトがあるかチェック。なければCSVに追加
+    auto scriptFileNameList = GetScriptFileName(config, {::Script_File_Name, ::Custom_Script_File_Name});
+
+    if(scriptFileNameList[1] == u8""){
+        auto lsCustomScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
+        scriptFileNameList[1] = lsCustomScriptID;
+        auto itr = FindInsertPos({u8"( ここに追加 )"s, u8"▼ メイン"s, u8"Main"s});
+        if(itr == scriptListCsv.cend()){
+            itr = scriptListCsv.cbegin();
         }
-        if(srcPath.extension().string().find(csvwriter::extension) == std::string::npos){ continue; }
-
-        fs::path to = outputProjectDataPath(srcPath);
-
-        auto fsOption = convertCopyOption(option);
-        std::cout << "Copy Translate File To : " << to << std::endl;
-        fs::copy(f, to, fsOption);
+        else{
+            itr--;  //ヒットした位置の一つ手前に挿入
+        }
+        scriptListCsv.insert(itr, {lsCustomScriptID, ::Custom_Script_File_Name});
+    }
+    if(scriptFileNameList[0] == u8""){
+        auto lsScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
+        scriptFileNameList[0] = lsScriptID;
+        auto itr = FindInsertPos({u8"VXAce_SP1"s, u8"▼ 素材"s});
+        if(itr == scriptListCsv.cend()){
+            itr = scriptListCsv.cend() - 1;
+        }
+        else{
+            itr++;  //ヒットした位置の次に挿入
+        }
+        scriptListCsv.insert(itr, {lsScriptID, ::Script_File_Name});
     }
 
-    //rbスクリプトのコピー
-    fs::directory_iterator it2{fs::path(config.langscoreAnalyzeDirectorty()) / "Scripts"};
-    for(auto& f : it2)
-    {
-        auto srcPath = f.path().filename();
-        //unison以外は無視
-        if(srcPath != ::Custom_Script_File_Name && srcPath != Script_File_Name){
-            continue;
-        }
-        if(srcPath.extension().string().find(rbscriptwriter::extension) == std::string::npos){ continue; }
+    csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", scriptListCsv, OverwriteTextMode::OverwriteNew);
 
-        fs::path to = outputProjectDataPath(srcPath, "Scripts");
-        auto fsOption = convertCopyOption(option);
-        fs::copy(f, to, fsOption);
+    auto outputPath = lsAnalyzePath / "Scripts";
+    if(fs::exists(outputPath) == false){
+        fs::create_directories(outputPath);
+    }
+    //langscore_custom.rbの出力
+    auto lsCustomScriptPath = outputPath / (scriptFileNameList[1] + u8".rb"s);
+    bool replaceLsCustom = fs::exists(lsCustomScriptPath) == false;
+    if(replaceLsCustom == false){
+        replaceLsCustom |= (fs::file_size(lsCustomScriptPath) <= 0);
+    }
+    if(replaceLsCustom){
+        std::cout << "Write langscore_custom : " << outputPath / ::Custom_Script_File_Name << std::endl;
+        writeFixedTranslateText<rbscriptwriter>(lsCustomScriptPath, scriptFileList, langscore::OverwriteTextMode::OverwriteNew);
+    }
+
+    //langscore.rbの出力
+    auto outputScriptFilePath = outputPath / (scriptFileNameList[0] + u8".rb"s);
+    auto resourceFolder = this->appPath.parent_path() / "resource";
+    const auto langscoreScriptFilePath = resourceFolder / (::Script_File_Name + u8".rb"s);
+    std::cout << "Copy langscore : From " << langscoreScriptFilePath << " To : " << outputScriptFilePath << std::endl;
+    fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing);
+
+    std::cout << "Done." << std::endl;
+
+    //現在の設定を元にlangscore.rbのカスタマイズ
+    auto fileLines = formatSystemVariable(outputScriptFilePath);
+
+    if(fs::exists(outputScriptFilePath))
+    {
+        std::cout << "Replace langscore : " << outputScriptFilePath << std::endl;
+        std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
+        for(const auto& l : fileLines){
+            outScriptFile << utility::toString(l) << "\n";
+        }
     }
 }
-*/

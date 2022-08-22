@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "platform_base.h"
 
@@ -25,6 +25,8 @@ namespace langscore
 		void writeFixedData();
 		void writeFixedRvScript();
 		void writeFixedGraphFileNameData();
+
+		void rewriteScriptList();
 
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 		
