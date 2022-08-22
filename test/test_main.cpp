@@ -133,7 +133,7 @@ IUTEST(Langscore_Divisi, CheckScriptCSV)
 {	
 	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
 
-	IUTEST_ASSERT(divisi.analyze());
+	IUTEST_ASSERT(divisi.analyze() == 0);
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
@@ -160,7 +160,7 @@ IUTEST(Langscore_Divisi, CheckScriptCSV)
 
 IUTEST(Langscore_Writer, UTF8WordCount)
 {
-	ScriptRegex scriptRegex;
+	ScriptTextParser scriptRegex;
 	IUTEST_ASSERT_EQ(scriptRegex.wordCountUTF8(u8"Honi"s), 4);		//ASCII
 	IUTEST_ASSERT_EQ(scriptRegex.wordCountUTF8(u8"©ÀʸΦ"s), 4);		//2Byte
 	IUTEST_ASSERT_EQ(scriptRegex.wordCountUTF8(u8"あいうえお"s), 5);	//3Byte
@@ -170,7 +170,7 @@ IUTEST(Langscore_Writer, UTF8WordCount)
 IUTEST(Langscore_Writer, ConvertWorkList)
 {
 	using namespace std::string_view_literals;
-	ScriptRegex scriptRegex;
+	ScriptTextParser scriptRegex;
 	{
 		auto baseStr = u8"HoniHoni"s;
 		auto result = scriptRegex.ConvertWordList(baseStr);
@@ -225,7 +225,7 @@ IUTEST(Langscore_Writer, ConvertWorkList)
 
 IUTEST(Langscore_Writer, DetectStringPosition)
 {
-	ScriptRegex scriptRegex;
+	ScriptTextParser scriptRegex;
 	{
 		auto result = scriptRegex.findStrings(u8"Test Line Script");
 		IUTEST_ASSERT(result.empty());
@@ -262,11 +262,12 @@ IUTEST(Langscore_Writer, DetectStringPositionFromFile)
 
 	auto result = scriptWriter.convertScriptToCSV(u8"./data/" + fileName + u8".rb");
 
-	IUTEST_ASSERT_EQ(result.size(), 10);
+	IUTEST_ASSERT_EQ(result.size(), 11);
 	
 	size_t i = 0;
 	IUTEST_ASSERT_EQ(result[i++].original, u8"あHoniい"s);
 	IUTEST_ASSERT_EQ(result[i++].original, u8"𦹀𧃴𧚄𨉷𨏍𪆐🙁😇"s);
+	IUTEST_ASSERT_EQ(result[i++].original, u8"HoniHoni"s);
 	IUTEST_ASSERT_EQ(result[i++].original, u8"trans #{text}"s);
 	IUTEST_ASSERT_EQ(result[i++].original, u8"call initialize_clone"s);
 	IUTEST_ASSERT_EQ(result[i++].original, u8"call initialize_clone"s);
@@ -277,17 +278,18 @@ IUTEST(Langscore_Writer, DetectStringPositionFromFile)
 	IUTEST_ASSERT_EQ(result[i++].original, u8"A"s);
 
 	i = 0;
+	//"を含まない単語の開始位置
 	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":8:4");
 	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":8:16");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":14:10");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":21:8");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":26:8");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":31:8");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":36:6");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":41:13");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":42:4");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":43:4");
-
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":11:2");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":16:10");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":23:8");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":28:8");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":33:8");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":38:6");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":43:13");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":44:4");
+	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":45:4");
 }
 
 int main(int argc, char** argv)
