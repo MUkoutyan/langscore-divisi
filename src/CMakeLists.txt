@@ -30,7 +30,7 @@ set(lib_files
 	"writer/csvwriter.h"
 	"writer/writerbase.cpp"
 	"writer/writerbase.h"
-	"writer/scriptRegex.hpp"
+	"writer/scripttextparser.hpp"
 	"reader/readerbase.h"
 	"reader/readerbase.cpp"
 	"reader/csvreader.h"

@@ -1,4 +1,4 @@
-﻿#include "writerbase.h"
+#include "writerbase.h"
 #include "utility.hpp"
 #include <fstream>
 #include "scriptRegex.hpp"
@@ -227,7 +227,7 @@ std::vector<TranslateText> writerbase::convertScriptToCSV(std::filesystem::path 
 	if(loadFile.is_open() == false){ return {}; }
 	auto fileName = path.filename().stem();
 
-	ScriptRegex scriptRegex;
+	ScriptTextParser scriptParser;
 	rangeComment = false;
 	while(loadFile.eof() == false)
 	{
@@ -244,7 +244,7 @@ std::vector<TranslateText> writerbase::convertScriptToCSV(std::filesystem::path 
 			break;
 		}
 
-		auto dqResult = scriptRegex.findStrings(line);
+		auto dqResult = scriptParser.findStrings(line);
 
 		auto lineCountStr = std::to_string(lineCount);
 		std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());

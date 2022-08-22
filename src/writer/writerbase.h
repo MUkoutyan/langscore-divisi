@@ -72,7 +72,7 @@ namespace langscore
             Break,
             Throught
         };
-        virtual ProgressNextStep checkCommentLine(TextCodec) { return ProgressNextStep::Throught;  }
+        virtual ProgressNextStep checkCommentLine(TextCodec&) { return ProgressNextStep::Throught;  }
 
     };
 }

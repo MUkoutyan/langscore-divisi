@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cassert>
 
-class ScriptRegex
+class ScriptTextParser
 {
 public:
 
