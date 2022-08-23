@@ -6,7 +6,7 @@
 #include "..\\src\\reader\\csvreader.h"
 #include "..\\src\\writer\\rbscriptwriter.h"
 #include "..\\src\\utility.hpp"
-#include "..\\src\\writer\\scriptRegex.hpp"
+#include "..\\src\\writer\\scripttextparser.hpp"
 #include <iostream>
 #include <filesystem>
 #include <Windows.h>
@@ -77,7 +77,8 @@ IUTEST(Langscore_Invoker, NoAssignProject)
 	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
 	langscore::invoker invoker;
 	auto result = invoker.analyze();
-	IUTEST_ASSERT_EQ(result.val(), 1);
+	IUTEST_ASSERT_EQ(result.moduleCode(), ErrorStatus::Module::INVOKER);
+	IUTEST_ASSERT_EQ(result.code(), 1);
 }
 
 IUTEST(Langscore_Invoker, AnalyzeVXAceProject)
@@ -88,7 +89,7 @@ IUTEST(Langscore_Invoker, AnalyzeVXAceProject)
 	langscore::invoker invoker;
 	invoker.setProjectPath(langscore::invoker::VXAce, config.projectPath());
 	auto analyzeResult = invoker.analyze();
-	IUTEST_ASSERT_EQ(analyzeResult.val(), 0);
+	IUTEST_ASSERT(analyzeResult.valid());
 
 	auto itr = fs::recursive_directory_iterator(outputPath);
 	auto numFiles = std::distance(itr, fs::recursive_directory_iterator{});
@@ -133,7 +134,7 @@ IUTEST(Langscore_Divisi, CheckScriptCSV)
 {	
 	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
 
-	IUTEST_ASSERT(divisi.analyze() == 0);
+	IUTEST_ASSERT(divisi.analyze().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
@@ -254,42 +255,138 @@ IUTEST(Langscore_Writer, DetectStringPosition)
 	}
 }
 
+IUTEST(Langscore_Writer, CheckRubyCommentLine)
+{
+	langscore::rbscriptwriter scriptWriter({}, {});
+
+	{
+		std::u8string original = u8"chstring";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, original);
+	}
+	{
+		std::u8string original = u8"#Commentout";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Continue);
+	}
+	{
+		std::u8string original = u8"=begin";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Continue);
+	}
+	{
+		std::u8string original = u8"Valid Script Line";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Continue);
+	}
+	{
+		std::u8string original = u8"=end";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Continue);
+	}
+	{
+		std::u8string original = u8"Without Comment Block";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_EQ(text, original);
+	}
+	{
+		std::u8string original = u8"Script~~~ #Comment";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8"Script~~~ "s);
+	}
+	{
+		std::u8string original = u8R"("Text".lstrans'Honi')";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8R"("Text"              )");
+	}
+	{
+		std::u8string original = u8R"("Text".lstrans"64:28:1")";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8R"("Text"                 )");
+	}
+	{
+		std::u8string original = u8R"("Text".lstrans(''))";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8R"("Text"            )");
+	}
+	{
+		std::u8string original = u8R"(Honi:"Te'xt".lstrans('Hoge') "DetectText")";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text,u8R"(Honi:"Te'xt"                 "DetectText")"s);
+	}
+	{
+		std::u8string original = u8R"("Text".lstrans(""))";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text,u8R"("Text"            )");
+	}
+	{
+		std::u8string original = u8R"(Honi:"Text".lstrans("Hoge") "DetectText")";
+		std::u8string text = original;
+		auto result = scriptWriter.checkCommentLine(text);
+		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text,u8R"(Honi:"Text"                 "DetectText")"s);
+	}
+}
+
 IUTEST(Langscore_Writer, DetectStringPositionFromFile)
 {
 	std::u8string fileName = u8"chstring";
-	//IUTEST_ASSERT(fs::exists(u8"./data/"s + fileName));
 	langscore::rbscriptwriter scriptWriter({}, {});
 
 	auto result = scriptWriter.convertScriptToCSV(u8"./data/" + fileName + u8".rb");
 
-	IUTEST_ASSERT_EQ(result.size(), 11);
+	IUTEST_ASSERT_EQ(result.size(), 13);
 	
 	size_t i = 0;
-	IUTEST_ASSERT_EQ(result[i++].original, u8"あHoniい"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"𦹀𧃴𧚄𨉷𨏍𪆐🙁😇"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"HoniHoni"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"trans #{text}"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"call initialize_clone"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"call initialize_clone"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"call to_str"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"あいうえお"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"A"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"B"s);
-	IUTEST_ASSERT_EQ(result[i++].original, u8"A"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"あHoniい"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"𦹀𧃴𧚄𨉷𨏍𪆐🙁😇"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"HoniHoni"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"trans #{text}"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"call initialize_clone"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"call initialize_clone"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"call to_str"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"あいうえお"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"A"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"B"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"A"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"翻訳テキスト"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"翻訳テキスト2"s);
 
 	i = 0;
 	//"を含まない単語の開始位置
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":8:4");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":8:16");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":11:2");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":16:10");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":23:8");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":28:8");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":33:8");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":38:6");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":43:13");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":44:4");
-	IUTEST_ASSERT_EQ(result[i++].memo, fileName+u8":45:4");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":8:4");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":8:16");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":11:2");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":16:10");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":23:8");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":28:8");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":33:8");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":38:6");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":43:13");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":44:4");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":45:4");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":47:2");
+	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":48:2");
 }
 
 int main(int argc, char** argv)
