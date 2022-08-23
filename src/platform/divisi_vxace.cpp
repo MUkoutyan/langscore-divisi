@@ -106,12 +106,12 @@ std::filesystem::path langscore::divisi_vxace::exportFolderPath(std::filesystem:
     return to /= fileName;
 }
 
-bool divisi_vxace::analyze()
+ErrorStatus divisi_vxace::analyze()
 {
     auto runResult = this->invoker.analyze();
     if(runResult.val() != 0){
         std::cerr << runResult.toStr() << std::endl;
-        return false;
+        return runResult;
     }
 
     fetchFilePathList();
@@ -120,10 +120,10 @@ bool divisi_vxace::analyze()
     this->writeAnalyzedRvScript();
 
     std::cout << "AnalyzeProject Done." << std::endl;
-    return true;
+    return Status_Success;
 }
 
-bool langscore::divisi_vxace::write()
+ErrorStatus langscore::divisi_vxace::write()
 {
     std::cout << "Write..." << std::endl;
     config config;
@@ -174,13 +174,12 @@ bool langscore::divisi_vxace::write()
     std::cout << "Compress." << std::endl;
     auto runResult = this->invoker.recompressVXAce();
     if(runResult.val() != 0){
-        std::cerr << runResult.toStr() << std::endl;
-        return false;
+        return runResult;
     }
     std::cout << "Done." << std::endl;
 
     std::cout << "Write Translate File Done." << std::endl;
-    return true;
+    return Status_Success;
 }
 
 void langscore::divisi_vxace::fetchFilePathList()

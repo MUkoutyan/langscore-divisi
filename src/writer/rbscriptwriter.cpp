@@ -1,7 +1,7 @@
 ﻿#include "rbscriptwriter.h"
 #include "config.h"
 #include "utility.hpp"
-#include "scriptRegex.hpp"
+#include "scripttextparser.hpp"
 #include <fstream>
 #include <format>
 
@@ -63,7 +63,7 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
     return false;
 }
 
-bool langscore::rbscriptwriter::write(std::filesystem::path filePath, OverwriteTextMode overwriteMode)
+ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, OverwriteTextMode overwriteMode)
 {
     using namespace std::literals::string_literals;
 
@@ -152,7 +152,7 @@ bool langscore::rbscriptwriter::write(std::filesystem::path filePath, OverwriteT
     }
 
 
-    return false;
+    return Status_Success;
 }
 
 writerbase::ProgressNextStep rbscriptwriter::checkCommentLine(TextCodec& line)
@@ -199,6 +199,37 @@ writerbase::ProgressNextStep rbscriptwriter::checkCommentLine(TextCodec& line)
         return ProgressNextStep::Continue;
     }
 
+    //規定の関数
+    ScriptTextParser textParser;
+    const std::u8string_view transFuncName = u8".lstrans";
+    auto pos = line.find(transFuncName);
+    for(;pos != TextCodec::npos;pos=line.find(transFuncName))
+    {
+        auto quotePos = pos + transFuncName.length();
+        auto quote = u8'\"';
+        constexpr auto sq = u8'\'';
+        //Rubyは(を書かなくてもいいので2通り見る
+        bool useBracket = false;
+        if(line[quotePos] == sq){ quote = sq; }
+        else if(line[quotePos] == u8'('){
+            quotePos++;
+            useBracket = true;
+            if(line[quotePos] == sq){
+                quote = sq;
+            }
+        }
+        auto endQuotePos = line.find_first_of(quote, quotePos + 1)+1;
+        if(useBracket){ endQuotePos++; }
+        //assert(endQuotePos != TextCodec::npos && "There's a weird script!");
+
+        //列数がズレるのが困るので、削除ではなく空白で置換
+        //UTF8も考慮して、マルチバイトを考慮した文字数を置換する。
+        const auto detectLength = endQuotePos - pos;
+        auto detectStr = line.substr(pos, detectLength);
+        auto numText = textParser.ConvertWordList(detectStr);
+        TextCodec space(numText.size(), u8' ');
+        line.replace(pos, detectLength, space);
+    }
     if(line.empty()){ ProgressNextStep::Continue; }
 
     return ProgressNextStep::Throught;

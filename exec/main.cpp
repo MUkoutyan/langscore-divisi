@@ -1,4 +1,4 @@
-#include "divisi.h"
+﻿#include "divisi.h"
 #include "../src/serialize_base.h"
 #include "../src/reader/csvreader.h"
 #include <iostream>
@@ -20,7 +20,7 @@ ARGS analyzeOption(int argc, const char* argv[])
 	{
 		std::string_view str = argv[i];
 		if(str.find("-c") != std::string_view::npos){
-			++i;
+			++i;	//次の要素を読み込む
 			args.configFile = argv[i];
 		}
 		else if(str.find("--analyze") != std::string_view::npos){
@@ -61,15 +61,16 @@ int main(int argc, const char* argv[])
 
 	langscore::divisi divisi(args.appPath, args.configFile);
 
+	ErrorStatus result;
 	if(args.analyze){
-		if(divisi.analyze() == false){
-			return -2;
-		}
+		result = divisi.analyze();
 	}
 	if(args.write){
-		if(divisi.write() == false){
-			return -3;
-		}
+		result = divisi.analyze();
+	}
+	if(result.inValid()){
+		std::cerr << result.toStr() << std::endl;
+		return result.val();
 	}
 
 	return 0;

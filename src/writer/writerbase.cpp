@@ -1,7 +1,7 @@
 #include "writerbase.h"
 #include "utility.hpp"
 #include <fstream>
-#include "scriptRegex.hpp"
+#include "scripttextparser.hpp"
 
 using namespace langscore;
 namespace

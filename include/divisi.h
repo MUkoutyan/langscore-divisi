@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <filesystem>
+#include "errorstatus.hpp"
 #include "config.h"
 
 namespace langscore
@@ -16,8 +17,8 @@ public:
     divisi(std::filesystem::path appPath, std::filesystem::path configPath);
     ~divisi();
 
-    int analyze();
-    int write();
+    ErrorStatus analyze();
+    ErrorStatus write();
 
 private:
     class Impl;

@@ -2,6 +2,7 @@
 #define WRITERBASE_H
 
 #include "../serialize_base.h"
+#include "errorstatus.hpp"
 #include <tuple>
 #include <filesystem>
 #include "nlohmann/json.hpp"
@@ -16,6 +17,7 @@
 #undef max
 #endif
 
+class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, CheckRubyCommentLine);
 class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, DetectStringPositionFromFile);
 
 #endif
@@ -25,6 +27,7 @@ namespace langscore
     class writerbase
     {
 #ifdef ENABLE_TEST
+        IUTEST_FRIEND_TEST(Langscore_Writer, CheckRubyCommentLine);
         IUTEST_FRIEND_TEST(Langscore_Writer, DetectStringPositionFromFile);
 #endif
     public:
@@ -35,7 +38,7 @@ namespace langscore
         writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts);
         virtual ~writerbase();
 
-        virtual bool write(std::filesystem::path writePath, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) = 0;
+        virtual ErrorStatus write(std::filesystem::path writePath, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) = 0;
         virtual bool merge(std::filesystem::path srcPath) { return true; }
 
         void setOverwriteMode(OverwriteTextMode overwriteMode){

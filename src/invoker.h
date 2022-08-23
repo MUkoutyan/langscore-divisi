@@ -4,6 +4,7 @@
 #include <string>
 #include <functional>
 #include <filesystem>
+#include "errorstatus.hpp"
 
 namespace langscore
 {
@@ -11,17 +12,6 @@ namespace langscore
 class invoker
 {
 public:
-
-    struct Result {
-    public:
-        Result(int code = 0) : code(code), specMsg(""){}
-        int val() const noexcept { return code; }
-        void setSpecMsg(std::string m){ specMsg = std::move(m); }
-        std::string toStr() const;
-    private:
-        int code;
-        std::string specMsg;
-    };
 
     enum ProjectType {
         None,
@@ -38,8 +28,8 @@ public:
     
     ProjectType projectType() const noexcept;
 
-    Result analyze();
-    Result recompressVXAce();
+    ErrorStatus analyze();
+    ErrorStatus recompressVXAce();
 
 private:
     std::filesystem::path appPath;
@@ -47,8 +37,9 @@ private:
     std::vector<std::u8string> langs;
     ProjectType currentProjectType;
 
-    Result exec(std::vector<std::string> args);
+    ErrorStatus exec(std::vector<std::string> args);
 };
+
 
 }
 

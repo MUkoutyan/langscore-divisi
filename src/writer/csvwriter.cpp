@@ -1,4 +1,4 @@
-﻿#include "csvwriter.h"
+#include "csvwriter.h"
 #include "config.h"
 #include "utility.hpp"
 #include "../reader/csvreader.h"
@@ -55,13 +55,13 @@ bool csvwriter::merge(std::filesystem::path filePath)
     return true;
 }
 
-bool csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
+ErrorStatus csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
 {
-    if(this->texts.empty()){ return false; }
+    if(this->texts.empty()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 0); }
     path.replace_extension(csvwriter::extension);
    
     std::ofstream outputCSVFile(path);
-    if(outputCSVFile.bad()){ return false; }
+    if(outputCSVFile.bad()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
     
     const std::u8string delimiter(u8",");
     auto headers = this->texts[0].createHeader();
@@ -89,13 +89,13 @@ bool csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
         outputCSVFile << "\n";
     }
     
-    return true;
+    return Status_Success;
 }
 
-bool langscore::csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, OverwriteTextMode overwriteMode)
+ErrorStatus langscore::csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, OverwriteTextMode overwriteMode)
 {
     std::ofstream outputCSVFile(path);
-    if(outputCSVFile.bad()){ return false; }
+    if(outputCSVFile.bad()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
 
     const std::u8string delimiter(u8",");
     for(const auto& text : textList)
@@ -103,5 +103,5 @@ bool langscore::csvwriter::writePlain(std::filesystem::path path, std::vector<ut
         writeU8String(outputCSVFile, utility::join(text, delimiter));
         outputCSVFile << "\n";
     }
-    return false;
+    return Status_Success;
 }

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "platform_base.h"
 
@@ -11,8 +11,8 @@ namespace langscore
 		~divisi_vxace() override;
 
 		void setProjectPath(std::filesystem::path path) override;
-		bool analyze() override;
-		bool write() override;
+		ErrorStatus analyze() override;
+		ErrorStatus write() override;
 
 		//void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) override;
 

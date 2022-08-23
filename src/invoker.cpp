@@ -31,23 +31,23 @@ void invoker::setProjectPath(ProjectType type, std::filesystem::path path)
 }
 
 
-invoker::Result invoker::analyze(){
+ErrorStatus invoker::analyze(){
     config config;
     auto tempPath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
     tempPath.make_preferred();
     if(std::filesystem::exists(tempPath) == false){
         if(std::filesystem::create_directories(tempPath) == false){
-            return Result(6);
+            return ErrorStatus(ErrorStatus::Module::INVOKER, 6);
         }
     }
     return exec({"-i", _projectPath.string(), "-o", tempPath.string()});
 }
 
-invoker::Result langscore::invoker::recompressVXAce(){
+ErrorStatus langscore::invoker::recompressVXAce(){
     return exec({"-i", _projectPath.string(), "-c"});
 }
 
-invoker::Result langscore::invoker::exec(std::vector<std::string> args)
+ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
 {
     auto basePath = appPath.empty() ? "./" : appPath;
     if(currentProjectType == VXAce)
@@ -56,7 +56,7 @@ invoker::Result langscore::invoker::exec(std::vector<std::string> args)
 
         rvcnvPath.make_preferred();
         if(std::filesystem::exists(rvcnvPath) == false){
-            return Result(3);
+            return ErrorStatus(ErrorStatus::Module::INVOKER, 3);
         }
 
 #if !defined(_DEBUG)
@@ -71,7 +71,7 @@ invoker::Result langscore::invoker::exec(std::vector<std::string> args)
 
             auto hash = md5((void*)bin.data(), bin.size());
             if(hash != rvcnv_hash){
-                return Result(5);
+                return ErrorStatus(ErrorStatus::Module::INVOKER, 5);
             }
         }
 #endif
@@ -79,35 +79,18 @@ invoker::Result langscore::invoker::exec(std::vector<std::string> args)
         auto process = "\"" + rvcnvPath.string() + "\"" + " " + utility::join(args, std::string(" "));
         auto ret = system(process.c_str());
         if(ret != 0){
-            return Result(4);
+            return ErrorStatus(ErrorStatus::Module::INVOKER, 4);
         }
     }
     else //if(currentProjectType == None)
     {
-        return Result(1);
+        return ErrorStatus(ErrorStatus::Module::INVOKER, 1);
     }
 
 
-    return Result(0);
+    return Status_Success;
 }
 
 invoker::ProjectType invoker::projectType() const noexcept {
     return this->currentProjectType;
-}
-
-std::string invoker::Result::toStr() const
-{
-    switch(code)
-    {
-    case 0: return "";
-    case 1: return "error code 1 : Unsupport Project Type";
-    case 2: return "error code 2 : Not Found Execute file.";
-    case 3: return "error code 3 : Not Found Convert file.";
-    case 4: return "error code 4 : Failed to convert.";
-    case 5: return "error code 5 : Invalid ExecuteFile!!!!";
-    case 6: return "error code 6 : Failed Create Output File.";
-    case 255: return this->specMsg;
-    }
-
-    return "";
 }

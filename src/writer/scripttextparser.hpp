@@ -84,6 +84,7 @@ public:
 		DataType transTextList;
 		auto wordList = ConvertWordList(line);
 
+		//•¶Žš—ñ‚ª–³‚¯‚ê‚Î–³Ž‹
 		if(std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"\""sv; }) == wordList.cend() &&
 		   std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"'"sv; }) == wordList.cend())
 		{

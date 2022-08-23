@@ -13,8 +13,8 @@ namespace langscore
         constexpr static const char* extension = "csv";
 
         bool merge(std::filesystem::path filePath) override;
-        bool write(std::filesystem::path path, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) override;
-        static bool writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> text, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld);
+        ErrorStatus write(std::filesystem::path path, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) override;
+        static ErrorStatus writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> text, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld);
 
 #ifdef ENABLE_TEST
         friend class Langscore_Test_WriterBase;

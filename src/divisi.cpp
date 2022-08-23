@@ -74,36 +74,39 @@ divisi::divisi(fs::path appPath, std::filesystem::path configPath)
 
 divisi::~divisi(){}
 
-int divisi::analyze()
+ErrorStatus divisi::analyze()
 {
     config config;
     auto projectPath = config.projectPath();
-    if(projectPath.empty()){ return 1; }
+    if(projectPath.empty()){ 
+        return ErrorStatus(ErrorStatus::Module::DIVISI, 1);
+    }
     pImpl->createConverter(projectPath);
 
-    if(pImpl->converter){
-        pImpl->converter->setAppPath(pImpl->appPath);
-        pImpl->converter->setProjectPath(std::move(projectPath));
-        return pImpl->converter->analyze() ? 0 : 1;
+    if(pImpl->converter == nullptr){
+        return ErrorStatus(ErrorStatus::Module::DIVISI, 2);
     }
 
-    return 0;
+    pImpl->converter->setAppPath(pImpl->appPath);
+    pImpl->converter->setProjectPath(std::move(projectPath));
+    return pImpl->converter->analyze();
 }
 
-int langscore::divisi::write()
+ErrorStatus langscore::divisi::write()
 {
     config config;
     auto projectPath = config.projectPath();
-    if(projectPath.empty()){ return 1; }
+    if(projectPath.empty()){
+        return ErrorStatus(ErrorStatus::Module::DIVISI, 1);
+    }
     pImpl->createConverter(projectPath);
 
-    if(pImpl->converter){
-        pImpl->converter->setAppPath(pImpl->appPath);
-        pImpl->converter->setProjectPath(std::move(projectPath));
-        return pImpl->converter->write() ? 0 : 1;
+    if(pImpl->converter == nullptr){
+        return ErrorStatus(ErrorStatus::Module::DIVISI, 2);
     }
 
-    return 0;
-
+    pImpl->converter->setAppPath(pImpl->appPath);
+    pImpl->converter->setProjectPath(std::move(projectPath));
+    return pImpl->converter->write();
 }
 
