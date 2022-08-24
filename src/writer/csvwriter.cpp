@@ -71,8 +71,12 @@ ErrorStatus csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
     
     config config;
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+    size_t i = 0;
     for(const auto& text : this->texts)
     {
+        if(i != 0){
+            outputCSVFile << "\n";
+        }
         utility::u8stringlist rowtext = {text.original};
         //ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
         for(const auto& lang : text.translates)
@@ -86,7 +90,7 @@ ErrorStatus csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
         }
 
         writeU8String(outputCSVFile, utility::join(rowtext, delimiter));
-        outputCSVFile << "\n";
+        ++i;
     }
     
     return Status_Success;
