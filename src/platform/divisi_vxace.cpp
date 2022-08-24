@@ -363,13 +363,15 @@ void langscore::divisi_vxace::writeFixedData()
         }
     };
 
-    auto ignoreScripts = config.vxaceScripts();
+    auto ignoreScripts = config.vxaceBasicData();
     for(auto& path : dataFileList)
     {
         auto result = std::find_if(ignoreScripts.cbegin(), ignoreScripts.cend(), [f = path.filename()](const auto& x){
             return x.ignore && x.filename == f.u8string();
         });
-        if(result != ignoreScripts.cend()){ continue; }
+        if(result != ignoreScripts.cend()){ 
+            continue; 
+        }
 
         writeRvCsv(path);
     }
