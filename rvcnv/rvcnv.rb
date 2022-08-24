@@ -608,8 +608,8 @@ rvdata_list = [
   'Classes.rvdata2','CommonEvents.rvdata2','Enemies.rvdata2',
   'Items.rvdata2',
   *Dir.glob('Map[0-9][0-9][0-9].rvdata2', base: data_folder),
-  'MapInfos.rvdata2', 'Skills.rvdata2', 'States.rvdata2', 'System.rvdata2',
-  'Tilesets.rvdata2', 'Troops.rvdata2', 'Weapons.rvdata2'
+  'Skills.rvdata2', 'States.rvdata2', 'System.rvdata2',
+  'Troops.rvdata2', 'Weapons.rvdata2'
 ]
 rvdata_list.each do |rvdata|
   data = ''
@@ -623,5 +623,25 @@ rvdata_list.each do |rvdata|
       p "Load : #{data_folder+"/"+rvdata}"
       p e
     end
+  end
+end
+
+#マップ名を取得するためにMapInfosを解析。
+#Jsonは手間なのでCSVで直接出力する [マップID, オーダー, マップ名]
+File.open(data_folder+"/MapInfos.rvdata2", 'rb') do |info|
+  begin 
+    csvData = []
+    data = Marshal.load(info.read).each do |id, mapInfo|
+      csvData.push([id, mapInfo.order, mapInfo.name])
+    end
+
+    CSV.open(output_folder+"/MapInfos.csv", 'w') do |file|
+      csvData.each do |r| 
+        file.puts([r[0],r[1],r[2]]) 
+      end
+    end
+  rescue => e
+    p "Load : #{data_folder+"/"+rvdata}"
+    p e
   end
 end
