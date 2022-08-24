@@ -143,7 +143,7 @@ std::tuple<bool, int> writerbase::checkEventCommandCode(const nlohmann::json& ob
 			switch(code){
 				case 102: //選択肢
 				case 401: //文章の表示
-				case 231: //画像の表示
+				//case 231: //画像の表示
 					result = true;
 				default:
 					break;
