@@ -6,6 +6,7 @@
 
 #ifdef ENABLE_TEST
 class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, CheckRubyCommentLine);
+class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, VXAce_WriteScriptCSV);
 #endif
 
 namespace langscore
@@ -14,6 +15,7 @@ namespace langscore
     {
 #ifdef ENABLE_TEST
         IUTEST_FRIEND_TEST(Langscore_Writer, CheckRubyCommentLine);
+        IUTEST_FRIEND_TEST(Langscore_Divisi, VXAce_WriteScriptCSV);
 #endif
     public:
         using ScriptPathList = std::vector<std::tuple<std::filesystem::path, std::vector<TranslateText>>>;
