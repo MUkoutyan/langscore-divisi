@@ -409,12 +409,24 @@ void langscore::divisi_vxace::writeFixedRvScript()
         t.original = t.memo;
     }
 
+    csvreader scriptListReader;
+    const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
+    auto scriptListCsv = scriptListReader.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
+
     //無視する行の判定
     utility::u8stringlist ignoreRowName;
     for(auto& scriptInfo : scriptInfoList)
     {
         //ファイルごと無視した場合は上で取り除いているので何もしない
         if(scriptInfo.ignore){ continue; }
+
+        auto fileName = fs::path(scriptInfo.filename).filename().stem().u8string();
+        auto scriptCsvItr = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&fileName](const auto& x){ return x[1] == fileName; });
+        if(scriptCsvItr != scriptListCsv.cend()){
+            if((*scriptCsvItr)[1] == u8"langscore"s || (*scriptCsvItr)[1] == u8"langscore_custom"s){
+                continue;
+            }
+        }
 
         for(const auto& textInfo : scriptInfo.texts)
         {
@@ -432,13 +444,15 @@ void langscore::divisi_vxace::writeFixedRvScript()
     }
 
 #ifdef _DEBUG
-    for(auto& txt : transTexts){
+    for(auto& txt : transTexts)
+    {
+        auto origin = txt.translates[def_lang];
         for(auto& tl : txt.translates)
         {
             auto t = tl.second;
             if(def_lang != tl.first)
             {
-                t = txt.memo;
+                t = origin;
                 if(t[0] == u8'\"'){
                     t.insert(1, tl.first + u8"-");
                 }
@@ -454,7 +468,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
     const auto translateFolderList = config.exportDirectory();
     for(auto& translateFolder : translateFolderList){
         std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, OverwriteTextMode::LeaveOld);
+        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, OverwriteTextMode::LeaveOldNonBlank);
     }
 
     std::cout << "Finish." << std::endl;

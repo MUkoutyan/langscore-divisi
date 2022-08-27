@@ -41,6 +41,11 @@ rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std
         if(result == scriptListCsv.cend()){ continue; }
 
         auto scriptName = (*result)[1];
+
+        //更新時の場合はここでlangscoreスクリプトが含まれている可能性がある
+        if(scriptName == u8"langscore"){ continue; }
+        else if(scriptName == u8"langscore_custom"){ continue; }
+
         scriptNameMap.emplace(path, scriptName);
         auto transTextList = convertScriptToCSV(path);
 
@@ -236,68 +241,72 @@ writerbase::ProgressNextStep rbscriptwriter::checkCommentLine(TextCodec& line)
 
 void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<TranslateText> texts)
 {
-    const static std::unordered_map<std::u8string, std::u8string> translates = {
-        { u8"%s の経験値を獲得！", u8"ObtainExp" },
-        { u8"%sが%sをかばった！", u8"Substitute" },
-        { u8"%sが出現！", u8"Emerge" },
-        { u8"%sたち", u8"PartyName" },
-        { u8"%sに %s のダメージを与えた！", u8"EnemyDamage" },
-        { u8"%sには効かなかった！", u8"ActionFailure" },
-        { u8"%sにダメージを与えられない！", u8"EnemyNoDamage" },
-        { u8"%sの%sが %s 回復した！", u8"ActorRecovery" },
-        { u8"%sの%sが %s 回復した！", u8"EnemyRecovery" },
-        { u8"%sの%sが %s 増えた！", u8"ActorGain" },
-        { u8"%sの%sが %s 増えた！", u8"EnemyGain" },
-        { u8"%sの%sが %s 減った！", u8"ActorLoss" },
-        { u8"%sの%sが %s 減った！", u8"EnemyLoss" },
-        { u8"%sの%sが上がった！", u8"BuffAdd" },
-        { u8"%sの%sが下がった！", u8"DebuffAdd" },
-        { u8"%sの%sが元に戻った！", u8"BuffRemove" },
-        { u8"%sの%sを %s 奪った！", u8"EnemyDrain" },
-        { u8"%sの勝利！", u8"Victory" },
-        { u8"%sの反撃！", u8"CounterAttack" },
-        { u8"%sは %s のダメージを受けた！", u8"ActorDamage" },
-        { u8"%sは%s %s に上がった！", u8"LevelUp" },
-        { u8"%sは%sを %s 奪われた！", u8"ActorDrain" },
-        { u8"%sは%sを使った！", u8"UseItem" },
-        { u8"%sはダメージを受けていない！", u8"ActorNoDamage" },
-        { u8"%sは不意をつかれた！", u8"Surprise" },
-        { u8"%sは先手を取った！", u8"Preemptive" },
-        { u8"%sは戦いに敗れた。", u8"Defeat" },
-        { u8"%sは攻撃をかわした！", u8"Evasion" },
-        { u8"%sは逃げ出した！", u8"EscapeStart" },
-        { u8"%sは魔法を打ち消した！", u8"MagicEvasion" },
-        { u8"%sは魔法を跳ね返した！", u8"MagicReflection" },
-        { u8"%sを手に入れた！", u8"ObtainItem" },
-        { u8"%sを覚えた！", u8"ObtainSkill" },
-        { u8"お金を %s\\G 手に入れた！", u8"ObtainGold" },
-        { u8"しかし逃げることはできなかった！", u8"EscapeFailure" },
-        { u8"どのファイルにセーブしますか？", u8"SaveMessage" },
-        { u8"どのファイルをロードしますか？", u8"LoadMessage" },
-        { u8"やめる", u8"ShopCancel" },
-        { u8"ファイル", u8"File" },
-        { u8"ミス！　%sにダメージを与えられない！", u8"EnemyNoHit" },
-        { u8"ミス！　%sはダメージを受けていない！", u8"ActorNoHit" },
-        { u8"会心の一撃！！", u8"CriticalToEnemy" },
-        { u8"売却する", u8"ShopSell" },
-        { u8"持っている数", u8"Possession" },
-        { u8"次の%sまで", u8"ExpNext" },
-        { u8"現在の経験値", u8"ExpTotal" },
-        { u8"痛恨の一撃！！", u8"CriticalToActor" },
-        { u8"購入する", u8"ShopBuy" },
+    std::vector<std::tuple<std::u8string, std::u8string, bool>> translates = {
+        { u8"%s の経験値を獲得！", u8"ObtainExp", false },
+        { u8"%sが%sをかばった！", u8"Substitute", false },
+        { u8"%sが出現！", u8"Emerge", false },
+        { u8"%sたち", u8"PartyName", false },
+        { u8"%sに %s のダメージを与えた！", u8"EnemyDamage", false },
+        { u8"%sには効かなかった！", u8"ActionFailure", false },
+        { u8"%sにダメージを与えられない！", u8"EnemyNoDamage", false },
+        { u8"%sの%sが %s 回復した！", u8"ActorRecovery", false },
+        { u8"%sの%sが %s 回復した！", u8"EnemyRecovery", false },
+        { u8"%sの%sが %s 増えた！", u8"ActorGain", false },
+        { u8"%sの%sが %s 増えた！", u8"EnemyGain", false },
+        { u8"%sの%sが %s 減った！", u8"ActorLoss", false },
+        { u8"%sの%sが %s 減った！", u8"EnemyLoss", false },
+        { u8"%sの%sが上がった！", u8"BuffAdd", false },
+        { u8"%sの%sが下がった！", u8"DebuffAdd", false },
+        { u8"%sの%sが元に戻った！", u8"BuffRemove", false },
+        { u8"%sの%sを %s 奪った！", u8"EnemyDrain", false },
+        { u8"%sの勝利！", u8"Victory", false },
+        { u8"%sの反撃！", u8"CounterAttack", false },
+        { u8"%sは %s のダメージを受けた！", u8"ActorDamage", false },
+        { u8"%sは%s %s に上がった！", u8"LevelUp", false },
+        { u8"%sは%sを %s 奪われた！", u8"ActorDrain", false },
+        { u8"%sは%sを使った！", u8"UseItem", false },
+        { u8"%sはダメージを受けていない！", u8"ActorNoDamage", false },
+        { u8"%sは不意をつかれた！", u8"Surprise", false },
+        { u8"%sは先手を取った！", u8"Preemptive", false },
+        { u8"%sは戦いに敗れた。", u8"Defeat", false },
+        { u8"%sは攻撃をかわした！", u8"Evasion", false },
+        { u8"%sは逃げ出した！", u8"EscapeStart", false },
+        { u8"%sは魔法を打ち消した！", u8"MagicEvasion", false },
+        { u8"%sは魔法を跳ね返した！", u8"MagicReflection", false },
+        { u8"%sを手に入れた！", u8"ObtainItem", false },
+        { u8"%sを覚えた！", u8"ObtainSkill", false },
+        { u8"お金を %s\\G 手に入れた！", u8"ObtainGold", false },
+        { u8"しかし逃げることはできなかった！", u8"EscapeFailure", false },
+        { u8"どのファイルにセーブしますか？", u8"SaveMessage", false },
+        { u8"どのファイルをロードしますか？", u8"LoadMessage", false },
+        { u8"やめる", u8"ShopCancel", false },
+        { u8"ファイル", u8"File", false },
+        { u8"ミス！　%sにダメージを与えられない！", u8"EnemyNoHit", false },
+        { u8"ミス！　%sはダメージを受けていない！", u8"ActorNoHit", false },
+        { u8"会心の一撃！！", u8"CriticalToEnemy", false },
+        { u8"売却する", u8"ShopSell", false },
+        { u8"持っている数", u8"Possession", false },
+        { u8"次の%sまで", u8"ExpNext", false },
+        { u8"現在の経験値", u8"ExpTotal", false },
+        { u8"痛恨の一撃！！", u8"CriticalToActor", false },
+        { u8"購入する", u8"ShopBuy", false },
     };
     size_t maxVarLength = 0;
-    for(const auto& t : translates){ maxVarLength = std::max(maxVarLength, (u8"Vocab::" + t.second + u8".replace").length()); }
+    for(const auto& t : translates){ maxVarLength = std::max(maxVarLength, (u8"Vocab::" + std::get<1>(t) + u8".replace").length()); }
 
     for(auto& t : texts)
     {
-        if(translates.find(t.original) != translates.end())
+        auto result = std::find_if(translates.begin(), translates.end(), [&t](const auto& x){
+            return std::get<0>(x) == t.original && std::get<2>(x) == false;
+        });
+        if(result != translates.end())
         {
-            auto varName = translates.at(t.original);
+            auto varName = std::get<1>(*result);
             auto lvalue = "Vocab::" + utility::toString(varName) + ".replace";
             std::string space(maxVarLength - lvalue.length(), ' ');
             file << tab << lvalue << space << " Langscore.translate_for_script(\"" << utility::toString(t.memo) << "\")";
             file << nl;
+            std::get<2>(*result) = true;
         }
     }
 }

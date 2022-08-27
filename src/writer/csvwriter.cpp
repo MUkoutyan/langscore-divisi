@@ -31,8 +31,12 @@ bool csvwriter::merge(std::filesystem::path filePath)
             auto text = oldText->translates[pair.first];
 
             if(overwriteMode == OverwriteTextMode::LeaveOldNonBlank){
-                if(text != u8""){  //既に文字が入っていたら残す
+                if(text.empty() == false){  //既に文字が入っていたら残す
                     pair.second = text;
+                    continue;
+                }
+                else{
+                    text = pair.second;
                     continue;
                 }
             }

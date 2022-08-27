@@ -43,6 +43,8 @@ static std::map<config::JsonKey, const char*> jsonKeys = {
 	MAKE_KEYVALUE(RPGMakerOutputPath),
 	MAKE_KEYVALUE(RPGMakerBasicData),
 	MAKE_KEYVALUE(RPGMakerScripts),
+	MAKE_KEYVALUE(OverwriteLangscore),
+	MAKE_KEYVALUE(OverwriteLangscoreCustom),
 };
 
 const char* config::key(JsonKey key)
@@ -115,6 +117,7 @@ void langscore::config::detachConfigFile(){
 config::config(std::filesystem::path path)
 	: pImpl(std::make_unique<Impl>())
 {
+	assert(jsonKeys.size() == size_t(JsonKey::NumKeys));
 	if(Impl::configPath != ""){
 		path = Impl::configPath;
 	}
@@ -125,6 +128,7 @@ config::config(std::filesystem::path path)
 langscore::config::config()
 	: pImpl(std::make_unique<Impl>())
 {
+	assert(jsonKeys.size() == size_t(JsonKey::NumKeys));
 	if(Impl::configPath != ""){
 		pImpl->load(Impl::configPath);
 	}
