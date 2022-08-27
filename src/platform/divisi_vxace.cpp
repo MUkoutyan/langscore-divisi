@@ -492,7 +492,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
             _line = tab + u8"LS_FONT = {" + nl;
             for(auto& pair : fonts)
             {
-                auto lang = utility::cnvStr<std::u8string>(pair.font.name);
+                auto lang = utility::cnvStr<std::u8string>(pair.name);
                 auto sizeStr = utility::cnvStr<std::u8string>(std::to_string(pair.font.size));
                 _line += tab + tab;
                 _line += u8"\"" + lang + u8"\" => {:name => \"" + pair.font.name + u8"\", :size => " + sizeStr + u8"}," + nl;

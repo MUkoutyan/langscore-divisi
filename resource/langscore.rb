@@ -121,9 +121,6 @@ module Langscore
     if LS_FONT[lang] != nil
       Font.default_name = LS_FONT[lang][:name]
       Font.default_size = LS_FONT[lang][:size]
-    else
-      Font.default_name = LS_FONT["default"][:name]
-      Font.default_size = LS_FONT["default"][:size]
     end
     return beforeFontName != Font.default_name
   end
