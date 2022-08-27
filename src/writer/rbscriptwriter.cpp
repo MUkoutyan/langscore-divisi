@@ -25,14 +25,15 @@ namespace
 
 rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)
     : writerbase(std::move(langs), std::vector<TranslateText>{})
+    , scriptFileList(std::move(scriptFileList))
 {
+
     utility::u8stringlist scriptNameList;
     csvreader scriptList;
     config config;
     const auto lsAnalyzePath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
     auto scriptListCsv = scriptList.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
-
-    for(auto& path : scriptFileList)
+    for(auto& path : this->scriptFileList)
     {
         auto fileName = path.filename().stem().u8string();
         auto result = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&fileName](const auto& x){
@@ -46,11 +47,11 @@ rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std
         if(scriptName == u8"langscore"){ continue; }
         else if(scriptName == u8"langscore_custom"){ continue; }
 
-        scriptNameMap.emplace(path, scriptName);
+        scriptNameMap.emplace(fileName, scriptName);
         auto transTextList = convertScriptToCSV(path);
 
         std::copy(transTextList.begin(), transTextList.end(), std::back_inserter(this->texts));
-        scriptTranslates.emplace_back(path, std::move(transTextList));
+        scriptTranslates.emplace_back(fileName, std::move(transTextList));
     }
 }
 
@@ -93,13 +94,6 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Ove
     };
     constexpr char functionName[] = "Langscore.Translate_Script_Text";
 
-    const auto GetScriptName = [this](auto filePath){
-        const auto& scriptName = scriptNameMap[filePath];
-        if(scriptName.empty()){ return u8""s; }
-        if(scriptName == u8"langscore"){ return u8""s; }
-        if(scriptName == u8"langscore_custom"){ return u8""s; }
-        return scriptName;
-    };
     //======================================
 
     std::ofstream outFile(filePath);
@@ -109,33 +103,38 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Ove
     outFile << tab << "$data_langscore_scripts ||= LSCSV.to_hash(\"Data/Translates/Scripts.lscsv\")" << nl;
     outFile << nl;
 
-    for(auto& pair : scriptTranslates)
+    config config;
+    auto scriptInfoList = config.vxaceScripts();
+    auto scriptTranslatesTmp = scriptTranslates;
+
+    for(auto& pair : scriptTranslatesTmp){
+        std::get<1>(pair) = this->acceptIgnoreScripts(scriptInfoList, std::get<1>(pair));
+    }
+
+    auto rm_result = std::remove_if(scriptTranslatesTmp.begin(), scriptTranslatesTmp.end(), [this, &scriptInfoList](const auto& x){
+        return std::get<1>(x).empty() || GetScriptName(std::get<0>(x)).empty();
+    });
+    scriptTranslatesTmp.erase(rm_result, scriptTranslatesTmp.end());
+
+    for(auto& pair : scriptTranslatesTmp)
     {
-        const auto& path = std::get<0>(pair);
-        if(std::get<1>(pair).empty()){ continue; }
-        auto scriptName = GetScriptName(path);
-        if(scriptName.empty()){ continue; }
-
-        auto functionName = utility::cnvStr<std::string>(funcName(path.filename().stem().string()));
-
+        const auto& fileName = std::get<0>(pair);
+        auto scriptName = GetScriptName(fileName);
+        auto functionName = utility::cnvStr<std::string>(funcName(fileName));
         outFile << tab << functionName << tab << "#" << utility::toString(scriptName) << nl;
     }
     outFile << "end" << nl << nl;
 
-
-    config config;
     auto funcComment = config.usScriptFuncComment();
 
-    for(auto& pair : scriptTranslates)
+    for(auto& pair : scriptTranslatesTmp)
     {
-        const auto& path = std::get<0>(pair);
-        const auto& list = std::get<1>(pair);
-        if(list.empty()){ continue; }
-        auto scriptName = GetScriptName(path);
-        if(scriptName.empty()){ continue; }
+        const auto& fileName = std::get<0>(pair);
+        auto scriptName = GetScriptName(fileName);
         outFile << functionComment(utility::toString(scriptName));
-        outFile << functionDef(path.filename().stem().string());
+        outFile << functionDef(utility::cnvStr<std::string>(fileName));
 
+        const auto& list = std::get<1>(pair);
         if(scriptName == u8"Vocab"){
             WriteVocab(outFile, list);
         }
@@ -143,10 +142,10 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Ove
         {
             for(auto& line : list)
             {
-                auto parsed = utility::split(line.memo, u8':');
+                auto parsed = utility::split(line.original, u8':');
                 auto filepath = std::vformat(funcComment, std::make_format_args(utility::toString(parsed[0]), utility::toString(parsed[1]), utility::toString(parsed[2])));
                 outFile << tab << "#" + filepath << nl;
-                outFile << tab << "#original : " << utility::toString(line.original) << nl;
+                outFile << tab << "#original : " << utility::toString(line.memo) << nl;
                 outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.memo) << "\")" << nl;
                 outFile << nl;
             }
@@ -157,6 +156,63 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Ove
 
 
     return Status_Success;
+}
+
+std::vector<TranslateText> langscore::rbscriptwriter::acceptIgnoreScripts(const std::vector<config::ScriptData>& scriptInfoList, std::vector<TranslateText> transTexts)
+{
+    if(transTexts.empty()){ return {}; }
+    namespace fs = std::filesystem;
+
+    config config;
+    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+
+    for(auto& t : transTexts){
+        if(t.translates.find(def_lang) == t.translates.end()){ continue; }
+        t.translates[def_lang] = t.original;
+        t.memo.swap(t.original);
+    }
+
+    csvreader scriptListReader;
+    const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
+    auto scriptListCsv = scriptListReader.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
+
+    //無視する行の判定
+    utility::u8stringlist ignoreRowName;
+    for(auto& scriptInfo : scriptInfoList)
+    {
+        auto fileName = fs::path(scriptInfo.filename).filename().stem().u8string();
+        auto scriptName = GetScriptName(fileName);
+        auto scriptCsvItr = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&fileName](const auto& x){ return x[1] == fileName; });
+        if(scriptCsvItr != scriptListCsv.cend()){
+            if((*scriptCsvItr)[1] == u8"langscore"s || (*scriptCsvItr)[1] == u8"langscore_custom"s){
+                continue;
+            }
+        }
+
+        if(scriptInfo.ignore == false){
+            for(const auto& textInfo : scriptInfo.texts)
+            {
+                if(textInfo.disable){ continue; }
+                if(textInfo.ignore){ continue; }
+                auto name = fileName + utility::cnvStr<std::u8string>(":" + std::to_string(textInfo.row) + ":" + std::to_string(textInfo.col));
+                ignoreRowName.emplace_back(std::move(name));
+            }
+        }
+        else{
+            auto rm_result = std::remove_if(transTexts.begin(), transTexts.end(), [&fileName](const auto& x){
+                return x.original.find(fileName) != std::remove_const_t<std::remove_reference_t<decltype(x.original)>>::npos;
+            });
+            transTexts.erase(rm_result, transTexts.end());
+        }
+    }
+    {
+        auto rm_result = std::remove_if(transTexts.begin(), transTexts.end(), [&ignoreRowName](const auto& t){
+            return std::find(ignoreRowName.cbegin(), ignoreRowName.cend(), t.original) != ignoreRowName.cend();
+        });
+        transTexts.erase(rm_result, transTexts.end());
+    }
+
+    return transTexts;
 }
 
 writerbase::ProgressNextStep rbscriptwriter::checkCommentLine(TextCodec& line)
@@ -294,10 +350,14 @@ void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<Tran
     size_t maxVarLength = 0;
     for(const auto& t : translates){ maxVarLength = std::max(maxVarLength, (u8"Vocab::" + std::get<1>(t) + u8".replace").length()); }
 
+    config config;
+    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+
     for(auto& t : texts)
     {
-        auto result = std::find_if(translates.begin(), translates.end(), [&t](const auto& x){
-            return std::get<0>(x) == t.original && std::get<2>(x) == false;
+        auto original = t.translates[def_lang];
+        auto result = std::find_if(translates.begin(), translates.end(), [&original](const auto& x){
+            return std::get<0>(x) == original && std::get<2>(x) == false;
         });
         if(result != translates.end())
         {
@@ -309,4 +369,13 @@ void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<Tran
             std::get<2>(*result) = true;
         }
     }
+}
+
+inline std::u8string langscore::rbscriptwriter::GetScriptName(std::u8string fileName)
+{
+    const auto& scriptName = scriptNameMap[fileName];
+    if(scriptName.empty()){ return u8""s; }
+    if(scriptName == u8"langscore"){ return u8""s; }
+    if(scriptName == u8"langscore_custom"){ return u8""s; }
+    return scriptName;
 }

@@ -56,7 +56,7 @@ const char* config::key(JsonKey key)
 class config::Impl
 {
 public:
-	nlohmann::json json;
+	static nlohmann::json json;
 	static std::filesystem::path configPath;
 	std::filesystem::path path;
 
@@ -75,9 +75,11 @@ public:
 
 	void load(std::filesystem::path path)
 	{
-		std::ifstream loadFile(path);
+		this->path = std::move(path);
+		if(json.empty() == false){ return; }
+
+		std::ifstream loadFile(this->path);
 		if(loadFile.good()){
-			this->path = std::move(path);
 			loadFile >> json;
 		}
 		else{
@@ -104,6 +106,7 @@ public:
 
 };
 std::filesystem::path config::Impl::configPath = "";
+nlohmann::json config::Impl::json;
 
 
 void langscore::config::attachConfigFile(std::filesystem::path path){
@@ -112,6 +115,7 @@ void langscore::config::attachConfigFile(std::filesystem::path path){
 
 void langscore::config::detachConfigFile(){
 	Impl::configPath = "";
+	Impl::json.clear();
 }
 
 config::config(std::filesystem::path path)

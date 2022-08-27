@@ -292,8 +292,7 @@ void divisi_vxace::writeAnalyzedRvScript()
     auto& scriptTrans = scriptWriter.getScriptTexts();
     for(auto& pathPair : scriptTrans)
     {
-        const auto& path = std::get<0>(pathPair);
-        auto scriptFileName = path.stem().u8string();
+        auto scriptFileName = std::get<0>(pathPair);
         auto scriptName = GetScriptName(scriptFileName);
         if(scriptName != u8"Vocab"s){ continue; }
 
@@ -335,7 +334,7 @@ void divisi_vxace::writeAnalyzedRvScript()
     }
 
     std::cout << "Write CSV : " << outputPath << std::endl;
-    writeAnalyzeTranslateText<csvwriter>(outputPath, transTexts, OverwriteTextMode::LeaveOld, false);
+    writeAnalyzeTranslateText<csvwriter>(outputPath, transTexts, OverwriteTextMode::LeaveOldNonBlank, false);
 
     std::cout << "Finish." << std::endl;
 }
@@ -399,49 +398,11 @@ void langscore::divisi_vxace::writeFixedRvScript()
         scriptList.erase(rm_result, scriptList.end());
     }
 
+    //スクリプトの翻訳を書き込むCSVの書き出し
     rbscriptwriter scriptWriter(this->supportLangs, scriptList);
-    auto& transTexts = scriptWriter.curerntTexts();
-
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-    for(auto& t : transTexts){
-        if(t.translates.find(def_lang) == t.translates.end()){ continue; }
-        t.translates[def_lang] = t.original;
-        t.original = t.memo;
-    }
-
-    csvreader scriptListReader;
-    const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
-    auto scriptListCsv = scriptListReader.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
-
-    //無視する行の判定
-    utility::u8stringlist ignoreRowName;
-    for(auto& scriptInfo : scriptInfoList)
-    {
-        //ファイルごと無視した場合は上で取り除いているので何もしない
-        if(scriptInfo.ignore){ continue; }
-
-        auto fileName = fs::path(scriptInfo.filename).filename().stem().u8string();
-        auto scriptCsvItr = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&fileName](const auto& x){ return x[1] == fileName; });
-        if(scriptCsvItr != scriptListCsv.cend()){
-            if((*scriptCsvItr)[1] == u8"langscore"s || (*scriptCsvItr)[1] == u8"langscore_custom"s){
-                continue;
-            }
-        }
-
-        for(const auto& textInfo : scriptInfo.texts)
-        {
-            if(textInfo.disable){ continue; }
-            if(textInfo.ignore){ continue; }
-            auto name = scriptInfo.filename + u8".rb"s + utility::cnvStr<std::u8string>(":" + std::to_string(textInfo.row) + ":" + std::to_string(textInfo.col));
-            ignoreRowName.emplace_back(std::move(name));
-        }
-    }
-    {
-        auto rm_result = std::remove_if(transTexts.begin(), transTexts.end(), [&ignoreRowName](const auto& t){
-            return std::find(ignoreRowName.cbegin(), ignoreRowName.cend(), t.original) != ignoreRowName.cend();
-        });
-        transTexts.erase(rm_result, transTexts.end());
-    }
+    auto transTexts = scriptWriter.curerntTexts();
+    transTexts = scriptWriter.acceptIgnoreScripts(scriptInfoList, std::move(transTexts));
 
 #ifdef _DEBUG
     for(auto& txt : transTexts)
@@ -661,7 +622,7 @@ void divisi_vxace::rewriteScriptList()
 
     //langscore.rbの出力
     auto outputScriptFilePath = outputPath / (scriptFileNameList[0] + u8".rb"s);
-    bool replaceLs = fs::exists(outputScriptFilePath);
+    bool replaceLs = fs::exists(outputScriptFilePath)==false;
     if(replaceLs == false){
         replaceLs = config.overwriteLangscore();
     }
@@ -671,17 +632,18 @@ void divisi_vxace::rewriteScriptList()
         std::cout << "Copy langscore : From " << langscoreScriptFilePath << " To : " << outputScriptFilePath << std::endl;
         fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing);
         std::cout << "Done." << std::endl;
-    }
 
-    //現在の設定を元にlangscore.rbのカスタマイズ
-    auto fileLines = formatSystemVariable(outputScriptFilePath);
+        //現在の設定を元にlangscore.rbのカスタマイズ
+        auto fileLines = formatSystemVariable(outputScriptFilePath);
 
-    if(fs::exists(outputScriptFilePath))
-    {
-        std::cout << "Replace langscore : " << outputScriptFilePath << std::endl;
-        std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
-        for(const auto& l : fileLines){
-            outScriptFile << utility::toString(l) << "\n";
+        if(fs::exists(outputScriptFilePath))
+        {
+            std::cout << "Replace langscore : " << outputScriptFilePath << std::endl;
+            std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
+            for(const auto& l : fileLines){
+                outScriptFile << utility::toString(l) << "\n";
+            }
         }
     }
+
 }

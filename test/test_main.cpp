@@ -550,9 +550,9 @@ IUTEST(Langscore_Divisi, VXAce_WriteScriptCSV)
 	{
 		//文字列のないスクリプトファイルを無視する
 		if(std::get<1>(script).empty()){ continue; }
-		auto fileName = std::get<0>(script).filename().stem().string();
+		auto fileName = std::get<0>(script);
 		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [&fileName](const auto& x){
-			return utility::cnvStr<std::string>(x[0]) == fileName;
+			return x[0] == fileName;
 		});
 
 		IUTEST_ASSERT(result != scriptList.cend());
@@ -561,11 +561,11 @@ IUTEST(Langscore_Divisi, VXAce_WriteScriptCSV)
 		if(scriptName == u8"langscore"){ continue; }
 		else if(scriptName == u8"langscore_custom"){ continue; }
 
-		auto path = outputPath / "Scripts" / (fileName + ".rb");
+		auto path = outputPath / "Scripts" / (fileName + u8".rb");
 
 		if(fs::file_size(path) == 0){ continue; }
 
-		auto scriptFuncName = "def "s + funcName(fileName);
+		auto scriptFuncName = "def "s + funcName(utility::cnvStr<std::string>(fileName));
 		if(FindString(scriptFuncName) == false)
 		{
 			IUTEST_SCOPED_TRACE(::iutest::Message() << "NotFound Line " << scriptFuncName);
