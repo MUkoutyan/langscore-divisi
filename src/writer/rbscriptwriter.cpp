@@ -75,7 +75,7 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Ove
         for(auto i = str.find(Char(" ")); i != decltype(str)::npos; i = str.find(Char(" "))){
             str.replace(i, 1, (Char*)"_");
         }
-        return Char("Langscore.translate_") + str;
+        return Str(std::add_pointer_t<Char>("Langscore.translate_") + str);
     };
     const auto functionDef = [&](auto str){
         return decltype(str)("def " + funcName(str) + nl);
@@ -111,8 +111,7 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Ove
         auto scriptName = GetScriptName(path);
         if(scriptName.empty()){ continue; }
 
-
-        auto functionName = utility::cnvStr<std::string>(funcName(scriptName));
+        auto functionName = utility::cnvStr<std::string>(funcName(path.filename().stem().string()));
 
         outFile << tab << functionName << tab << "#" << utility::toString(scriptName) << nl;
     }
