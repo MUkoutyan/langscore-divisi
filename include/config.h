@@ -72,6 +72,8 @@ namespace langscore
 			RPGMakerOutputPath,
 			RPGMakerBasicData,
 			RPGMakerScripts,
+			OverwriteLangscore,
+			OverwriteLangscoreCustom,
 
 			NumKeys,
 		};
@@ -92,6 +94,8 @@ namespace langscore
 		std::string usScriptFuncComment();
 		std::vector<std::u8string> exportDirectory();
 		bool exportByLanguage();
+		bool overwriteLangscore();
+		bool overwriteLangscoreCustom();
 		std::u8string outputTranslateFilePathForRPGMaker();
 		std::vector<BasicData> vxaceBasicData();
 		std::vector<ScriptData> vxaceScripts();

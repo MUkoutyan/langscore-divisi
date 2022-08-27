@@ -638,7 +638,7 @@ void divisi_vxace::rewriteScriptList()
     auto lsCustomScriptPath = outputPath / (scriptFileNameList[1] + u8".rb"s);
     bool replaceLsCustom = fs::exists(lsCustomScriptPath) == false;
     if(replaceLsCustom == false){
-        replaceLsCustom |= (fs::file_size(lsCustomScriptPath) <= 0);
+        replaceLsCustom = config.overwriteLangscoreCustom();
     }
     if(replaceLsCustom){
         std::cout << "Write langscore_custom : " << outputPath / ::Custom_Script_File_Name << std::endl;
@@ -647,12 +647,17 @@ void divisi_vxace::rewriteScriptList()
 
     //langscore.rbの出力
     auto outputScriptFilePath = outputPath / (scriptFileNameList[0] + u8".rb"s);
-    auto resourceFolder = this->appPath.parent_path() / "resource";
-    const auto langscoreScriptFilePath = resourceFolder / (::Script_File_Name + u8".rb"s);
-    std::cout << "Copy langscore : From " << langscoreScriptFilePath << " To : " << outputScriptFilePath << std::endl;
-    fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing);
-
-    std::cout << "Done." << std::endl;
+    bool replaceLs = fs::exists(outputScriptFilePath);
+    if(replaceLs == false){
+        replaceLs = config.overwriteLangscore();
+    }
+    if(replaceLs){
+        auto resourceFolder = this->appPath.parent_path() / "resource";
+        const auto langscoreScriptFilePath = resourceFolder / (::Script_File_Name + u8".rb"s);
+        std::cout << "Copy langscore : From " << langscoreScriptFilePath << " To : " << outputScriptFilePath << std::endl;
+        fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing);
+        std::cout << "Done." << std::endl;
+    }
 
     //現在の設定を元にlangscore.rbのカスタマイズ
     auto fileLines = formatSystemVariable(outputScriptFilePath);

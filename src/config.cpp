@@ -2,6 +2,8 @@
 #include "config.h"
 #include "config.h"
 #include "config.h"
+#include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -198,6 +200,16 @@ std::vector<std::u8string> langscore::config::exportDirectory()
 bool langscore::config::exportByLanguage()
 {
 	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportByLang)], false);
+}
+
+bool langscore::config::overwriteLangscore()
+{
+	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::OverwriteLangscore)], false);
+}
+
+bool langscore::config::overwriteLangscoreCustom()
+{
+	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::OverwriteLangscoreCustom)], false);
 }
 
 std::u8string config::outputTranslateFilePathForRPGMaker()
