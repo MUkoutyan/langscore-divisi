@@ -66,7 +66,7 @@ int main(int argc, const char* argv[])
 		result = divisi.analyze();
 	}
 	if(args.write){
-		result = divisi.analyze();
+		result = divisi.write();
 	}
 	if(result.inValid()){
 		std::cerr << result.toStr() << std::endl;
