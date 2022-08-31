@@ -146,7 +146,7 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Ove
                 auto filepath = std::vformat(funcComment, std::make_format_args(utility::toString(parsed[0]), utility::toString(parsed[1]), utility::toString(parsed[2])));
                 outFile << tab << "#" + filepath << nl;
                 outFile << tab << "#original : " << utility::toString(line.memo) << nl;
-                outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.memo) << "\")" << nl;
+                outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.original) << "\")" << nl;
                 outFile << nl;
             }
         }
@@ -331,7 +331,7 @@ void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<Tran
         { u8"%sは魔法を跳ね返した！", u8"MagicReflection", false },
         { u8"%sを手に入れた！", u8"ObtainItem", false },
         { u8"%sを覚えた！", u8"ObtainSkill", false },
-        { u8"お金を %s\\G 手に入れた！", u8"ObtainGold", false },
+        { u8"お金を %s\\\\G 手に入れた！", u8"ObtainGold", false },
         { u8"しかし逃げることはできなかった！", u8"EscapeFailure", false },
         { u8"どのファイルにセーブしますか？", u8"SaveMessage", false },
         { u8"どのファイルをロードしますか？", u8"LoadMessage", false },

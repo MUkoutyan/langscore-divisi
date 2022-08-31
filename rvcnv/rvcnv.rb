@@ -515,6 +515,8 @@ opt.on('-o OUTPUTPATH', '-output OUTPUTPATH'){ |v|
 
 compress = false
 opt.on('-c'){|v| compress = v }
+packing = false
+opt.on('-p'){|v| packing = v }
 
 opt.parse!(ARGV)
 
@@ -531,6 +533,23 @@ SCRIPTLIST_DATA     = 3
 CSV_SCRIPTLIST_ID   = 0
 CSV_SCRIPTLIST_NAME = 1
 EMPTY_SCRIPT_NAME   = "_NONAME_"
+
+if packing
+  class LsDumpData
+    attr_accessor :data
+  end
+  read_dir = data_folder+"/Translate/"
+  Dir.glob('*.csv', base: read_dir).each do |fileName|
+  
+    origin = LsDumpData.new
+    origin.data = File.read(read_dir+fileName)
+    d = Marshal.dump(origin)
+    File.open(read_dir + File.basename(fileName, ".csv") + ".rvdata2", "wb") do | dump |
+      dump.write(d)
+    end
+  end
+  exit
+end
 
 if compress
   

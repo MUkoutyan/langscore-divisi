@@ -20,6 +20,7 @@ namespace langscore
 		virtual void setProjectPath(std::filesystem::path path) = 0;
 		virtual ErrorStatus analyze() = 0;
 		virtual ErrorStatus write() = 0;
+		virtual ErrorStatus finishing() = 0;
 
 		//virtual void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) = 0;
 

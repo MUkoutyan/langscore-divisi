@@ -47,6 +47,10 @@ ErrorStatus langscore::invoker::recompressVXAce(){
     return exec({"-i", _projectPath.string(), "-c"});
 }
 
+ErrorStatus langscore::invoker::packingVXAce(){
+    return exec({"-i", _projectPath.string(), "-p"});
+}
+
 ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
 {
     auto basePath = appPath.empty() ? "./" : appPath;

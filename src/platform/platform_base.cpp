@@ -1,5 +1,6 @@
 #include "platform_base.h"
 
+
 std::filesystem::copy_options langscore::platform_base::convertCopyOption(OverwriteTextMode mode)
 {
 	switch(mode)

@@ -72,6 +72,7 @@ namespace
         }
         return result;
     }
+
 }
 
 divisi_vxace::divisi_vxace()
@@ -179,6 +180,41 @@ ErrorStatus langscore::divisi_vxace::write()
     std::cout << "Done." << std::endl;
 
     std::cout << "Write Translate File Done." << std::endl;
+    return Status_Success;
+}
+
+ErrorStatus langscore::divisi_vxace::finishing()
+{
+    config config;
+    const auto finalizeExportDirectory = fs::path(config.projectPath() + u8"Data/Translate");
+    const auto exportDirectory = config.exportDirectory();
+    utility::filelist csvPathList;
+
+    for(auto dir : exportDirectory)
+    {
+        for(const auto& f : fs::recursive_directory_iterator{dir}){
+            auto extension = f.path().extension();
+            if(extension == ".csv"){
+                csvPathList.emplace_back(f.path());
+            }
+        }
+    }
+
+    //整合性チェック
+
+    if(config.exportByLanguage())
+    {
+    }
+    else
+    {
+    }
+
+    std::cout << "Packing." << std::endl;
+    auto runResult = this->invoker.packingVXAce();
+    if(runResult.val() != 0){
+        return runResult;
+    }
+
     return Status_Success;
 }
 
@@ -405,25 +441,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
     transTexts = scriptWriter.acceptIgnoreScripts(scriptInfoList, std::move(transTexts));
 
 #ifdef _DEBUG
-    for(auto& txt : transTexts)
-    {
-        auto origin = txt.translates[def_lang];
-        for(auto& tl : txt.translates)
-        {
-            auto t = tl.second;
-            if(def_lang != tl.first)
-            {
-                t = origin;
-                if(t[0] == u8'\"'){
-                    t.insert(1, tl.first + u8"-");
-                }
-                else {
-                    t = tl.first + u8"-" + t;
-                }
-            }
-            tl.second = t;
-        }
-    }
+    writerbase::ReplaceDebugTextByLang(transTexts, def_lang);
 #endif
 
     const auto translateFolderList = config.exportDirectory();
@@ -578,6 +596,7 @@ void divisi_vxace::rewriteScriptList()
     //_list.csvにlsのスクリプトがあるかチェック。なければCSVに追加
     auto scriptFileNameList = GetScriptFileName(config, {::Script_File_Name, ::Custom_Script_File_Name});
 
+    bool updateScriptCsv = false;
     if(scriptFileNameList[1] == u8""){
         auto lsCustomScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
         scriptFileNameList[1] = lsCustomScriptID;
@@ -589,6 +608,7 @@ void divisi_vxace::rewriteScriptList()
             itr--;  //ヒットした位置の一つ手前に挿入
         }
         scriptListCsv.insert(itr, {lsCustomScriptID, ::Custom_Script_File_Name});
+        updateScriptCsv = true;
     }
     if(scriptFileNameList[0] == u8""){
         auto lsScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
@@ -601,9 +621,12 @@ void divisi_vxace::rewriteScriptList()
             itr++;  //ヒットした位置の次に挿入
         }
         scriptListCsv.insert(itr, {lsScriptID, ::Script_File_Name});
+        updateScriptCsv = true;
     }
 
-    csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", scriptListCsv, OverwriteTextMode::OverwriteNew);
+    if(updateScriptCsv){
+        csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", std::move(scriptListCsv), OverwriteTextMode::OverwriteNew);
+    }
 
     auto outputPath = lsAnalyzePath / "Scripts";
     if(fs::exists(outputPath) == false){
@@ -646,4 +669,106 @@ void divisi_vxace::rewriteScriptList()
         }
     }
 
+}
+
+void divisi_vxace::validateTranslateFile(utility::filelist csvPathList)
+{
+    fs::path path;
+    size_t row = 1;
+
+    csvreader csvreader;
+    for(auto& _path : csvPathList)
+    {
+        auto texts = csvreader.parse(path);
+        validateTranslateList(std::move(texts), std::move(_path));
+    }
+}
+
+bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path)
+{
+    const auto OutputError = [&path](auto str, size_t row){
+        std::cout << utility::cnvStr<std::string>(str) << ", " << path << ", L:" << row << std::endl;
+    };
+    size_t row = 1;
+    bool result = true;
+    for(auto& text : texts)
+    {
+        if(text.original.empty()){
+            OutputError("Warning : Empty Original Text"s, row);
+            result = false;
+        }
+        auto [withValEscList, EscList] = findEscChars(text.original);
+
+        for(auto& trans : text.translates)
+        {
+            if(trans.second.empty()){
+                OutputError(u8"Warning : Empty "s + trans.first + u8" Text"s, row);
+                result = false;
+                continue;
+            }
+
+            for(auto& esc : withValEscList){
+                if(trans.second.find(esc) == trans.second.npos){
+                    OutputError(u8"Warning : Esc Char "s + std::u8string(esc) + u8" Not Found!"s, row);
+                    result = false;
+                }
+            }
+            for(auto& esc : EscList){
+                if(trans.second.find(esc) == trans.second.npos){
+                    OutputError(u8"Warning : Esc Char "s + std::u8string(esc) + u8" Not Found!"s, row);
+                    result = false;
+                }
+            }
+        }
+        row++;
+    }
+
+    return result;
+}
+
+std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace::findEscChars(const std::u8string& text)
+{
+    static const std::vector<std::u8string> escWithValueChars = {
+        u8"\\V[", u8"\\N[", u8"\\P[", u8"\\C[", u8"\\l["
+    };
+    static const std::vector<std::u8string> escChars = {
+        u8"\\G", u8"\\{", u8"\\}", u8"\\$", u8"\\.", u8"\\|",
+        u8"\\!", u8"\\>", u8"\\<", u8"\\^", u8"\\\\"
+    };
+
+    std::vector<std::u8string> result1;
+    std::vector<std::u8string> result2;
+    if(text.empty()){ return std::forward_as_tuple(result1, result2); }
+
+    for(const auto& c : escWithValueChars)
+    {
+        auto pos = text.find(c);
+        auto offset = 0;
+        for(; pos != text.npos; pos = text.find(c, offset))
+        {
+            auto endPos = text.find(u8']', pos);
+            if(endPos == text.npos){
+                break;
+            }
+            endPos++;
+            auto result = text.substr(pos, endPos - pos);
+            offset = endPos;
+            result1.emplace_back(std::move(result));
+        }
+    }
+    std::sort(result1.begin(), result1.end());
+    result1.erase(std::unique(result1.begin(), result1.end()), result1.end());
+
+    for(const auto& c : escChars)
+    {
+        auto pos = text.find(c);
+        for(; pos != text.npos; pos = text.find(c)){
+            result2.emplace_back(c);
+            break;
+        }
+    }
+    std::sort(result2.begin(), result2.end());
+    result2.erase(std::unique(result2.begin(), result2.end()), result2.end());
+
+    return std::forward_as_tuple(result1, result2);
 }

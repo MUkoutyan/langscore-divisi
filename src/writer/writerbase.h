@@ -47,6 +47,11 @@ namespace langscore
         std::vector<TranslateText>& curerntTexts() { return texts; }
         bool isDebug = false;
 
+#ifdef _DEBUG
+        static void ReplaceDebugTextByOrigin(std::vector<TranslateText>& transTexts);
+        static void ReplaceDebugTextByLang(std::vector<TranslateText>& transTexts, std::u8string def_lang);
+#endif
+
     protected:
         std::vector<std::u8string> useLangs;
         std::vector<TranslateText> texts;

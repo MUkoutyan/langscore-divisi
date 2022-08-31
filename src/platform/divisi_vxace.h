@@ -6,6 +6,8 @@
 #include "iutest.hpp"
 class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, VXAce_WriteScriptCSV);
 class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, ValidateLangscoreCustom);
+class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, VXAce_Validate);
+class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, VXAce_FindEscChar);
 #endif
 
 namespace langscore
@@ -16,6 +18,8 @@ namespace langscore
 #ifdef ENABLE_TEST
 		IUTEST_FRIEND_TEST(Langscore_Divisi, VXAce_WriteScriptCSV);
 		IUTEST_FRIEND_TEST(Langscore_Divisi, ValidateLangscoreCustom);
+		IUTEST_FRIEND_TEST(Langscore_Divisi, VXAce_Validate);
+		IUTEST_FRIEND_TEST(Langscore_Divisi, VXAce_FindEscChar);
 #endif
 	public:
 		divisi_vxace();
@@ -24,6 +28,7 @@ namespace langscore
 		void setProjectPath(std::filesystem::path path) override;
 		ErrorStatus analyze() override;
 		ErrorStatus write() override;
+		ErrorStatus finishing() override;
 
 		//void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) override;
 
@@ -36,8 +41,11 @@ namespace langscore
 		void writeFixedData();
 		void writeFixedRvScript();
 		void writeFixedGraphFileNameData();
-
 		void rewriteScriptList();
+
+		void validateTranslateFile(utility::filelist csvPathList);
+		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path);
+		std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> findEscChars(const std::u8string& text);
 
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 		

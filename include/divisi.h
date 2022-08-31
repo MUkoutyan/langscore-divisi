@@ -19,6 +19,7 @@ public:
 
     ErrorStatus analyze();
     ErrorStatus write();
+    ErrorStatus finishing();
 
 private:
     class Impl;

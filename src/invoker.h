@@ -30,6 +30,7 @@ public:
 
     ErrorStatus analyze();
     ErrorStatus recompressVXAce();
+    ErrorStatus packingVXAce();
 
 private:
     std::filesystem::path appPath;

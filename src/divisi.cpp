@@ -1,4 +1,5 @@
 #include "divisi.h"
+#include "divisi.h"
 #include "utility.hpp"
 #include "invoker.h"
 #include "nlohmann/json.hpp"
@@ -92,7 +93,25 @@ ErrorStatus divisi::analyze()
     return pImpl->converter->analyze();
 }
 
-ErrorStatus langscore::divisi::write()
+ErrorStatus divisi::write()
+{
+    config config;
+    auto projectPath = config.projectPath();
+    if(projectPath.empty()){
+        return ErrorStatus(ErrorStatus::Module::DIVISI, 1);
+    }
+    pImpl->createConverter(projectPath);
+
+    if(pImpl->converter == nullptr){
+        return ErrorStatus(ErrorStatus::Module::DIVISI, 2);
+    }
+
+    pImpl->converter->setAppPath(pImpl->appPath);
+    pImpl->converter->setProjectPath(std::move(projectPath));
+    return pImpl->converter->write();
+}
+
+ErrorStatus divisi::finishing()
 {
     config config;
     auto projectPath = config.projectPath();

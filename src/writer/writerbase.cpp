@@ -30,6 +30,9 @@ writerbase::writerbase(std::vector<std::u8string> langs, const nlohmann::json& j
 	: writerbase(std::move(langs), std::vector<TranslateText>{})
 {
 	json2tt(json);
+//#ifdef _DEBUG
+//	ReplaceDebugTextByOrigin(this->texts);
+//#endif
 }
 
 writerbase::writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts)
@@ -44,6 +47,51 @@ writerbase::writerbase(std::vector<std::u8string> langs, std::vector<TranslateTe
 
 writerbase::~writerbase()
 {}
+
+#ifdef _DEBUG
+void writerbase::ReplaceDebugTextByOrigin(std::vector<TranslateText>& transTexts)
+{
+	for(auto& txt : transTexts)
+	{
+		auto origin = txt.original;
+		for(auto& tl : txt.translates)
+		{
+			auto t = tl.second;
+			t = origin;
+			if(t[0] == u8'\"'){
+				t.insert(1, tl.first + u8"-");
+			}
+			else {
+				t = tl.first + u8"-" + t;
+			}
+			tl.second = t;
+		}
+	}
+}
+
+void writerbase::ReplaceDebugTextByLang(std::vector<TranslateText>& transTexts, std::u8string def_lang)
+{
+	for(auto& txt : transTexts)
+	{
+		auto origin = txt.translates[def_lang];
+		for(auto& tl : txt.translates)
+		{
+			auto t = tl.second;
+			if(def_lang != tl.first)
+			{
+				t = origin;
+				if(t[0] == u8'\"'){
+					t.insert(1, tl.first + u8"-");
+				}
+				else {
+					t = tl.first + u8"-" + t;
+				}
+			}
+			tl.second = t;
+		}
+	}
+}
+#endif
 
 void writerbase::writeU8String(std::ofstream& out, std::u8string text)
 {
