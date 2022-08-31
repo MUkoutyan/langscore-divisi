@@ -1,8 +1,10 @@
 
+class LsDumpData
+  attr_accessor :data
+end
 class LSCSV
-
   def self.to_hash(file_name)
-    file = open(Langscore::TRANSLATE_FOLDER + "/" + file_name)
+    file = open(Langscore::TRANSLATE_FOLDER + file_name)
     return {} if file == nil
 
     rows = parse_col(parse_row(file))
@@ -48,23 +50,33 @@ class LSCSV
     end
   end
 
-  def self.open(file_name)
+  def self.open(name)
     begin
+      file_name = name+".rvdata2"
+      p "try load_data(#{file_name})"
       trans_file = load_data(file_name)
-    rescue
+      if trans_file.class == LsDumpData
+        p "OK"
+        result = trans_file.data.split(/(?<=[\n])\s*/)
+        return result
+      end
+    rescue => e
       begin
+        p "failed load_data(#{file_name}) : #{e}"
+
+        file_name = name+".csv"
         trans_file = File.open(file_name)
+        p "OK"
+        return trans_file.readlines()
       rescue
         p "Warning : Not Found Transcript File #{file_name}"
-        return nil
       end
     end
-    trans_file
+    return nil
   end
 
-  def self.parse_row(file)
-    return if file == nil
-    csv_text = file.readlines()
+  def self.parse_row(csv_text)
+    return if csv_text.length == 0
     lines = []
     line_buffer = ""
     csv_text.each do |l|
