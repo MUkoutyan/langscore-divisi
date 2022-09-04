@@ -233,28 +233,31 @@ IUTEST(Langscore_Writer, DetectStringPositionFromFile)
 
 	i = 0;
 	//"を含まない単語の開始位置
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":8:4");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":8:16");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":11:2");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":16:10");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":23:8");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":28:8");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":33:8");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":38:6");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":43:13");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":44:4");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":45:4");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":47:2");
-	IUTEST_ASSERT_STREQ(result[i++].memo, fileName + u8":48:2");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":8:4");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":8:16");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":11:2");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":16:10");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":23:8");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":28:8");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":33:8");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":38:6");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":43:13");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":44:4");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":45:4");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":47:2");
+	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":48:2");
 }
-
 
 IUTEST(Langscore_Config, TmpDir)
 {
 	langscore::config config;
 	
 	auto expected = config.langscoreAnalyzeDirectorty();
+#ifdef _DEBUG
+	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\Test_Debug\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze"s);
+#else
 	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\Test\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze"s);
+#endif
 	IUTEST_ASSERT_STREQ(expected, actual.u8string());
 }
 
@@ -289,8 +292,12 @@ IUTEST(Langscore_Config, CheckProjectPath)
 {
 	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
 
-	auto expected = config.projectPath();
+	auto expected = config.gameProjectPath();
+#ifdef _DEBUG
+	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\Test_Debug\\data\\ソポァゼゾタダＡボマミ"s);
+#else
 	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\Test\\data\\ソポァゼゾタダＡボマミ"s);
+#endif
 	IUTEST_ASSERT_STREQ(expected, actual.u8string());
 }
 
@@ -321,7 +328,7 @@ IUTEST(Langscore_Invoker, AnalyzeVXAceProject)
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 	std::filesystem::remove_all(outputPath);
 	langscore::invoker invoker;
-	invoker.setProjectPath(langscore::invoker::VXAce, config.projectPath());
+	invoker.setProjectPath(langscore::invoker::VXAce, config.gameProjectPath());
 	auto analyzeResult = invoker.analyze();
 	IUTEST_ASSERT(analyzeResult.valid());
 
@@ -338,7 +345,7 @@ IUTEST(Langscore_Invoker, CheckValidScriptList)
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 	std::filesystem::remove_all(outputPath);
 	langscore::invoker invoker;
-	invoker.setProjectPath(langscore::invoker::VXAce, config.projectPath());
+	invoker.setProjectPath(langscore::invoker::VXAce, config.gameProjectPath());
 	invoker.analyze();
 
 	IUTEST_ASSERT(fs::exists(outputPath / "Scripts/_list.csv"));
@@ -436,6 +443,49 @@ IUTEST(Langscore_Divisi, WriteVXAceProject)
 	IUTEST_SUCCEED();
 }
 
+IUTEST(Langscore_Divisi, WriteLangscoreCustom)
+{
+	langscore::config config;
+	langscore::divisi_vxace divisi_vxace;
+	divisi_vxace.setAppPath("./");
+	divisi_vxace.setProjectPath(config.gameProjectPath());
+
+	std::u8string fileName = u8"57856563";
+	langscore::rbscriptwriter scriptWriter({u8"en", u8"ja"}, {u8".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze\\Scripts\\"s + fileName + u8".rb"s});
+
+	const auto outputFileName = "./data/langscore_custom.rb"s;
+	if(fs::exists(outputFileName)){
+		fs::remove(outputFileName);
+	}
+
+	auto result = scriptWriter.write(outputFileName);
+	IUTEST_ASSERT(result.valid());
+
+	{
+		std::ifstream outputFile(outputFileName);
+		IUTEST_ASSERT(outputFile.good());
+
+		int numSucceed = 0;
+		while(outputFile.eof() == false)
+		{
+			std::string line;
+			std::getline(outputFile, line);
+			if(line.find("Langscore.translate_" + utility::cnvStr<std::string>(fileName)) != line.npos) {
+				numSucceed++;
+			}
+			if(line.find("Scripts/Cache#15,18") != line.npos) {
+				numSucceed++;
+			}
+			if(line.find("Langscore.translate_for_script(\"57856563:15:18\")") != line.npos) {
+				numSucceed++;
+			}
+
+		}
+		IUTEST_ASSERT_EQ(numSucceed, 3);
+	}
+}
+
+
 IUTEST(Langscore_Divisi, ValidateLangscoreCustom)
 {
 	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
@@ -504,7 +554,7 @@ IUTEST(Langscore_Divisi, VXAce_WriteScriptCSV)
 	langscore::config config;
 	langscore::divisi_vxace divisi_vxace;
 	divisi_vxace.setAppPath("./");
-	divisi_vxace.setProjectPath(config.projectPath());
+	divisi_vxace.setProjectPath(config.gameProjectPath());
 
 	divisi_vxace.fetchFilePathList();
 	langscore::csvreader csvreader;
@@ -661,8 +711,10 @@ IUTEST(Langscore_Divisi, VXAce_Validate)
 	}
 }
 
+
 int main(int argc, char** argv)
 {
+	fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze");
 	langscore::config::attachConfigFile(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
 	IUTEST_INIT(&argc, argv);
 	return IUTEST_RUN_ALL_TESTS();
