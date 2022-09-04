@@ -9,6 +9,8 @@ struct ARGS
 	std::filesystem::path configFile;
 	bool analyze = false;
 	bool write = false;
+	bool validate = false;
+	bool packing = false;
 	langscore::OverwriteTextMode overwriteMode = langscore::OverwriteTextMode::LeaveOld;
 };
 
@@ -28,6 +30,12 @@ ARGS analyzeOption(int argc, const char* argv[])
 		}
 		else if(str.find("--write") != std::string_view::npos){
 			args.write = true;
+		}
+		else if(str.find("--validate") != std::string_view::npos){
+			args.validate = true;
+		}
+		else if(str.find("--packing") != std::string_view::npos){
+			args.packing = true;
 		}
 		else if(str.find("--leaveold") != std::string_view::npos){
 			args.overwriteMode = langscore::OverwriteTextMode::LeaveOld;
@@ -55,9 +63,6 @@ int main(int argc, const char* argv[])
 	}
 
 	const auto args = analyzeOption(argc, argv);
-	if(args.analyze == false && args.write == false){
-		return 0;
-	}
 
 	langscore::divisi divisi(args.appPath, args.configFile);
 
@@ -68,7 +73,13 @@ int main(int argc, const char* argv[])
 	if(args.write){
 		result = divisi.write();
 	}
-	if(result.inValid()){
+	if(args.validate){
+		result = divisi.validate();
+	}
+	if(args.packing){
+		result = divisi.packing();
+	}
+	if(result.invalid()){
 		std::cerr << result.toStr() << std::endl;
 		return result.val();
 	}

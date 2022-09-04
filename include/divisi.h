@@ -19,7 +19,8 @@ public:
 
     ErrorStatus analyze();
     ErrorStatus write();
-    ErrorStatus finishing();
+    ErrorStatus validate();
+    ErrorStatus packing();
 
 private:
     class Impl;

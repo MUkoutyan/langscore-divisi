@@ -145,7 +145,7 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Ove
                 auto parsed = utility::split(line.original, u8':');
                 auto filepath = std::vformat(funcComment, std::make_format_args(utility::toString(parsed[0]), utility::toString(parsed[1]), utility::toString(parsed[2])));
                 outFile << tab << "#" + filepath << nl;
-                outFile << tab << "#original : " << utility::toString(line.memo) << nl;
+                outFile << tab << "#original : " << utility::toString(line.scriptLineInfo) << nl;
                 outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.original) << "\")" << nl;
                 outFile << nl;
             }
@@ -169,7 +169,7 @@ std::vector<TranslateText> langscore::rbscriptwriter::acceptIgnoreScripts(const 
     for(auto& t : transTexts){
         if(t.translates.find(def_lang) == t.translates.end()){ continue; }
         t.translates[def_lang] = t.original;
-        t.memo.swap(t.original);
+        t.scriptLineInfo.swap(t.original);
     }
 
     csvreader scriptListReader;
@@ -364,7 +364,7 @@ void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<Tran
             auto varName = std::get<1>(*result);
             auto lvalue = "Vocab::" + utility::toString(varName) + ".replace";
             std::string space(maxVarLength - lvalue.length(), ' ');
-            file << tab << lvalue << space << " Langscore.translate_for_script(\"" << utility::toString(t.memo) << "\")";
+            file << tab << lvalue << space << " Langscore.translate_for_script(\"" << utility::toString(t.scriptLineInfo) << "\")";
             file << nl;
             std::get<2>(*result) = true;
         }

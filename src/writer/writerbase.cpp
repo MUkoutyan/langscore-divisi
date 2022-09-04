@@ -307,7 +307,7 @@ std::vector<TranslateText> writerbase::convertScriptToCSV(std::filesystem::path 
 				this->useLangs
 			};
 			auto scriptPos = fileName.u8string() + u8":" + u8lineCount + u8":" + u8ColCountStr;
-			t.memo = scriptPos;
+			t.scriptLineInfo = scriptPos;
 			transTextList.emplace_back(std::move(t));
 		}
 	}

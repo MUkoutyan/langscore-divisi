@@ -45,6 +45,8 @@ static std::map<config::JsonKey, const char*> jsonKeys = {
 	MAKE_KEYVALUE(RPGMakerScripts),
 	MAKE_KEYVALUE(OverwriteLangscore),
 	MAKE_KEYVALUE(OverwriteLangscoreCustom),
+	MAKE_KEYVALUE(ApplicationVersion),
+	MAKE_KEYVALUE(ConfigVersion),
 };
 
 const char* config::key(JsonKey key)
@@ -168,7 +170,7 @@ std::string langscore::config::defaultLanguage() {
 	return pImpl->get(pImpl->json[key(JsonKey::DefaultLanguage)], "ja"s);
 }
 
-std::u8string langscore::config::projectPath()
+std::u8string langscore::config::gameProjectPath()
 {
 	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Project)], ""s));
 	auto path = pImpl->toAbsolutePath(u8Path);

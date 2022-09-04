@@ -26,7 +26,7 @@ namespace langscore
         }
         std::u8string original;
         std::map<std::u8string, std::u8string> translates;
-        std::u8string memo;
+        std::u8string scriptLineInfo;
 
         auto createHeader() const
         {

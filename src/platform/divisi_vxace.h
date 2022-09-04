@@ -28,7 +28,8 @@ namespace langscore
 		void setProjectPath(std::filesystem::path path) override;
 		ErrorStatus analyze() override;
 		ErrorStatus write() override;
-		ErrorStatus finishing() override;
+		ErrorStatus validate() override;
+		ErrorStatus packing() override;
 
 		//void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) override;
 
@@ -43,9 +44,9 @@ namespace langscore
 		void writeFixedGraphFileNameData();
 		void rewriteScriptList();
 
-		void validateTranslateFile(utility::filelist csvPathList);
-		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path);
-		std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> findEscChars(const std::u8string& text);
+		bool validateTranslateFileList(utility::filelist csvPathList) const;
+		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;
+		std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> findEscChars(const std::u8string& text) const;
 
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 		

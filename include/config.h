@@ -74,6 +74,8 @@ namespace langscore
 			RPGMakerScripts,
 			OverwriteLangscore,
 			OverwriteLangscoreCustom,
+			ApplicationVersion,
+			ConfigVersion,
 
 			NumKeys,
 		};
@@ -89,7 +91,7 @@ namespace langscore
 
 		std::vector<Language> languages();
 		std::string defaultLanguage();
-		std::u8string projectPath();
+		std::u8string gameProjectPath();
 		std::u8string langscoreAnalyzeDirectorty();
 		std::string usScriptFuncComment();
 		std::vector<std::u8string> exportDirectory();

@@ -1,5 +1,6 @@
 #include "divisi.h"
 #include "divisi.h"
+#include "divisi.h"
 #include "utility.hpp"
 #include "invoker.h"
 #include "nlohmann/json.hpp"
@@ -26,7 +27,7 @@ public:
 
     std::unique_ptr<platform_base> converter;
 
-    void createConverter(fs::path projectPath)
+    void createConverter(fs::path gameProjectPath)
     {
         this->converter = nullptr;
         const auto hasHeader = [](fs::path path, std::string_view headerText)
@@ -40,7 +41,7 @@ public:
             return false;
         };
 
-        fs::directory_iterator it(projectPath);
+        fs::directory_iterator it(gameProjectPath);
         auto type = invoker::ProjectType::None;
         for(auto& file : it){
             auto ext = file.path().extension();
@@ -63,6 +64,25 @@ public:
             }
         }
     }
+
+    ErrorStatus setupConverter()
+    {
+        config config;
+        auto gameProjectPath = config.gameProjectPath();
+        if(gameProjectPath.empty()){
+            return ErrorStatus(ErrorStatus::Module::DIVISI, 1);
+        }
+        this->createConverter(gameProjectPath);
+
+        if(this->converter == nullptr){
+            return ErrorStatus(ErrorStatus::Module::DIVISI, 2);
+        }
+
+        this->converter->setAppPath(this->appPath);
+        this->converter->setProjectPath(std::move(gameProjectPath));
+
+        return Status_Success;
+    }
 };
 
 divisi::divisi(fs::path appPath, std::filesystem::path configPath)
@@ -77,55 +97,29 @@ divisi::~divisi(){}
 
 ErrorStatus divisi::analyze()
 {
-    config config;
-    auto projectPath = config.projectPath();
-    if(projectPath.empty()){ 
-        return ErrorStatus(ErrorStatus::Module::DIVISI, 1);
-    }
-    pImpl->createConverter(projectPath);
-
-    if(pImpl->converter == nullptr){
-        return ErrorStatus(ErrorStatus::Module::DIVISI, 2);
-    }
-
-    pImpl->converter->setAppPath(pImpl->appPath);
-    pImpl->converter->setProjectPath(std::move(projectPath));
+    auto result = pImpl->setupConverter();
+    if(result.invalid()){ return result; }
     return pImpl->converter->analyze();
 }
 
 ErrorStatus divisi::write()
 {
-    config config;
-    auto projectPath = config.projectPath();
-    if(projectPath.empty()){
-        return ErrorStatus(ErrorStatus::Module::DIVISI, 1);
-    }
-    pImpl->createConverter(projectPath);
-
-    if(pImpl->converter == nullptr){
-        return ErrorStatus(ErrorStatus::Module::DIVISI, 2);
-    }
-
-    pImpl->converter->setAppPath(pImpl->appPath);
-    pImpl->converter->setProjectPath(std::move(projectPath));
+    auto result = pImpl->setupConverter();
+    if(result.invalid()){ return result; }
     return pImpl->converter->write();
 }
 
-ErrorStatus divisi::finishing()
+ErrorStatus langscore::divisi::validate()
 {
-    config config;
-    auto projectPath = config.projectPath();
-    if(projectPath.empty()){
-        return ErrorStatus(ErrorStatus::Module::DIVISI, 1);
-    }
-    pImpl->createConverter(projectPath);
+    auto result = pImpl->setupConverter();
+    if(result.invalid()){ return result; }
+    return pImpl->converter->validate();
+}
 
-    if(pImpl->converter == nullptr){
-        return ErrorStatus(ErrorStatus::Module::DIVISI, 2);
-    }
-
-    pImpl->converter->setAppPath(pImpl->appPath);
-    pImpl->converter->setProjectPath(std::move(projectPath));
-    return pImpl->converter->write();
+ErrorStatus divisi::packing()
+{
+    auto result = pImpl->setupConverter();
+    if(result.invalid()){ return result; }
+    return pImpl->converter->packing();
 }
 

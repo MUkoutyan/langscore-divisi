@@ -97,8 +97,8 @@ std::filesystem::path langscore::divisi_vxace::exportFolderPath(std::filesystem:
     if(dir.empty()){
         dir = config.outputTranslateFilePathForRPGMaker();
     }
-    fs::path projectPath = config.projectPath();
-    fs::path to = projectPath / dir;
+    fs::path gameProjectPath = config.gameProjectPath();
+    fs::path to = gameProjectPath / dir;
 
     if(std::filesystem::exists(to) == false){
         std::filesystem::create_directories(to);
@@ -144,7 +144,7 @@ ErrorStatus langscore::divisi_vxace::write()
     const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
     
     //フォントのコピー
-    auto fontDestPath = config.projectPath() + u8"/Fonts"s;
+    auto fontDestPath = config.gameProjectPath() + u8"/Fonts"s;
     auto globalFonts = config.globalFontList();
     auto globalFontFolder = appPath / "../resources/fonts";
     for(auto& relativePath : globalFonts)
@@ -183,10 +183,10 @@ ErrorStatus langscore::divisi_vxace::write()
     return Status_Success;
 }
 
-ErrorStatus langscore::divisi_vxace::finishing()
+ErrorStatus langscore::divisi_vxace::validate()
 {
     config config;
-    const auto finalizeExportDirectory = fs::path(config.projectPath() + u8"Data/Translate");
+    const auto finalizeExportDirectory = fs::path(config.gameProjectPath() + u8"Data/Translate");
     const auto exportDirectory = config.exportDirectory();
     utility::filelist csvPathList;
 
@@ -201,14 +201,19 @@ ErrorStatus langscore::divisi_vxace::finishing()
     }
 
     //整合性チェック
-
     if(config.exportByLanguage())
     {
     }
     else
     {
+        this->validateTranslateFileList(std::move(csvPathList));
     }
 
+    return Status_Success;
+}
+
+ErrorStatus langscore::divisi_vxace::packing()
+{
     std::cout << "Packing." << std::endl;
     auto runResult = this->invoker.packingVXAce();
     if(runResult.val() != 0){
@@ -263,8 +268,8 @@ void langscore::divisi_vxace::fetchFilePathList()
         }
     }
 
-    auto projectPath = fs::path(config.projectPath());
-    auto graphicsPath = projectPath / "Graphics";
+    auto gameProjectPath = fs::path(config.gameProjectPath());
+    auto graphicsPath = gameProjectPath / "Graphics";
     fs::recursive_directory_iterator graphItr(graphicsPath);
     for(auto& f : graphItr)
     {
@@ -333,7 +338,7 @@ void divisi_vxace::writeAnalyzedRvScript()
         if(scriptName != u8"Vocab"s){ continue; }
 
         const auto searchFunc = [&](const auto& x){
-            return x.memo.find(scriptFileName) != std::u8string::npos;
+            return x.scriptLineInfo.find(scriptFileName) != std::u8string::npos;
         };
         auto begin = std::find_if(transTexts.begin(), transTexts.end(), searchFunc);
         auto end = std::find_if(transTexts.rbegin(), transTexts.rend(), searchFunc).base();
@@ -365,8 +370,8 @@ void divisi_vxace::writeAnalyzedRvScript()
 
     //memoに行数が格納されているため入れ替え
     for(auto& t : transTexts){
-        t.memo.swap(t.original);
-        t.translates[u8"memo"s] = t.memo;
+        t.scriptLineInfo.swap(t.original);
+        t.translates[u8"scriptLineInfo"s] = t.scriptLineInfo;
     }
 
     std::cout << "Write CSV : " << outputPath << std::endl;
@@ -639,7 +644,7 @@ void divisi_vxace::rewriteScriptList()
         replaceLsCustom = config.overwriteLangscoreCustom();
     }
     if(replaceLsCustom){
-        std::cout << "Write langscore_custom : " << outputPath / ::Custom_Script_File_Name << std::endl;
+        std::cout << "Write langscore_custom : " << outputPath / scriptFileNameList[1] << std::endl;
         writeFixedTranslateText<rbscriptwriter>(lsCustomScriptPath, scriptFileList, langscore::OverwriteTextMode::OverwriteNew);
     }
 
@@ -671,20 +676,19 @@ void divisi_vxace::rewriteScriptList()
 
 }
 
-void divisi_vxace::validateTranslateFile(utility::filelist csvPathList)
+bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) const
 {
-    fs::path path;
-    size_t row = 1;
-
     csvreader csvreader;
+    bool result = true;
     for(auto& _path : csvPathList)
     {
-        auto texts = csvreader.parse(path);
-        validateTranslateList(std::move(texts), std::move(_path));
+        auto texts = csvreader.parse(_path);
+        result &= validateTranslateList(std::move(texts), std::move(_path));
     }
+    return result;
 }
 
-bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path)
+bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const
 {
     const auto OutputError = [&path](auto str, size_t row){
         std::cout << utility::cnvStr<std::string>(str) << ", " << path << ", L:" << row << std::endl;
@@ -726,7 +730,7 @@ bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::
     return result;
 }
 
-std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace::findEscChars(const std::u8string& text)
+std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace::findEscChars(const std::u8string& text) const
 {
     static const std::vector<std::u8string> escWithValueChars = {
         u8"\\V[", u8"\\N[", u8"\\P[", u8"\\C[", u8"\\l["

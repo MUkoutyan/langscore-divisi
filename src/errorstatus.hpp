@@ -27,7 +27,7 @@ public:
     Module moduleCode() const noexcept { return _moduleCode; }
     int code() const noexcept { return _code; }
     bool valid() const noexcept { return _moduleCode == Module::None && _code == NoError; }
-    bool inValid() const noexcept { return !valid(); }
+    bool invalid() const noexcept { return !valid(); }
 
     void setSpecMsg(std::string m) { specMsg = std::move(m); }
     std::string toStr()
