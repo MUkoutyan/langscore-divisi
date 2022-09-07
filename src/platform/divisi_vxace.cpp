@@ -690,39 +690,53 @@ bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) cons
 
 bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const
 {
-    const auto OutputError = [&path](auto str, size_t row){
-        std::cout << utility::cnvStr<std::string>(str) << ", " << path << ", L:" << row << std::endl;
+    const auto OutputError = [&path](std::string type, std::string main, std::string str, size_t row){
+        auto result = utility::join({type, main, str, path.string(), std::to_string(row)}, ","s);
+        std::cout << result << std::endl;
     };
     size_t row = 1;
     bool result = true;
     for(auto& text : texts)
     {
         if(text.original.empty()){
-            OutputError("Warning : Empty Original Text"s, row);
+            OutputError("Warning"s, "0"s, "Original"s, row);
             result = false;
         }
         auto [withValEscList, EscList] = findEscChars(text.original);
 
+        auto emptyCol = ""s;
+
         for(auto& trans : text.translates)
         {
             if(trans.second.empty()){
-                OutputError(u8"Warning : Empty "s + trans.first + u8" Text"s, row);
+                emptyCol += utility::cnvStr<std::string>(trans.first) + " "s;
+                //OutputError("Warning"s,"0"s, utility::cnvStr<std::string>(trans.first), row);
                 result = false;
                 continue;
             }
 
+            auto escStr = ""s;
             for(auto& esc : withValEscList){
                 if(trans.second.find(esc) == trans.second.npos){
-                    OutputError(u8"Warning : Esc Char "s + std::u8string(esc) + u8" Not Found!"s, row);
+                    escStr += utility::cnvStr<std::string>(esc) + " "s;
+                    //OutputError("Warning", "1"s, utility::cnvStr<std::string>(esc), row);
                     result = false;
                 }
             }
             for(auto& esc : EscList){
                 if(trans.second.find(esc) == trans.second.npos){
-                    OutputError(u8"Warning : Esc Char "s + std::u8string(esc) + u8" Not Found!"s, row);
+                    escStr += utility::cnvStr<std::string>(esc) + " "s;
+                    //OutputError("Warning", "1"s, utility::cnvStr<std::string>(esc), row);
                     result = false;
                 }
             }
+
+            if(escStr.empty() == false){
+                OutputError("Warning", "1"s, escStr, row);
+            }
+        }
+        if(emptyCol.empty() == false){
+            OutputError("Warning"s, "0"s, emptyCol, row);
         }
         row++;
     }
