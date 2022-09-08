@@ -46,7 +46,7 @@ namespace langscore
 
 		bool validateTranslateFileList(utility::filelist csvPathList) const;
 		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;
-		std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> findEscChars(const std::u8string& text) const;
+		std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> findEscChars(std::u8string text) const;
 
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 		

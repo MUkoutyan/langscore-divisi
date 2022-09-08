@@ -690,8 +690,8 @@ bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) cons
 
 bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const
 {
-    const auto OutputError = [&path](std::string type, std::string main, std::string str, size_t row){
-        auto result = utility::join({type, main, str, path.string(), std::to_string(row)}, ","s);
+    const auto OutputError = [&path](auto type, auto main, auto lang, auto str, size_t row){
+        auto result = utility::join({type, main, lang, str, path.string(), std::to_string(row)}, ","s);
         std::cout << result << std::endl;
     };
     size_t row = 1;
@@ -699,18 +699,16 @@ bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::
     for(auto& text : texts)
     {
         if(text.original.empty()){
-            OutputError("Warning"s, "0"s, "Original"s, row);
+            OutputError("Error"s, "0"s, "original"s, ""s, row);
             result = false;
         }
         auto [withValEscList, EscList] = findEscChars(text.original);
 
-        auto emptyCol = ""s;
-
+        std::vector<std::string> emptyTextLangs;
         for(auto& trans : text.translates)
         {
             if(trans.second.empty()){
-                emptyCol += utility::cnvStr<std::string>(trans.first) + " "s;
-                //OutputError("Warning"s,"0"s, utility::cnvStr<std::string>(trans.first), row);
+                emptyTextLangs.emplace_back(utility::cnvStr<std::string>(trans.first));
                 result = false;
                 continue;
             }
@@ -719,24 +717,22 @@ bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::
             for(auto& esc : withValEscList){
                 if(trans.second.find(esc) == trans.second.npos){
                     escStr += utility::cnvStr<std::string>(esc) + " "s;
-                    //OutputError("Warning", "1"s, utility::cnvStr<std::string>(esc), row);
                     result = false;
                 }
             }
             for(auto& esc : EscList){
                 if(trans.second.find(esc) == trans.second.npos){
                     escStr += utility::cnvStr<std::string>(esc) + " "s;
-                    //OutputError("Warning", "1"s, utility::cnvStr<std::string>(esc), row);
                     result = false;
                 }
             }
 
             if(escStr.empty() == false){
-                OutputError("Warning", "1"s, escStr, row);
+                OutputError("Error"s, "1"s, utility::cnvStr<std::string>(trans.first), escStr, row);
             }
         }
-        if(emptyCol.empty() == false){
-            OutputError("Warning"s, "0"s, emptyCol, row);
+        if(emptyTextLangs.empty() == false){
+            OutputError("Warning"s, "0"s, utility::join(emptyTextLangs, " "s), ""s, row);
         }
         row++;
     }
@@ -744,13 +740,13 @@ bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::
     return result;
 }
 
-std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace::findEscChars(const std::u8string& text) const
+std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace::findEscChars(std::u8string text) const
 {
     static const std::vector<std::u8string> escWithValueChars = {
-        u8"\\V[", u8"\\N[", u8"\\P[", u8"\\C[", u8"\\l["
+        u8"\\v[", u8"\\n[", u8"\\p[", u8"\\c[", u8"\\l[", u8"\\r["
     };
     static const std::vector<std::u8string> escChars = {
-        u8"\\G", u8"\\{", u8"\\}", u8"\\$", u8"\\.", u8"\\|",
+        u8"\\g", u8"\\{", u8"\\}", u8"\\$", u8"\\.", u8"\\|",
         u8"\\!", u8"\\>", u8"\\<", u8"\\^", u8"\\\\"
     };
 
@@ -758,6 +754,7 @@ std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace:
     std::vector<std::u8string> result2;
     if(text.empty()){ return std::forward_as_tuple(result1, result2); }
 
+    std::transform(text.begin(), text.end(), text.data(), ::tolower);
     for(const auto& c : escWithValueChars)
     {
         auto pos = text.find(c);
