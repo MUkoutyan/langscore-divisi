@@ -740,7 +740,7 @@ bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::
     return result;
 }
 
-std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace::findEscChars(std::u8string text) const
+std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace::findEscChars(std::u8string originalText) const
 {
     static const std::vector<std::u8string> escWithValueChars = {
         u8"\\v[", u8"\\n[", u8"\\p[", u8"\\c[", u8"\\l[", u8"\\r["
@@ -752,8 +752,9 @@ std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace:
 
     std::vector<std::u8string> result1;
     std::vector<std::u8string> result2;
-    if(text.empty()){ return std::forward_as_tuple(result1, result2); }
+    if(originalText.empty()){ return std::forward_as_tuple(result1, result2); }
 
+    auto text = originalText;
     std::transform(text.begin(), text.end(), text.data(), ::tolower);
     for(const auto& c : escWithValueChars)
     {
@@ -766,7 +767,7 @@ std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace:
                 break;
             }
             endPos++;
-            auto result = text.substr(pos, endPos - pos);
+            auto result = originalText.substr(pos, endPos - pos);
             offset = endPos;
             result1.emplace_back(std::move(result));
         }
@@ -778,7 +779,7 @@ std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace:
     {
         auto pos = text.find(c);
         for(; pos != text.npos; pos = text.find(c)){
-            result2.emplace_back(c);
+            result2.emplace_back(originalText.substr(pos, c.length()));
             break;
         }
     }

@@ -672,6 +672,12 @@ IUTEST(Langscore_Divisi, VXAce_FindEscChar)
 		IUTEST_ASSERT(result1.empty() && result2.empty() == false);
 		IUTEST_ASSERT_STREQ(result2[0], u8"\\{");
 	}
+	{
+		std::u8string text = u8"99999\\G 手に入れた！";
+		auto [result1, result2] = divisi_vxace.findEscChars(text);
+		IUTEST_ASSERT(result1.empty() && result2.empty() == false);
+		IUTEST_ASSERT_STREQ(result2[0], u8"\\G");
+	}
 }
 
 IUTEST(Langscore_Divisi, VXAce_Validate)
