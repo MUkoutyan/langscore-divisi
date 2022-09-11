@@ -355,7 +355,7 @@ void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<Tran
 
     for(auto& t : texts)
     {
-        auto original = t.translates[def_lang];
+        auto& original = t.translates[def_lang];
         auto result = std::find_if(translates.begin(), translates.end(), [&original](const auto& x){
             return std::get<0>(x) == original && std::get<2>(x) == false;
         });
@@ -364,7 +364,8 @@ void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<Tran
             auto varName = std::get<1>(*result);
             auto lvalue = "Vocab::" + utility::toString(varName) + ".replace";
             std::string space(maxVarLength - lvalue.length(), ' ');
-            file << tab << lvalue << space << " Langscore.translate_for_script(\"" << utility::toString(t.scriptLineInfo) << "\")";
+            file << tab << "# " << utility::toString(t.scriptLineInfo) << nl;
+            file << tab << lvalue << space << " Langscore.translate_for_script(\"" << utility::toString(t.original) << "\")";
             file << nl;
             std::get<2>(*result) = true;
         }
