@@ -91,20 +91,24 @@ void divisi_vxace::setProjectPath(std::filesystem::path path){
     this->invoker.setProjectPath(invoker::ProjectType::VXAce, std::move(path));
 }
 
-std::filesystem::path langscore::divisi_vxace::exportFolderPath(std::filesystem::path fileName, std::filesystem::path dir)
+std::filesystem::path langscore::divisi_vxace::exportFolderPath(std::filesystem::path fileName)
 {
     config config;
-    if(dir.empty()){
-        dir = config.outputTranslateFilePathForRPGMaker();
-    }
-    fs::path gameProjectPath = config.gameProjectPath();
-    fs::path to = gameProjectPath / dir;
+    std::u8string exportPath;
+    auto pathList = config.exportDirectory(exportPath);
 
-    if(std::filesystem::exists(to) == false){
-        std::filesystem::create_directories(to);
+    if(std::filesystem::exists(exportPath) == false){
+        std::filesystem::create_directories(exportPath);
     }
 
-    return to /= fileName;
+    for(auto& path : pathList)
+    {
+        if(std::filesystem::exists(path) == false){
+            std::filesystem::create_directories(path);
+        }
+    }
+
+    return fs::path(exportPath) /= fileName;
 }
 
 ErrorStatus divisi_vxace::analyze()
@@ -128,7 +132,8 @@ ErrorStatus langscore::divisi_vxace::write()
 {
     std::cout << "Write..." << std::endl;
     config config;
-    auto exportFolderList = config.exportDirectory();
+    std::u8string rootPath;
+    auto exportFolderList = config.exportDirectory(rootPath);
     for(auto& folder : exportFolderList)
     {
         if(fs::exists(folder)){ continue; }
@@ -186,8 +191,8 @@ ErrorStatus langscore::divisi_vxace::write()
 ErrorStatus langscore::divisi_vxace::validate()
 {
     config config;
-    const auto finalizeExportDirectory = fs::path(config.gameProjectPath() + u8"Data/Translate");
-    const auto exportDirectory = config.exportDirectory();
+    std::u8string root;
+    const auto exportDirectory = config.exportDirectory(root);
     utility::filelist csvPathList;
 
     for(auto dir : exportDirectory)
@@ -386,7 +391,8 @@ void langscore::divisi_vxace::writeFixedData()
     std::cout << "writeFixedData" << std::endl;
 
     config config;
-    const auto translateFolderList = config.exportDirectory();
+    std::u8string root;
+    const auto translateFolderList = config.exportDirectory(root);
 
     auto writeRvCsv = [this, &translateFolderList](fs::path inputPath)
     {
@@ -449,7 +455,8 @@ void langscore::divisi_vxace::writeFixedRvScript()
     writerbase::ReplaceDebugTextByLang(transTexts, def_lang);
 #endif
 
-    const auto translateFolderList = config.exportDirectory();
+    std::u8string root;
+    const auto translateFolderList = config.exportDirectory(root);
     for(auto& translateFolder : translateFolderList){
         std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
         writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, OverwriteTextMode::LeaveOldNonBlank);

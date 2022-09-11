@@ -74,6 +74,7 @@ namespace langscore
 			RPGMakerScripts,
 			OverwriteLangscore,
 			OverwriteLangscoreCustom,
+			PackingInputDir,
 			ApplicationVersion,
 			ConfigVersion,
 
@@ -94,11 +95,12 @@ namespace langscore
 		std::u8string gameProjectPath();
 		std::u8string langscoreAnalyzeDirectorty();
 		std::string usScriptFuncComment();
-		std::vector<std::u8string> exportDirectory();
+		std::vector<std::u8string> exportDirectory(std::u8string& root);
 		bool exportByLanguage();
 		bool overwriteLangscore();
 		bool overwriteLangscoreCustom();
 		std::u8string outputTranslateFilePathForRPGMaker();
+		std::u8string packingInputDirectory();
 		std::vector<BasicData> vxaceBasicData();
 		std::vector<ScriptData> vxaceScripts();
 		utility::u8stringlist ignorePictures();

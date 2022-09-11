@@ -36,7 +36,7 @@ namespace langscore
 		std::vector<std::filesystem::path> graphicFileList;
 
 		std::filesystem::copy_options convertCopyOption(OverwriteTextMode mode);
-		virtual std::filesystem::path exportFolderPath(std::filesystem::path fileName, std::filesystem::path dir = "") = 0;
+		virtual std::filesystem::path exportFolderPath(std::filesystem::path fileName) = 0;
 
 		template<typename Writer, typename TsData>
 		ErrorStatus writeAnalyzeTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld, bool isDebug = true)

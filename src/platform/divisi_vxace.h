@@ -50,7 +50,7 @@ namespace langscore
 
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 		
-		std::filesystem::path exportFolderPath(std::filesystem::path fileName, std::filesystem::path dir = "") override;
+		std::filesystem::path exportFolderPath(std::filesystem::path fileName) override;
 
 	};
 }

@@ -48,7 +48,10 @@ ErrorStatus langscore::invoker::recompressVXAce(){
 }
 
 ErrorStatus langscore::invoker::packingVXAce(){
-    return exec({"-i", _projectPath.string(), "-p"});
+    config config;
+    auto inputDir  = std::filesystem::path(config.packingInputDirectory());
+    auto outputDir = std::filesystem::path(config.gameProjectPath()+u8"/Data/Translate");
+    return exec({"-i", inputDir.string(), "-o", outputDir.string(), "-p"});
 }
 
 ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
