@@ -71,10 +71,10 @@ module Langscore
     $ls_armors_tr.clear
     $ls_item_tr.clear
     $ls_enemies_tr.clear
-    $data_langscore_graphics = LSCSV.to_hash("Graphics.csv")
-    $data_langscore_scripts = LSCSV.to_hash("Scripts.csv")
-    $ls_troop_tr ||= LSCSV.to_hash("Troops.csv")
-    $ls_common_event ||= LSCSV.to_hash("CommonEvents.csv")
+    $data_langscore_graphics = LSCSV.to_hash("Graphics")
+    $data_langscore_scripts = LSCSV.to_hash("Scripts")
+    $ls_troop_tr ||= LSCSV.to_hash("Troops")
+    $ls_common_event ||= LSCSV.to_hash("CommonEvents")
 
     changeLanguage($langscore_current_language)
   end
@@ -147,7 +147,7 @@ module Langscore
   end
 
   def self.updateActor
-    $ls_actor_tr ||= LSCSV.to_hash("Actors.csv")
+    $ls_actor_tr ||= LSCSV.to_hash("Actors")
 
     #大元のデータベースを更新。Game_Actor作成時に使用されるため必要。
     updateForNameAndDesc($data_actors, $ls_actor_tr)
@@ -171,7 +171,7 @@ module Langscore
   end
 
   def self.updateSystem
-    $ls_system_tr ||= LSCSV.to_hash("System.csv")
+    $ls_system_tr ||= LSCSV.to_hash("System")
 
     elm_trans = lambda do |el| 
       el = Langscore.translate(el, $ls_system_tr)
@@ -186,12 +186,12 @@ module Langscore
   end
 
   def self.updateClasses
-    $ls_classes_tr ||= LSCSV.to_hash("Classes.csv")
+    $ls_classes_tr ||= LSCSV.to_hash("Classes")
     updateForName($data_classes, $ls_classes_tr)
   end
 
   def self.updateSkills
-    $ls_skill_tr ||= LSCSV.to_hash("Skills.csv")
+    $ls_skill_tr ||= LSCSV.to_hash("Skills")
 
     elm_trans = lambda do |el|
       el = Langscore.translate(el, $ls_skill_tr)
@@ -206,7 +206,7 @@ module Langscore
   end
   
   def self.updateStates
-    $ls_states_tr ||= LSCSV.to_hash("States.csv")
+    $ls_states_tr ||= LSCSV.to_hash("States")
     
     elm_trans = lambda do |el|
       el = Langscore.translate(el, $ls_states_tr)
@@ -222,22 +222,22 @@ module Langscore
   end
 
   def self.updateWeapons
-    $ls_weapons_tr ||= LSCSV.to_hash("Weapons.csv")
+    $ls_weapons_tr ||= LSCSV.to_hash("Weapons")
     updateForNameAndDesc($data_weapons, $ls_weapons_tr)
   end
 
   def self.updateArmors
-    $ls_armors_tr ||= LSCSV.to_hash("Armors.csv")
+    $ls_armors_tr ||= LSCSV.to_hash("Armors")
     updateForNameAndDesc($data_armors, $ls_armors_tr)
   end
   
   def self.updateItems
-    $ls_item_tr ||= LSCSV.to_hash("Items.csv")
+    $ls_item_tr ||= LSCSV.to_hash("Items")
     updateForNameAndDesc($data_items, $ls_item_tr)
   end
 
   def self.updateEnemies
-    $ls_enemies_tr ||= LSCSV.to_hash("Enemies.csv")
+    $ls_enemies_tr ||= LSCSV.to_hash("Enemies")
     updateForName($data_enemies, $ls_enemies_tr)
   end
 
@@ -252,7 +252,7 @@ class Game_Map
   def setup(map_id)
     ls_base_setup(map_id)
     
-    file_name  = sprintf("Map%03d.csv", @map_id)
+    file_name  = sprintf("Map%03d", @map_id)
 
     $ls_current_map = LSCSV.to_hash(file_name)
     # p $ls_current_map
@@ -322,23 +322,23 @@ DataManager::module_eval <<-eval
     updateThreads = []
     
     updateThreads << Thread.new do
-      $data_langscore_graphics ||= LSCSV.to_hash("Graphics.csv")
-      p "Load Graphics.csv"# + $data_langscore_graphics.to_s
+      $data_langscore_graphics ||= LSCSV.to_hash("Graphics")
+      p "Load Graphics Translate Data"# + $data_langscore_graphics.to_s
     end
 
     updateThreads << Thread.new do
-      $data_langscore_scripts ||= LSCSV.to_hash("Scripts.csv")
-      p "Load Scripts.csv" if $data_langscore_scripts
+      $data_langscore_scripts ||= LSCSV.to_hash("Scripts")
+      p "Load Scripts Translate Data" if $data_langscore_scripts
     end
     
     updateThreads << Thread.new do
-      $ls_troop_tr ||= LSCSV.to_hash("Troops.csv")
-      p "Load Troops.csv" if $ls_troop_tr
+      $ls_troop_tr ||= LSCSV.to_hash("Troops")
+      p "Load Troops Translate Data" if $ls_troop_tr
     end
     
     updateThreads << Thread.new do
-      $ls_common_event ||= LSCSV.to_hash("CommonEvents.csv")
-      p "Load CommonEvents.csv" if $ls_common_event
+      $ls_common_event ||= LSCSV.to_hash("CommonEvents")
+      p "Load CommonEvents Translate Data" if $ls_common_event
     end
 
     updateThreads.each { |t| t.join }

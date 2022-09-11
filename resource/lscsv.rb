@@ -4,7 +4,7 @@ class LsDumpData
 end
 class LSCSV
   def self.to_hash(file_name)
-    file = open(Langscore::TRANSLATE_FOLDER + file_name)
+    file = open(Langscore::TRANSLATE_FOLDER + "/" + file_name)
     return {} if file == nil
 
     rows = parse_col(parse_row(file))
