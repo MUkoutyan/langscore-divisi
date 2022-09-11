@@ -538,14 +538,14 @@ if packing
   class LsDumpData
     attr_accessor :data
   end
-  read_dir = data_folder+"/Translate/"
-  Dir.glob('*.csv', base: read_dir).each do |fileName|
+  read_dir = input_folder_path
+  Dir.glob('**/*.csv', base: read_dir).each do |fileName|
   
     origin = LsDumpData.new
-    origin.data = File.read(read_dir+fileName)
+    origin.data = File.read(read_dir+"/"+fileName)
     d = Marshal.dump(origin)
-    File.open(read_dir + File.basename(fileName, ".csv") + ".rvdata2", "wb") do | dump |
-      dump.write(d)
+    File.open(output_folder + "/" + File.basename(fileName, ".csv") + ".rvdata2", "wb") do | dumpFile |
+      dumpFile.write(d)
     end
   end
   exit
