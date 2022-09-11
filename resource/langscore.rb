@@ -293,11 +293,6 @@ class Window_Base < Window
       return ls_base_convert_escape_characters(text)
     end
 
-    if result[0].start_with?($langscore_current_language+'-') == false
-      p "Invalid Text : #{text}"
-      p caller
-    end
-
     ls_base_convert_escape_characters(result[0])
   end
 
