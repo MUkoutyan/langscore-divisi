@@ -507,7 +507,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
         else if(findStr(_line, u8"%{TRANSLATE_FOLDER}%"))
         {
             auto outPath = config.outputTranslateFilePathForRPGMaker();
-            _line = tab + u8"TRANSLATE_FOLDER = \"./" + utility::cnvStr<std::u8string>(outPath) + u8"\"" + nl;
+            _line = tab + u8"TRANSLATE_FOLDER = \"" + utility::cnvStr<std::u8string>(outPath) + u8"\"" + nl;
         }
         else if(findStr(_line, u8"%{UNISON_LSCSV}%"))
         {
