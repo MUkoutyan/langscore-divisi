@@ -5,6 +5,7 @@
 #include "config.h"
 #include "config.h"
 #include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -144,6 +145,11 @@ langscore::config::config()
 
 config::~config()
 {}
+
+std::u8string langscore::config::langscoreProjectPath()
+{
+	return pImpl->path.parent_path().u8string();
+}
 
 std::vector<config::Language> config::languages()
 {
@@ -300,7 +306,8 @@ utility::u8stringlist langscore::config::ignorePictures()
 utility::u8stringlist langscore::config::globalFontList()
 {
 	auto& write = pImpl->json[key(JsonKey::Write)];
-	auto& globals = write[key(JsonKey::Global)];
+	auto& fontPaths = write[key(JsonKey::FontPath)];
+	auto& globals = fontPaths[key(JsonKey::Global)];
 	utility::u8stringlist result;
 	for(auto s = globals.begin(); s != globals.end(); ++s){
 		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
@@ -311,7 +318,8 @@ utility::u8stringlist langscore::config::globalFontList()
 utility::u8stringlist langscore::config::localFontList()
 {
 	auto& write = pImpl->json[key(JsonKey::Write)];
-	auto& locals = write[key(JsonKey::Local)];
+	auto& fontPaths = write[key(JsonKey::FontPath)];
+	auto& locals = fontPaths[key(JsonKey::Local)];
 	utility::u8stringlist result;
 	for(auto s = locals.begin(); s != locals.end(); ++s){
 		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));

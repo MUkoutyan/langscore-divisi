@@ -90,6 +90,8 @@ namespace langscore
 		config();
 		~config();
 
+		std::u8string langscoreProjectPath();
+
 		std::vector<Language> languages();
 		std::string defaultLanguage();
 		std::u8string gameProjectPath();

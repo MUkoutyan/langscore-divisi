@@ -146,32 +146,7 @@ ErrorStatus langscore::divisi_vxace::write()
     writeFixedRvScript();
     writeFixedGraphFileNameData();
 
-    const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
-    
-    //フォントのコピー
-    auto fontDestPath = config.gameProjectPath() + u8"/Fonts"s;
-    auto globalFonts = config.globalFontList();
-    auto globalFontFolder = appPath / "../resources/fonts";
-    for(auto& relativePath : globalFonts)
-    {
-        auto path = globalFontFolder / relativePath;
-        if(fs::exists(path)){
-            std::cerr << "Warning! : not found global font file : " << path << std::endl;
-            continue;
-        }
-        fs::copy_file(path, fontDestPath + relativePath);
-    }
-    auto localFonts = config.localFontList();
-    auto localFontFolder = lsAnalyzePath / "Fonts";
-    for(auto& relativePath : localFonts)
-    {
-        auto path = localFontFolder / relativePath;
-        if(fs::exists(path)){
-            std::cerr << "Warning! : not found local font file : " << path << std::endl;
-            continue;
-        }
-        fs::copy_file(path, fontDestPath + relativePath);
-    }
+    copyFonts();
 
     std::cout << "Export script files." << std::endl;
     rewriteScriptList();
@@ -681,6 +656,44 @@ void divisi_vxace::rewriteScriptList()
         }
     }
 
+}
+
+void langscore::divisi_vxace::copyFonts()
+{    
+    //フォントのコピー
+    config config;
+    const auto lsProjectPath = fs::path(config.langscoreProjectPath());
+
+    auto globalFonts = config.globalFontList();
+    auto localFonts = config.localFontList();
+
+    if(globalFonts.empty() && localFonts.empty()){ return; }
+
+    auto fontDestPath = fs::path(config.gameProjectPath()) / u8"Fonts"s;
+    if(fs::exists(fontDestPath) == false){
+        fs::create_directory(fontDestPath);
+    }
+
+    auto globalFontFolder = this->appPath.parent_path() / "../resources/fonts";
+    for(auto& relativePath : globalFonts)
+    {
+        auto path = globalFontFolder / relativePath;
+        if(fs::exists(path) == false){
+            std::cerr << "Warning! : not found global font file : " << path << std::endl;
+            continue;
+        }
+        fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
+    }
+    auto localFontFolder = lsProjectPath / "Fonts";
+    for(auto& relativePath : localFonts)
+    {
+        auto path = localFontFolder / relativePath;
+        if(fs::exists(path) == false){
+            std::cerr << "Warning! : not found local font file : " << path << std::endl;
+            continue;
+        }
+        fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
+    }
 }
 
 bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) const
