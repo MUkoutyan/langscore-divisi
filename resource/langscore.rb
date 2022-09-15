@@ -118,9 +118,24 @@ module Langscore
   def self.updateFont(lang)
 
     beforeFontName = Font.default_name
-    if LS_FONT[lang] != nil
-      Font.default_name = LS_FONT[lang][:name]
-      Font.default_size = LS_FONT[lang][:size]
+    if LS_FONT[lang] == nil
+      return beforeFontName != Font.default_name
+    end
+
+    Font.default_name = LS_FONT[lang][:name]
+    Font.default_size = LS_FONT[lang][:size]
+    
+    if SceneManager.scene != nil
+      SceneManager.scene.instance_variables.each do |varname|
+        #instance_variablesだけだとself.instance_variablesになるので、
+        #ちゃんとシーンを指定する。
+        ivar = SceneManager.scene.instance_variable_get(varname)
+        #シーンが持っているウィンドウ全てのフォントを更新
+        if ivar.is_a?(Window_Base)
+          ivar.contents.font.name = Font.default_name
+          ivar.contents.font.size = Font.default_size
+        end
+      end
     end
     return beforeFontName != Font.default_name
   end
@@ -588,5 +603,13 @@ class LSSetting
 end
 
 LSSetting.load()
+
+def self.saveIni
+  LSSetting.save()
+end
+
+def self.loadIni
+  LSSetting.load()
+end
 
 end # module Langscore
