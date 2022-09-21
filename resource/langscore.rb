@@ -324,6 +324,7 @@ end
 DataManager::module_eval <<-eval
   class << DataManager
     alias ls_base_load_normal_database load_normal_database
+    alias ls_make_save_contents make_save_contents
   end
 
   #戦闘テスト用は未対応
