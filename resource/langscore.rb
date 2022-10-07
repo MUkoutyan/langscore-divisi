@@ -131,7 +131,8 @@ module Langscore
         #ちゃんとシーンを指定する。
         ivar = SceneManager.scene.instance_variable_get(varname)
         #シーンが持っているウィンドウ全てのフォントを更新
-        if ivar.is_a?(Window_Base)
+        #disposedをチェックしないと、解放済みの場合に死ぬ
+        if ivar.is_a?(Window_Base) && ivar.disposed? == false
           ivar.contents.font.name = Font.default_name
           ivar.contents.font.size = Font.default_size
         end
