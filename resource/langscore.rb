@@ -43,7 +43,7 @@ module Langscore
   end
 
   def self.translate_for_script(text)
-    result = self.translate(text, $data_langscore_scripts)
+    result = self.translate(text, $ls_scripts_tr)
     result
   end
 
@@ -71,8 +71,8 @@ module Langscore
     $ls_armors_tr.clear
     $ls_item_tr.clear
     $ls_enemies_tr.clear
-    $data_langscore_graphics = LSCSV.to_hash("Graphics")
-    $data_langscore_scripts = LSCSV.to_hash("Scripts")
+    $ls_graphics_tr = LSCSV.to_hash("Graphics")
+    $ls_scripts_tr = LSCSV.to_hash("Scripts")
     $ls_troop_tr ||= LSCSV.to_hash("Troops")
     $ls_common_event ||= LSCSV.to_hash("CommonEvents")
 
@@ -313,10 +313,6 @@ class Window_Base < Window
     ls_base_convert_escape_characters(result[0])
   end
 
-  alias ls_base_draw_text draw_text
-  def draw_text(*args)
-    ls_base_draw_text(*args)
-  end
 end
 
 
@@ -335,13 +331,13 @@ DataManager::module_eval <<-eval
     updateThreads = []
     
     updateThreads << Thread.new do
-      $data_langscore_graphics ||= LSCSV.to_hash("Graphics")
-      p "Load Graphics Translate Data"# + $data_langscore_graphics.to_s
+      $ls_graphics_tr ||= LSCSV.to_hash("Graphics")
+      p "Load Graphics Translate Data"# + $ls_graphics_tr.to_s
     end
 
     updateThreads << Thread.new do
-      $data_langscore_scripts ||= LSCSV.to_hash("Scripts")
-      p "Load Scripts Translate Data" if $data_langscore_scripts
+      $ls_scripts_tr ||= LSCSV.to_hash("Scripts")
+      p "Load Scripts Translate Data" if $ls_scripts_tr
     end
     
     updateThreads << Thread.new do
@@ -391,7 +387,7 @@ Cache::module_eval <<-eval
   
   def self.load_bitmap(folder_name, filename, hue = 0)
     path = folder_name + filename
-    ts_path = Langscore.translate(path, $data_langscore_graphics)
+    ts_path = Langscore.translate(path, $ls_graphics_tr)
     if ts_path != path
       filename = ts_path
     else
