@@ -295,7 +295,7 @@ void divisi_vxace::writeAnalyzedRvScript()
         t.translates[def_lang] = t.original;
     }
 
-    //デフォルトスクリプトのVocab.rb内の文字列は予め対応
+    //デフォルトスクリプトのVocab.rb内の文字列は予めScriptsの中に翻訳済みの内容を入れておく
     auto resourceFolder = this->appPath.parent_path() / "resource";
     csvreader reader;
     auto vocabs = reader.parse(resourceFolder/"vocab.csv");

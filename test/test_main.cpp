@@ -112,6 +112,11 @@ IUTEST(Langscore_Writer, DetectStringPosition)
 		IUTEST_ASSERT_EQ(std::get<0>(result[1]), u8"aiueo"s);
 		IUTEST_ASSERT_EQ(std::get<1>(result[1]), 36);
 	}
+	{
+		auto result = scriptRegex.findStrings(u8"text = \"\\C[16]プレイ時間\\X[104]\\C[0]\\T[%4$3d\\\"%3$02d]\""s);
+		IUTEST_ASSERT_EQ(result.size(), 1);
+		IUTEST_ASSERT_EQ(std::get<0>(result[0]), u8"\\C[16]プレイ時間\\X[104]\\C[0]\\T[%4$3d\\\"%3$02d]"s);
+	}
 }
 
 IUTEST(Langscore_Writer, CheckRubyCommentLine)
@@ -443,6 +448,49 @@ IUTEST(Langscore_Divisi, WriteVXAceProject)
 	IUTEST_SUCCEED();
 }
 
+IUTEST(Langscore_Divisi, WriteVocab)
+{
+	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+
+	fs::path scriptDataSrc(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
+
+	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate")){
+		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate");
+	}
+
+	if(fs::exists(scriptDataDest) == false){
+		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
+	}
+
+	IUTEST_ASSERT(divisi.write().valid());
+	langscore::config config;
+	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
+
+	IUTEST_ASSERT(fs::exists(outputPath / "Scripts.csv"));
+	langscore::csvreader csvreader;
+	auto scriptList = csvreader.parsePlain(outputPath / "Scripts/_list.csv");
+
+	fs::path langscoreCustomFilename;
+	{
+		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [](const auto& x){
+			return x[1] == u8"langscore_custom";
+		});
+		IUTEST_ASSERT(result != scriptList.cend());
+		langscoreCustomFilename = outputPath / "Scripts" / (std::u8string((*result)[0]) + u8".rb"s);
+	}
+	{
+		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [](const auto& x){
+			return x[1] == u8"langscore";
+		});
+		IUTEST_ASSERT(result != scriptList.cend());
+	}
+
+	fs::copy(scriptDataDest, scriptDataSrc, fs::copy_options::overwrite_existing);
+
+	IUTEST_SUCCEED();
+}
+
 IUTEST(Langscore_Divisi, WriteLangscoreCustom)
 {
 	langscore::config config;
@@ -483,6 +531,8 @@ IUTEST(Langscore_Divisi, WriteLangscoreCustom)
 		}
 		IUTEST_ASSERT_EQ(numSucceed, 3);
 	}
+
+
 }
 
 

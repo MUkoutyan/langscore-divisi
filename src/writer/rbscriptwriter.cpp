@@ -71,6 +71,7 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
 
 ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, OverwriteTextMode overwriteMode)
 {
+    //langscore_customの書き出し
     using namespace std::literals::string_literals;
 
     //======================================

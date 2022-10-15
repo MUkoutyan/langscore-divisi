@@ -96,31 +96,37 @@ public:
 		bool findSq = false;
 		size_t col = 0;
 		size_t index = 1;
+		bool beforeEsc = false;
 		for(auto& strView : wordList)
 		{
 			auto str = std::get<0>(strView);
-			if(str == u8"\"" && findSq == false){
-				if(findDq == false){ 
-					col = index;
-					strStart = std::get<1>(strView);
+			if(beforeEsc == false)
+			{
+				if(str == u8"\"" && findSq == false){
+					if(findDq == false){
+						col = index;
+						strStart = std::get<1>(strView);
+					}
+					else {
+						auto endPos = std::get<1>(strView) + 1;
+						convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
+					}
+					findDq = !findDq;
 				}
-				else {
-					auto endPos = std::get<1>(strView)+1;
-					convertTranslateTextFromMatch(line.substr(strStart, endPos-strStart), col, transTextList);
+				else if(str == u8"'" && findDq == false){
+					if(findSq == false){
+						col = index;
+						strStart = std::get<1>(strView);
+					}
+					else {
+						auto endPos = std::get<1>(strView) + 1;
+						convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
+					}
+					findSq = !findSq;
 				}
-				findDq = !findDq;
 			}
-			else if(str == u8"'" && findDq == false){
-				if(findSq == false){
-					col = index; 
-					strStart = std::get<1>(strView);
-				}
-				else {
-					auto endPos = std::get<1>(strView)+1;
-					convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
-				}
-				findSq = !findSq;
-			}
+			
+			beforeEsc = str == u8"\\";
 
 			index++;
 		}
