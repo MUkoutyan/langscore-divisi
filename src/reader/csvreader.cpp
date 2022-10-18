@@ -13,7 +13,7 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 	if(csv.size() < 2){ return {}; }
 
 	const auto& header = csv[0];
-	if(header.size() < 3){ return {}; }
+	if(header.size() < 2){ return {}; }
 	useLangList = {header.begin() + 1, header.end()};
 
 	std::vector<TranslateText> result;

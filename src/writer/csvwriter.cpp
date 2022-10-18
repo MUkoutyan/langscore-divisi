@@ -17,8 +17,9 @@ bool csvwriter::merge(std::filesystem::path filePath)
 
     for(auto& newT : this->texts)
     {
-        auto oldText = std::find_if(oldTexts.begin(), oldTexts.end(), [&newT](const auto& x){
-            return x.original == newT.original;
+        auto oldText = std::find_if(oldTexts.begin(), oldTexts.end(), [&newT](const auto& x)
+        {
+            return withoutQuote(x.original) == withoutQuote(newT.original);
         });
         if(oldText == oldTexts.end()){ continue; }
         for(auto& pair : newT.translates)
@@ -28,7 +29,7 @@ bool csvwriter::merge(std::filesystem::path filePath)
                 continue;
             }
 
-            auto text = oldText->translates[pair.first];
+            auto text = withoutQuote(oldText->translates[pair.first]);
 
             if(overwriteMode == OverwriteTextMode::LeaveOldNonBlank){
                 if(text.empty() == false){  //既に文字が入っていたら残す

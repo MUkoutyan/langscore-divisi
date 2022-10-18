@@ -1,4 +1,4 @@
-#ifndef CSVWRITER_H
+﻿#ifndef CSVWRITER_H
 #define CSVWRITER_H
 
 #include "writerbase.h"
@@ -19,6 +19,34 @@ namespace langscore
 #ifdef ENABLE_TEST
         friend class Langscore_Test_WriterBase;
 #endif
+
+    private:
+        template<typename str_type>
+        static str_type withoutQuote(str_type str)
+        {
+            //CSV用なので、改行かカンマがあれば何もしない
+            if(str.find(str_type::value_type('\n')) != str_type::npos ||
+               str.find(str_type::value_type(',')) != str_type::npos){
+                return str;
+            }
+            if(str.empty()){ return str; }
+
+            const auto CheckQuote = [](str_type::value_type c){ return c == str_type::value_type('\"') || c == str_type::value_type('\''); };
+            if(CheckQuote(str[0])){
+                str.erase(str.begin());
+            }
+            else{
+                //末尾にクオートが有っても、文字列としてのクオート括りではないので無視
+                return str;
+            }
+
+            auto pos = str.size() - 1;
+            if(CheckQuote(str[pos])){
+                str.erase(str.begin() + pos);
+            }
+
+            return str;
+        }
     };
 }
 
