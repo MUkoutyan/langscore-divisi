@@ -199,7 +199,7 @@ module Langscore
     $data_system.terms.commands.map! &elm_trans
     $data_system.terms.basic.map! &elm_trans
 
-    $data_system.currency_unit = Langscore.translate($data_system.currency_unit, $system_tr)
+    $data_system.currency_unit = Langscore.translate($data_system.currency_unit, $ls_system_tr)
   end
 
   def self.updateClasses
