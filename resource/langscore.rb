@@ -386,17 +386,25 @@ Cache::module_eval <<-eval
   end
   
   def self.load_bitmap(folder_name, filename, hue = 0)
-    path = folder_name + filename
+    
+    path = folder_name+filename
     ts_path = Langscore.translate(path, $ls_graphics_tr)
     if ts_path != path
-      filename = ts_path
+      filename = ts_path.sub(folder_name, "")
     else
       #翻訳テキスト内で明示的に画像が指定されていない場合、ファイル名検索
       #filenameは元から拡張子なしなのでそのまま結合
       new_filename = filename + '_' + $langscore_current_language
+      
       has_key = $ls_graphic_cache.has_key?(filename)
       if has_key == false
-        $ls_graphic_cache[filename] = Dir.glob(folder_name+new_filename+".*").empty? == false
+        begin
+          bitmap = ls_base_load_bitmap(folder_name, new_filename, hue)
+          $ls_graphic_cache[filename] = true
+          return bitmap
+        rescue => e
+          $ls_graphic_cache[filename] = false
+        end
       end
 
       if $ls_graphic_cache[filename]

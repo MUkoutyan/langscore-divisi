@@ -255,8 +255,9 @@ void langscore::divisi_vxace::fetchFilePathList()
     {
         if(f.is_directory()){ continue; }
         //パス区切り文字は\\ではなく/に統一(\\はRubyで読み取れない)
-        auto relative_path = "./"/f.path().lexically_relative(graphicsPath);
-        this->graphicFileList.emplace_back(relative_path);
+        const auto& path = f.path();
+        auto relative_path = "Graphics" / path.lexically_relative(graphicsPath);
+        this->graphicFileList.emplace_back(relative_path.parent_path() / path.stem());
     }
 }
 
@@ -426,9 +427,9 @@ void langscore::divisi_vxace::writeFixedRvScript()
     auto transTexts = scriptWriter.curerntTexts();
     transTexts = scriptWriter.acceptIgnoreScripts(scriptInfoList, std::move(transTexts));
 
-#ifdef _DEBUG
-    writerbase::ReplaceDebugTextByLang(transTexts, def_lang);
-#endif
+//#ifdef _DEBUG
+//    writerbase::ReplaceDebugTextByLang(transTexts, def_lang);
+//#endif
 
     std::u8string root;
     const auto translateFolderList = config.exportDirectory(root);
