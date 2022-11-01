@@ -376,6 +376,46 @@ IUTEST(Langscore_Invoker, CheckValidScriptList)
 	IUTEST_SUCCEED();
 }
 
+
+IUTEST(Langscore_Divisi_Analyze, ValidateTexts)
+{
+	//テキストが一致するかの整合性を確認するテスト
+	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+
+	IUTEST_ASSERT(divisi.analyze().valid());
+	langscore::config config;
+	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
+
+	IUTEST_ASSERT(fs::exists(outputPath / "Map001.csv"));
+	langscore::csvreader csvreader;
+	auto scriptCsv = csvreader.parse(outputPath / "Map001.csv");
+	
+	std::vector<std::u8string> includeTexts = {
+		u8"マップ名",
+		u8"\"12345こんにちは世界 HelloWorld\n\""s,
+		u8"\"12345HHEELLOO\n\""s,
+		u8"\"これは追加テキストです\n\""s,
+		u8"\"言語　切り替えるよ\n\""s,
+		u8"\"\n手動で中央揃え\n\""s,
+		u8"\"\n\\{中央揃え+フォントサイズ大\n\""s,
+		u8"日本語"s,
+		u8"英語"s,
+		u8"中国語"s,
+	};
+
+	for(auto& t : scriptCsv)
+	{
+		auto result = std::find_if(includeTexts.cbegin(), includeTexts.cend(), [&t](const auto& x){
+			return x == t.original;
+		});
+		if(result == includeTexts.cend()){
+			std::cout << "Not Found!" << std::string(t.original.begin(), t.original.end()) << std::endl;
+			IUTEST_FAIL();
+		}
+	}
+	IUTEST_SUCCEED();
+}
+
 IUTEST(Langscore_Divisi, CheckScriptCSV)
 {	
 	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");

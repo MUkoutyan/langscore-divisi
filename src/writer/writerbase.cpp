@@ -6,18 +6,20 @@
 using namespace langscore;
 namespace
 {
-
+	//共通して無視するキー
 	static const std::vector<std::u8string> ignoreKeys = {
 		u8"class", u8"@note", u8"@character_name", 
 		u8"@self_switch_ch", u8"@switches", u8"@title1_name", u8"@variables"
 	};
+	//特定のクラスに存在する、無視するキー
 	static const std::map<std::u8string, std::vector<std::u8string>> ignoreForClassKeys = {
 		{u8"RPG::UsableItem::Damage", {u8"@formula"}},
 		{u8"RPG::Event",  {u8"@name"}},
 		{u8"RPG::SE",     {u8"@name"}},
 		{u8"RPG::ME",     {u8"@name"}},
 		{u8"RPG::BGM",    {u8"@name"}},
-		{u8"RPG::Map",    {u8"@battleback1_name", u8"@battleback2_name"}},
+		{u8"RPG::BGS",    {u8"@name"}},
+		{u8"RPG::Map",    {u8"@battleback1_name", u8"@battleback2_name", u8"@parallax_name"}},
 		{u8"RPG::Troop",  {u8"@name"}},
 		{u8"RPG::Actor",  {u8"@face_name"}},
 		{ u8"RPG::System",    {u8"@battleback1_name", u8"@battleback2_name"} },
@@ -102,7 +104,9 @@ void writerbase::addText(const nlohmann::json& json, std::u8string note)
 {
 	std::string valStr;
 	json.get_to(valStr);
-	if(valStr.empty()){ return; }
+
+	//手動の中央揃え等で空行を使用する場合があるため、空文字の検出は行わない。
+	//if(valStr.empty()){ return; }
 
 	std::u8string original(valStr.begin(), valStr.end());
 	addText(std::move(original), std::move(note));
@@ -111,6 +115,7 @@ void writerbase::addText(const nlohmann::json& json, std::u8string note)
 void writerbase::addText(std::u8string text, std::u8string note)
 {
 	if(stackText){
+		//1行に付き必ず改行が挟まる。(VXAceのみの仕様？MV/MZは要確認)
 		stackTextStr += text + u8'\n';
 		return;
 	}
