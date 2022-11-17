@@ -12,9 +12,10 @@ namespace langscore
         using writerbase::writerbase;
         constexpr static const char* extension = "csv";
 
-        bool merge(std::filesystem::path filePath) override;
-        ErrorStatus write(std::filesystem::path path, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) override;
-        static ErrorStatus writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> text, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld);
+        //現在のインスタンス内のテキストをベースとして、指定したCSVとマージする。
+        bool merge(std::filesystem::path sourceFilePath) override;
+        ErrorStatus write(std::filesystem::path path, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) override;
+        static ErrorStatus writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> text, MergeTextMode overwriteMode = MergeTextMode::AcceptSource);
 
 #ifdef ENABLE_TEST
         friend class Langscore_Test_WriterBase;

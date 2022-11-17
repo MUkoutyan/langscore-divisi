@@ -43,6 +43,19 @@ ErrorStatus invoker::analyze(){
     return exec({"-i", _projectPath.string(), "-o", tempPath.string()});
 }
 
+ErrorStatus langscore::invoker::update()
+{
+    config config;
+    auto tempPath = std::filesystem::path(config.langscoreUpdateDirectorty());
+    tempPath.make_preferred();
+    if(std::filesystem::exists(tempPath) == false){
+        if(std::filesystem::create_directories(tempPath) == false){
+            return ErrorStatus(ErrorStatus::Module::INVOKER, 7);
+        }
+    }
+    return exec({"-i", _projectPath.string(), "-o", tempPath.string()});
+}
+
 ErrorStatus langscore::invoker::recompressVXAce(){
     return exec({"-i", _projectPath.string(), "-c"});
 }

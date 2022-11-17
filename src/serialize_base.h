@@ -5,12 +5,13 @@
 
 namespace langscore
 {
-    enum class OverwriteTextMode
+    enum class MergeTextMode
     {
-        LeaveOld,           //元のファイルを残す
-        LeaveOldNonBlank,   //(CSVのセルが)編集済みなら残す
-        OverwriteNew,       //上書きする
-        Both                //両方残す
+        AcceptSource = 0,   //元のファイルを残す
+        AcceptTarget = 1,   //先のファイルを残す
+        MergeKeepSource,    //競合した場合、元ファイルの内容を保持する。
+        MergeKeepTarget,    //競合した場合、先ファイルの内容を保持する。
+        Both,               //両方残す
     };
 
     class TranslateText

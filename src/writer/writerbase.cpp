@@ -40,7 +40,7 @@ writerbase::writerbase(std::vector<std::u8string> langs, const nlohmann::json& j
 writerbase::writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts)
 	: useLangs(std::move(langs))
 	, texts(std::move(texts))
-	, overwriteMode(OverwriteTextMode::LeaveOld)
+	, overwriteMode(MergeTextMode::AcceptSource)
 	, stackText(false)
 	, stackTextStr(u8"")
 	, rangeComment(false)
@@ -118,6 +118,12 @@ void writerbase::addText(std::u8string text, std::u8string note)
 		//1行に付き必ず改行が挟まる。(VXAceのみの仕様？MV/MZは要確認)
 		stackTextStr += text + u8'\n';
 		return;
+	}
+	else {
+		if(text.empty()){
+			//ただの空文は無視する。
+			return;
+		}
 	}
 
 	bool wrapDq = false;

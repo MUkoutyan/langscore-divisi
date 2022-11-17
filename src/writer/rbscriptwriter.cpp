@@ -62,14 +62,14 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
 
     switch(overwriteMode)
     {
-        case OverwriteTextMode::OverwriteNew:
+        case MergeTextMode::AcceptTarget:
             return true;
             break;
     }
     return false;
 }
 
-ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, OverwriteTextMode overwriteMode)
+ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, MergeTextMode overwriteMode)
 {
     //langscore_customの書き出し
     using namespace std::literals::string_literals;

@@ -43,6 +43,7 @@ set(lib_files
 	"platform/platform_base.cpp"
 	${PROJECT_SOURCE_DIR}/rvcnv/rvcnv_hash.cpp
 	${PROJECT_SOURCE_DIR}/hash-library/md5.cpp
+	${PROJECT_SOURCE_DIR}/hash-library/crc32.cpp
 )
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。

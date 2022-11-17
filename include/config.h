@@ -96,6 +96,7 @@ namespace langscore
 		std::string defaultLanguage();
 		std::u8string gameProjectPath();
 		std::u8string langscoreAnalyzeDirectorty();
+		std::u8string langscoreUpdateDirectorty();
 		std::string usScriptFuncComment();
 		std::vector<std::u8string> exportDirectory(std::u8string& root);
 		bool exportByLanguage();
@@ -108,6 +109,7 @@ namespace langscore
 		utility::u8stringlist ignorePictures();
 		utility::u8stringlist globalFontList();
 		utility::u8stringlist localFontList();
+		int globalWriteMode();
 
 	private:
 		class Impl;

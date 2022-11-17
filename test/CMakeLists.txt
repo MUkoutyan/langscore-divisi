@@ -35,6 +35,7 @@ set(Test_Includes
 file(GLOB_RECURSE DIVISI_SOURCES
 	../src/*.cpp
     ../hash-library/md5.cpp
+    ../hash-library/crc32.cpp
 )
 
 set(test_sources 

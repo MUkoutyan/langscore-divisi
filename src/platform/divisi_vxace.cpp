@@ -6,6 +6,7 @@
 #include "../reader/csvreader.h"
 
 #include <nlohmann/json.hpp>
+#include <crc32.h>
 #include <unordered_map>
 #include <fstream>
 #include <iostream>
@@ -119,12 +120,133 @@ ErrorStatus divisi_vxace::analyze()
         return runResult;
     }
 
-    fetchFilePathList();
+    //解析では言語を使用しない。 書き出されるCSVはオリジナル文のみを表示させる。
+    this->supportLangs.clear();
 
-    this->writeAnalyzedData();
-    this->writeAnalyzedRvScript();
+    config config;
+    const auto baseDirecotry = config.langscoreAnalyzeDirectorty();
+    std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(baseDirecotry);
+
+    this->writeAnalyzedBasicData();
+    this->writeAnalyzedRvScript(baseDirecotry);
 
     std::cout << "AnalyzeProject Done." << std::endl;
+    return Status_Success;
+}
+
+ErrorStatus langscore::divisi_vxace::update()
+{
+    config config;
+    //変にマージしないように一旦全削除
+    const auto updateDirPath = config.langscoreUpdateDirectorty();
+    const auto analyzeDirPath = config.langscoreAnalyzeDirectorty();
+    fs::remove_all(updateDirPath);
+
+    auto runResult = this->invoker.update();
+    if(runResult.val() != 0){
+        std::cerr << runResult.toStr() << std::endl;
+        return runResult;
+    }
+
+    //アップデートでも言語を使用しない。 書き出されるCSVはオリジナル文のみを表示させる。
+    this->supportLangs.clear();
+
+    std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(updateDirPath);
+
+    //updateフォルダへCSVの書き出し
+    this->writeAnalyzedBasicData();
+    this->writeAnalyzedRvScript(updateDirPath);
+
+    auto [analyzeScripts, analyzeDataList, analyzeGraphics] = fetchFilePathList(analyzeDirPath);
+
+    //ファイルのリストアップ
+    utility::filelist analyzeCsvList;
+    for(const auto& f : fs::directory_iterator{analyzeDirPath}){
+        auto extension = f.path().extension();
+        if(extension == ".csv"){
+            analyzeCsvList.emplace_back(f.path());
+        }
+    }
+    utility::filelist updateCsvList;
+    for(const auto& f : fs::directory_iterator{updateDirPath}){
+        auto extension = f.path().extension();
+        if(extension == ".csv"){
+            updateCsvList.emplace_back(f.path());
+        }
+    }
+
+    enum Type{ Add, Delete, Update };
+    std::vector<std::pair<fs::path, Type>> messageList;
+
+    //消されるファイルの列挙
+    for(auto s : analyzeCsvList){
+        auto result = std::find_if(updateCsvList.begin(), updateCsvList.end(), [&s](const auto& x){
+            return x.filename() == s.filename();
+        });
+        if(result == updateCsvList.end()){
+            messageList.emplace_back(std::make_pair(s.filename(), Type::Delete));
+        }
+    }
+    //追加されるファイルの列挙
+    for(auto s : updateCsvList){
+        auto result = std::find_if(analyzeCsvList.begin(), analyzeCsvList.end(), [&s](const auto& x){
+            return x.filename() == s.filename();
+        });
+        if(result == analyzeCsvList.end()){
+            messageList.emplace_back(std::make_pair(s.filename(), Type::Add));
+        }
+    }
+
+    //更新されるファイルのチェック    
+    const auto CompareFileHash = [&messageList](std::filesystem::path path, const utility::filelist& files)
+    {
+        auto result = std::find_if(files.begin(), files.end(), [&path](const auto& x){
+            return x.filename() == path.filename();
+        });
+        if(result == files.end()){
+            return;
+        }
+
+        auto x_data = utility::getFileData(path);
+        CRC32 x;
+        auto x_hash = x(x_data.data(), x_data.size());
+
+        auto y_data = utility::getFileData(*result);
+        CRC32 y;
+        auto y_hash = y(y_data.data(), y_data.size());
+
+        if(x_hash != y_hash){
+            messageList.emplace_back(std::make_pair(path.filename(), Type::Update));
+        }
+    };
+    for(auto s : analyzeCsvList)
+    {
+        if(s.extension() != ".csv"){ continue; }
+        CompareFileHash(std::move(s), updateCsvList);
+    }
+
+    //ファイルの並びが揃ってないので一旦揃える
+    std::sort(messageList.begin(), messageList.end(), [](const auto& x, const auto& y){
+        return x.first < y.first;
+    });
+
+    //メッセージを出しつつ、ファイルの移動
+    for(auto& mes : messageList){
+        if(mes.second == Type::Add){
+            std::cout << "Add : " << mes.first << std::endl;
+            fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first);
+        }
+        else if(mes.second == Type::Delete){
+            std::cout << "Delete : " << mes.first << std::endl;
+            fs::remove(analyzeDirPath / mes.first);
+        }
+        else if(mes.second == Type::Update){
+            std::cout << "Update : " << mes.first << std::endl;
+            fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first, fs::copy_options::overwrite_existing);
+        }
+    }
+
+    std::cout << "UpdateProject Done." << std::endl;
     return Status_Success;
 }
 
@@ -139,10 +261,10 @@ ErrorStatus langscore::divisi_vxace::write()
         if(fs::exists(folder)){ continue; }
         fs::create_directories(folder);
     }
+    
+    std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(config.langscoreAnalyzeDirectorty()); 
 
-    fetchFilePathList(); 
-
-    writeFixedData();
+    writeFixedBasicData();
     writeFixedRvScript();
     writeFixedGraphFileNameData();
 
@@ -203,28 +325,29 @@ ErrorStatus langscore::divisi_vxace::packing()
     return Status_Success;
 }
 
-void langscore::divisi_vxace::fetchFilePathList()
+std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::divisi_vxace::fetchFilePathList(std::u8string deserializeOutPath)
 {
-    config config;
-    const auto deserializeOutPath = config.langscoreAnalyzeDirectorty();
-    fs::recursive_directory_iterator dataItr(deserializeOutPath);
     size_t numScripts = 0;
-    for(const auto& f : fs::recursive_directory_iterator{deserializeOutPath+u8"/Scripts"}){
+    for(const auto& f : fs::recursive_directory_iterator{deserializeOutPath + u8"/Scripts"}){
         auto extension = f.path().extension();
         if(extension == ".rb"){ numScripts++; }
     }
-    this->scriptFileList.resize(numScripts);
+    utility::filelist scripts;
+    scripts.resize(numScripts);
+    utility::filelist basicDataList;
 
     csvreader scriptCsvReader;
     auto scriptCsv = scriptCsvReader.parsePlain(deserializeOutPath + u8"/Scripts/_list.csv"s);
     for(auto& f : fs::recursive_directory_iterator{deserializeOutPath})
     {
+        //Basic
         auto extension = f.path().extension();
         if(extension == ".json"){
-            this->dataFileList.emplace_back(f.path());
+            basicDataList.emplace_back(f.path());
         }
         else if(extension == ".rb")
         {
+            //Script
             auto fileName = f.path().filename();
             auto itr = std::find_if(scriptCsv.cbegin(), scriptCsv.cend(), [name = fileName.stem()](const auto& x){
                 return name == x[0];
@@ -240,14 +363,16 @@ void langscore::divisi_vxace::fetchFilePathList()
 
             auto pos = std::distance(scriptCsv.cbegin(), itr);
             if(0 <= pos && pos < numScripts){
-                this->scriptFileList[pos] = f.path();
+                scripts[pos] = f.path();
             }
             else{
-                this->scriptFileList.emplace_back(f.path());
+                scripts.emplace_back(f.path());
             }
         }
     }
 
+    utility::filelist graphics;
+    config config;
     auto gameProjectPath = fs::path(config.gameProjectPath());
     auto graphicsPath = gameProjectPath / "Graphics";
     fs::recursive_directory_iterator graphItr(graphicsPath);
@@ -257,14 +382,16 @@ void langscore::divisi_vxace::fetchFilePathList()
         //パス区切り文字は\\ではなく/に統一(\\はRubyで読み取れない)
         const auto& path = f.path();
         auto relative_path = "Graphics" / path.lexically_relative(graphicsPath);
-        this->graphicFileList.emplace_back(relative_path.parent_path() / path.stem());
+        graphics.emplace_back(relative_path.parent_path() / path.stem());
     }
+
+    return std::forward_as_tuple(scripts, basicDataList, graphics);
 }
 
-void divisi_vxace::writeAnalyzedData()
+void divisi_vxace::writeAnalyzedBasicData()
 {
-    std::cout << "writeAnalyzedData" << std::endl;
-    for(auto& path : dataFileList)
+    std::cout << "writeAnalyzedBasicData" << std::endl;
+    for(auto& path : this->basicDataFileList)
     {
         std::ifstream loadFile(path);
         nlohmann::json json;
@@ -274,22 +401,22 @@ void divisi_vxace::writeAnalyzedData()
         csvFilePath.make_preferred().replace_extension(".csv");
         std::cout << "Write CSV : " << csvFilePath << std::endl;
 
-        writeAnalyzeTranslateText<csvwriter>(csvFilePath, json, langscore::OverwriteTextMode::Both);
+        writeAnalyzeTranslateText<csvwriter>(csvFilePath, json, MergeTextMode::AcceptTarget);
     }
     std::cout << "Finish." << std::endl;
 }
 
-void divisi_vxace::writeAnalyzedRvScript()
+void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 {
     //解析直後の素のデータを書き出す。
     //無視リスト等は考慮せず、書き出し先はTempフォルダ以下になる。
     std::cout << "writeAnalyzedRvScript" << std::endl;
 
+    config config;
     //Rubyスクリプトを予め解析してテキストを生成しておく。
-    rbscriptwriter scriptWriter(this->supportLangs, scriptFileList);
+    rbscriptwriter scriptWriter(this->supportLangs, this->scriptFileList);
     auto& transTexts = scriptWriter.curerntTexts();
 
-    config config;
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     for(auto& t : transTexts){
         if(t.translates.find(def_lang) == t.translates.end()){ continue; }
@@ -302,7 +429,7 @@ void divisi_vxace::writeAnalyzedRvScript()
     auto vocabs = reader.parse(resourceFolder/"vocab.csv");
     
     csvreader csvReader;
-    auto scriptFileNameMap = csvReader.parsePlain(config.langscoreAnalyzeDirectorty()+u8"/Scripts/_list.csv"s);
+    auto scriptFileNameMap = csvReader.parsePlain(baseDirectory+u8"/Scripts/_list.csv"s);
     const auto GetScriptName = [&scriptFileNameMap](std::u8string scriptName)
     {
         for(const auto& row : scriptFileNameMap){
@@ -343,7 +470,7 @@ void divisi_vxace::writeAnalyzedRvScript()
     }
     //=================================
 
-    const auto deserializeOutPath = fs::path(config.langscoreAnalyzeDirectorty());
+    const auto deserializeOutPath = fs::path(baseDirectory);
     auto outputPath = deserializeOutPath / "Scripts";
     if(std::filesystem::exists(outputPath) == false){
         std::filesystem::create_directories(outputPath);
@@ -356,37 +483,45 @@ void divisi_vxace::writeAnalyzedRvScript()
     }
 
     std::cout << "Write CSV : " << outputPath << std::endl;
-    writeAnalyzeTranslateText<csvwriter>(outputPath, transTexts, OverwriteTextMode::LeaveOldNonBlank, false);
+    writeAnalyzeTranslateText<csvwriter>(outputPath, transTexts, MergeTextMode::AcceptTarget, false);
 
     std::cout << "Finish." << std::endl;
 }
 
-
-void langscore::divisi_vxace::writeFixedData()
+void langscore::divisi_vxace::writeFixedBasicData()
 {
-    std::cout << "writeFixedData" << std::endl;
+    std::cout << "writeFixedBasicData" << std::endl;
 
     config config;
     std::u8string root;
     const auto translateFolderList = config.exportDirectory(root);
 
-    auto writeRvCsv = [this, &translateFolderList](fs::path inputPath)
+    auto mergeTextMode = MergeTextMode::MergeKeepSource;
+    auto mergeTextModeRaw = config.globalWriteMode();
+    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
+        mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
+    }
+
+    auto writeRvCsv = [this, &translateFolderList, mergeTextMode](fs::path inputPath)
     {
         std::ifstream loadFile(inputPath);
         nlohmann::json json;
         loadFile >> json;
 
         auto csvFilePath = inputPath.filename();
+        if(csvFilePath.string().find("Map004") != std::string::npos){
+            auto a = 0;
+        }
         csvFilePath.make_preferred().replace_extension(".csv");
         for(auto& translateFolder : translateFolderList){
             csvFilePath = translateFolder / csvFilePath;
             std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
-            writeFixedTranslateText<csvwriter>(csvFilePath, json, langscore::OverwriteTextMode::LeaveOldNonBlank);
+            writeFixedTranslateText<csvwriter>(csvFilePath, json, mergeTextMode);
         }
     };
 
     auto ignoreScripts = config.vxaceBasicData();
-    for(auto& path : dataFileList)
+    for(auto& path : this->basicDataFileList)
     {
         auto result = std::find_if(ignoreScripts.cbegin(), ignoreScripts.cend(), [f = path.filename()](const auto& x){
             return x.ignore && x.filename == f.u8string();
@@ -408,6 +543,13 @@ void langscore::divisi_vxace::writeFixedRvScript()
 
     //Rubyスクリプトを予め解析してテキストを生成しておく。
     config config;
+
+    auto mergeTextMode = MergeTextMode::MergeKeepSource;
+    auto mergeTextModeRaw = config.globalWriteMode();
+    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
+        mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
+    }
+
     auto scriptInfoList = config.vxaceScripts();
     auto scriptList = scriptFileList;
     {
@@ -435,7 +577,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
     const auto translateFolderList = config.exportDirectory(root);
     for(auto& translateFolder : translateFolderList){
         std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, OverwriteTextMode::LeaveOldNonBlank);
+        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, mergeTextMode);
     }
 
     std::cout << "Finish." << std::endl;
@@ -532,6 +674,11 @@ void divisi_vxace::writeFixedGraphFileNameData()
     std::cout << "writeFixedGraphFileNameData" << std::endl;
 
     config config;
+    auto mergeTextMode = MergeTextMode::MergeKeepSource;
+    auto mergeTextModeRaw = config.globalWriteMode();
+    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
+        mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
+    }
     auto ignorePictures = config.ignorePictures();
     std::vector<TranslateText> transTextList;
     for(auto& f : graphicFileList){
@@ -542,7 +689,7 @@ void divisi_vxace::writeFixedGraphFileNameData()
 
     auto csvPath = exportFolderPath("Graphics.csv");
     std::cout << "Write Graphics : " << csvPath << std::endl;
-    writeFixedTranslateText<csvwriter>(csvPath, transTextList, OverwriteTextMode::LeaveOld);
+    writeFixedTranslateText<csvwriter>(csvPath, transTextList, mergeTextMode);
     std::cout << "Finish." << std::endl;
 }
 
@@ -613,7 +760,7 @@ void divisi_vxace::rewriteScriptList()
     }
 
     if(updateScriptCsv){
-        csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", std::move(scriptListCsv), OverwriteTextMode::OverwriteNew);
+        csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", std::move(scriptListCsv), MergeTextMode::AcceptTarget);
     }
 
     auto outputPath = lsAnalyzePath / "Scripts";
@@ -628,7 +775,7 @@ void divisi_vxace::rewriteScriptList()
     }
     if(replaceLsCustom){
         std::cout << "Write langscore_custom : " << outputPath / scriptFileNameList[1] << std::endl;
-        writeFixedTranslateText<rbscriptwriter>(lsCustomScriptPath, scriptFileList, langscore::OverwriteTextMode::OverwriteNew);
+        writeFixedTranslateText<rbscriptwriter>(lsCustomScriptPath, scriptFileList, langscore::MergeTextMode::AcceptTarget);
     }
 
     //langscore.rbの出力

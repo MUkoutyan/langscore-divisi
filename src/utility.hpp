@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <fstream>
 #include <filesystem>
 
 namespace utility
@@ -78,5 +79,17 @@ namespace utility
     const auto toString = [](const std::u8string& str){
         return std::string(str.begin(), str.end());
     };
+
+    static std::vector<std::uint8_t> getFileData(std::filesystem::path path){
+        std::ifstream f(path);
+        f.seekg(0, std::ios_base::end);
+        auto size = f.tellg();
+        f.seekg(0, std::ios_base::beg);
+
+        std::vector<std::uint8_t> result(size, 0);
+        f.read(reinterpret_cast<char*>(&result[0]), size);
+
+        return result;
+    }
 }
 

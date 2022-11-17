@@ -6,6 +6,8 @@
 #include "config.h"
 #include "config.h"
 #include "config.h"
+#include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -193,6 +195,13 @@ std::u8string config::langscoreAnalyzeDirectorty() {
 	return path.u8string();
 }
 
+std::u8string langscore::config::langscoreUpdateDirectorty()
+{
+	auto path = pImpl->toAbsolutePathWeak(u8"update"s);
+	path.make_preferred();
+	return path.u8string();
+}
+
 std::string config::usScriptFuncComment(){
 	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::UsCustomFuncComment)], "project://Scripts/{0}#{1},{2}"s);
 }
@@ -281,7 +290,7 @@ std::vector<config::ScriptData> langscore::config::vxaceScripts()
 			data.texts.emplace_back(rc[key(JsonKey::Row)], rc[key(JsonKey::Col)],
 									pImpl->get(rc[key(JsonKey::Disable)], false),
 									pImpl->get(rc[key(JsonKey::Ignore)], false),
-									pImpl->get(rc[key(JsonKey::WriteType)], 0),
+									pImpl->get(rc[key(JsonKey::WriteType)], -1),
 									utility::cnvStr<std::u8string>(pImpl->get(rc[key(JsonKey::Text)], ""s)));
 		}
 
@@ -325,5 +334,11 @@ utility::u8stringlist langscore::config::localFontList()
 		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
 	}
 	return result;
+}
+
+int langscore::config::globalWriteMode()
+{
+	auto& write = pImpl->json[key(JsonKey::Write)];
+	return pImpl->get(write[key(JsonKey::WriteType)], 0);
 }
 

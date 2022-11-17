@@ -27,19 +27,20 @@ namespace langscore
 
 		void setProjectPath(std::filesystem::path path) override;
 		ErrorStatus analyze() override;
+		ErrorStatus update() override;
 		ErrorStatus write() override;
 		ErrorStatus validate() override;
 		ErrorStatus packing() override;
 
-		//void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) override;
+		//void copyData(langscore::MergeTextMode option = langscore::MergeTextMode::AcceptSource) override;
 
 	private:
-		void fetchFilePathList();
+		std::tuple<utility::filelist, utility::filelist, utility::filelist> fetchFilePathList(std::u8string searchDir);
 
-		void writeAnalyzedData();
-		void writeAnalyzedRvScript();
+		void writeAnalyzedBasicData();
+		void writeAnalyzedRvScript(std::u8string baseDirectory);
 
-		void writeFixedData();
+		void writeFixedBasicData();
 		void writeFixedRvScript();
 		void writeFixedGraphFileNameData();
 		void rewriteScriptList();

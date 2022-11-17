@@ -19,11 +19,12 @@ namespace langscore
 		}
 		virtual void setProjectPath(std::filesystem::path path) = 0;
 		virtual ErrorStatus analyze() = 0;
+		virtual ErrorStatus update() = 0;
 		virtual ErrorStatus write() = 0;
 		virtual ErrorStatus validate() = 0;
 		virtual ErrorStatus packing() = 0;
 
-		//virtual void copyData(langscore::OverwriteTextMode option = langscore::OverwriteTextMode::LeaveOld) = 0;
+		//virtual void copyData(langscore::MergeTextMode option = langscore::MergeTextMode::AcceptSource) = 0;
 
 	protected:
 		std::filesystem::path appPath;
@@ -31,15 +32,15 @@ namespace langscore
 		utility::u8stringlist supportLangs;
 		std::u8string defaultLanguage;
 
-		std::vector<std::filesystem::path> dataFileList;
-		std::vector<std::filesystem::path> scriptFileList;
-		std::vector<std::filesystem::path> graphicFileList;
+		utility::filelist basicDataFileList;
+		utility::filelist scriptFileList;
+		utility::filelist graphicFileList;
 
-		std::filesystem::copy_options convertCopyOption(OverwriteTextMode mode);
+		std::filesystem::copy_options convertCopyOption(MergeTextMode mode);
 		virtual std::filesystem::path exportFolderPath(std::filesystem::path fileName) = 0;
 
 		template<typename Writer, typename TsData>
-		ErrorStatus writeAnalyzeTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld, bool isDebug = true)
+		ErrorStatus writeAnalyzeTranslateText(std::filesystem::path path, TsData texts, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool isDebug = true)
 		{
 			//最終的な出力先にCSVが存在するか
 			Writer writer(supportLangs, std::move(texts));
@@ -47,19 +48,16 @@ namespace langscore
 		}
 
 		template<typename Writer, typename TsData>
-		ErrorStatus writeFixedTranslateText(std::filesystem::path path, TsData texts, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld)
+		ErrorStatus writeFixedTranslateText(std::filesystem::path path, TsData texts, MergeTextMode overwriteMode = MergeTextMode::AcceptSource)
 		{
 			//最終的な出力先にCSVが存在するか
 			Writer writer(supportLangs, std::move(texts));
 			writer.setOverwriteMode(overwriteMode);
 			//既に編集済みのCSVがある場合はマージを行う。
-			if(overwriteMode == OverwriteTextMode::LeaveOld || overwriteMode == OverwriteTextMode::LeaveOldNonBlank)
-			{
-				const auto csvFileInProject = exportFolderPath(path.filename());
-				if(std::filesystem::exists(csvFileInProject)){
-					if(writer.merge(csvFileInProject) == false){
-						return ErrorStatus(ErrorStatus::Module::PLATFORM_BASE, 1);
-					}
+			const auto csvFileInProject = exportFolderPath(path.filename());
+			if(std::filesystem::exists(csvFileInProject)){
+				if(writer.merge(csvFileInProject) == false){
+					return ErrorStatus(ErrorStatus::Module::PLATFORM_BASE, 1);
 				}
 			}
 

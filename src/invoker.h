@@ -29,6 +29,7 @@ public:
     ProjectType projectType() const noexcept;
 
     ErrorStatus analyze();
+    ErrorStatus update();
     ErrorStatus recompressVXAce();
     ErrorStatus packingVXAce();
 

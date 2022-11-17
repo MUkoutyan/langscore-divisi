@@ -1,6 +1,7 @@
 #include "divisi.h"
 #include "divisi.h"
 #include "divisi.h"
+#include "divisi.h"
 #include "utility.hpp"
 #include "invoker.h"
 #include "nlohmann/json.hpp"
@@ -100,6 +101,13 @@ ErrorStatus divisi::analyze()
     auto result = pImpl->setupConverter();
     if(result.invalid()){ return result; }
     return pImpl->converter->analyze();
+}
+
+ErrorStatus langscore::divisi::update()
+{
+    auto result = pImpl->setupConverter();
+    if(result.invalid()){ return result; }
+    return pImpl->converter->update();
 }
 
 ErrorStatus divisi::write()

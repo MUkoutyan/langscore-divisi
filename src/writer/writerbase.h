@@ -38,10 +38,10 @@ namespace langscore
         writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts);
         virtual ~writerbase();
 
-        virtual ErrorStatus write(std::filesystem::path writePath, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) = 0;
+        virtual ErrorStatus write(std::filesystem::path writePath, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) = 0;
         virtual bool merge(std::filesystem::path srcPath) { return true; }
 
-        void setOverwriteMode(OverwriteTextMode overwriteMode){
+        void setOverwriteMode(MergeTextMode overwriteMode){
             this->overwriteMode = overwriteMode;
         }
         std::vector<TranslateText>& curerntTexts() { return texts; }
@@ -55,7 +55,7 @@ namespace langscore
     protected:
         std::vector<std::u8string> useLangs;
         std::vector<TranslateText> texts;
-        OverwriteTextMode overwriteMode;
+        MergeTextMode overwriteMode;
         bool stackText;
         std::u8string stackTextStr;
         bool rangeComment;

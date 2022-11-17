@@ -23,7 +23,7 @@ namespace langscore
         constexpr static const char* extension = "rb";
 
         bool merge(std::filesystem::path filePath) override;
-        ErrorStatus write(std::filesystem::path path, OverwriteTextMode overwriteMode = OverwriteTextMode::LeaveOld) override;
+        ErrorStatus write(std::filesystem::path path, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) override;
         const ScriptPathList& getScriptTexts() const { return scriptTranslates; }
 
         std::vector<TranslateText> acceptIgnoreScripts(const std::vector<config::ScriptData>&, std::vector<TranslateText> texts);

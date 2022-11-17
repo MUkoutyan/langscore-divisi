@@ -1,20 +1,20 @@
 #include "platform_base.h"
 
 
-std::filesystem::copy_options langscore::platform_base::convertCopyOption(OverwriteTextMode mode)
+std::filesystem::copy_options langscore::platform_base::convertCopyOption(MergeTextMode mode)
 {
 	switch(mode)
 	{
-		case OverwriteTextMode::Both:
+		case MergeTextMode::Both:
 			return std::filesystem::copy_options::overwrite_existing;
 			break;
-		case OverwriteTextMode::LeaveOld:
+		case MergeTextMode::AcceptSource:
 			return std::filesystem::copy_options::skip_existing;
 			break;
-		case OverwriteTextMode::LeaveOldNonBlank:
+		case MergeTextMode::MergeKeepSource:
 			return std::filesystem::copy_options::overwrite_existing;
 			break;
-		case OverwriteTextMode::OverwriteNew:
+		case MergeTextMode::MergeKeepTarget:
 			return std::filesystem::copy_options::overwrite_existing;
 			break;
 	}

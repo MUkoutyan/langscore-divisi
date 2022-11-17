@@ -8,59 +8,147 @@
 using namespace langscore;
 namespace fs = std::filesystem;
 
-bool csvwriter::merge(std::filesystem::path filePath)
+bool csvwriter::merge(std::filesystem::path sourceFilePath)
 {
-    //旧CSVとのマージ
+    if(this->overwriteMode == MergeTextMode::AcceptTarget){
+        return true;
+    }
+
     csvreader reader;
-    auto oldTexts = reader.parse(filePath);
-    if(oldTexts.empty()){ return true; }
+    auto sourceTranslates = reader.parse(sourceFilePath);
+    if(sourceTranslates.empty()){ return true; }
 
-    for(auto& newT : this->texts)
+    //ソース側を適用
+    if(this->overwriteMode == MergeTextMode::AcceptSource){
+        this->texts = sourceTranslates;
+        return true;
+    }
+
+    std::vector<TranslateText> result;
+    result.reserve(std::max(sourceTranslates.size(), this->texts.size())); 
+    
+    utility::u8stringlist languages;
     {
-        auto oldText = std::find_if(oldTexts.begin(), oldTexts.end(), [&newT](const auto& x)
-        {
-            return withoutQuote(x.original) == withoutQuote(newT.original);
-        });
-        if(oldText == oldTexts.end()){ continue; }
-        for(auto& pair : newT.translates)
-        {
-            //言語チェック
-            if(oldText->translates.find(pair.first) == oldText->translates.end()){
-                continue;
+        auto& list = this->texts.size() < sourceTranslates.size() ? sourceTranslates : this->texts;
+        if(list.empty() == false){
+            for(auto& pair : list[0].translates){
+                languages.emplace_back(pair.first);
             }
-
-            auto text = withoutQuote(oldText->translates[pair.first]);
-
-            if(overwriteMode == OverwriteTextMode::LeaveOldNonBlank){
-                if(text.empty() == false){  //既に文字が入っていたら残す
-                    pair.second = text;
-                    continue;
-                }
-                else{
-                    text = pair.second;
-                    continue;
-                }
-            }
-
-            if(text == pair.second){ continue; }
-
-            if(overwriteMode == OverwriteTextMode::OverwriteNew){
-                continue;
-            }
-
-            if(overwriteMode == OverwriteTextMode::Both)
-            {
-                if(text != u8""){ text += u8"\n===\n"; }
-                text += pair.second;
-            }
-            pair.second = text;
         }
     }
+
+    auto AddTranslateText = [&result](TranslateText text)
+    {
+        auto r = std::find_if(result.begin(), result.end(), [&text](const auto& x){
+            return withoutQuote(x.original) == withoutQuote(text.original);
+        });
+        if(r != result.end()){
+
+        }
+        else{
+            result.emplace_back(std::move(text));
+        }
+    };
+
+    auto source_i = sourceTranslates.begin();
+    auto target_i = this->texts.begin();
+    std::u8string source_origin;
+    std::u8string target_origin;
+    while(source_i != sourceTranslates.end() || target_i != this->texts.end())
+    {
+        if(source_i != sourceTranslates.end()){
+            source_origin = withoutQuote(source_i->original);
+        }
+        if(target_i != this->texts.end()){
+            target_origin = withoutQuote(target_i->original);
+        }
+
+        if(source_origin == target_origin)
+        {
+            if(source_origin.empty()){
+                ++source_i;
+                ++target_i;
+                continue;
+            }
+
+            auto trans_result = *target_i;
+            for(const auto& lang : languages)
+            {
+                //マージ元に言語列があるかをチェック
+                if(source_i->translates.find(lang) == source_i->translates.end()){
+                    //無ければ何もしない(競合しないし結合も出来ないので)
+                    continue;
+                }
+
+                auto sourceText = withoutQuote(source_i->translates[lang]);
+                auto targetText = withoutQuote(trans_result.translates[lang]);
+
+                //内容が異なる場合はマージモードに準拠して内容を入れ替える
+                if(sourceText != targetText)
+                {
+                    if(overwriteMode == MergeTextMode::MergeKeepSource){
+                        trans_result.translates[lang] = sourceText;
+                        continue;
+                    }
+                    else if(overwriteMode == MergeTextMode::MergeKeepTarget){
+                        //MergeKeepTargetは現在の内容を残すので、何もしない。
+                        continue;
+                    }
+                    else if(overwriteMode == MergeTextMode::Both)
+                    {
+                        if(sourceText != u8""){ sourceText += u8"\n===\n"; }
+                        sourceText += trans_result.translates[lang];
+                        trans_result.translates[lang] = sourceText;
+                    }
+                }
+                //内容が一致する場合は何もしない
+            }
+            result.emplace_back(trans_result);
+            source_origin.clear();
+            target_origin.clear();
+            ++source_i;
+            ++target_i;
+        }
+        else if(target_origin < source_origin)
+        {
+            if(target_i == this->texts.end())
+            {
+                if(source_i != sourceTranslates.end()){
+                    result.emplace_back(*source_i);
+                    source_origin.clear();
+                    ++source_i;
+                }
+            }
+            else{
+                result.emplace_back(*target_i);
+                target_origin.clear();
+                ++target_i;
+            }
+        }
+        else if(source_origin < target_origin)
+        {
+            if(source_i == sourceTranslates.end()){
+                if(target_i != this->texts.end()){
+                    result.emplace_back(*target_i);
+                    target_origin.clear();
+                    ++target_i;
+                }
+            }
+            else{
+                result.emplace_back(*source_i);
+                source_origin.clear();
+                ++source_i;
+            }
+        }
+
+    }
+
+    this->texts = std::move(result);
 
     return true;
 }
 
-ErrorStatus csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
+ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
 {
     if(this->texts.empty()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 0); }
     path.replace_extension(csvwriter::extension);
@@ -101,7 +189,7 @@ ErrorStatus csvwriter::write(fs::path path, OverwriteTextMode overwriteMode)
     return Status_Success;
 }
 
-ErrorStatus langscore::csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, OverwriteTextMode overwriteMode)
+ErrorStatus langscore::csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, MergeTextMode overwriteMode)
 {
     std::ofstream outputCSVFile(path);
     if(outputCSVFile.bad()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
