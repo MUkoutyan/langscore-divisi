@@ -5,6 +5,7 @@
 #include "divisi.h"
 #include "..\\src\\platform\\divisi_vxace.h"
 #include "..\\src\\reader\\csvreader.h"
+#include "..\\src\\writer\\csvwriter.h"
 #include "..\\src\\writer\\rbscriptwriter.h"
 #include "..\\src\\utility.hpp"
 #include "..\\src\\writer\\scripttextparser.hpp"
@@ -272,12 +273,9 @@ IUTEST(Langscore_Config, LoadLanguages)
 
 	auto expected = config.languages();
 	utility::stringlist actual = {"en", "ja"};
+	IUTEST_ASSERT(actual.size() == expected.size());
 	for(int i = 0; i < actual.size(); ++i){
 		IUTEST_ASSERT_STREQ(expected[i].name, actual[i]);
-	}
-	actual = {"es", "zh-tw"};
-	for(int i = 0; i < actual.size(); ++i){
-		IUTEST_ASSERT_STRNE(expected[i].name, actual[i]);
 	}
 }
 
@@ -286,10 +284,14 @@ IUTEST(Langscore_Config, CheckFontName)
 	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
 
 	auto expected = config.languages();
-	utility::u8stringlist actual = {u8"VL Gothic"s, u8"メイリオ"s};
-	for(int i = 0; i < actual.size(); ++i)
+	for(int i = 0; i < expected.size(); ++i)
 	{
-		IUTEST_ASSERT_STREQ(expected[i].font.name, actual[i]);
+		if(expected[i].name == "ja"){
+			IUTEST_ASSERT_STREQ(expected[i].font.name, u8"メイリオ"s);
+		}
+		else{
+			IUTEST_ASSERT_STREQ(expected[i].font.name, u8"VL Gothic"s);
+		}
 	}
 }
 
@@ -306,17 +308,128 @@ IUTEST(Langscore_Config, CheckProjectPath)
 	IUTEST_ASSERT_STREQ(expected, actual.u8string());
 }
 
-IUTEST(Langscore_Csv, read1)
+IUTEST(Langscore_Csv, merge)
 {
-	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
-
-	utility::stringlist actual = {"en", "ja"};
-	auto expected = config.languages();
-	for(int i = 0; i < actual.size(); ++i)
 	{
-		IUTEST_ASSERT_STREQ(expected[i].name, actual[i]);
+		langscore::csvreader reader;
+		auto targetCsv = reader.parse(".\\data\\csv\\after.csv");
+		IUTEST_ASSERT(targetCsv.empty() == false);
+
+		auto mode = langscore::MergeTextMode::AcceptSource;
+		langscore::csvwriter writer({}, targetCsv);
+		writer.setOverwriteMode(mode);
+		IUTEST_ASSERT(writer.merge(".\\data\\csv\\before.csv"));
+
+		auto& merged = writer.curerntTexts();
+
+		IUTEST_ASSERT(merged.size() == 2);
+		IUTEST_ASSERT_STREQ(merged[0].original, u8"あいうえお");
+		IUTEST_ASSERT_STREQ(merged[0].translates[u8"ja"], u8"あいうえお");
+		IUTEST_ASSERT_STREQ(merged[1].original, u8"さしすせそ");
+		IUTEST_ASSERT_STREQ(merged[1].translates[u8"ja"], u8"");
+	}
+	{
+		langscore::csvreader reader;
+		auto targetCsv = reader.parse(".\\data\\csv\\after.csv");
+		IUTEST_ASSERT(targetCsv.empty() == false);
+
+		auto mode = langscore::MergeTextMode::AcceptTarget;
+		langscore::csvwriter writer({}, targetCsv);
+		writer.setOverwriteMode(mode);
+		IUTEST_ASSERT(writer.merge(".\\data\\csv\\before.csv"));
+
+		auto& merged = writer.curerntTexts();
+
+		IUTEST_ASSERT(merged.size() == 3);
+		IUTEST_ASSERT_STREQ(merged[0].original, u8"あいうえお");
+		IUTEST_ASSERT_STREQ(merged[0].translates[u8"ja"], u8"たちつてと");
+		IUTEST_ASSERT_STREQ(merged[1].original, u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[1].translates[u8"ja"], u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[2].original, u8"さしすせそ");
+		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"さしすせそ");
+	}
+	{
+		langscore::csvreader reader;
+		auto targetCsv = reader.parse(".\\data\\csv\\after.csv");
+		IUTEST_ASSERT(targetCsv.empty() == false);
+
+		auto mode = langscore::MergeTextMode::MergeKeepTarget;
+		langscore::csvwriter writer({}, targetCsv);
+		writer.setOverwriteMode(mode);
+		IUTEST_ASSERT(writer.merge(".\\data\\csv\\before.csv"));
+
+		auto& merged = writer.curerntTexts();
+
+		IUTEST_ASSERT(merged.size() == 3);
+		IUTEST_ASSERT_STREQ(merged[0].original, u8"あいうえお");
+		IUTEST_ASSERT_STREQ(merged[0].translates[u8"ja"], u8"たちつてと");
+		IUTEST_ASSERT_STREQ(merged[1].original, u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[1].translates[u8"ja"], u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[2].original, u8"さしすせそ");
+		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"さしすせそ");
+	}
+	{
+		langscore::csvreader reader;
+		auto targetCsv = reader.parse(".\\data\\csv\\before.csv");
+		IUTEST_ASSERT(targetCsv.empty() == false);
+
+		auto mode = langscore::MergeTextMode::MergeKeepTarget;
+		langscore::csvwriter writer({}, targetCsv);
+		writer.setOverwriteMode(mode);
+		IUTEST_ASSERT(writer.merge(".\\data\\csv\\after.csv"));
+
+		auto& merged = writer.curerntTexts();
+
+		IUTEST_ASSERT(merged.size() == 3);
+		IUTEST_ASSERT_STREQ(merged[0].original, u8"あいうえお");
+		IUTEST_ASSERT_STREQ(merged[0].translates[u8"ja"], u8"あいうえお");
+		IUTEST_ASSERT_STREQ(merged[1].original, u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[1].translates[u8"ja"], u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[2].original, u8"さしすせそ");
+		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"");
+	}
+	{
+		langscore::csvreader reader;
+		auto targetCsv = reader.parse(".\\data\\csv\\after.csv");
+		IUTEST_ASSERT(targetCsv.empty() == false);
+
+		auto mode = langscore::MergeTextMode::MergeKeepSource;
+		langscore::csvwriter writer({}, targetCsv);
+		writer.setOverwriteMode(mode);
+		IUTEST_ASSERT(writer.merge(".\\data\\csv\\before.csv"));
+
+		auto& merged = writer.curerntTexts();
+
+		IUTEST_ASSERT(merged.size() == 3);
+		IUTEST_ASSERT_STREQ(merged[0].original, u8"あいうえお");
+		IUTEST_ASSERT_STREQ(merged[0].translates[u8"ja"], u8"あいうえお");
+		IUTEST_ASSERT_STREQ(merged[1].original, u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[1].translates[u8"ja"], u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[2].original, u8"さしすせそ");
+		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"");
+	}
+	{
+		langscore::csvreader reader;
+		auto targetCsv = reader.parse(".\\data\\csv\\before.csv");
+		IUTEST_ASSERT(targetCsv.empty() == false);
+
+		auto mode = langscore::MergeTextMode::MergeKeepSource;
+		langscore::csvwriter writer({}, targetCsv);
+		writer.setOverwriteMode(mode);
+		IUTEST_ASSERT(writer.merge(".\\data\\csv\\after.csv"));
+
+		auto& merged = writer.curerntTexts();
+
+		IUTEST_ASSERT(merged.size() == 3);
+		IUTEST_ASSERT_STREQ(merged[0].original, u8"あいうえお");
+		IUTEST_ASSERT_STREQ(merged[0].translates[u8"ja"], u8"たちつてと");
+		IUTEST_ASSERT_STREQ(merged[1].original, u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[1].translates[u8"ja"], u8"かきくけこ");
+		IUTEST_ASSERT_STREQ(merged[2].original, u8"さしすせそ");
+		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"さしすせそ");
 	}
 }
+
 
 IUTEST(Langscore_Invoker, NoAssignProject)
 {
@@ -571,10 +684,7 @@ IUTEST(Langscore_Divisi, WriteLangscoreCustom)
 		}
 		IUTEST_ASSERT_EQ(numSucceed, 3);
 	}
-
-
 }
-
 
 IUTEST(Langscore_Divisi, ValidateLangscoreCustom)
 {
@@ -646,7 +756,8 @@ IUTEST(Langscore_Divisi, VXAce_WriteScriptCSV)
 	divisi_vxace.setAppPath("./");
 	divisi_vxace.setProjectPath(config.gameProjectPath());
 
-	divisi_vxace.fetchFilePathList();
+
+	auto [scripts, dataList, graphics] = divisi_vxace.fetchFilePathList(config.langscoreAnalyzeDirectorty());
 	langscore::csvreader csvreader;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 	auto scriptList = csvreader.parsePlain(outputPath / "Scripts/_list.csv");
@@ -667,7 +778,7 @@ IUTEST(Langscore_Divisi, VXAce_WriteScriptCSV)
 		lines.emplace_back(std::move(line));
 	}
 
-	langscore::rbscriptwriter scriptWriter({u8"ja"s}, divisi_vxace.scriptFileList);
+	langscore::rbscriptwriter scriptWriter({u8"ja"s}, scripts);
 	
 	const auto funcName = [](auto str)
 	{
@@ -810,8 +921,8 @@ IUTEST(Langscore_Divisi, VXAce_Validate)
 
 int main(int argc, char** argv)
 {
-	fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze");
 	langscore::config::attachConfigFile(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+
 	IUTEST_INIT(&argc, argv);
 	return IUTEST_RUN_ALL_TESTS();
 }
