@@ -8,10 +8,11 @@ struct ARGS
 	std::filesystem::path appPath;
 	std::filesystem::path configFile;
 	bool analyze = false;
+	bool update = false;
 	bool write = false;
 	bool validate = false;
 	bool packing = false;
-	langscore::OverwriteTextMode overwriteMode = langscore::OverwriteTextMode::LeaveOld;
+	langscore::MergeTextMode overwriteMode = langscore::MergeTextMode::AcceptSource;
 };
 
 ARGS analyzeOption(int argc, const char* argv[])
@@ -28,6 +29,9 @@ ARGS analyzeOption(int argc, const char* argv[])
 		else if(str.find("--analyze") != std::string_view::npos){
 			args.analyze = true;
 		}
+		else if(str.find("--update") != std::string_view::npos){
+			args.update = true;
+		}
 		else if(str.find("--write") != std::string_view::npos){
 			args.write = true;
 		}
@@ -36,18 +40,6 @@ ARGS analyzeOption(int argc, const char* argv[])
 		}
 		else if(str.find("--packing") != std::string_view::npos){
 			args.packing = true;
-		}
-		else if(str.find("--leaveold") != std::string_view::npos){
-			args.overwriteMode = langscore::OverwriteTextMode::LeaveOld;
-		}
-		else if(str.find("--leaveoldnonblank") != std::string_view::npos){
-			args.overwriteMode = langscore::OverwriteTextMode::LeaveOldNonBlank;
-		}
-		else if(str.find("--overwritenew") != std::string_view::npos){
-			args.overwriteMode = langscore::OverwriteTextMode::OverwriteNew;
-		}
-		else if(str.find("--both") != std::string_view::npos){
-			args.overwriteMode = langscore::OverwriteTextMode::Both;
 		}
 	}
 	return args;
@@ -69,6 +61,9 @@ int main(int argc, const char* argv[])
 	ErrorStatus result;
 	if(args.analyze){
 		result = divisi.analyze();
+	}
+	if(args.update){
+		result = divisi.update();
 	}
 	if(args.write){
 		result = divisi.write();
