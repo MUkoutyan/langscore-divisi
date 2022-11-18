@@ -509,9 +509,6 @@ void langscore::divisi_vxace::writeFixedBasicData()
         loadFile >> json;
 
         auto csvFilePath = inputPath.filename();
-        if(csvFilePath.string().find("Map004") != std::string::npos){
-            auto a = 0;
-        }
         csvFilePath.make_preferred().replace_extension(".csv");
         for(auto& translateFolder : translateFolderList){
             csvFilePath = translateFolder / csvFilePath;

@@ -54,6 +54,23 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
     auto target_i = this->texts.begin();
     std::u8string source_origin;
     std::u8string target_origin;
+
+    const auto AddForSource = [&](){
+        if(source_i == sourceTranslates.end()){ return false; }
+        result.emplace_back(*source_i);
+        source_origin.clear();
+        ++source_i;
+        return true;
+    };
+    const auto AddForTarget = [&]()
+    {
+        if(target_i == this->texts.end()){ return false; }
+        result.emplace_back(*target_i);
+        target_origin.clear();
+        ++target_i;
+        return true;
+    };
+
     while(source_i != sourceTranslates.end() || target_i != this->texts.end())
     {
         if(source_i != sourceTranslates.end()){
@@ -63,6 +80,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
             target_origin = withoutQuote(target_i->original);
         }
 
+        //原文が競合した場合、翻訳文のマージを行う。
         if(source_origin == target_origin)
         {
             if(source_origin.empty()){
@@ -108,36 +126,55 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
             target_origin.clear();
             ++source_i;
             ++target_i;
+
+            continue;
         }
-        else if(target_origin < source_origin)
+
+        const auto t_index = std::distance(this->texts.begin(), target_i);
+        const auto s_index = std::distance(sourceTranslates.begin(), source_i);
+        //行数が不一致の場合、若い方を先に挿入
+        if(t_index < s_index)
         {
-            if(target_i == this->texts.end())
-            {
-                if(source_i != sourceTranslates.end()){
-                    result.emplace_back(*source_i);
-                    source_origin.clear();
-                    ++source_i;
+            if(AddForTarget() == false){
+                if(AddForSource() == false){
+                    break;
                 }
             }
-            else{
-                result.emplace_back(*target_i);
-                target_origin.clear();
-                ++target_i;
-            }
+            continue;
         }
-        else if(source_origin < target_origin)
+        else if(s_index < t_index)
         {
-            if(source_i == sourceTranslates.end()){
-                if(target_i != this->texts.end()){
-                    result.emplace_back(*target_i);
-                    target_origin.clear();
-                    ++target_i;
+            if(AddForSource() == false){
+                if(AddForTarget() == false){
+                    break;
                 }
             }
-            else{
-                result.emplace_back(*source_i);
-                source_origin.clear();
-                ++source_i;
+            continue;
+        }
+
+        //行数が競合している
+        //後の行と比較してどう挿入するかを決定する。
+        std::u8string next_source_origin;
+        std::u8string next_target_origin;
+        if(source_i != sourceTranslates.end() && (source_i + 1) != sourceTranslates.end()){
+            source_origin = withoutQuote(source_i->original);
+        }
+        if(target_i != this->texts.end() && (target_i + 1) != this->texts.end()){
+            target_origin = withoutQuote(target_i->original);
+        }
+
+        //そこまで細かく精査せず、ざっくり判定。
+        //どちらかが、別の次の行と一致していなければ追加する。
+        if(source_origin != next_target_origin){
+            AddForSource();
+        }
+        else if(target_origin != next_source_origin){
+            AddForTarget();
+        }
+        //そうでない場合は、原文なので両方とも残す。
+        else{
+            if((AddForSource() | AddForTarget()) == false){
+                break;
             }
         }
 
