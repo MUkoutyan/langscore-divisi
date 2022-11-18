@@ -8,6 +8,9 @@
 using namespace langscore;
 namespace fs = std::filesystem;
 
+//原文はマージフラグに関わらず、全て残すようにする。但し重複はしない。
+//(現状の処理では、行数判定箇所が先1行しか見ないので、複数追加されると差分が全部含まれるかも？)
+//翻訳文はマージフラグに沿って、どちらで埋めるか決定する。
 bool csvwriter::merge(std::filesystem::path sourceFilePath)
 {
     if(this->overwriteMode == MergeTextMode::AcceptTarget){
