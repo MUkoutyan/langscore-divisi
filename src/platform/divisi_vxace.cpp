@@ -381,7 +381,7 @@ std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::d
         //パス区切り文字は\\ではなく/に統一(\\はRubyで読み取れない)
         const auto& path = f.path();
         const auto ext = path.stem();
-        if(ext == ".jpg" || ext == ".png"){
+        if(ext == ".jpg" || ext == ".png" || ext == ".bmp"){
             auto relative_path = "Graphics" / path.lexically_relative(graphicsPath);
             graphics.emplace_back(relative_path.parent_path() / ext);
         }
