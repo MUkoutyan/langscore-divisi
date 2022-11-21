@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "../serialize_base.h"
 #include <vector>

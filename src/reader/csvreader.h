@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "readerbase.h"
 #include "utility.hpp"

@@ -40,19 +40,6 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
         }
     }
 
-    auto AddTranslateText = [&result](TranslateText text)
-    {
-        auto r = std::find_if(result.begin(), result.end(), [&text](const auto& x){
-            return withoutQuote(x.original) == withoutQuote(text.original);
-        });
-        if(r != result.end()){
-
-        }
-        else{
-            result.emplace_back(std::move(text));
-        }
-    };
-
     auto source_i = sourceTranslates.begin();
     auto target_i = this->texts.begin();
     std::u8string source_origin;

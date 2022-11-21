@@ -21,7 +21,7 @@ namespace langscore
         friend class Langscore_Test_WriterBase;
 #endif
 
-    private:
+    protected:
         template<typename str_type>
         static str_type withoutQuote(str_type str)
         {

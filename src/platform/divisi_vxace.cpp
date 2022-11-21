@@ -2,8 +2,7 @@
 #include "config.h"
 
 #include "../writer/rbscriptwriter.h"
-#include "../writer/csvwriter.h"
-#include "../reader/csvreader.h"
+#include "../writer/graphiccsvwriter.hpp"
 
 #include <nlohmann/json.hpp>
 #include <crc32.h>
@@ -381,8 +380,11 @@ std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::d
         if(f.is_directory()){ continue; }
         //パス区切り文字は\\ではなく/に統一(\\はRubyで読み取れない)
         const auto& path = f.path();
-        auto relative_path = "Graphics" / path.lexically_relative(graphicsPath);
-        graphics.emplace_back(relative_path.parent_path() / path.stem());
+        const auto ext = path.stem();
+        if(ext == ".jpg" || ext == ".png"){
+            auto relative_path = "Graphics" / path.lexically_relative(graphicsPath);
+            graphics.emplace_back(relative_path.parent_path() / ext);
+        }
     }
 
     return std::forward_as_tuple(scripts, basicDataList, graphics);
@@ -686,7 +688,7 @@ void divisi_vxace::writeFixedGraphFileNameData()
 
     auto csvPath = exportFolderPath("Graphics.csv");
     std::cout << "Write Graphics : " << csvPath << std::endl;
-    writeFixedTranslateText<csvwriter>(csvPath, transTextList, mergeTextMode);
+    writeFixedTranslateText<graphiccsvwriter>(csvPath, transTextList, mergeTextMode);
     std::cout << "Finish." << std::endl;
 }
 

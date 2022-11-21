@@ -1,4 +1,4 @@
-#include "readerbase.h"
+﻿#include "readerbase.h"
 
 using namespace langscore;
 
