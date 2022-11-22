@@ -1,6 +1,12 @@
-#-----------------------------------------------------
+#---------------------------------------------------------------
+# 
+# Langscore CoreScript "Unison" %{SCRIPT_VERSION}% 
+#                               Written by BreezeSinfonia 來奈津
+# 
+# 注意：このスクリプトは自動生成したものです。編集は非推奨です。
+#---------------------------------------------------------------
 module Langscore
-  
+
   %{SUPPORT_LANGUAGE}%
   %{DEFAULT_LANGUAGE}%
 
@@ -375,6 +381,14 @@ DataManager::module_eval <<-eval
     $game_actors = Marshal.load(data_temp)
 
     result
+  end
+
+  #セーブデータは原文で保存されているため、起動時の言語設定で置き換える。
+  #これを省くと中国語で起動した際に、再度翻訳を適用するまで日本語のまま……といった事が起きる。
+  def self.extract_save_contents(contents)
+    ls_extract_save_contents(contents)
+
+    Langscore.changeLanguage($langscore_current_language)
   end
 
 eval
