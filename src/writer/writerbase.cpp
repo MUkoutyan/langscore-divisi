@@ -4,6 +4,7 @@
 #include "scripttextparser.hpp"
 
 using namespace langscore;
+using namespace std::string_literals;
 namespace
 {
 	//共通して無視するキー
@@ -286,6 +287,7 @@ std::vector<TranslateText> writerbase::convertScriptToCSV(std::filesystem::path 
 	if(loadFile.is_open() == false){ return {}; }
 	auto fileName = path.filename().stem();
 
+	//スクリプト内の文字列の抜き出し
 	ScriptTextParser scriptParser;
 	rangeComment = false;
 	while(loadFile.eof() == false)
@@ -313,8 +315,12 @@ std::vector<TranslateText> writerbase::convertScriptToCSV(std::filesystem::path 
 			auto colCountStr = std::to_string(std::get<1>(str));
 			std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
 
+			//文字列内のクォーテーションは、ツクール側のスクリプトで
+			//エスケープ文字に誤認される可能性があるため削除する。
+			auto original = utility::replace(std::get<0>(str), u8"\\\'"s, u8"\'"s);
+			original = utility::replace(original, u8"\\\""s, u8"\""s);
 			langscore::TranslateText t = {
-				std::get<0>(str),
+				original,
 				this->useLangs
 			};
 			auto scriptPos = fileName.u8string() + u8":" + u8lineCount + u8":" + u8ColCountStr;

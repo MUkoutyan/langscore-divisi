@@ -220,7 +220,7 @@ IUTEST(Langscore_Writer, DetectStringPositionFromFile)
 
 	auto result = scriptWriter.convertScriptToCSV(u8"./data/" + fileName + u8".rb");
 
-	IUTEST_ASSERT_EQ(result.size(), 13);
+	IUTEST_ASSERT_EQ(result.size(), 14);
 
 	size_t i = 0;
 	IUTEST_ASSERT_STREQ(result[i++].original, u8"あHoniい"s);
@@ -236,6 +236,7 @@ IUTEST(Langscore_Writer, DetectStringPositionFromFile)
 	IUTEST_ASSERT_STREQ(result[i++].original, u8"A"s);
 	IUTEST_ASSERT_STREQ(result[i++].original, u8"翻訳テキスト"s);
 	IUTEST_ASSERT_STREQ(result[i++].original, u8"翻訳テキスト2"s);
+	IUTEST_ASSERT_STREQ(result[i++].original, u8"\\C[16]プレイ時間\\X[104]\\C[0]\\T[%4$3d'%3$02d]"s);
 
 	i = 0;
 	//"を含まない単語の開始位置
