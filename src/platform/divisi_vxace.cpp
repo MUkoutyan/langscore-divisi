@@ -600,7 +600,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
         std::u8string _line(_linTmp.begin(), _linTmp.end());
         if(findStr(_line, u8"%{SCRIPT_VERSION}%"))
         {
-            _line = tab + utility::cnvStr<std::u8string>(std::to_string(UNISON_RUBY_VERSION));
+            _line = u8"# Version : "s + utility::cnvStr<std::u8string>(std::string(UNISON_RUBY_VERSION));
         }
         if(findStr(_line, u8"%{SUPPORT_LANGUAGE}%"))
         {

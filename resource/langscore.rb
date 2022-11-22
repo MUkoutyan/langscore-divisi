@@ -1,9 +1,10 @@
 #---------------------------------------------------------------
 # 
-# Langscore CoreScript "Unison" %{SCRIPT_VERSION}% 
-#                               Written by BreezeSinfonia 來奈津
+# Langscore CoreScript "Unison" 
+# %{SCRIPT_VERSION}% 
+# Written by BreezeSinfonia 來奈津
 # 
-# 注意：このスクリプトは自動生成したものです。編集は非推奨です。
+# 注意：このスクリプトは自動生成されました。編集は非推奨です。
 #---------------------------------------------------------------
 module Langscore
 
