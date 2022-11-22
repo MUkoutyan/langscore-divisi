@@ -2,7 +2,7 @@
 #include "config.h"
 
 #include "../writer/rbscriptwriter.h"
-#include "../writer/graphiccsvwriter.hpp"
+#include "../writer/uniquerowcsvwriter.hpp"
 
 #include <nlohmann/json.hpp>
 #include <crc32.h>
@@ -688,7 +688,7 @@ void divisi_vxace::writeFixedGraphFileNameData()
 
     auto csvPath = exportFolderPath("Graphics.csv");
     std::cout << "Write Graphics : " << csvPath << std::endl;
-    writeFixedTranslateText<graphiccsvwriter>(csvPath, transTextList, mergeTextMode);
+    writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transTextList, mergeTextMode);
     std::cout << "Finish." << std::endl;
 }
 

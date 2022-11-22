@@ -70,7 +70,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
             target_origin = withoutQuote(target_i->original);
         }
 
-        //原文が競合した場合、翻訳文のマージを行う。
+        //原文が一致した場合した場合、翻訳文が競合しているかで適宜マージを行う。
         if(source_origin == target_origin)
         {
             if(source_origin.empty()){
@@ -120,54 +120,36 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
             continue;
         }
 
-        const auto t_index = std::distance(this->texts.begin(), target_i);
-        const auto s_index = std::distance(sourceTranslates.begin(), source_i);
-        //行数が不一致の場合、若い方を先に挿入
-        if(t_index < s_index)
-        {
+        //原文が競合している場合、現在のターゲット側の内容がソース側のどの行数と一致するかを検索。
+        auto find_result = std::find_if(source_i, sourceTranslates.end(), [&target_origin](const auto& x){
+            return withoutQuote(x.original) == target_origin;
+        });
+
+        //ソース側に見つからない場合(新規追加)はそのまま追加
+        if(find_result == sourceTranslates.end()){
             if(AddForTarget() == false){
                 if(AddForSource() == false){
                     break;
                 }
             }
-            continue;
         }
-        else if(s_index < t_index)
-        {
+        //同じ行だった場合はソース側から追加(source_origin == target_originと等価なのであり得なそう？)
+        else if(source_i == find_result){
             if(AddForSource() == false){
                 if(AddForTarget() == false){
                     break;
                 }
             }
-            continue;
         }
-
-        //行数が競合している
-        //後の行と比較してどう挿入するかを決定する。
-        std::u8string next_source_origin;
-        std::u8string next_target_origin;
-        if(source_i != sourceTranslates.end() && (source_i + 1) != sourceTranslates.end()){
-            source_origin = withoutQuote(source_i->original);
-        }
-        if(target_i != this->texts.end() && (target_i + 1) != this->texts.end()){
-            target_origin = withoutQuote(target_i->original);
-        }
-
-        //そこまで細かく精査せず、ざっくり判定。
-        //どちらかが、別の次の行と一致していなければ追加する。
-        if(source_origin != next_target_origin){
-            AddForSource();
-        }
-        else if(target_origin != next_source_origin){
-            AddForTarget();
-        }
-        //そうでない場合は、原文なので両方とも残す。
-        else{
-            if((AddForSource() | AddForTarget()) == false){
-                break;
+        else
+        {
+            //ソース側で見つかった場合、先にソース側の検出行までの内容を挿入。
+            //次のループでターゲット行とソース行が一致するはず。
+            auto count = std::max(0ull, size_t(std::distance(source_i, find_result)));
+            for(auto i = 0; i < count; ++i){
+                AddForSource();
             }
         }
-
     }
 
     this->texts = std::move(result);

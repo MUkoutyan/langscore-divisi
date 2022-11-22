@@ -6,27 +6,10 @@
 
 namespace langscore
 {
-    class graphiccsvwriter: public csvwriter
+    class uniquerowcsvwriter: public csvwriter
     {
-        std::vector<std::u8string> extentions = {
-            u8".jpg", u8".png", u8".bmp", u8".jpg", u8".webp", u8".tga"
-        };
     public:
-        graphiccsvwriter(std::vector<std::u8string> langs, const nlohmann::json& json) = delete;
-        graphiccsvwriter(std::vector<std::u8string> langs, std::vector<TranslateText> texts)
-            : csvwriter(std::move(langs), std::move(texts))
-        {
-            //拡張子の削除
-            for(auto& t : this->texts)
-            {
-                for(const auto& ext : this->extentions){
-                    auto pos = t.original.find(ext);
-                    if(pos == std::u8string::npos){ continue; }
-                    t.original.erase(pos, ext.length());
-                    break;
-                }
-            }
-        }
+        using csvwriter::csvwriter;
 
         bool merge(std::filesystem::path sourceFilePath) override
         {
