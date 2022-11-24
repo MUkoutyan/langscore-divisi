@@ -48,19 +48,19 @@ namespace langscore
 
 		utility::u8stringlist GetScriptFileName(config& config, utility::u8stringlist scriptNameList);
 
-		template<typename Writer, typename TsData>
-		ErrorStatus writeAnalyzeTranslateText(std::filesystem::path path, TsData texts, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool isDebug = true)
-		{
-			//最終的な出力先にCSVが存在するか
-			Writer writer(supportLangs, std::move(texts));
-			return writer.write(path, overwriteMode);
+
+		template<class Writer>
+		ErrorStatus writeFixedTranslateText(std::filesystem::path path, const std::unique_ptr<jsonreaderbase>& json, MergeTextMode overwriteMode = MergeTextMode::AcceptSource){
+			return writeFixedTranslateText(Writer{supportLangs, json}, std::move(path), overwriteMode);
+		}
+		template<class Writer>
+		ErrorStatus writeFixedTranslateText(std::filesystem::path path, std::vector<TranslateText> texts, MergeTextMode overwriteMode = MergeTextMode::AcceptSource){
+			return writeFixedTranslateText(Writer{supportLangs, std::move(texts)}, std::move(path), overwriteMode);
 		}
 
-		template<typename Writer, typename TsData>
-		ErrorStatus writeFixedTranslateText(std::filesystem::path path, TsData texts, MergeTextMode overwriteMode = MergeTextMode::AcceptSource)
-		{
-			//最終的な出力先にCSVが存在するか
-			Writer writer(supportLangs, std::move(texts));
+		template<class Writer>
+		ErrorStatus writeFixedTranslateText(Writer writer, std::filesystem::path path, MergeTextMode overwriteMode){
+
 			writer.setOverwriteMode(overwriteMode);
 			//既に編集済みのCSVがある場合はマージを行う。
 			const auto csvFileInProject = exportFolderPath(path.filename());

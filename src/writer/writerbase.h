@@ -1,11 +1,10 @@
 #ifndef WRITERBASE_H
 #define WRITERBASE_H
 
-#include "../serialize_base.h"
+#include "reader/jsonreader.hpp"
 #include "errorstatus.hpp"
 #include <tuple>
 #include <filesystem>
-#include "nlohmann/json.hpp"
 
 #ifdef ENABLE_TEST
 #include "iutest.hpp"
@@ -34,7 +33,7 @@ namespace langscore
 
         using TextCodec = std::u8string;
 
-        writerbase(std::vector<std::u8string> langs, const nlohmann::json& json);
+        writerbase(std::vector<std::u8string> langs, const std::unique_ptr<jsonreaderbase>& json);
         writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts);
         virtual ~writerbase();
 
@@ -56,22 +55,9 @@ namespace langscore
         std::vector<std::u8string> useLangs;
         std::vector<TranslateText> texts;
         MergeTextMode overwriteMode;
-        bool stackText;
-        std::u8string stackTextStr;
         bool rangeComment;
 
         static void writeU8String(std::ofstream& out, std::u8string text);
-
-        void addText(const nlohmann::json& json, std::u8string note = u8"");
-        void addText(std::u8string text, std::u8string note = u8"");
-        void json2tt(const nlohmann::json& json);
-
-        std::tuple<std::u8string, bool> getObjectClass(const nlohmann::json& root);
-        bool checkIgnoreKey(const std::u8string& currentClassName, const std::u8string& key, bool hasSpecIgnoreKeys);
-
-        std::tuple<bool, int> checkEventCommandCode(const nlohmann::json& obj);
-        void convertJArray(const nlohmann::json& arr, std::u8string parentClass = u8"", std::u8string arrayinKey = u8"");
-        void convertJObject(const nlohmann::json& root);
 
         std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path);
         enum class ProgressNextStep

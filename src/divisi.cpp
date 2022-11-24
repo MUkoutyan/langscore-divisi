@@ -10,6 +10,7 @@
 #include "writer/csvwriter.h"
 #include "reader/csvreader.h"
 #include "platform/divisi_vxace.h"
+#include "platform/divisi_mvmz.h"
 #include <iostream>
 #include <fstream>
 #include <semaphore>
@@ -55,12 +56,16 @@ public:
             {
                 if(hasHeader(file.path(), "RPGMZ")){
                     type = invoker::ProjectType::MZ;
+                    this->converter = std::make_unique<divisi_mvmz>();
+                    break;
                 }
             }
-            else if(ext == ".pgmproject")
+            else if(ext == ".rpgproject")
             {
                 if(hasHeader(file.path(), "RPGMV")){
                     type = invoker::ProjectType::MV;
+                    this->converter = std::make_unique<divisi_mvmz>();
+                    break;
                 }
             }
         }

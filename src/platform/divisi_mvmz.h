@@ -24,5 +24,19 @@ namespace langscore
 		ErrorStatus write() override;
 		ErrorStatus validate() override;
 		ErrorStatus packing() override;
+
+	private:
+		std::tuple<utility::filelist, utility::filelist, utility::filelist> fetchFilePathList(std::u8string searchDir);
+
+		void writeAnalyzedBasicData();
+		void writeAnalyzedRvScript(std::u8string baseDirectory);
+
+		void writeFixedBasicData();
+		void writeFixedRvScript();
+		void writeFixedGraphFileNameData();
+		void rewriteScriptList();
+
+		std::filesystem::path exportFolderPath(std::filesystem::path fileName) override;
+
 	};
 }

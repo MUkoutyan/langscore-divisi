@@ -31,6 +31,7 @@ set(lib_files
 	"writer/writerbase.cpp"
 	"writer/writerbase.h"
 	"writer/scripttextparser.hpp"
+	"reader/vxacejsonreader.hpp"
 	"reader/readerbase.h"
 	"reader/readerbase.cpp"
 	"reader/csvreader.h"

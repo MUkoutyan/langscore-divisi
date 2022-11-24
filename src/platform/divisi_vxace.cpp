@@ -3,6 +3,7 @@
 
 #include "../writer/rbscriptwriter.h"
 #include "../writer/uniquerowcsvwriter.hpp"
+#include "../reader/vxacejsonreader.hpp"
 
 #include <nlohmann/json.hpp>
 #include <crc32.h>
@@ -346,7 +347,8 @@ void divisi_vxace::writeAnalyzedBasicData()
         csvFilePath.make_preferred().replace_extension(".csv");
         std::cout << "Write CSV : " << csvFilePath << std::endl;
 
-        writeAnalyzeTranslateText<csvwriter>(csvFilePath, json, MergeTextMode::AcceptTarget);
+        csvwriter writer(this->supportLangs, std::make_unique<vxace_jsonreader>(json));
+        writer.write(csvFilePath, MergeTextMode::AcceptTarget);
     }
     std::cout << "Finish." << std::endl;
 }
@@ -428,7 +430,8 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
     }
 
     std::cout << "Write CSV : " << outputPath << std::endl;
-    writeAnalyzeTranslateText<csvwriter>(outputPath, transTexts, MergeTextMode::AcceptTarget, false);
+    csvwriter writer(supportLangs, std::move(transTexts));
+    writer.write(outputPath, MergeTextMode::AcceptTarget);
 
     std::cout << "Finish." << std::endl;
 }
@@ -458,7 +461,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
         for(auto& translateFolder : translateFolderList){
             csvFilePath = translateFolder / csvFilePath;
             std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
-            writeFixedTranslateText<csvwriter>(csvFilePath, json, mergeTextMode);
+            writeFixedTranslateText<csvwriter>(csvFilePath, std::make_unique<vxace_jsonreader>(json), mergeTextMode);
         }
     };
 
@@ -721,7 +724,7 @@ void divisi_vxace::rewriteScriptList()
     }
     if(replaceLsCustom){
         std::cout << "Write langscore_custom : " << outputPath / scriptFileNameList[1] << std::endl;
-        writeFixedTranslateText<rbscriptwriter>(lsCustomScriptPath, scriptFileList, langscore::MergeTextMode::AcceptTarget);
+        writeFixedTranslateText<rbscriptwriter>(rbscriptwriter{this->supportLangs, scriptFileList}, lsCustomScriptPath, langscore::MergeTextMode::AcceptTarget);
     }
 
     //langscore.rbの出力
