@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "jsonreader.hpp"
 
@@ -29,23 +29,36 @@ namespace langscore
 			}
 		}
 
-		//‹¤’Ê‚µ‚Ä–³‹‚·‚éƒL[
-		const std::vector<std::u8string> ignoreKeys = {
-			u8"class", u8"@note", u8"@character_name",
-			u8"@self_switch_ch", u8"@switches", u8"@title1_name", u8"@variables"
+		enum class DataType
+		{
+			Actors, Armors, Classes, CommonEvents, Enemies, Items, Map, 
+			Skills, States, System, Troops, Weapons
 		};
-		//“Á’è‚ÌƒNƒ‰ƒX‚É‘¶İ‚·‚éA–³‹‚·‚éƒL[
-		const std::map<std::u8string, std::vector<std::u8string>> ignoreForClassKeys = {
-			{u8"RPG::UsableItem::Damage", {u8"@formula"}},
-			{u8"RPG::Event",  {u8"@name"}},
-			{u8"RPG::SE",     {u8"@name"}},
-			{u8"RPG::ME",     {u8"@name"}},
-			{u8"RPG::BGM",    {u8"@name"}},
-			{u8"RPG::BGS",    {u8"@name"}},
-			{u8"RPG::Map",    {u8"@battleback1_name", u8"@battleback2_name", u8"@parallax_name"}},
-			{u8"RPG::Troop",  {u8"@name"}},
-			{u8"RPG::Actor",  {u8"@face_name"}},
-			{ u8"RPG::System",    {u8"@battleback1_name", u8"@battleback2_name"} },
+
+		//ç‰¹å®šã®ãƒ‡ãƒ¼ã‚¿ã‚¿ã‚¤ãƒ—ã§æ¤œå‡ºã™ã‚‹ã‚­ãƒ¼
+		const std::map<DataType, std::vector<std::u8string>> detectClassKeys = {
+			{DataType::Actors,			{u8"name", u8"nickname", u8"profile"}},
+			{DataType::Armors,			{u8"name", u8"description"}},
+			{DataType::Classes,			{u8"name"}},
+			//CommonEventsã¯listå†…ã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã«å¯¾ã—ã¦codeã®å€¤ã‚’èª¿ã¹ã‚‹å¿…è¦ãŒã‚ã‚‹ã€‚
+			{DataType::CommonEvents,    {u8"list"}},
+			{DataType::Enemies,			{u8"name"}},
+			{DataType::Items,			{u8"name", u8"description"}},
+			{DataType::Map,				{u8"events"}},
+			{DataType::Skills,			{u8"name", u8"description", u8"message1", u8"message2"}},
+			{DataType::States,			{u8"name", u8"description", u8"message1", u8"message2", u8"message3", u8"message4"}},
+			{DataType::System,			{u8"armorTypes", u8"currencyUnit", u8"elements", u8"equipTypes", 
+										 u8"gameTitle", u8"skillTypes", u8"terms", u8"weaponTypes"}},
+			{DataType::Troops,			{u8"pages"}},
+			{DataType::Weapons,			{u8"name", u8"description"}},
+		};
+		//ãƒ‡ãƒ¼ã‚¿ã‚¿ã‚¤ãƒ—å†…ã§æ¤œå‡ºã™ã‚‹ã‚­ãƒ¼ detectClassKeysã§æ¤œå‡ºã•ã‚ŒãŸã‚­ãƒ¼ã¯ã€ã“ã®ä¸­ã«å«ã¾ã‚Œã¦ã„ã‚‹ã‹ã‚’ã¾ãšèª¿ã¹ã‚‹ã€‚
+		//æ¤œå‡ºã—ãŸå ´åˆã¯ã“ã®ä¸­ã®ã‚­ãƒ¼ã‚’æ¤œå‡ºã™ã‚‹ã€‚ã“ã‚Œã¯detectKeyInObjectã®å€¤ã‚‚ã€å†å¸°çš„ã«detectKeyInObjectã§æ¤œç´¢ã•ã‚Œãªã‘ã‚Œã°ã„ã‘ãªã„ã€‚
+		const std::map<std::u8string, std::vector<std::u8string>> detectKeyInObject = {
+			{u8"events",		{u8"pages"}},
+			{u8"pages",			{u8"list"}},
+			{u8"list",			{u8"code", u8"parameters"}},
+			{u8"terms",			{u8"basic", u8"commands", u8"params", u8"messages"}},
 		};
 
 		void addText(const nlohmann::json& json, std::u8string note = u8"")
@@ -53,7 +66,7 @@ namespace langscore
 			std::string valStr;
 			json.get_to(valStr);
 
-			//è“®‚Ì’†‰›‘µ‚¦“™‚Å‹ós‚ğg—p‚·‚éê‡‚ª‚ ‚é‚½‚ßA‹ó•¶š‚ÌŒŸo‚Ís‚í‚È‚¢B
+			//æ‰‹å‹•ã®ä¸­å¤®æƒãˆç­‰ã§ç©ºè¡Œã‚’ä½¿ç”¨ã™ã‚‹å ´åˆãŒã‚ã‚‹ãŸã‚ã€ç©ºæ–‡å­—ã®æ¤œå‡ºã¯è¡Œã‚ãªã„ã€‚
 			//if(valStr.empty()){ return; }
 
 			std::u8string original(valStr.begin(), valStr.end());
@@ -62,13 +75,13 @@ namespace langscore
 		void addText(std::u8string text, std::u8string note = u8"")
 		{
 			if(stackText){
-				//1s‚É•t‚«•K‚¸‰üs‚ª‹²‚Ü‚éB(VXAce‚Ì‚İ‚Ìd—lHMV/MZ‚Í—vŠm”F)
+				//1è¡Œã«ä»˜ãå¿…ãšæ”¹è¡ŒãŒæŒŸã¾ã‚‹ã€‚(VXAceã®ã¿ã®ä»•æ§˜ï¼ŸMV/MZã¯è¦ç¢ºèª)
 				stackTextStr += text + u8'\n';
 				return;
 			}
 			else {
 				if(text.empty()){
-					//‚½‚¾‚Ì‹ó•¶‚Í–³‹‚·‚éB
+					//ãŸã ã®ç©ºæ–‡ã¯ç„¡è¦–ã™ã‚‹ã€‚
 					return;
 				}
 			}
@@ -99,28 +112,29 @@ namespace langscore
 		std::tuple<std::u8string, bool> getObjectClass(const nlohmann::json& root)
 		{
 			bool hasSpecIgnoreKeys = false;
-			std::u8string currentClassName = u8"";
+			std::u8string currentObjectKey = u8"";
+
 			if(root.find("class") != root.end())
 			{
-				const std::string _currentClassName = root["class"];
-				currentClassName = std::u8string(_currentClassName.begin(), _currentClassName.end());
-				if(currentClassName != u8"")
+				const std::string _currentObjectKey = root["class"];
+				currentObjectKey = std::u8string(_currentObjectKey.begin(), _currentObjectKey.end());
+				if(currentObjectKey != u8"")
 				{
-					hasSpecIgnoreKeys = ignoreForClassKeys.find(currentClassName) != ignoreForClassKeys.end();
+					hasSpecIgnoreKeys = detectKeyInObject.find(currentObjectKey) != detectKeyInObject.end();
 				}
 			}
 
-			return std::forward_as_tuple(currentClassName, hasSpecIgnoreKeys);
+			return std::forward_as_tuple(currentObjectKey, hasSpecIgnoreKeys);
 		}
-		bool checkIgnoreKey(const std::u8string& currentClassName, const std::u8string& key, bool hasSpecIgnoreKeys)
+		bool checkIgnoreKey(const std::u8string& currentObjectKey, const std::u8string& key, bool hasSpecIgnoreKeys)
 		{
-			if(std::find(ignoreKeys.cbegin(), ignoreKeys.cend(), key) != ignoreKeys.cend()){ return true; }
-			if(hasSpecIgnoreKeys){
-				const auto& fields = ignoreForClassKeys.at(currentClassName);
-				if(std::find(fields.cbegin(), fields.cend(), key) != fields.cend()){
-					return true;
-				}
-			}
+			//if(std::find(ignoreKeys.cbegin(), ignoreKeys.cend(), key) != ignoreKeys.cend()){ return true; }
+			//if(hasSpecIgnoreKeys){
+			//	const auto& fields = detectClassKeys.at(currentObjectKey);
+			//	if(std::find(fields.cbegin(), fields.cend(), key) != fields.cend()){
+			//		return true;
+			//	}
+			//}
 			return false;
 		}
 
@@ -130,13 +144,13 @@ namespace langscore
 			int code = 0;
 			for(auto s = obj.begin(); s != obj.end(); ++s)
 			{
-				if(s.key() == "@code"){
-					//‹–‰Â‚·‚éƒR[ƒh
+				if(s.key() == "code"){
+					//è¨±å¯ã™ã‚‹ã‚³ãƒ¼ãƒ‰
 					s->get_to(code);
 					switch(code){
-						case 102: //‘I‘ğˆ
-						case 401: //•¶Í‚Ì•\¦
-							//case 231: //‰æ‘œ‚Ì•\¦
+						case 102: //é¸æŠè‚¢
+						case 401: //æ–‡ç« ã®è¡¨ç¤º
+							//case 231: //ç”»åƒã®è¡¨ç¤º
 							result = true;
 						default:
 							break;
@@ -149,7 +163,7 @@ namespace langscore
 		}
 		void convertJArray(const nlohmann::json& arr, std::u8string parentClass = u8"", std::u8string arrayinKey = u8"")
 		{
-			bool hasSpecIgnoreKeys = ignoreForClassKeys.find(parentClass) != ignoreForClassKeys.end();
+			bool hasSpecIgnoreKeys = detectKeyInObject.find(parentClass) != detectKeyInObject.end();
 			for(auto s = arr.begin(); s != arr.end(); ++s)
 			{
 				if(s->is_array()){
@@ -170,9 +184,9 @@ namespace langscore
 		{
 			if(root.empty()){ return; }
 
-			auto [currentClassName, hasSpecIgnoreKeys] = getObjectClass(root);
+			auto [currentObjectKey, hasSpecIgnoreKeys] = getObjectClass(root);
 
-			if(currentClassName == u8"RPG::EventCommand"){
+			if(currentObjectKey == u8"list"){
 				auto [result, code] = checkEventCommandCode(root);
 				if(stackText == false && code == 401){
 					stackText = true;
@@ -191,7 +205,7 @@ namespace langscore
 				std::u8string key(_key.begin(), _key.end());
 				const auto& val = s.value();
 				if(val.is_array()){
-					convertJArray(val, currentClassName, key);
+					convertJArray(val, currentObjectKey, key);
 					continue;
 				}
 				else if(val.is_object()){
@@ -200,11 +214,11 @@ namespace langscore
 				}
 				else if(val.is_string() == false){ continue; }
 
-				if(checkIgnoreKey(currentClassName, key, hasSpecIgnoreKeys)){
+				if(checkIgnoreKey(currentObjectKey, key, hasSpecIgnoreKeys)){
 					continue;
 				}
 
-				addText(*s, currentClassName + u8":" + key);
+				addText(*s, currentObjectKey + u8":" + key);
 			}
 
 		}

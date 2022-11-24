@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "jsonreader.hpp"
 
@@ -18,12 +18,12 @@ namespace langscore
 
 	private:
 
-		//‹¤’Ê‚µ‚Ä–³‹‚·‚éƒL[
+		//å…±é€šã—ã¦ç„¡è¦–ã™ã‚‹ã‚­ãƒ¼
 		const std::vector<std::u8string> ignoreKeys = {
 			u8"class", u8"@note", u8"@character_name",
 			u8"@self_switch_ch", u8"@switches", u8"@title1_name", u8"@variables"
 		};
-		//“Á’è‚ÌƒNƒ‰ƒX‚É‘¶İ‚·‚éA–³‹‚·‚éƒL[
+		//ç‰¹å®šã®ã‚¯ãƒ©ã‚¹ã«å­˜åœ¨ã™ã‚‹ã€ç„¡è¦–ã™ã‚‹ã‚­ãƒ¼
 		const std::map<std::u8string, std::vector<std::u8string>> ignoreForClassKeys = {
 			{u8"RPG::UsableItem::Damage", {u8"@formula"}},
 			{u8"RPG::Event",  {u8"@name"}},
@@ -42,7 +42,7 @@ namespace langscore
 			std::string valStr;
 			json.get_to(valStr);
 
-			//è“®‚Ì’†‰›‘µ‚¦“™‚Å‹ós‚ğg—p‚·‚éê‡‚ª‚ ‚é‚½‚ßA‹ó•¶š‚ÌŒŸo‚Ís‚í‚È‚¢B
+			//æ‰‹å‹•ã®ä¸­å¤®æƒãˆç­‰ã§ç©ºè¡Œã‚’ä½¿ç”¨ã™ã‚‹å ´åˆãŒã‚ã‚‹ãŸã‚ã€ç©ºæ–‡å­—ã®æ¤œå‡ºã¯è¡Œã‚ãªã„ã€‚
 			//if(valStr.empty()){ return; }
 
 			std::u8string original(valStr.begin(), valStr.end());
@@ -51,13 +51,13 @@ namespace langscore
 		void addText(std::u8string text, std::u8string note = u8"")
 		{
 			if(stackText){
-				//1s‚É•t‚«•K‚¸‰üs‚ª‹²‚Ü‚éB(VXAce‚Ì‚İ‚Ìd—lHMV/MZ‚Í—vŠm”F)
+				//1è¡Œã«ä»˜ãå¿…ãšæ”¹è¡ŒãŒæŒŸã¾ã‚‹ã€‚(VXAceã®ã¿ã®ä»•æ§˜ï¼ŸMV/MZã¯è¦ç¢ºèª)
 				stackTextStr += text + u8'\n';
 				return;
 			}
 			else {
 				if(text.empty()){
-					//‚½‚¾‚Ì‹ó•¶‚Í–³‹‚·‚éB
+					//ãŸã ã®ç©ºæ–‡ã¯ç„¡è¦–ã™ã‚‹ã€‚
 					return;
 				}
 			}
@@ -131,12 +131,12 @@ namespace langscore
 			for(auto s = obj.begin(); s != obj.end(); ++s)
 			{
 				if(s.key() == "@code"){
-					//‹–‰Â‚·‚éƒR[ƒh
+					//è¨±å¯ã™ã‚‹ã‚³ãƒ¼ãƒ‰
 					s->get_to(code);
 					switch(code){
-						case 102: //‘I‘ğˆ
-						case 401: //•¶Í‚Ì•\¦
-							//case 231: //‰æ‘œ‚Ì•\¦
+						case 102: //é¸æŠè‚¢
+						case 401: //æ–‡ç« ã®è¡¨ç¤º
+							//case 231: //ç”»åƒã®è¡¨ç¤º
 							result = true;
 						default:
 							break;
