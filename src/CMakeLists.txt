@@ -39,6 +39,8 @@ set(lib_files
 	"writer/rbscriptwriter.cpp"
 	"platform/divisi_vxace.h" 
     "platform/divisi_vxace.cpp" 
+	"platform/divisi_mvmz.h" 
+    "platform/divisi_mvmz.cpp" 
 	"platform/platform_base.h" 
 	"platform/platform_base.cpp"
 	${PROJECT_SOURCE_DIR}/rvcnv/rvcnv_hash.cpp

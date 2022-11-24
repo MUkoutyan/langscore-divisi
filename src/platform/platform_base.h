@@ -39,6 +39,15 @@ namespace langscore
 		std::filesystem::copy_options convertCopyOption(MergeTextMode mode);
 		virtual std::filesystem::path exportFolderPath(std::filesystem::path fileName) = 0;
 
+		void copyFonts();
+
+		constexpr static char8_t Script_File_Name[] = u8"langscore";
+		constexpr static char8_t Custom_Script_File_Name[] = u8"langscore_custom";
+		static std::unordered_map<std::u8string, std::u8string> Help_Text;
+		static std::unordered_map<std::u8string, std::u8string> Language_Items;
+
+		utility::u8stringlist GetScriptFileName(config& config, utility::u8stringlist scriptNameList);
+
 		template<typename Writer, typename TsData>
 		ErrorStatus writeAnalyzeTranslateText(std::filesystem::path path, TsData texts, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool isDebug = true)
 		{

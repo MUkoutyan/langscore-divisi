@@ -32,8 +32,6 @@ namespace langscore
 		ErrorStatus validate() override;
 		ErrorStatus packing() override;
 
-		//void copyData(langscore::MergeTextMode option = langscore::MergeTextMode::AcceptSource) override;
-
 	private:
 		std::tuple<utility::filelist, utility::filelist, utility::filelist> fetchFilePathList(std::u8string searchDir);
 
@@ -44,7 +42,6 @@ namespace langscore
 		void writeFixedRvScript();
 		void writeFixedGraphFileNameData();
 		void rewriteScriptList();
-		void copyFonts();
 
 		bool validateTranslateFileList(utility::filelist csvPathList) const;
 		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;
