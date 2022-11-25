@@ -6,15 +6,26 @@ include_directories(
 	"../"
 )
 
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/versioninfo.h.in
+  ${CMAKE_CURRENT_BINARY_DIR}/versioninfo.h
+  @ONLY)
+
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/version.rc.in
+  ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+  @ONLY)
+
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
-add_executable (divisi "main.cpp")
+add_executable (divisi "main.cpp" ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
 set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
 
 target_include_directories(divisi PUBLIC 
 	${PROJECT_SOURCE_DIR}/include
 	${PROJECT_SOURCE_DIR}/json
+	${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_link_libraries(divisi divisi_lib)

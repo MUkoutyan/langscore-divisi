@@ -2,6 +2,7 @@
 #include "../src/serialize_base.h"
 #include "../src/reader/csvreader.h"
 #include <iostream>
+#include "versioninfo.h"
 
 struct ARGS
 {
@@ -47,6 +48,7 @@ ARGS analyzeOption(int argc, const char* argv[])
 
 int main(int argc, const char* argv[])
 {
+	std::cout << "Langscore Divisi Version " << VER_FILEVERSION_STR << std::endl;
 	if(argc < 2){
 #ifdef _DEBUG
 		std::cerr << "Need Argments..." << std::endl;
