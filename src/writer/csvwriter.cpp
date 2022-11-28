@@ -4,6 +4,7 @@
 #include "../reader/csvreader.h"
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 using namespace langscore;
 namespace fs = std::filesystem;
@@ -14,6 +15,7 @@ namespace fs = std::filesystem;
 bool csvwriter::merge(std::filesystem::path sourceFilePath)
 {
     if(this->overwriteMode == MergeTextMode::AcceptTarget){
+        std::cout << "\tAcceptTarget : " << std::endl;
         return true;
     }
 
@@ -24,6 +26,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
     //ソース側を適用
     if(this->overwriteMode == MergeTextMode::AcceptSource){
         this->texts = sourceTranslates;
+        std::cout << "\tAcceptSource : " << std::endl;
         return true;
     }
 
@@ -45,10 +48,18 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
     std::u8string source_origin;
     std::u8string target_origin;
 
+    enum MergeType {
+        KeepSource = MergeTextMode::MergeKeepSource,
+        KeepTarget, 
+        Both,
+        InsertSource,
+    };
+    std::unordered_map<MergeType, std::vector<size_t>> mergeInfo;
     const auto AddForSource = [&](){
         if(source_i == sourceTranslates.end()){ return false; }
         result.emplace_back(*source_i);
         source_origin.clear();
+        mergeInfo[MergeType::InsertSource].emplace_back(result.size());
         ++source_i;
         return true;
     };
@@ -60,6 +71,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
         ++target_i;
         return true;
     };
+
 
     while(source_i != sourceTranslates.end() || target_i != this->texts.end())
     {
@@ -108,6 +120,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
                         sourceText += trans_result.translates[lang];
                         trans_result.translates[lang] = sourceText;
                     }
+                    mergeInfo[static_cast<MergeType>(overwriteMode)].emplace_back(result.size()+1);
                 }
                 //内容が一致する場合は何もしない
             }
@@ -153,6 +166,31 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
     }
 
     this->texts = std::move(result);
+
+    if(mergeInfo.empty() == false)
+    {
+        std::cout << "Merge : " << sourceFilePath.filename() << std::endl;
+
+        std::for_each(mergeInfo.begin(), mergeInfo.end(), [](const auto& x)
+        {
+            auto mode = std::get<0>(x);
+            if(mode == MergeType::KeepSource){
+                std::cout << "\tKeepSource line:";
+            }
+            else if(mode == MergeType::KeepTarget){
+                std::cout << "\tKeepTarget line:";
+            }
+            else if(mode == MergeType::Both){
+                std::cout << "\tBoth line:";
+            }
+            else if(mode == MergeType::InsertSource){
+                std::cout << "\tInsert line:";
+            }
+            const auto& lines = std::get<1>(x);
+            std::copy(lines.begin(), lines.end(), std::ostream_iterator<size_t>(std::cout, ", "));
+        });
+        std::cout << std::endl;
+    }
 
     return true;
 }
