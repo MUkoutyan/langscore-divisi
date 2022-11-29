@@ -350,7 +350,7 @@ void divisi_mvmz::writeAnalyzedBasicData()
         csvFilePath.make_preferred().replace_extension(".csv");
         std::cout << "Write CSV : " << csvFilePath << std::endl;
 
-        csvwriter writer(this->supportLangs, std::make_unique<mvmz_jsonreader>(json));
+        csvwriter writer(this->supportLangs, std::make_unique<mvmz_jsonreader>(path, json));
         writer.write(csvFilePath, MergeTextMode::AcceptTarget);
     }
     std::cout << "Finish." << std::endl;

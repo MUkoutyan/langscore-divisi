@@ -1,16 +1,18 @@
 ﻿#pragma once
 
 #include "jsonreader.hpp"
+#include <filesystem>
 
 namespace langscore
 {
 	class mvmz_jsonreader: public jsonreaderbase
 	{
 	public:
-		mvmz_jsonreader(const nlohmann::json& json)
+		mvmz_jsonreader(const std::filesystem::path& path, const nlohmann::json& json)
 			: jsonreaderbase(json)
 			, stackText(false)
 			, stackTextStr(u8"")
+			, currentDataType(DetectDataType(path))
 		{
 			json2tt();
 		}
@@ -61,6 +63,10 @@ namespace langscore
 			{u8"terms",			{u8"basic", u8"commands", u8"params", u8"messages"}},
 		};
 
+		bool stackText;
+		std::u8string stackTextStr;
+		DataType currentDataType;
+
 		void addText(const nlohmann::json& json, std::u8string note = u8"")
 		{
 			std::string valStr;
@@ -109,24 +115,24 @@ namespace langscore
 			}
 		}
 
-		std::tuple<std::u8string, bool> getObjectClass(const nlohmann::json& root)
+		std::u8string getObjectClass(const nlohmann::json& root)
 		{
-			bool hasSpecIgnoreKeys = false;
 			std::u8string currentObjectKey = u8"";
 
-			if(root.find("class") != root.end())
+			const auto& mainClassKeys = detectClassKeys.at(currentDataType);
+
+			for(auto& key : mainClassKeys)
 			{
-				const std::string _currentObjectKey = root["class"];
-				currentObjectKey = std::u8string(_currentObjectKey.begin(), _currentObjectKey.end());
-				if(currentObjectKey != u8"")
+				auto strKey = utility::cnvStr<std::string>(key);
+				if(root.find(strKey) != root.end())
 				{
-					hasSpecIgnoreKeys = detectKeyInObject.find(currentObjectKey) != detectKeyInObject.end();
+					currentObjectKey = utility::cnvStr<std::u8string>(root[strKey]);
 				}
 			}
 
-			return std::forward_as_tuple(currentObjectKey, hasSpecIgnoreKeys);
+			return currentObjectKey;
 		}
-		bool checkIgnoreKey(const std::u8string& currentObjectKey, const std::u8string& key, bool hasSpecIgnoreKeys)
+		bool checkIgnoreKey(const std::u8string& currentObjectKey, const std::u8string& key)
 		{
 			//if(std::find(ignoreKeys.cbegin(), ignoreKeys.cend(), key) != ignoreKeys.cend()){ return true; }
 			//if(hasSpecIgnoreKeys){
@@ -161,22 +167,47 @@ namespace langscore
 			}
 			return std::forward_as_tuple(result, code);
 		}
-		void convertJArray(const nlohmann::json& arr, std::u8string parentClass = u8"", std::u8string arrayinKey = u8"")
+		void convertJArray(const nlohmann::json& arr, std::u8string parentClass = u8"")
 		{
-			bool hasSpecIgnoreKeys = detectKeyInObject.find(parentClass) != detectKeyInObject.end();
-			for(auto s = arr.begin(); s != arr.end(); ++s)
+			if(detectKeyInObject.find(parentClass) != detectKeyInObject.end())
 			{
-				if(s->is_array()){
-					convertJArray(*s, parentClass, arrayinKey);
-					continue;
-				}
-				else if(s->is_object()){
-					convertJObject(*s);
-				}
-				else if(s->is_string())
+				const auto& recursiveDetects = detectKeyInObject.at(parentClass);
+				for(auto s = arr.begin(); s != arr.end(); ++s)
 				{
-					if(checkIgnoreKey(parentClass, arrayinKey, hasSpecIgnoreKeys)){ continue; }
-					addText(*s, parentClass + u8"=>" + arrayinKey);
+					if(s->is_array()){
+						convertJArray(*s, parentClass);
+						continue;
+					}
+					else if(s->is_object())
+					{
+						convertJObjectInKey(parentClass, *s);
+						//auto key = utility::cnvStr<std::u8string>(s.key());
+
+						//for(auto& checkKey : recursiveDetects)
+						//{
+						//	if(key != checkKey){ continue; }
+						//	convertJObject(*s);
+						//}
+					}
+					else if(s->is_string()){
+						addText(*s);
+					}
+				}
+			}
+			else
+			{
+				for(auto s = arr.begin(); s != arr.end(); ++s)
+				{
+					if(s->is_array()){
+						convertJArray(*s, parentClass);
+					}
+					else if(s->is_object()){
+						convertJObject(*s);
+					}
+					else if(s->is_string())
+					{
+						addText(*s);
+					}
 				}
 			}
 		}
@@ -184,48 +215,165 @@ namespace langscore
 		{
 			if(root.empty()){ return; }
 
-			auto [currentObjectKey, hasSpecIgnoreKeys] = getObjectClass(root);
-
-			if(currentObjectKey == u8"list"){
-				auto [result, code] = checkEventCommandCode(root);
-				if(stackText == false && code == 401){
-					stackText = true;
-				}
-				else if(stackText && code != 401){
-					stackText = false;
-					addText(stackTextStr);
-					stackTextStr.clear();
-				}
-				if(result == false){ return; }
-			}
+			const auto& mainClassKeys = detectClassKeys.at(currentDataType);
 
 			for(auto s = root.begin(); s != root.end(); ++s)
 			{
-				const auto& _key = s.key();
-				std::u8string key(_key.begin(), _key.end());
-				const auto& val = s.value();
-				if(val.is_array()){
-					convertJArray(val, currentObjectKey, key);
-					continue;
-				}
-				else if(val.is_object()){
-					convertJObject(val);
-					continue;
-				}
-				else if(val.is_string() == false){ continue; }
+				if(s->is_null()){ continue; }
+				auto key = utility::cnvStr<std::u8string>(s.key());
+				for(auto& checkKey : mainClassKeys)
+				{
+					if(checkKey != key){ continue; }
 
-				if(checkIgnoreKey(currentObjectKey, key, hasSpecIgnoreKeys)){
-					continue;
-				}
+					if(checkKey == u8"code"){
+						auto [result, code] = checkEventCommandCode(root);
+						if(stackText == false && code == 401){
+							stackText = true;
+						}
+						else if(stackText && code != 401){
+							stackText = false;
+							addText(stackTextStr);
+							stackTextStr.clear();
+						}
+						if(result == false){ return; }
+					}
 
-				addText(*s, currentObjectKey + u8":" + key);
+					const auto& val = s.value();
+					if(detectKeyInObject.find(checkKey) != detectKeyInObject.end())
+					{
+						if(val.is_array()){
+							convertJArray(val, key);
+						}
+						else if(val.is_object()){
+							convertJObjectInKey(key, val);
+						}
+						continue;
+					}
+
+					if(val.is_array()){
+						convertJArray(val, key);
+						continue;
+					}
+					else if(val.is_object()){
+						convertJObject(val);
+						continue;
+					}
+					else if(val.is_string() == false){ continue; }
+
+					if(checkIgnoreKey(key, key)){
+						continue;
+					}
+
+					addText(*s, key + u8":" + key);
+				}
 			}
-
 		}
 
 
-		bool stackText;
-		std::u8string stackTextStr;
+		void convertJObjectInKey(std::u8string rootKey, const nlohmann::json& root)
+		{
+			if(root.empty()){ return; }
+
+			const auto& mainClassKeys = detectKeyInObject.at(rootKey);
+
+			for(auto s = root.begin(); s != root.end(); ++s)
+			{
+				if(s->is_null()){ continue; }
+				auto key = utility::cnvStr<std::u8string>(s.key());
+				for(auto& checkKey : mainClassKeys)
+				{
+					if(checkKey != key){ continue; }
+
+					if(checkKey == u8"code"){
+						auto [result, code] = checkEventCommandCode(root);
+						if(stackText == false && code == 401){
+							stackText = true;
+						}
+						else if(stackText && code != 401){
+							stackText = false;
+							addText(stackTextStr);
+							stackTextStr.clear();
+						}
+						if(result == false){ return; }
+					}
+
+					const auto& val = s.value();
+					if(detectKeyInObject.find(checkKey) != detectKeyInObject.end())
+					{
+						if(val.is_array()){
+							convertJArray(val, key);
+						}
+						else if(val.is_object()){
+							convertJObject(val);
+						}
+						continue;
+					}
+
+					if(val.is_array()){
+						convertJArray(val, key);
+						continue;
+					}
+					else if(val.is_object()){
+						convertJObject(val);
+						continue;
+					}
+					else if(val.is_string() == false){ continue; }
+
+					if(checkIgnoreKey(key, key)){
+						continue;
+					}
+
+					addText(*s, key + u8":" + key);
+				}
+			}
+		}
+
+		DataType DetectDataType(const std::filesystem::path& path)
+		{
+			auto filename = path.filename().u8string();
+
+			const auto FindStr = [&](std::u8string_view s){
+				return filename.find(s) == 0;
+			};
+
+			if(FindStr(u8"Actors")){
+				return DataType::Actors;
+			}
+			else if(FindStr(u8"Armors")){
+				return DataType::Armors;
+			}
+			else if(FindStr(u8"Classes")){
+				return DataType::Classes;
+			}
+			else if(FindStr(u8"CommonEvents")){
+				return DataType::CommonEvents;
+			}
+			else if(FindStr(u8"Enemies")){
+				return DataType::Enemies;
+			}
+			else if(FindStr(u8"Items")){
+				return DataType::Items;
+			}
+			else if(FindStr(u8"Map")){
+				return DataType::Map;
+			}
+			else if(FindStr(u8"Skills")){
+				return DataType::Skills;
+			}
+			else if(FindStr(u8"States")){
+				return DataType::States;
+			}
+			else if(FindStr(u8"System")){
+				return DataType::System;
+			}
+			else if(FindStr(u8"Troops")){
+				return DataType::Troops;
+			}
+			else if(FindStr(u8"Weapons")){
+				return DataType::Weapons;
+			}
+			return DataType::Map;
+		}
 
 	};
 }
