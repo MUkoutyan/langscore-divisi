@@ -43,7 +43,7 @@ namespace langscore
 		void writeFixedBasicData();
 		void writeFixedRvScript();
 		void writeFixedGraphFileNameData();
-		void rewriteScriptList();
+		void rewriteScriptList(bool& replaceScript);
 		void copyFonts();
 
 		bool validateTranslateFileList(utility::filelist csvPathList) const;

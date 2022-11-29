@@ -49,7 +49,7 @@ namespace
     const auto nl = u8"\n"s;
     const auto tab = u8"\t"s;
 
-    utility::u8stringlist GetScriptFileName(config& config, utility::u8stringlist scriptNameList)
+    utility::u8stringlist GetScriptFileName(langscore::config& config, utility::u8stringlist scriptNameList)
     {
         const auto deserializeOutPath = config.langscoreAnalyzeDirectorty();
         csvreader scriptCsvReader;
@@ -176,6 +176,7 @@ ErrorStatus langscore::divisi_vxace::update()
 
     enum Type{ Add, Delete, Update };
     std::vector<std::pair<fs::path, Type>> messageList;
+    utility::filelist throughCopyList;  //何もせずにコピーする
 
     //消されるファイルの列挙
     for(auto s : analyzeCsvList){
@@ -230,6 +231,7 @@ ErrorStatus langscore::divisi_vxace::update()
     });
 
     //メッセージを出しつつ、ファイルの移動
+
     for(auto& mes : messageList){
         if(mes.second == Type::Add){
             std::cout << "Add : " << mes.first << std::endl;
@@ -242,6 +244,15 @@ ErrorStatus langscore::divisi_vxace::update()
         else if(mes.second == Type::Update){
             std::cout << "Update : " << mes.first << std::endl;
             fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first, fs::copy_options::overwrite_existing);
+        }
+    }
+
+    for(const auto& f : fs::directory_iterator{updateDirPath}){
+        auto extension = f.path().extension();
+        if(extension == ".json"){
+            auto filename = f.path().filename();
+            fs::copy(updateDirPath / filename, analyzeDirPath / filename, fs::copy_options::overwrite_existing);
+            fs::remove(f.path());
         }
     }
 
@@ -270,15 +281,18 @@ ErrorStatus langscore::divisi_vxace::write()
     copyFonts();
 
     std::cout << "Export script files." << std::endl;
-    rewriteScriptList();
+    bool replaceScript = false;
+    rewriteScriptList(replaceScript);
     std::cout << "Done." << std::endl;
 
-    std::cout << "Compress." << std::endl;
-    auto runResult = this->invoker.recompressVXAce();
-    if(runResult.val() != 0){
-        return runResult;
+    if(replaceScript){
+        std::cout << "Compress." << std::endl;
+        auto runResult = this->invoker.recompressVXAce();
+        if(runResult.val() != 0){
+            return runResult;
+        }
+        std::cout << "Done." << std::endl;
     }
-    std::cout << "Done." << std::endl;
 
     std::cout << "Write Translate File Done." << std::endl;
     return Status_Success;
@@ -696,7 +710,7 @@ void divisi_vxace::writeFixedGraphFileNameData()
     std::cout << "Finish." << std::endl;
 }
 
-void divisi_vxace::rewriteScriptList()
+void divisi_vxace::rewriteScriptList(bool& replaceScript)
 {
     config config;
     const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
@@ -779,6 +793,7 @@ void divisi_vxace::rewriteScriptList()
     if(replaceLsCustom){
         std::cout << "Write langscore_custom : " << outputPath / scriptFileNameList[1] << std::endl;
         writeFixedTranslateText<rbscriptwriter>(lsCustomScriptPath, scriptFileList, langscore::MergeTextMode::AcceptTarget);
+        replaceScript = true;
     }
 
     //langscore.rbの出力
@@ -804,6 +819,7 @@ void divisi_vxace::rewriteScriptList()
             for(const auto& l : fileLines){
                 outScriptFile << utility::toString(l) << "\n";
             }
+            replaceScript = true;
         }
     }
 
