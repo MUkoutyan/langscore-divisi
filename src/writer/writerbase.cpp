@@ -244,10 +244,10 @@ void writerbase::convertJObject(const nlohmann::json& root)
 
 	if(currentClassName == u8"RPG::EventCommand"){
 		auto [result, code] = checkEventCommandCode(root);
-		if(stackText == false && code == 401){
+		if(stackText == false && (code == 401 || code == 405)){
 			stackText = true;
 		}
-		else if(stackText && code != 401){
+		else if(stackText && (code != 401 && code != 405)){
 			stackText = false;
 			addText(stackTextStr);
 			stackTextStr.clear();
