@@ -200,7 +200,7 @@ ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
     if(this->texts.empty()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 0); }
     path.replace_extension(csvwriter::extension);
    
-    std::ofstream outputCSVFile(path);
+    std::ofstream outputCSVFile(path, std::ios::binary);
     if(outputCSVFile.bad()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
     
     const std::u8string delimiter(u8",");
