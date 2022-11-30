@@ -65,7 +65,7 @@ class LSCSV
         p "failed load_data(#{file_name}) : #{e}"
 
         file_name = name+".csv"
-        trans_file = File.open(file_name)
+        trans_file = File.open(file_name, "rb:utf-8:utf-8")
         p "OK"
         return trans_file.readlines()
       rescue
@@ -109,7 +109,6 @@ class LSCSV
       if col.start_with?("\"") && col.end_with?("\"")
         col = col.slice!(1..col.length-2)
       end
-      col.gsub!("\n\n", "\r\n") #VX Ace用に改行を再解釈
       col.gsub!("\"\"", "\"") #値中の""は"と解釈
       cols.push(col)
     end
