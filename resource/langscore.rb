@@ -23,8 +23,9 @@ end
 
 #-----------------------------------------------------
 String.class_eval <<-eval
-  def lstrans line_info
-    Langscore.translate_for_script(line_info)
+  def lstrans(line_info, *args)
+    text = Langscore.translate_for_script(line_info)
+    return sprintf(text, *args)
   end
 eval
 
