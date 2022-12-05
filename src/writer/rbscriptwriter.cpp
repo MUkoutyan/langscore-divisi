@@ -101,8 +101,6 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Mer
     outFile << nl;
     outFile << "def " << functionName << nl;
     outFile << nl;
-    outFile << tab << "$data_langscore_scripts ||= LSCSV.to_hash(\"Data/Translates/Scripts.lscsv\")" << nl;
-    outFile << nl;
 
     config config;
     auto scriptInfoList = config.vxaceScripts();
