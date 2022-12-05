@@ -544,7 +544,7 @@ if packing
     origin = LsDumpData.new
     origin.data = File.read(read_dir+"/"+fileName)
     d = Marshal.dump(origin)
-    File.open(output_folder + "/" + File.basename(fileName, ".csv") + ".rvdata2", "w") do | dumpFile |
+    File.open(output_folder + "/" + File.basename(fileName, ".csv") + ".rvdata2", "wb") do | dumpFile |
       dumpFile.write(d)
     end
   end
@@ -573,7 +573,7 @@ if compress
   end
 
   File.open(data_folder+'/Scripts.rvdata2', 'wb') do |file|
-    file.write(Marshal.dump(compressData))
+    Marshal.dump(compressData, file)
   end
 
   exit
