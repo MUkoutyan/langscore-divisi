@@ -3,35 +3,31 @@ class LsDumpData
   attr_accessor :data
 end
 class LSCSV
+  
   def self.to_hash(file_name)
     file = open(Langscore::TRANSLATE_FOLDER + "/" + file_name)
     return {} if file == nil
 
     rows = parse_col(parse_row(file))
-
     varidate(file_name, rows)
 
     #To Hash
-    header = rows[0]
-    row_index = (1...header.size).select do |i|
-      Langscore::SUPPORT_LANGUAGE.include?(header[i])
+    row_index = (1...@@header.size).select do |i|
+      Langscore::SUPPORT_LANGUAGE.include?(@@header[i])
     end
 
- 
-    #改行コードを全てRGSS側の\r\nに統一
     result = {}
     rows[1...rows.size].each do |r|
       origin = r[0]
-      trans  = r[1...header.size]
+      trans  = r[1...@@header.size]
 
       transhash = {}
       row_index.each do |i|
-        transhash[header[i]] = r[i]
+        transhash[@@header[i]] = r[i]
       end
 
       result[origin] = transhash
     end
-
     result
   end
   
@@ -41,6 +37,7 @@ class LSCSV
   end
 
   def self.varidate(file_name, rows)
+    raise "Invalid CSV Data" if @@header.nil?
     size = rows[0].size
     mismatch_cells = rows.select{ |r| r.size != size }
     if mismatch_cells.empty? == false
@@ -51,51 +48,43 @@ class LSCSV
   end
 
   def self.open(name)
+    result = nil
     begin
       file_name = name+".rvdata2"
-      p "try load_data(#{file_name})"
+      #p "try load_data(#{file_name})"
       trans_file = load_data(file_name)
       if trans_file.class == LsDumpData
-        p "OK"
-        result = trans_file.data.split(/(?<=[\n])\s*/)
-        return result
+        #p "OK"
+        # result = trans_file.data.split(/(?<=[\n])\s*/)
+        result = trans_file.data
       end
     rescue => e
       begin
-        p "failed load_data(#{file_name}) : #{e}"
+        #p "failed load_data(#{file_name}) : #{e}"
 
         file_name = name+".csv"
         trans_file = File.open(file_name, "rb:utf-8:utf-8")
-        p "OK"
-        return trans_file.readlines()
+        #p "OK"
+        result = trans_file.read
       rescue
         p "Warning : Not Found Transcript File #{file_name}"
       end
     end
-    return nil
+
+    if !result.nil? && 0<result.length
+      splited = result.split("\n", 2)
+      #2行無ければ無効
+      return nil if splited.size < 2
+
+      @@header = splited[0].split(',')
+    end
+
+    return result
   end
 
   def self.parse_row(csv_text)
-    return if csv_text.length == 0
-    lines = []
-    line_buffer = ""
-    csv_text.each do |l|
-      dq_count = l.count('\"');
-
-      if line_buffer != ""
-        dq_count += 1
-      end
-
-      if (dq_count%2) == 0
-        line_buffer += l
-        lines.push(line_buffer)
-        line_buffer = ""
-      else
-        line_buffer += l
-      end
-    end
-
-    return lines
+    return nil if csv_text.length == 0
+    return csv_text
   end
 
   def self.parse_col(rows)
@@ -105,47 +94,71 @@ class LSCSV
     find_quote = false
 
     add_col = lambda do |col|
-      #セルに分けた時点で先頭・末尾の""が不要になるため、削除する
+      #セルに分けた時点で先頭・末尾の"が不要になるため、削除する
       if col.start_with?("\"") && col.end_with?("\"")
         col = col.slice!(1..col.length-2)
       end
-      col.gsub!("\"\"", "\"") #値中の""は"と解釈
+
+      #"を表すための""はCSVでのみ必須のため、読み込み時点で""は"と解釈。
+      col.gsub!("\"\"", "\"") 
+
+      #各文章は\nで終わるのがVXAceの仕様っぽいので、
+      #末尾に\nが無ければ追加。ただし、ヘッダー行に当たる1行目は除く。
+      if 1 < result.size
+        if col.end_with?("\n") == false
+          col += "\n"
+        end
+      end
       cols.push(col)
     end
 
-    rows.each do |r|
-      col = ""
-      r.each_char do |c|
+    col = ""
+    rows.each_char do |c|
 
-        if c=="\""
-          find_quote = !find_quote
+      if c=="\""
+        find_quote = !find_quote
+      end
+
+      if find_quote
+        #""内なら無条件で追加
+        col += c
+        next
+      end
+
+      #以下は""で括られていない場合に通る
+      if c==","
+        find_quote = false
+        add_col.call(col)
+        col = ""
+      elsif c=="\n"
+        find_quote = false
+        add_col.call(col)
+        col = ""
+
+        #念のため、行中のセルがヘッダーと一致しない場合に空セルで埋める。
+        #最終列が空の場合で該当する。
+        #埋めないとvaridateで弾かれる。
+        if cols.size < @@header.size          
+          cols.fill("", cols.size, @@header.size-cols.size)
         end
-
-        if find_quote
-          col += c
-          next
-        end
-
-        if c==","
-          find_quote = false
-          add_col.call(col)
-          col = ""
-          next
-        elsif c=="\n"
-          find_quote = false
-          break
-        end
-
+        result.push(cols)
+        cols = []
+      else
         col += c
       end
 
-      add_col.call(col)
-
-      result.push(cols)
-      cols = []
-
     end
+
+    #最終行の行末がEOFの場合colに内容が残りっぱなしになるので、ここで確認する。
+    if col.empty? == false
+      add_col.call(col)
+    end
+
     if cols.empty? == false
+      #最終行の行末がnlではなくEOFの場合に、この条件に引っかかる
+      if cols.size < @@header.size          
+        cols.fill("", cols.size, @@header.size-cols.size)
+      end
       result.push(cols)
     end
 

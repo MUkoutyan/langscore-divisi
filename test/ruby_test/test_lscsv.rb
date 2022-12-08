@@ -26,50 +26,56 @@ class TestLSCSV < Test::Unit::TestCase
 		end
   end
 
-  # def test_openfile
 
-	# 	write_csv(["original,ja,en,zh-cn,zh-tw", "ほに,ほげ,Honi,Honnni"])
 
-	# 	result = LSCSV.open("test_csv")
-	# 	assert_not_nil result
-  # end
+  def test_openfile
 
-  # def test_csvrow1
-		
-	# 	write_csv(["original,ja,en,zh-cn,zh-tw", "ほに,ほげ,Honi,Honnni"])
-	# 	lines = LSCSV.parse_row(LSCSV.open("test_csv"))
+		write_csv(["original,ja,en,zh-cn,zh-tw", "ほに,ほげ,Honi,Honnni"])
 
-	# 	assert_equal "original,ja,en,zh-cn,zh-tw\n", lines[0]
-	# 	assert_equal "ほに,ほげ,Honi,Honnni\n", lines[1]
-  # end
+		result = LSCSV.open("test_csv")
+		assert_not_nil result
+  end
   
-  # def test_csvrow2
-		
-	# 	write_csv(["original,ja,en,zh-cn,zh-tw", "ほに,ほげ,Honi,Honnni", "\n"])
-	# 	lines = LSCSV.parse_row(LSCSV.open("test_csv"))
+  def test_csvrow_dq1
 
-	# 	assert_equal "original,ja,en,zh-cn,zh-tw\n", lines[0]
-	# 	assert_equal "ほに,ほげ,Honi,Honnni\n", lines[1]
-  # end
-  
-  # def test_csvrow_dq1
+		write_csv(["original,ja,en,zh-cn,\"zh-tw", "ほに\",ほげ,\"Honi\",Honnni"])
+		rows = LSCSV.parse_row(LSCSV.open("test_csv"))
+		lines = LSCSV.parse_col(rows)
 
-	# 	write_csv(["original,ja,en,zh-cn,\"zh-tw", "ほに\",ほげ,\"Honi\",Honnni"])
-	# 	rows = LSCSV.parse_row(LSCSV.open("test_csv"))
-	# 	lines = LSCSV.parse_col(rows)
+		assert_equal ["original","ja","en","zh-cn","zh-tw\nほに","ほげ","Honi","Honnni"], lines[0]
+  end
 
-	# 	assert_equal ["original","ja","en","zh-cn","zh-tw\nほに","ほげ","Honi","Honnni"], lines[0]
-  # end
+  def test_csvrow_dq2
+		#"を濁点として使用した場合の対応
+		write_csv(["original,ja,en,zh-cn,zh-tw", "\"ほに\"ほに,ほげ,H\"on\"i,Honnni"])
+		rows = LSCSV.parse_row(LSCSV.open("test_csv"))
+		lines = LSCSV.parse_col(rows)
 
-  # def test_csvrow_dq2
-	# 	#"を濁点として使用した場合の対応
-	# 	write_csv(["original,ja,en,zh-cn,zh-tw", "\"ほに\"ほに,ほげ,H\"on\"i,Honnni"])
-	# 	rows = LSCSV.parse_row(LSCSV.open("test_csv"))
-	# 	lines = LSCSV.parse_col(rows)
+		p rows
 
-	# 	assert_equal ["original","ja","en","zh-cn","zh-tw"], lines[0]
-	# 	assert_equal ["\"ほに\"ほに","ほげ","H\"on\"i","Honnni"], lines[1]
-  # end
+		assert_equal ["original","ja","en","zh-cn","zh-tw"], lines[0]
+		assert_equal ["\"ほに\"ほに","ほげ","H\"on\"i","Honnni", ""], lines[1]
+  end
+
+  def test_csvrow_dq3
+
+  text = []
+
+	write_csv(text, "test1")
+	rows = LSCSV.parse_row(LSCSV.open("test1"))
+	lines = LSCSV.parse_col(rows)
+	assert(lines == nil)
+  end
+
+  def test_csvrow_dq4
+		write_csv(["original,ja", "ほにほに,\"ほにほ\nに,ほに\nほに\""])
+		rows = LSCSV.parse_row(LSCSV.open("test_csv"))
+		lines = LSCSV.parse_col(rows)
+
+		assert_equal ["original","ja"], lines[0]
+		assert_equal ["ほにほに","ほにほ\nに,ほに\nほに"], lines[1]
+  end
+
   
   def test_csvrow_double_nl
 		#VXAce「文章のスクロール」対応
@@ -80,68 +86,59 @@ class TestLSCSV < Test::Unit::TestCase
 		assert_equal ["original","ja"], lines[0]
 		assert_equal ["ほにほに","ほに\n\nほに\n\nほに"], lines[1]
   end
-
-  # def test_csvrow_dq3
-
-  # text = []
-
-	# write_csv(text, "test1")
-	# rows = LSCSV.parse_row(LSCSV.open("test1"))
-	# lines = LSCSV.parse_col(rows)
-
-	# result_text = []
-	# assert_equal result_text, lines[0]
-  # end
-
   
-  # def test_varidate
+  def test_varidate
 
-	# 	write_csv(["original,ja,en,zh-cn,zh-tw", "\"ほに\"ほに,ほげ,H\"on\"i,H\'o\"nn\"n\'ii,Niiin"])
-	# 	rows = LSCSV.parse_row(LSCSV.open("test_csv"))
-	# 	lines = LSCSV.parse_col(rows)
+		write_csv(["original,ja,en,zh-cn,zh-tw", "\"ほに\"ほに,ほげ,H\"on\"i,H\'o\"nn\"n\'ii,Niiin"])
+		rows = LSCSV.parse_row(LSCSV.open("test_csv"))
+		lines = LSCSV.parse_col(rows)
 
-	# 	LSCSV.varidate("test_csv.csv", lines)
-  # end
+		LSCSV.varidate("test_csv.csv", lines)
+  end
 
-	# def test_readbomcsv
-	# 	result = LSCSV.to_hash("bom_csv")
-	# 	assert_equal result.length, 2
-	# end
+	def test_readbomcsv
+		result = LSCSV.to_hash("bom_csv")
+		assert_equal result.length, 2
+	end
 
-	# def test_readcsv
-	# 	result = LSCSV.to_hash("Actors_csv")
-	# 	assert_not_nil result
-	# 	assert(!result.empty?)
+	def test_readcsv
+		result = LSCSV.to_hash("Actors_csv")
+		assert_not_nil result
+		assert(!result.empty?)
 
-	# 	text = "数々の戦場を渡り歩き、生き延びてきた歴戦の傭兵。普段は\r\n温厚だが、ひとたび戦いが始まれば狂戦士と化す。"
-	# 	assert(result.has_key?(text))
-	# 	assert(result[text]["en"] != "")
-	# 	assert(result[text]["ja"] != "")
-	# 	assert(result[text]["zh-cn"] != "")
-	# 	assert(result[text]["zh-tw"] != "")
+		text = "数々の戦場を渡り歩き、生き延びてきた歴戦の傭兵。普段は\r\n温厚だが、ひとたび戦いが始まれば狂戦士と化す。"
+		assert(result.has_key?(text))
+		assert(result[text]["en"] != "")
+		assert(result[text]["ja"] != "")
+		assert(result[text]["zh-cn"] != "")
+		assert(result[text]["zh-tw"] != "")
 		
 
-	# end
+	end
 
-	# def test_readrvdata2
-	# 	result = LSCSV.to_hash("Actors")
-	# 	assert_not_nil result
-	# 	assert(!result.empty?)
+	def test_readrvdata2
+		result = LSCSV.to_hash("Actors")
+		assert_not_nil result
+		assert(!result.empty?)
 		
-	# 	text = "数々の戦場を渡り歩き、生き延びてきた歴戦の傭兵。普段は\r\n温厚だが、ひとたび戦いが始まれば狂戦士と化す。"
-	# 	assert(result.has_key?(text))
-	# 	assert_equal(result[text]["en"], "en-"+text)
-	# 	assert_equal(result[text]["ja"], "ja-"+text)
-	# 	assert_equal(result[text]["zh-cn"], "zh-cn-"+text)
-	# 	assert_equal(result[text]["zh-tw"], "zh-tw-"+text)
-		
-	# 	text = ""
-	# 	assert(result.has_key?(text))
-	# 	assert_equal(result[text]["en"], "en-"+text)
-	# 	assert_equal(result[text]["ja"], "ja-"+text)
-	# 	assert_equal(result[text]["zh-cn"], "zh-cn-"+text)
-	# 	assert_equal(result[text]["zh-tw"], "zh-tw-"+text)
+		text = "数々の戦場を渡り歩き、生き延びてきた歴戦の傭兵。普段は\r\n温厚だが、ひとたび戦いが始まれば狂戦士と化す。"
+		assert(result.has_key?(text))
+		assert_equal(result[text]["en"], "")
+		assert_equal(result[text]["ja"], text)
+		assert_equal(result[text]["zh-cn"], "")
+		assert_equal(result[text]["zh-tw"], "")
 
-	# end
+	end
+
+	def test_readrvdata3
+		result = LSCSV.to_hash("Map001")
+		assert_not_nil result
+		assert(!result.empty?)
+		
+		text = "いろはにほへと\n\nちりぬるを\n\nわかよたれそ\n\nつねならむ\n\nういのおくやま\n\nけふこえて\n\nあさきゆめみし\n\nえひもせず\n"
+		assert(result.has_key?(text))
+		assert_equal(result[text]["ja"], text)
+
+	end
 
 end
