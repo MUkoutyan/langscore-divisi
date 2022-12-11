@@ -4,14 +4,14 @@
 cmake_minimum_required (VERSION 3.22)
 set(CMAKE_CXX_STANDARD 20)
 
-project (divisi_project VERSION 0.5.7)
+project (divisi_project VERSION 0.6.2)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 
 set(DIVISI_TARGET_NAME              ${PROJECT_NAME})
-add_definitions(-DUNISON_RUBY_VERSION="0.8")
+add_definitions(-DUNISON_RUBY_VERSION="0.9")
 
 set(DIVISI_RESOURCE rvcnv/ resource/)
 

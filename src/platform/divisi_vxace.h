@@ -41,7 +41,7 @@ namespace langscore
 		void writeFixedBasicData();
 		void writeFixedRvScript();
 		void writeFixedGraphFileNameData();
-		void rewriteScriptList();
+		void rewriteScriptList(bool& replaceScript);
 
 		bool validateTranslateFileList(utility::filelist csvPathList) const;
 		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;
