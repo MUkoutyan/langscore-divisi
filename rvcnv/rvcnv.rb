@@ -496,7 +496,7 @@ end
 
 #================================================
 opt = OptionParser.new
-Version = "1.0.0"
+Version = "1.0.1"
 
 input_folder_path = ""
 opt.on_head('-i PROJPATH', '--input PROJPATH'){ |v| 
@@ -539,12 +539,16 @@ if packing
     attr_accessor :data
   end
   read_dir = input_folder_path
-  Dir.glob('**/*.csv', base: read_dir).each do |fileName|
+  Dir.glob('*.csv', base: read_dir).each do |fileName|
   
     origin = LsDumpData.new
-    origin.data = File.read(read_dir+"/"+fileName)
+    File.open(input_folder_path + "/" + fileName, 'rb:utf-8:utf-8') do |file|
+      texts = file.readlines().join()
+      origin.data = texts
+    end
     d = Marshal.dump(origin)
-    File.open(output_folder + "/" + File.basename(fileName, ".csv") + ".rvdata2", "wb") do | dumpFile |
+    output_path = output_folder + "/" + File.basename(fileName, ".csv") + ".rvdata2"
+    File.open(output_path, "wb") do | dumpFile |
       dumpFile.write(d)
     end
   end
