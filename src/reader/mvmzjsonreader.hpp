@@ -156,6 +156,7 @@ namespace langscore
 					switch(code){
 						case 102: //選択肢
 						case 401: //文章の表示
+						case 405:
 							//case 231: //画像の表示
 							result = true;
 						default:
@@ -181,13 +182,6 @@ namespace langscore
 					else if(s->is_object())
 					{
 						convertJObjectInKey(parentClass, *s);
-						//auto key = utility::cnvStr<std::u8string>(s.key());
-
-						//for(auto& checkKey : recursiveDetects)
-						//{
-						//	if(key != checkKey){ continue; }
-						//	convertJObject(*s);
-						//}
 					}
 					else if(s->is_string()){
 						addText(*s);
@@ -227,10 +221,10 @@ namespace langscore
 
 					if(checkKey == u8"code"){
 						auto [result, code] = checkEventCommandCode(root);
-						if(stackText == false && code == 401){
+						if(stackText == false && (code == 401 || code == 405)){
 							stackText = true;
 						}
-						else if(stackText && code != 401){
+						else if(stackText && (code != 401 && code != 405)){
 							stackText = false;
 							addText(stackTextStr);
 							stackTextStr.clear();
