@@ -1,4 +1,4 @@
-#include "divisi_mvmz.h"
+ï»¿#include "divisi_mvmz.h"
 #include "config.h"
 #include "writer/csvwriter.h"
 #include "reader/csvreader.h"
@@ -65,7 +65,7 @@ ErrorStatus divisi_mvmz::analyze()
     fs::copy(scriptProjPath, destScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
 
 
-    //‰ğÍ‚Å‚ÍŒ¾Œê‚ğg—p‚µ‚È‚¢B ‘‚«o‚³‚ê‚éCSV‚ÍƒIƒŠƒWƒiƒ‹•¶‚Ì‚İ‚ğ•\¦‚³‚¹‚éB
+    //è§£æã§ã¯è¨€èªã‚’ä½¿ç”¨ã—ãªã„ã€‚ æ›¸ãå‡ºã•ã‚Œã‚‹CSVã¯ã‚ªãƒªã‚¸ãƒŠãƒ«æ–‡ã®ã¿ã‚’è¡¨ç¤ºã•ã›ã‚‹ã€‚
     this->supportLangs.clear();
 
     std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(baseDirecotry);
@@ -80,29 +80,29 @@ ErrorStatus divisi_mvmz::analyze()
 ErrorStatus divisi_mvmz::update()
 {
     config config;
-    //•Ï‚Éƒ}[ƒW‚µ‚È‚¢‚æ‚¤‚Éˆê’U‘Síœ
+    //å¤‰ã«ãƒãƒ¼ã‚¸ã—ãªã„ã‚ˆã†ã«ä¸€æ—¦å…¨å‰Šé™¤
     const auto updateDirPath = config.langscoreUpdateDirectorty();
     const auto analyzeDirPath = config.langscoreAnalyzeDirectorty();
     fs::remove_all(updateDirPath);
 
-    auto runResult = this->invoker.update();
-    if(runResult.val() != 0){
-        std::cerr << runResult.toStr() << std::endl;
-        return runResult;
-    }
+    //auto runResult = this->invoker.update();
+    //if(runResult.val() != 0){
+    //    std::cerr << runResult.toStr() << std::endl;
+    //    return runResult;
+    //}
 
-    //ƒAƒbƒvƒf[ƒg‚Å‚àŒ¾Œê‚ğg—p‚µ‚È‚¢B ‘‚«o‚³‚ê‚éCSV‚ÍƒIƒŠƒWƒiƒ‹•¶‚Ì‚İ‚ğ•\¦‚³‚¹‚éB
+    //ã‚¢ãƒƒãƒ—ãƒ‡ãƒ¼ãƒˆã§ã‚‚è¨€èªã‚’ä½¿ç”¨ã—ãªã„ã€‚ æ›¸ãå‡ºã•ã‚Œã‚‹CSVã¯ã‚ªãƒªã‚¸ãƒŠãƒ«æ–‡ã®ã¿ã‚’è¡¨ç¤ºã•ã›ã‚‹ã€‚
     this->supportLangs.clear();
 
     //std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(updateDirPath);
 
-    //updateƒtƒHƒ‹ƒ_‚ÖCSV‚Ì‘‚«o‚µ
+    //updateãƒ•ã‚©ãƒ«ãƒ€ã¸CSVã®æ›¸ãå‡ºã—
     //this->writeAnalyzedBasicData();
     //this->writeAnalyzedRvScript(updateDirPath);
 
     //auto [analyzeScripts, analyzeDataList, analyzeGraphics] = fetchFilePathList(analyzeDirPath);
 
-    //ƒtƒ@ƒCƒ‹‚ÌƒŠƒXƒgƒAƒbƒv
+    //ãƒ•ã‚¡ã‚¤ãƒ«ã®ãƒªã‚¹ãƒˆã‚¢ãƒƒãƒ—
     filelist analyzeCsvList;
     for(const auto& f : fs::directory_iterator{analyzeDirPath}){
         auto extension = f.path().extension();
@@ -121,7 +121,7 @@ ErrorStatus divisi_mvmz::update()
     enum Type{ Add, Delete, Update };
     std::vector<std::pair<fs::path, Type>> messageList;
 
-    //Á‚³‚ê‚éƒtƒ@ƒCƒ‹‚Ì—ñ‹“
+    //æ¶ˆã•ã‚Œã‚‹ãƒ•ã‚¡ã‚¤ãƒ«ã®åˆ—æŒ™
     for(auto s : analyzeCsvList){
         auto result = std::find_if(updateCsvList.begin(), updateCsvList.end(), [&s](const auto& x){
             return x.filename() == s.filename();
@@ -130,7 +130,7 @@ ErrorStatus divisi_mvmz::update()
             messageList.emplace_back(std::make_pair(s.filename(), Type::Delete));
         }
     }
-    //’Ç‰Á‚³‚ê‚éƒtƒ@ƒCƒ‹‚Ì—ñ‹“
+    //è¿½åŠ ã•ã‚Œã‚‹ãƒ•ã‚¡ã‚¤ãƒ«ã®åˆ—æŒ™
     for(auto s : updateCsvList){
         auto result = std::find_if(analyzeCsvList.begin(), analyzeCsvList.end(), [&s](const auto& x){
             return x.filename() == s.filename();
@@ -140,7 +140,7 @@ ErrorStatus divisi_mvmz::update()
         }
     }
 
-    //XV‚³‚ê‚éƒtƒ@ƒCƒ‹‚Ìƒ`ƒFƒbƒN    
+    //æ›´æ–°ã•ã‚Œã‚‹ãƒ•ã‚¡ã‚¤ãƒ«ã®ãƒã‚§ãƒƒã‚¯    
     const auto CompareFileHash = [&messageList](std::filesystem::path path, const filelist& files)
     {
         auto result = std::find_if(files.begin(), files.end(), [&path](const auto& x){
@@ -168,12 +168,12 @@ ErrorStatus divisi_mvmz::update()
         CompareFileHash(std::move(s), updateCsvList);
     }
 
-    //ƒtƒ@ƒCƒ‹‚Ì•À‚Ñ‚ª‘µ‚Á‚Ä‚È‚¢‚Ì‚Åˆê’U‘µ‚¦‚é
+    //ãƒ•ã‚¡ã‚¤ãƒ«ã®ä¸¦ã³ãŒæƒã£ã¦ãªã„ã®ã§ä¸€æ—¦æƒãˆã‚‹
     std::sort(messageList.begin(), messageList.end(), [](const auto& x, const auto& y){
         return x.first < y.first;
     });
 
-    //ƒƒbƒZ[ƒW‚ğo‚µ‚Â‚ÂAƒtƒ@ƒCƒ‹‚ÌˆÚ“®
+    //ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã‚’å‡ºã—ã¤ã¤ã€ãƒ•ã‚¡ã‚¤ãƒ«ã®ç§»å‹•
     for(auto& mes : messageList){
         if(mes.second == Type::Add){
             std::cout << "Add : " << mes.first << std::endl;
@@ -205,9 +205,9 @@ ErrorStatus divisi_mvmz::write()
         fs::create_directories(folder);
     }
 
-    //std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(config.langscoreAnalyzeDirectorty());
+    std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(config.langscoreAnalyzeDirectorty());
 
-    //writeFixedBasicData();
+    writeFixedBasicData();
     //writeFixedRvScript();
     //writeFixedGraphFileNameData();
 
@@ -217,12 +217,12 @@ ErrorStatus divisi_mvmz::write()
     //rewriteScriptList();
     std::cout << "Done." << std::endl;
 
-    std::cout << "Compress." << std::endl;
-    auto runResult = this->invoker.recompressVXAce();
-    if(runResult.val() != 0){
-        return runResult;
-    }
-    std::cout << "Done." << std::endl;
+    //std::cout << "Compress." << std::endl;
+    //auto runResult = this->invoker.recompressVXAce();
+    //if(runResult.val() != 0){
+    //    return runResult;
+    //}
+    //std::cout << "Done." << std::endl;
 
     std::cout << "Write Translate File Done." << std::endl;
     return Status_Success;
@@ -245,7 +245,7 @@ ErrorStatus divisi_mvmz::validate()
         }
     }
 
-    //®‡«ƒ`ƒFƒbƒN
+    //æ•´åˆæ€§ãƒã‚§ãƒƒã‚¯
     if(config.exportByLanguage())
     {
     }
@@ -260,10 +260,10 @@ ErrorStatus divisi_mvmz::validate()
 ErrorStatus divisi_mvmz::packing()
 {
     std::cout << "Packing." << std::endl;
-    auto runResult = this->invoker.packingVXAce();
-    if(runResult.val() != 0){
-        return runResult;
-    }
+    //auto runResult = this->invoker.packingVXAce();
+    //if(runResult.val() != 0){
+    //    return runResult;
+    //}
 
     return Status_Success;
 }
@@ -324,7 +324,7 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
     for(auto& f : graphItr)
     {
         if(f.is_directory()){ continue; }
-        //ƒpƒX‹æØ‚è•¶š‚Í\\‚Å‚Í‚È‚­/‚É“ˆê(\\‚ÍRuby‚Å“Ç‚İæ‚ê‚È‚¢)
+        //ãƒ‘ã‚¹åŒºåˆ‡ã‚Šæ–‡å­—ã¯\\ã§ã¯ãªã/ã«çµ±ä¸€(\\ã¯Rubyã§èª­ã¿å–ã‚Œãªã„)
         const auto& path = f.path();
         const auto ext = path.stem();
         if(ext == ".png"){
@@ -352,6 +352,45 @@ void divisi_mvmz::writeAnalyzedBasicData()
 
         csvwriter writer(this->supportLangs, std::make_unique<mvmz_jsonreader>(path, json));
         writer.write(csvFilePath, MergeTextMode::AcceptTarget);
+    }
+    std::cout << "Finish." << std::endl;
+}
+
+void langscore::divisi_mvmz::writeFixedBasicData()
+{
+    std::cout << "writeFixedBasicData" << std::endl;
+
+    config config;
+    std::u8string root;
+    const auto translateFolderList = config.exportDirectory(root);
+
+    auto mergeTextMode = MergeTextMode::MergeKeepSource;
+    auto mergeTextModeRaw = config.globalWriteMode();
+    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
+        mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
+    }
+
+    auto ignoreScripts = config.vxaceBasicData();
+    for(auto& path : this->basicDataFileList)
+    {
+        auto result = std::find_if(ignoreScripts.cbegin(), ignoreScripts.cend(), [f = path.filename()](const auto& x){
+            return x.ignore && x.filename == f.u8string();
+        });
+        if(result != ignoreScripts.cend()){
+            continue;
+        }
+
+        std::ifstream loadFile(path);
+        nlohmann::json json;
+        loadFile >> json;
+
+        auto csvFilePath = path.filename();
+        csvFilePath.make_preferred().replace_extension(".csv");
+        for(auto& translateFolder : translateFolderList){
+            csvFilePath = translateFolder / csvFilePath;
+            std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
+            writeFixedTranslateText<csvwriter>(csvFilePath, std::make_unique<mvmz_jsonreader>(path, json), mergeTextMode);
+        }
     }
     std::cout << "Finish." << std::endl;
 }
