@@ -12,7 +12,6 @@ namespace langscore
 			, stackText(false)
 			, stackTextStr(u8"")
 		{
-			json2tt();
 		}
 		~vxace_jsonreader() override {}
 
@@ -84,8 +83,9 @@ namespace langscore
 				texts.emplace_back(std::move(t));
 			}
 		}
-		void json2tt() override
+		void json2tt(std::vector<std::u8string> useLangs) override
 		{
+			this->useLangs = std::move(useLangs);
 			if(json.is_array())
 			{
 				convertJArray(json);

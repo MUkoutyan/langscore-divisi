@@ -9,8 +9,7 @@ using namespace std::string_literals;
 writerbase::writerbase(std::vector<std::u8string> langs, const std::unique_ptr<jsonreaderbase>& json)
 	: writerbase(std::move(langs), std::vector<TranslateText>{})
 {
-	json->json2tt();
-	this->useLangs = std::move(json->useLangs);
+	json->json2tt(this->useLangs);
 	this->texts = std::move(json->texts);
 
 	//#ifdef _DEBUG

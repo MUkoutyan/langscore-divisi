@@ -14,13 +14,13 @@ namespace langscore
 			, stackTextStr(u8"")
 			, currentDataType(DetectDataType(path))
 		{
-			json2tt();
 		}
 		~mvmz_jsonreader() override {}
 
 	private:
-		void json2tt() override
+		void json2tt(std::vector<std::u8string> useLangs) override
 		{
+			this->useLangs = std::move(useLangs);
 			if(json.is_array())
 			{
 				convertJArray(json);
