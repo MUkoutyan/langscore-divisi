@@ -12,6 +12,13 @@
 #include <iostream>
 #include <random>
 
+/*
+文章中の改行コードメモ
+通常会話 : \n
+スクロール文章の改行 : \n\n
+装備やスキルの説明 : \r\n
+*/
+
 using namespace langscore;
 using namespace std::literals::string_literals;
 namespace fs = std::filesystem;
