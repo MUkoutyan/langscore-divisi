@@ -16,7 +16,9 @@ module Langscore
   %{TRANSLATE_FOLDER}%
 
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
-  $ls_current_map = nil
+  #ハッシュそのものからハッシュを格納するハッシュに変更。
+  #イベント中にマップ移動が行われた場合、翻訳内容がクリアされる問題への対応のため。
+  $ls_current_map = {}
   $ls_graphic_cache = {}
  
 end
@@ -272,6 +274,12 @@ end
 #-----------------------------------------------------
 
 class Game_Map
+
+  def Game_Map.ls_finalize
+    proc {
+      $ls_current_map.delete(@map_id)
+    }
+  end
   
   alias ls_base_setup setup
   def setup(map_id)
@@ -279,8 +287,10 @@ class Game_Map
     
     file_name  = sprintf("Map%03d", @map_id)
 
-    $ls_current_map = LSCSV.to_hash(file_name)
-    # p $ls_current_map
+    $ls_current_map[@map_id] = LSCSV.to_hash(file_name)
+    #メモリ節約のためファイナライズで翻訳内容を消す。GC頼りなのでおまじない程度の気持ち。
+    #会話中に何故かクラッシュした場合は真っ先に外す。
+    ObjectSpace.define_finalizer(self, Game_Map.ls_finalize)
   end
 end
   
@@ -298,7 +308,14 @@ class Window_Base < Window
     updateThreads = []
     if $ls_current_map
       updateThreads << Thread.new do
-        result_text[0] = Langscore.translate(text, $ls_current_map)
+        result_text[0] = text
+        $ls_current_map.each_value do |trans|
+          result = Langscore.translate(text, trans)
+          if result != text
+            result_text[0] = result
+            break
+          end
+        end
       end
     end
     updateThreads << Thread.new do
