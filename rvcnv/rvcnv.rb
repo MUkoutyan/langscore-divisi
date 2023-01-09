@@ -496,7 +496,7 @@ end
 
 #================================================
 opt = OptionParser.new
-Version = "1.0.1"
+Version = "1.0.2"
 
 input_folder_path = ""
 opt.on_head('-i PROJPATH', '--input PROJPATH'){ |v| 
@@ -548,7 +548,10 @@ if packing
     end
     d = Marshal.dump(origin)
     output_path = output_folder + "/" + File.basename(fileName, ".csv") + ".rvdata2"
-    File.open(output_path, "wb") do | dumpFile |
+    File.open(output_path, "wb") do                                     | dumpFile |
+      p "packing"
+      p "  Input  : #{input_folder_path + "/" + fileName}"
+      p "  Output : #{output_path}"
       dumpFile.write(d)
     end
   end

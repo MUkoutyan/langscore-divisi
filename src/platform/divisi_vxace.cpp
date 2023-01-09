@@ -285,6 +285,7 @@ ErrorStatus langscore::divisi_vxace::packing()
     if(runResult.val() != 0){
         return runResult;
     }
+    std::cout << "Done." << std::endl;
 
     return Status_Success;
 }
