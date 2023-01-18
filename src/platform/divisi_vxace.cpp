@@ -566,10 +566,6 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
     while(std::getline(inScriptFile, _linTmp))
     {
         std::u8string _line(_linTmp.begin(), _linTmp.end());
-        if(findStr(_line, u8"%{SCRIPT_VERSION}%"))
-        {
-            _line = u8"# Version : "s + utility::cnvStr<std::u8string>(std::string(UNISON_RUBY_VERSION));
-        }
         if(findStr(_line, u8"%{SUPPORT_LANGUAGE}%"))
         {
             auto list = this->supportLangs;
