@@ -603,9 +603,6 @@ File.open(data_folder+"/Scripts.rvdata2", 'rb') do |file|
     
     name = EMPTY_SCRIPT_NAME if name.empty?
 
-    next if name == "langscore"
-    next if name == "langscore_custom"
-    
     script_path = script_folder+'/'+id.to_s+'.rb'
     script_list.push([id.to_s, script_path, name, d])
   end
