@@ -135,9 +135,19 @@ class TestLSCSV < Test::Unit::TestCase
 		assert_not_nil result
 		assert(!result.empty?)
 		
-		text = "いろはにほへと\n\nちりぬるを\n\nわかよたれそ\n\nつねならむ\n\nういのおくやま\n\nけふこえて\n\nあさきゆめみし\n\nえひもせず\n"
+		text = "いろはにほへと\n\nちりぬるを\n\nわかよたれそ\n\nつねならむ\n\nういのおくやま\n\nけふこえて\n\nあさきゆめみし\n\nえひもせず"
 		assert(result.has_key?(text))
 		assert_equal(result[text]["ja"], text)
+
+	end
+
+	def test_readrvdata4
+		result = LSCSV.to_hash("Scripts")
+		assert_not_nil result
+		assert(!result.empty?)
+		
+		assert(result.has_key?("97506006:11:22"))
+		assert_equal(result["97506006:11:22"]["zh-cn"], "购买")
 
 	end
 
