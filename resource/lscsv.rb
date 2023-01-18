@@ -1,4 +1,4 @@
-
+#==========LSCSV==========
 class LsDumpData
   attr_accessor :data
 end
@@ -11,11 +11,11 @@ class LSCSV
     rows = parse_col(parse_row(file))
     varidate(file_name, rows)
 
-    #To Hash
-    row_index = (1...@@header.size).select do |i|
+    row_index = [*1..@@header.size].select! do |i|
       Langscore::SUPPORT_LANGUAGE.include?(@@header[i])
     end
 
+    #To Hash
     result = {}
     rows[1...rows.size].each do |r|
       origin = r[0]
@@ -25,7 +25,6 @@ class LSCSV
       row_index.each do |i|
         transhash[@@header[i]] = r[i]
       end
-
       result[origin] = transhash
     end
     result
@@ -51,20 +50,17 @@ class LSCSV
     result = nil
     begin
       file_name = name+".rvdata2"
-      #p "try load_data(#{file_name})"
       trans_file = load_data(file_name)
       if trans_file.class == LsDumpData
-        #p "OK"
-        # result = trans_file.data.split(/(?<=[\n])\s*/)
+        p "load_data #{file_name}"
         result = trans_file.data
       end
     rescue => e
       begin
-        #p "failed load_data(#{file_name}) : #{e}"
 
         file_name = name+".csv"
         trans_file = File.open(file_name, "rb:utf-8:utf-8")
-        #p "OK"
+        p "open #{file_name}"
         result = trans_file.read
       rescue
         p "Warning : Not Found Transcript File #{file_name}"
@@ -77,6 +73,7 @@ class LSCSV
       return nil if splited.size < 2
 
       @@header = splited[0].split(',')
+      @@header.map!{|lang| lang.chomp }
     end
 
     return result
@@ -94,21 +91,14 @@ class LSCSV
     find_quote = false
 
     add_col = lambda do |col|
+      col.chomp! #末尾に改行があれば削除
       #セルに分けた時点で先頭・末尾の"が不要になるため、削除する
       if col.start_with?("\"") && col.end_with?("\"")
         col = col.slice!(1..col.length-2)
       end
 
       #"を表すための""はCSVでのみ必須のため、読み込み時点で""は"と解釈。
-      col.gsub!("\"\"", "\"") 
-
-      #各文章は\nで終わるのがVXAceの仕様っぽいので、
-      #末尾に\nが無ければ追加。ただし、ヘッダー行に当たる1行目は除く。
-      if 1 < result.size
-        if col.end_with?("\n") == false
-          col += "\n"
-        end
-      end
+      col.gsub!("\"\"", "\"")
       cols.push(col)
     end
 
@@ -131,6 +121,7 @@ class LSCSV
         add_col.call(col)
         col = ""
       elsif c=="\n"
+        col += c #一旦改行を追加。add_col内のchompが適用できるようにする。
         find_quote = false
         add_col.call(col)
         col = ""
@@ -165,3 +156,4 @@ class LSCSV
     result
   end
 end
+#==========LSCSV==========

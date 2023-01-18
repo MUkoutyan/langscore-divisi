@@ -1,7 +1,7 @@
 #---------------------------------------------------------------
 # 
 # Langscore CoreScript "Unison" 
-# %{SCRIPT_VERSION}% 
+# Version 0.9.2
 # Written by BreezeSinfonia 來奈津
 # 
 # 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -39,17 +39,27 @@ module Langscore
   def self.translate(text, langscore_hash, lang = $langscore_current_language)
 
     return text if langscore_hash == nil
+    
+    key = text
 
-    key = text 
-
-    translist = langscore_hash[key]
-    if translist != nil
-      t = translist[lang]
-      if t != nil && t != ""
-        text = t
+    if langscore_hash.has_key?(key)
+      translist = langscore_hash[key]
+      if translist.has_key?(lang)
+        t = translist[lang]
+        text = t unless t.empty?
       end
     end
     text
+  end
+  
+  def self.translate_for_map(text)
+    $ls_current_map.each_value do |trans|
+      result = Langscore.translate(text, trans)
+      if result != text
+        return result
+      end
+    end
+    return text
   end
 
   def self.translate_for_script(text)
@@ -308,14 +318,7 @@ class Window_Base < Window
     updateThreads = []
     if $ls_current_map
       updateThreads << Thread.new do
-        result_text[0] = text
-        $ls_current_map.each_value do |trans|
-          result = Langscore.translate(text, trans)
-          if result != text
-            result_text[0] = result
-            break
-          end
-        end
+        result_text[0] = Langscore.translate_for_map(text)
       end
     end
     updateThreads << Thread.new do
@@ -358,22 +361,18 @@ DataManager::module_eval <<-eval
     
     updateThreads << Thread.new do
       $ls_graphics_tr ||= LSCSV.to_hash("Graphics")
-      p "Load Graphics Translate Data"# + $ls_graphics_tr.to_s
     end
 
     updateThreads << Thread.new do
       $ls_scripts_tr ||= LSCSV.to_hash("Scripts")
-      p "Load Scripts Translate Data" if $ls_scripts_tr
     end
     
     updateThreads << Thread.new do
       $ls_troop_tr ||= LSCSV.to_hash("Troops")
-      p "Load Troops Translate Data" if $ls_troop_tr
     end
     
     updateThreads << Thread.new do
       $ls_common_event ||= LSCSV.to_hash("CommonEvents")
-      p "Load CommonEvents Translate Data" if $ls_common_event
     end
 
     updateThreads.each { |t| t.join }
