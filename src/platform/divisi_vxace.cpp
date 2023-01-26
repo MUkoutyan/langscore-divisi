@@ -472,7 +472,8 @@ void langscore::divisi_vxace::writeFixedBasicData()
         mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
     }
 
-    auto writeRvCsv = [this, &translateFolderList, mergeTextMode](fs::path inputPath)
+    std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>> jsonreader_map;
+    auto writeRvCsv = [this, &translateFolderList, &jsonreader_map, mergeTextMode](fs::path inputPath)
     {
         std::ifstream loadFile(inputPath);
         nlohmann::json json;
@@ -483,22 +484,74 @@ void langscore::divisi_vxace::writeFixedBasicData()
         for(auto& translateFolder : translateFolderList){
             csvFilePath = translateFolder / csvFilePath;
             std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
-            writeFixedTranslateText<csvwriter>(csvFilePath, std::make_unique<vxace_jsonreader>(json), mergeTextMode);
+            std::unique_ptr<jsonreaderbase> reader = std::make_unique<vxace_jsonreader>(std::move(json));
+            writeFixedTranslateText<csvwriter>(csvFilePath, reader, mergeTextMode);
+            jsonreader_map[csvFilePath] = std::move(reader);
         }
     };
 
     auto ignoreScripts = config.vxaceBasicData();
-    for(auto& path : this->basicDataFileList)
-    {
+    auto list = this->basicDataFileList;
+    auto rm_result = std::remove_if(list.begin(), list.end(), [&](const auto& path){
         auto result = std::find_if(ignoreScripts.cbegin(), ignoreScripts.cend(), [f = path.filename()](const auto& x){
             return x.ignore && x.filename == f.u8string();
         });
-        if(result != ignoreScripts.cend()){ 
-            continue; 
+        return result != ignoreScripts.cend();
+    });
+    list.erase(rm_result, list.end());
+    //一通り書き出し
+    std::for_each(list.begin(), list.end(), [&writeRvCsv](const auto& path){ writeRvCsv(path); });
+
+    //アクター名の変更・二つ名の変更　の抽出
+    utility::u8stringlist extend_names;
+    fs::path actor_path;
+    for(auto& path : list)
+    {
+        auto filename = path.filename();
+        if(filename.string().find("Actors") != std::string::npos){
+            actor_path = path;
+            continue;
+        }
+        if(filename.string().find("Map") == std::string::npos){ continue; }
+
+        if(jsonreader_map.find(path.replace_extension(".csv")) == jsonreader_map.end()) { continue; }
+        const auto& json_reader = jsonreader_map[path];
+        for(auto& text : json_reader->texts){
+            if(text.code == 320 || text.code == 324){
+                extend_names.emplace_back(text.original);
+            }
+        }
+    }
+    std::sort(extend_names.begin(), extend_names.end());
+    extend_names.erase(std::unique(extend_names.begin(), extend_names.end()), extend_names.end());
+
+    auto actor_filename = actor_path.filename().replace_extension(".csv");
+    for(auto& translateFolder : translateFolderList)
+    {
+        auto actor_csv_filepath = translateFolder / actor_filename;
+        csvreader actor;
+        auto plain_csv = actor.parsePlain(actor_csv_filepath.replace_extension(".csv"));
+
+        for(const auto& name : extend_names)
+        {
+            auto result = std::find_if(plain_csv.cbegin(), plain_csv.cend(), [&](const auto& row){
+                return row[0] == name;
+            });
+            if(result != plain_csv.cend()){ continue; }
+
+            utility::u8stringlist row;
+            row.reserve(this->supportLangs.size() + 1);
+            row.emplace_back(name);
+            for(const auto& l : this->supportLangs){
+                row.emplace_back((l == this->defaultLanguage) ? name : u8""s);
+            }
+            plain_csv.emplace_back(std::move(row));
+            
         }
 
-        writeRvCsv(path);
+        csvwriter::writePlain(actor_csv_filepath, std::move(plain_csv), MergeTextMode::AcceptTarget);
     }
+
     std::cout << "Finish." << std::endl;
 }
 
