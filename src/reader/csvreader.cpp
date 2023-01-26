@@ -30,64 +30,79 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 
 std::vector<utility::u8stringlist> csvreader::parsePlain(std::filesystem::path path)
 {
-	std::ifstream file(path);
+	std::ifstream file(path, std::ios::binary);
 	if(file.bad()){ return {}; }
 
 	utility::u8stringlist rows;
-	std::string _line;
 	std::u8string line_buffer;
-	while(std::getline(file, _line))
+
+	const auto GetChar = [&file]()
 	{
-		std::u8string line(_line.begin(), _line.end());
-		auto num_dq = std::count(line.begin(), line.end(), u8'\"');
+		std::u8string result;
+		if(file.eof()){ return result; }
 
-		if(line_buffer.empty() == false){
-			num_dq += 1;
-		}
-
-		if(num_dq % 2 == 0){
-			line_buffer += line;
-			rows.emplace_back(std::move(line_buffer));
-			line_buffer = u8"";
-		}
-		else{
-			line_buffer += line + u8'\n';	//getlineに改行は含まれないのでここで足す
-		}
-	}
+		char c;
+		file.get(c);
+		auto length = utility::getUTF8ByteLength(c);
+		result.resize(length);
+		size_t i = 0;
+		while(true)
+		{
+			result[i] = c;
+			i++;
+			if(file.eof() || length <= i){ break; }
+			file.get(c);
+		} 
+			
+		return result;
+	};
 
 	bool find_dq = false;
 	std::vector<utility::u8stringlist> csv;
-	for(auto& row : rows)
+	std::u8string col = u8"";
+	utility::u8stringlist cols;
+
+	const auto AddCols = [&cols](std::u8string col){
+		if(col.empty() == false && col[col.size() - 1] == u8'\n'){ col.erase(col.size() - 1, 1); }
+		if(col.empty() == false && col[col.size() - 1] == u8'\r'){ col.erase(col.size() - 1, 1); }
+		cols.emplace_back(std::move(col));
+	};
+
+	while(file.eof() == false)
 	{
-		std::u8string tmp = u8"";
-		utility::u8stringlist cols;
-		for(auto c : row)
-		{
-			if(c == u8'\"'){ find_dq = !find_dq; }
+		auto c = GetChar();
+		if(file.eof() || c == u8""){ continue; }
 
-			if(find_dq){
-				tmp.append(1, c);
-				continue;
-			}
+		if(c == u8"\""){ find_dq = !find_dq; }
 
-			if(c == u8','){
-				find_dq = false;
-				cols.emplace_back(std::move(tmp));
-				tmp = u8"";
-				continue;
-			}
-			else if(c == u8'\n'){
-				find_dq = false;
-				cols.emplace_back(std::move(tmp));
-				tmp = u8"";
-				break;
-			}
-			tmp.append(1, c);
+		if(find_dq){
+			std::copy(c.begin(), c.end(), std::back_inserter(col));
+			continue;
 		}
-		if(tmp.empty() == false){ cols.emplace_back(std::move(tmp)); }
 
+		if(c == u8","){
+			find_dq = false;
+			AddCols(std::move(col));
+			col = u8"";
+			continue;
+		}
+		else if(c == u8"\n"){
+			find_dq = false;
+			AddCols(std::move(col));
+			col = u8"";
+			csv.emplace_back(cols);
+			cols.clear();
+			continue;
+		}
+		std::copy(c.begin(), c.end(), std::back_inserter(col));
+	}
+
+	if(col.empty() == false){ cols.emplace_back(std::move(col)); }
+
+	if(cols.empty() == false){
 		csv.emplace_back(std::move(cols));
 	}
+
 
 	return csv;
 }

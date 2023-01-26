@@ -238,7 +238,7 @@ ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
 
 ErrorStatus langscore::csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, MergeTextMode overwriteMode)
 {
-    std::ofstream outputCSVFile(path);
+    std::ofstream outputCSVFile(path, std::ios::binary);
     if(outputCSVFile.bad()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
 
     const std::u8string delimiter(u8",");
