@@ -4,26 +4,31 @@ class LsDumpData
 end
 class LSCSV
   
+  $lscsv_resource_locker = Mutex::new
   def self.to_hash(file_name)
+    $ls_resource_locker.lock
     file = open(Langscore::TRANSLATE_FOLDER + "/" + file_name)
+    $ls_resource_locker.unlock
     return {} if file == nil
 
-    rows = parse_col(parse_row(file))
-    varidate(file_name, rows)
+    header = fetch_header(file)
 
-    row_index = [*1..@@header.size].select! do |i|
-      Langscore::SUPPORT_LANGUAGE.include?(@@header[i])
+    rows = parse_col(header, parse_row(file))
+    varidate(file_name, header, rows)
+
+    row_index = [*1..header.size].select! do |i|
+      Langscore::SUPPORT_LANGUAGE.include?(header[i])
     end
 
     #To Hash
     result = {}
     rows[1...rows.size].each do |r|
       origin = r[0]
-      trans  = r[1...@@header.size]
+      trans  = r[1...header.size]
 
       transhash = {}
       row_index.each do |i|
-        transhash[@@header[i]] = r[i]
+        transhash[header[i]] = r[i]
       end
       result[origin] = transhash
     end
@@ -35,8 +40,8 @@ class LSCSV
     return hash.values
   end
 
-  def self.varidate(file_name, rows)
-    raise "Invalid CSV Data" if @@header.nil?
+  def self.varidate(file_name, header, rows)
+    raise "Invalid CSV Data" if header.nil?
     size = rows[0].size
     mismatch_cells = rows.select{ |r| r.size != size }
     if mismatch_cells.empty? == false
@@ -67,16 +72,21 @@ class LSCSV
       end
     end
 
-    if !result.nil? && 0<result.length
-      splited = result.split("\n", 2)
+    return result
+  end
+
+  def self.fetch_header(csv_text)
+    if !csv_text.nil? && 0<csv_text.length
+      splited = csv_text.split("\n", 2)
       #2行無ければ無効
       return nil if splited.size < 2
 
-      @@header = splited[0].split(',')
-      @@header.map!{|lang| lang.chomp }
+      header = splited[0].split(',')
+      header.map!{|lang| lang.chomp }
+      return header
     end
 
-    return result
+    return nil
   end
 
   def self.parse_row(csv_text)
@@ -84,7 +94,7 @@ class LSCSV
     return csv_text
   end
 
-  def self.parse_col(rows)
+  def self.parse_col(header, rows)
     return if rows == nil
     result = []
     cols = []
@@ -129,8 +139,8 @@ class LSCSV
         #念のため、行中のセルがヘッダーと一致しない場合に空セルで埋める。
         #最終列が空の場合で該当する。
         #埋めないとvaridateで弾かれる。
-        if cols.size < @@header.size          
-          cols.fill("", cols.size, @@header.size-cols.size)
+        if cols.size < header.size          
+          cols.fill("", cols.size, header.size-cols.size)
         end
         result.push(cols)
         cols = []
@@ -147,8 +157,8 @@ class LSCSV
 
     if cols.empty? == false
       #最終行の行末がnlではなくEOFの場合に、この条件に引っかかる
-      if cols.size < @@header.size          
-        cols.fill("", cols.size, @@header.size-cols.size)
+      if cols.size < header.size          
+        cols.fill("", cols.size, header.size-cols.size)
       end
       result.push(cols)
     end

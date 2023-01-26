@@ -1,7 +1,7 @@
 #---------------------------------------------------------------
 # 
 # Langscore CoreScript "Unison" 
-# Version 0.9.2
+# Version 0.9.4
 # Written by BreezeSinfonia 來奈津
 # 
 # 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -294,16 +294,39 @@ class Game_Map
   alias ls_base_setup setup
   def setup(map_id)
     ls_base_setup(map_id)
-    
+    load_langscore_file(map_id)
+  end
+
+  def load_langscore_file(map_id)
     file_name  = sprintf("Map%03d", @map_id)
 
+    return if $ls_current_map.include?(@map_id)
     $ls_current_map[@map_id] = LSCSV.to_hash(file_name)
     #メモリ節約のためファイナライズで翻訳内容を消す。GC頼りなのでおまじない程度の気持ち。
     #会話中に何故かクラッシュした場合は真っ先に外す。
     ObjectSpace.define_finalizer(self, Game_Map.ls_finalize)
   end
 end
-  
+
+class Game_Interpreter
+
+  alias ls_command_320 command_320
+  def command_320
+    ls_command_320
+
+    actor = $game_actors[@params[0]]
+    actor.name = Langscore.translate(@params[1], $ls_current_map[@map_id])
+  end
+
+  alias ls_command_324 command_324
+  def command_324
+    ls_command_324
+    
+    actor = $game_actors[@params[0]]
+    actor.nickname = Langscore.translate(@params[1], $ls_current_map[@map_id])
+  end
+end
+
 class Window_Base < Window
   
   alias ls_base_convert_escape_characters convert_escape_characters
@@ -351,6 +374,7 @@ DataManager::module_eval <<-eval
     alias ls_base_load_normal_database load_normal_database
     alias ls_make_save_contents make_save_contents
     alias ls_extract_save_contents extract_save_contents
+    alias ls_reload_map_if_updated reload_map_if_updated
   end
 
   #戦闘テスト用は未対応
@@ -408,6 +432,15 @@ DataManager::module_eval <<-eval
     ls_extract_save_contents(contents)
 
     Langscore.changeLanguage($langscore_current_language)
+  end
+
+  #セーブデータロード時のマップ更新はversion_idに依存しているが、
+  #version_idの変更タイミングが謎なのでMapが更新されたりされなかったりするように見える。
+  #Langscoreの場合$game_map.setupが行われないと翻訳文が読み込まれないため、
+  #reload_map_if_updatedの分岐に関わらずロードするようにする。
+  def self.reload_map_if_updated
+    ls_reload_map_if_updated
+    $game_map.load_langscore_file($game_map.map_id)
   end
 
 eval
