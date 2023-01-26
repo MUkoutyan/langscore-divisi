@@ -6,9 +6,9 @@ class LSCSV
   
   $lscsv_resource_locker = Mutex::new
   def self.to_hash(file_name)
-    $ls_resource_locker.lock
+    $lscsv_resource_locker.lock
     file = open(Langscore::TRANSLATE_FOLDER + "/" + file_name)
-    $ls_resource_locker.unlock
+    $lscsv_resource_locker.unlock
     return {} if file == nil
 
     header = fetch_header(file)

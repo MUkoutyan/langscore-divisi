@@ -314,16 +314,13 @@ class Game_Interpreter
   def command_320
     ls_command_320
 
-    actor = $game_actors[@params[0]]
-    actor.name = Langscore.translate(@params[1], $ls_current_map[@map_id])
+    Langscore.updateActor
   end
 
   alias ls_command_324 command_324
   def command_324
     ls_command_324
-    
-    actor = $game_actors[@params[0]]
-    actor.nickname = Langscore.translate(@params[1], $ls_current_map[@map_id])
+    Langscore.updateActor
   end
 end
 
