@@ -5,8 +5,8 @@
 namespace langscore {
 class jsonreaderbase{
 public:
-	jsonreaderbase(const nlohmann::json& json)
-		: texts(), json(json), useLangs(){}
+	jsonreaderbase(nlohmann::json json)
+		: texts(), json(std::move(json)), useLangs(){}
 	virtual ~jsonreaderbase(){};
 
 	virtual void json2tt(std::vector<std::u8string> useLangs) = 0;
@@ -14,7 +14,7 @@ public:
 	std::vector<TranslateText> texts;
 
 protected:
-	const nlohmann::json& json;
+	nlohmann::json json;
 	std::vector<std::u8string> useLangs;
 };
 }

@@ -7,14 +7,26 @@ namespace langscore
 	class vxace_jsonreader : public jsonreaderbase
 	{
 	public:
-		vxace_jsonreader(const nlohmann::json& json)
-			: jsonreaderbase(json)
+		vxace_jsonreader(nlohmann::json json)
+			: jsonreaderbase(std::move(json))
 			, stackText(false)
 			, stackTextStr(u8"")
 		{
 		}
 		~vxace_jsonreader() override {}
 
+		void json2tt(std::vector<std::u8string> useLangs) override
+		{
+			this->useLangs = std::move(useLangs);
+			if(json.is_array())
+			{
+				convertJArray(json, 0);
+			}
+			else if(json.is_object())
+			{
+				convertJObject(json, 0);
+			}
+		}
 	private:
 
 		//共通して無視するキー
@@ -36,7 +48,7 @@ namespace langscore
 			{ u8"RPG::System",    {u8"@battleback1_name", u8"@battleback2_name"} },
 		};
 
-		void addText(const nlohmann::json& json, std::u8string note = u8"")
+		void addText(const nlohmann::json& json, int code = 0)
 		{
 			std::string valStr;
 			json.get_to(valStr);
@@ -45,9 +57,9 @@ namespace langscore
 			//if(valStr.empty()){ return; }
 
 			std::u8string original(valStr.begin(), valStr.end());
-			addText(std::move(original), std::move(note));
+			addText(std::move(original), code);
 		}
-		void addText(std::u8string text, std::u8string note = u8"")
+		void addText(std::u8string text, int code = 0)
 		{
 			if(stackText){
 				//1行に付き必ず改行が挟まる。(VXAceのみの仕様？MV/MZは要確認)
@@ -75,24 +87,13 @@ namespace langscore
 			}
 
 			TranslateText t(std::move(text), useLangs);
+			t.code = code;
 			auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
 				return x.original == t.original;
 			});
 
 			if(result == texts.end()){
 				texts.emplace_back(std::move(t));
-			}
-		}
-		void json2tt(std::vector<std::u8string> useLangs) override
-		{
-			this->useLangs = std::move(useLangs);
-			if(json.is_array())
-			{
-				convertJArray(json);
-			}
-			else if(json.is_object())
-			{
-				convertJObject(json);
 			}
 		}
 
@@ -137,6 +138,8 @@ namespace langscore
 						case 102: //選択肢
 						case 401: //文章の表示
 						case 405: //文章のスクロール表示
+						case 320: //アクター名の変更
+						case 324: //二つ名の変更
 							//case 231: //画像の表示
 							result = true;
 						default:
@@ -148,39 +151,41 @@ namespace langscore
 			}
 			return std::forward_as_tuple(result, code);
 		}
-		void convertJArray(const nlohmann::json& arr, std::u8string parentClass = u8"", std::u8string arrayinKey = u8"")
+		void convertJArray(const nlohmann::json& arr, int code, std::u8string parentClass = u8"", std::u8string arrayinKey = u8"")
 		{
 			bool hasSpecIgnoreKeys = ignoreForClassKeys.find(parentClass) != ignoreForClassKeys.end();
 			for(auto s = arr.begin(); s != arr.end(); ++s)
 			{
 				if(s->is_array()){
-					convertJArray(*s, parentClass, arrayinKey);
+					convertJArray(*s, code, parentClass, arrayinKey);
 					continue;
 				}
 				else if(s->is_object()){
-					convertJObject(*s);
+					convertJObject(*s, code);
 				}
 				else if(s->is_string())
 				{
 					if(checkIgnoreKey(parentClass, arrayinKey, hasSpecIgnoreKeys)){ continue; }
-					addText(*s, parentClass + u8"=>" + arrayinKey);
+
+					addText(*s, code);
 				}
 			}
 		}
-		void convertJObject(const nlohmann::json& root)
+		void convertJObject(const nlohmann::json& root, int parent_code)
 		{
 			if(root.empty()){ return; }
 
 			auto [currentClassName, hasSpecIgnoreKeys] = getObjectClass(root);
 
+			auto [result, code] = checkEventCommandCode(root);
+			if(code == 0){ code = parent_code; }
 			if(currentClassName == u8"RPG::EventCommand"){
-				auto [result, code] = checkEventCommandCode(root);
 				if(stackText == false && (code == 401 || code == 405)){
 					stackText = true;
 				}
 				else if(stackText && (code != 401 && code != 405)){
 					stackText = false;
-					addText(stackTextStr);
+					addText(stackTextStr, 401);
 					stackTextStr.clear();
 				}
 				if(result == false){ return; }
@@ -192,11 +197,11 @@ namespace langscore
 				std::u8string key(_key.begin(), _key.end());
 				const auto& val = s.value();
 				if(val.is_array()){
-					convertJArray(val, currentClassName, key);
+					convertJArray(val, code, currentClassName, key);
 					continue;
 				}
 				else if(val.is_object()){
-					convertJObject(val);
+					convertJObject(val, code);
 					continue;
 				}
 				else if(val.is_string() == false){ continue; }
@@ -205,7 +210,7 @@ namespace langscore
 					continue;
 				}
 
-				addText(*s, currentClassName + u8":" + key);
+				addText(*s, code);
 			}
 
 		}

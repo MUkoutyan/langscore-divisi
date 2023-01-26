@@ -19,7 +19,7 @@ namespace langscore
     public:
         TranslateText():TranslateText(u8"", {}) {}
         TranslateText(std::u8string origin, std::vector<std::u8string> langs)
-            : original(std::move(origin))
+            : original(std::move(origin)), translates(), scriptLineInfo(), code(0)
         {
             for(auto& lang : langs){
                 this->translates[lang] = u8"";
@@ -28,6 +28,7 @@ namespace langscore
         std::u8string original;
         std::map<std::u8string, std::u8string> translates;
         std::u8string scriptLineInfo;
+        int code;
 
         auto createHeader() const
         {
