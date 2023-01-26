@@ -3,6 +3,7 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
+#include <cassert>
 
 namespace utility
 {
@@ -90,6 +91,19 @@ namespace utility
         f.read(reinterpret_cast<char*>(&result[0]), size);
 
         return result;
+    }
+
+    static std::uint8_t getUTF8ByteLength(char8_t ptr)
+    {
+        size_t length = 1;
+        if(ptr <= 0x7f){ length = 1; }
+        else if(0xc2 <= ptr && ptr <= 0xdf){ length = 2; }
+        else if(0xe0 <= ptr && ptr <= 0xef){ length = 3; }
+        else if(0xf0 <= ptr && ptr <= 0xf4){ length = 4; }
+        else {
+            assert(("Invalid UTF8 String", false));
+        }
+        return length;
     }
 }
 

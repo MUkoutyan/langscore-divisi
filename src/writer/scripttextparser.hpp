@@ -19,16 +19,7 @@ public:
 		for(size_t i = 0; i < str.size();)
 		{
 			auto ptr = str.data()[i];
-			size_t length = 1;
-
-			if(ptr <= 0x7f){ length = 1; }
-			else if(0xc2 <= ptr && ptr <= 0xdf){ length = 2; }
-			else if(0xe0 <= ptr && ptr <= 0xef){ length = 3; }
-			else if(0xf0 <= ptr && ptr <= 0xf4){ length = 4; }
-			else {
-				assert(("Invalid UTF8 String", false));
-			}
-
+			const size_t length = utility::getUTF8ByteLength(ptr);
 			result.emplace_back(str.substr(i, length), i);
 			i += length;
 		}
