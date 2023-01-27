@@ -71,7 +71,8 @@ std::vector<utility::u8stringlist> csvreader::parsePlain(std::filesystem::path p
 	while(file.eof() == false)
 	{
 		auto c = GetChar();
-		if(file.eof() || c == u8""){ continue; }
+		if(file.eof()){ break; }
+		if(c == u8""){ continue; }
 
 		if(c == u8"\""){ find_dq = !find_dq; }
 

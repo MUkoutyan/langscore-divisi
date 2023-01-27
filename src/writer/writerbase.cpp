@@ -10,7 +10,7 @@ writerbase::writerbase(std::vector<std::u8string> langs, const std::unique_ptr<j
 	: writerbase(std::move(langs), std::vector<TranslateText>{})
 {
 	json->json2tt(this->useLangs);
-	this->texts = std::move(json->texts);
+	this->texts = json->texts;
 
 	//#ifdef _DEBUG
 	//	ReplaceDebugTextByOrigin(this->texts);
