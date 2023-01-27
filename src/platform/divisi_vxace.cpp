@@ -359,6 +359,7 @@ std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::d
 void divisi_vxace::writeAnalyzedBasicData()
 {
     std::cout << "writeAnalyzedBasicData" << std::endl;
+    std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>> jsonreader_map;
     for(auto& path : this->basicDataFileList)
     {
         std::ifstream loadFile(path);
@@ -369,9 +370,18 @@ void divisi_vxace::writeAnalyzedBasicData()
         csvFilePath.make_preferred().replace_extension(".csv");
         std::cout << "Write CSV : " << csvFilePath << std::endl;
 
-        csvwriter writer(this->supportLangs, std::make_unique<vxace_jsonreader>(json));
+
+        std::unique_ptr<jsonreaderbase> reader = std::make_unique<vxace_jsonreader>(std::move(json));
+        csvwriter writer(this->supportLangs, reader);
         writer.write(csvFilePath, MergeTextMode::AcceptTarget);
+        reader->texts = writer.curerntTexts();
+        jsonreader_map[csvFilePath] = std::move(reader);
     }
+
+    if(this->basicDataFileList.empty() == false){
+        this->fetchActorTextFromMap(this->basicDataFileList, {this->basicDataFileList[0].parent_path().u8string()}, jsonreader_map);
+    }
+
     std::cout << "Finish." << std::endl;
 }
 
@@ -502,55 +512,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
     //一通り書き出し
     std::for_each(list.begin(), list.end(), [&writeRvCsv](const auto& path){ writeRvCsv(path); });
 
-    //アクター名の変更・二つ名の変更　の抽出
-    utility::u8stringlist extend_names;
-    fs::path actor_path;
-    for(auto& path : list)
-    {
-        auto filename = path.filename();
-        if(filename.string().find("Actors") != std::string::npos){
-            actor_path = path;
-            continue;
-        }
-        if(filename.string().find("Map") == std::string::npos){ continue; }
-
-        if(jsonreader_map.find(path.replace_extension(".csv")) == jsonreader_map.end()) { continue; }
-        const auto& json_reader = jsonreader_map[path];
-        for(auto& text : json_reader->texts){
-            if(text.code == 320 || text.code == 324){
-                extend_names.emplace_back(text.original);
-            }
-        }
-    }
-    std::sort(extend_names.begin(), extend_names.end());
-    extend_names.erase(std::unique(extend_names.begin(), extend_names.end()), extend_names.end());
-
-    auto actor_filename = actor_path.filename().replace_extension(".csv");
-    for(auto& translateFolder : translateFolderList)
-    {
-        auto actor_csv_filepath = translateFolder / actor_filename;
-        csvreader actor;
-        auto plain_csv = actor.parsePlain(actor_csv_filepath.replace_extension(".csv"));
-
-        for(const auto& name : extend_names)
-        {
-            auto result = std::find_if(plain_csv.cbegin(), plain_csv.cend(), [&](const auto& row){
-                return row[0] == name;
-            });
-            if(result != plain_csv.cend()){ continue; }
-
-            utility::u8stringlist row;
-            row.reserve(this->supportLangs.size() + 1);
-            row.emplace_back(name);
-            for(const auto& l : this->supportLangs){
-                row.emplace_back((l == this->defaultLanguage) ? name : u8""s);
-            }
-            plain_csv.emplace_back(std::move(row));
-            
-        }
-
-        csvwriter::writePlain(actor_csv_filepath, std::move(plain_csv), MergeTextMode::AcceptTarget);
-    }
+    this->fetchActorTextFromMap(list, translateFolderList, jsonreader_map);
 
     std::cout << "Finish." << std::endl;
 }
@@ -823,6 +785,60 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript)
             }
             replaceScript = true;
         }
+    }
+
+}
+
+void langscore::divisi_vxace::fetchActorTextFromMap(const utility::filelist& list, const utility::u8stringlist& csvFolder, const std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>>& jsonreader_map)
+{
+    //アクター名の変更・二つ名の変更　の抽出
+    utility::u8stringlist extend_names;
+    fs::path actor_path;
+    for(auto path : list)
+    {
+        auto filename = path.filename();
+        if(filename.string().find("Actors") != std::string::npos){
+            actor_path = path;
+            continue;
+        }
+        if(filename.string().find("Map") == std::string::npos){ continue; }
+
+        if(jsonreader_map.find(path.replace_extension(".csv")) == jsonreader_map.end()) { continue; }
+        const auto& json_reader = jsonreader_map.at(path);
+        for(auto& text : json_reader->texts){
+            if(text.code == 320 || text.code == 324){
+                extend_names.emplace_back(text.original);
+            }
+        }
+    }
+    std::sort(extend_names.begin(), extend_names.end());
+    extend_names.erase(std::unique(extend_names.begin(), extend_names.end()), extend_names.end());
+
+    auto actor_filename = actor_path.filename().replace_extension(".csv");
+    for(auto& translateFolder : csvFolder)
+    {
+        auto actor_csv_filepath = translateFolder / actor_filename;
+        csvreader actor;
+        auto plain_csv = actor.parsePlain(actor_csv_filepath.replace_extension(".csv"));
+
+        for(const auto& name : extend_names)
+        {
+            auto result = std::find_if(plain_csv.cbegin(), plain_csv.cend(), [&](const auto& row){
+                return row[0] == name;
+            });
+            if(result != plain_csv.cend()){ continue; }
+
+            utility::u8stringlist row;
+            row.reserve(this->supportLangs.size() + 1);
+            row.emplace_back(name);
+            for(const auto& l : this->supportLangs){
+                row.emplace_back((l == this->defaultLanguage) ? name : u8""s);
+            }
+            plain_csv.emplace_back(std::move(row));
+
+        }
+
+        csvwriter::writePlain(actor_csv_filepath, std::move(plain_csv), MergeTextMode::AcceptTarget);
     }
 
 }

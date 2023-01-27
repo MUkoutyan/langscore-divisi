@@ -1,6 +1,7 @@
 #pragma once
 
 #include "platform_base.h"
+#include "reader/jsonreader.hpp"
 
 #ifdef ENABLE_TEST
 #include "iutest.hpp"
@@ -42,6 +43,8 @@ namespace langscore
 		void writeFixedRvScript();
 		void writeFixedGraphFileNameData();
 		void rewriteScriptList(bool& replaceScript);
+
+		void fetchActorTextFromMap(const utility::filelist& list, const utility::u8stringlist& csvFolder, const std::unordered_map<std::filesystem::path, std::unique_ptr<jsonreaderbase>>&);
 
 		bool validateTranslateFileList(utility::filelist csvPathList) const;
 		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;
