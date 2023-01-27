@@ -89,8 +89,8 @@ ErrorStatus langscore::divisi_vxace::update()
     config config;
     //変にマージしないように一旦全削除
     const auto updateDirPath = config.langscoreUpdateDirectorty();
-    const auto analyzeDirPath = config.langscoreAnalyzeDirectorty();
     fs::remove_all(updateDirPath);
+
 
     auto runResult = this->invoker.update();
     if(runResult.val() != 0){
@@ -107,6 +107,7 @@ ErrorStatus langscore::divisi_vxace::update()
     this->writeAnalyzedBasicData();
     this->writeAnalyzedRvScript(updateDirPath);
 
+    const auto analyzeDirPath = config.langscoreAnalyzeDirectorty();
     auto [analyzeScripts, analyzeDataList, analyzeGraphics] = fetchFilePathList(analyzeDirPath);
 
     //ファイルのリストアップ
@@ -198,13 +199,22 @@ ErrorStatus langscore::divisi_vxace::update()
         }
     }
 
-    for(const auto& f : fs::directory_iterator{updateDirPath}){
+    //rvdata2を解析したjsonのコピー
+    for(const auto& f : fs::recursive_directory_iterator{updateDirPath}){
         auto extension = f.path().extension();
         if(extension == ".json"){
             auto filename = f.path().filename();
             fs::copy(updateDirPath / filename, analyzeDirPath / filename, fs::copy_options::overwrite_existing);
             fs::remove(f.path());
         }
+    }
+    //展開したスクリプトのコピー
+    fs::path updateScriptPath = updateDirPath + u8"/Scripts"s;
+    fs::path analyzeScriptPath = (analyzeDirPath + u8"/Scripts"s);
+    for(const auto& f : fs::recursive_directory_iterator{updateScriptPath}){
+        auto filename = f.path().filename();
+        fs::copy(updateScriptPath / filename, analyzeScriptPath / filename, fs::copy_options::overwrite_existing);
+        fs::remove(f.path());
     }
 
     std::cout << "UpdateProject Done." << std::endl;
