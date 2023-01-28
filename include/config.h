@@ -98,7 +98,7 @@ namespace langscore
 		std::u8string langscoreAnalyzeDirectorty();
 		std::u8string langscoreUpdateDirectorty();
 		std::string usScriptFuncComment();
-		std::vector<std::u8string> exportDirectory(std::u8string& root);
+		utility::u8stringlist exportDirectory(std::u8string& root);
 		bool exportByLanguage();
 		bool overwriteLangscore();
 		bool overwriteLangscoreCustom();

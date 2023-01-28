@@ -8,6 +8,7 @@
 
 using namespace langscore;
 namespace fs = std::filesystem;
+using namespace std::string_literals;
 
 //原文はマージフラグに関わらず、全て残すようにする。但し重複はしない。
 //(現状の処理では、行数判定箇所が先1行しか見ないので、複数追加されると差分が全部含まれるかも？)
@@ -72,14 +73,20 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
         return true;
     };
 
+    const auto AdjustText = [](auto text){
+        auto result = withoutQuote(std::move(text));
+        result = utility::replace(std::move(result), u8"\r"s, u8""s);
+        result = utility::replace(std::move(result), u8"\n"s, u8""s);
+        return result;
+    };
 
     while(source_i != sourceTranslates.end() || target_i != this->texts.end())
     {
         if(source_i != sourceTranslates.end()){
-            source_origin = withoutQuote(source_i->original);
+            source_origin = AdjustText(source_i->original);
         }
         if(target_i != this->texts.end()){
-            target_origin = withoutQuote(target_i->original);
+            target_origin = AdjustText(target_i->original);
         }
 
         //原文が一致した場合した場合、翻訳文が競合しているかで適宜マージを行う。
@@ -100,14 +107,14 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
                     continue;
                 }
 
-                auto sourceText = withoutQuote(source_i->translates[lang]);
-                auto targetText = withoutQuote(trans_result.translates[lang]);
+                auto sourceTransText = withoutQuote(source_i->translates[lang]);
+                auto targetTransText = withoutQuote(trans_result.translates[lang]);
 
                 //内容が異なる場合はマージモードに準拠して内容を入れ替える
-                if(sourceText != targetText)
+                if(sourceTransText != targetTransText)
                 {
                     if(overwriteMode == MergeTextMode::MergeKeepSource){
-                        trans_result.translates[lang] = sourceText;
+                        trans_result.translates[lang] = sourceTransText;
                         continue;
                     }
                     else if(overwriteMode == MergeTextMode::MergeKeepTarget){
@@ -116,9 +123,9 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
                     }
                     else if(overwriteMode == MergeTextMode::Both)
                     {
-                        if(sourceText != u8""){ sourceText += u8"\n===\n"; }
-                        sourceText += trans_result.translates[lang];
-                        trans_result.translates[lang] = sourceText;
+                        if(sourceTransText != u8""){ sourceTransText += u8"\n===\n"; }
+                        sourceTransText += trans_result.translates[lang];
+                        trans_result.translates[lang] = sourceTransText;
                     }
                     mergeInfo[static_cast<MergeType>(overwriteMode)].emplace_back(result.size()+1);
                 }
@@ -134,8 +141,8 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
         }
 
         //原文が競合している場合、現在のターゲット側の内容がソース側のどの行数と一致するかを検索。
-        auto find_result = std::find_if(source_i, sourceTranslates.end(), [&target_origin](const auto& x){
-            return withoutQuote(x.original) == target_origin;
+        auto find_result = std::find_if(source_i, sourceTranslates.end(), [&AdjustText, &target_origin](const auto& x){
+            return AdjustText(x.original) == target_origin;
         });
 
         //ソース側に見つからない場合(新規追加)はそのまま追加
