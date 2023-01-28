@@ -206,7 +206,7 @@ std::string config::usScriptFuncComment(){
 	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::UsCustomFuncComment)], "project://Scripts/{0}#{1},{2}"s);
 }
 
-std::vector<std::u8string> langscore::config::exportDirectory(std::u8string& root)
+utility::u8stringlist langscore::config::exportDirectory(std::u8string& root)
 {
 	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportDirectory)], ""s));
 	u8Path = pImpl->toAbsolutePathWeak(u8Path).u8string();
@@ -217,7 +217,7 @@ std::vector<std::u8string> langscore::config::exportDirectory(std::u8string& roo
 	}
 
 	auto langs = this->languages();
-	std::vector<std::u8string> result;
+	utility::u8stringlist result;
 	for(auto& lang : langs){
 		result.emplace_back(u8Path + utility::cnvStr<std::u8string>("/" + lang.name));
 	}

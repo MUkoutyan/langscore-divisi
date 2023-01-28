@@ -44,7 +44,7 @@ namespace langscore
 		void writeFixedGraphFileNameData();
 		void rewriteScriptList(bool& replaceScript);
 
-		void fetchActorTextFromMap(const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<jsonreaderbase>>&);
+		void fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<jsonreaderbase>>&);
 
 		bool validateTranslateFileList(utility::filelist csvPathList) const;
 		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;

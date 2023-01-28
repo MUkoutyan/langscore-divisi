@@ -383,10 +383,13 @@ void divisi_vxace::writeAnalyzedBasicData()
         std::unique_ptr<jsonreaderbase> reader = std::make_unique<vxace_jsonreader>(std::move(json));
         csvwriter writer(this->supportLangs, reader);
         writer.write(csvFilePath, MergeTextMode::AcceptTarget);
-        jsonreader_map[path] = std::move(reader);
+        jsonreader_map[path.filename()] = std::move(reader);
     }
 
-    this->fetchActorTextFromMap(this->basicDataFileList, jsonreader_map);
+    if(this->basicDataFileList.empty() == false){
+        auto csvFilePath = this->basicDataFileList[0].make_preferred().replace_extension(".csv");
+        this->fetchActorTextFromMap({csvFilePath.parent_path().u8string()}, this->basicDataFileList, jsonreader_map);
+    }
 
     std::cout << "Finish." << std::endl;
 }
@@ -502,7 +505,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
             std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
             std::unique_ptr<jsonreaderbase> reader = std::make_unique<vxace_jsonreader>(std::move(json));
             writeFixedTranslateText<csvwriter>(csvFilePath, reader, mergeTextMode);
-            jsonreader_map[inputPath] = std::move(reader);
+            jsonreader_map[inputPath.filename()] = std::move(reader);
         }
     };
 
@@ -518,7 +521,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
     //一通り書き出し
     std::for_each(list.begin(), list.end(), [&writeRvCsv](const auto& path){ writeRvCsv(path); });
 
-    this->fetchActorTextFromMap(list, jsonreader_map);
+    this->fetchActorTextFromMap(translateFolderList, list, jsonreader_map);
 
     std::cout << "Finish." << std::endl;
 }
@@ -795,13 +798,13 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript)
 
 }
 
-void langscore::divisi_vxace::fetchActorTextFromMap(const utility::filelist& list, const std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>>& jsonreader_map)
+void langscore::divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>>& jsonreader_map)
 {
     if(list.empty()){ return; }
-    utility::u8stringlist csvFolder = {exportFolderPath(list[0].filename()).parent_path().u8string()};
     //アクター名の変更・二つ名の変更　の抽出
     utility::u8stringlist extend_names;
     fs::path actor_path;
+    const std::array<int, 2> targetCode = {320, 324};
     for(auto path : list)
     {
         auto filename = path.filename();
@@ -811,21 +814,22 @@ void langscore::divisi_vxace::fetchActorTextFromMap(const utility::filelist& lis
         }
         if(filename.string().find("Map") == std::string::npos){ continue; }
 
-        if(jsonreader_map.find(path) == jsonreader_map.end()) { continue; }
-        const auto& json_reader = jsonreader_map.at(path);
+        if(jsonreader_map.find(filename) == jsonreader_map.end()) { continue; }
+        const auto& json_reader = jsonreader_map.at(filename);
         for(auto& text : json_reader->texts){
-            if(text.code == 320 || text.code == 324){
-                extend_names.emplace_back(text.original);
+            if(std::find(targetCode.cbegin(), targetCode.cend(), text.code) == targetCode.cend()){
+                continue;
             }
+            extend_names.emplace_back(text.original);
         }
     }
     std::sort(extend_names.begin(), extend_names.end());
     extend_names.erase(std::unique(extend_names.begin(), extend_names.end()), extend_names.end());
 
     auto actor_filename = actor_path.filename().replace_extension(".csv");
-    for(auto& translateFolder : csvFolder)
+    for(auto& folder : rewriteCSVFolder)
     {
-        auto actor_csv_filepath = translateFolder / actor_filename;
+        auto actor_csv_filepath = folder / actor_filename;
         if(fs::exists(actor_csv_filepath) == false){ continue; }
         csvreader actor;
         auto plain_csv = actor.parsePlain(actor_csv_filepath.replace_extension(".csv"));
