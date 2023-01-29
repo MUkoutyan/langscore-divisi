@@ -45,6 +45,8 @@ namespace langscore
 		void rewriteScriptList(bool& replaceScript);
 
 		void fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<jsonreaderbase>>&);
+		void adjustCSV(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list);
+		bool adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv, bool isRNLine);
 
 		bool validateTranslateFileList(utility::filelist csvPathList) const;
 		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;

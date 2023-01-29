@@ -81,6 +81,26 @@ namespace utility
         return std::string(str.begin(), str.end());
     };
 
+    template<typename str_type>
+    str_type left_trim(str_type s, str_type white_space)
+    {
+        size_t start = s.find_first_not_of(white_space);
+        return (start == std::string::npos) ? str_type() : s.substr(start);
+    }
+
+    template<typename str_type>
+    str_type right_trim(str_type s, str_type white_space)
+    {
+        size_t end = s.find_last_not_of(white_space);
+        return (end == std::string::npos) ? str_type() : s.substr(0, end + 1);
+    }
+
+    template<typename str_type>
+    str_type trim(str_type s){
+        return right_trim(left_trim(s));
+    }
+
+
     static std::vector<std::uint8_t> getFileData(std::filesystem::path path){
         std::ifstream f(path);
         f.seekg(0, std::ios_base::end);

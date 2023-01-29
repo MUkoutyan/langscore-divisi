@@ -31,7 +31,7 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 std::vector<utility::u8stringlist> csvreader::parsePlain(std::filesystem::path path)
 {
 	std::ifstream file(path, std::ios::binary);
-	if(file.bad()){ return {}; }
+	if(!file){ return {}; }
 
 	utility::u8stringlist rows;
 	std::u8string line_buffer;

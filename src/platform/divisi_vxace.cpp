@@ -388,7 +388,9 @@ void divisi_vxace::writeAnalyzedBasicData()
 
     if(this->basicDataFileList.empty() == false){
         auto csvFilePath = this->basicDataFileList[0].make_preferred().replace_extension(".csv");
-        this->fetchActorTextFromMap({csvFilePath.parent_path().u8string()}, this->basicDataFileList, jsonreader_map);
+        auto writeCsvFolder = {csvFilePath.parent_path().u8string()};
+        this->fetchActorTextFromMap(writeCsvFolder, this->basicDataFileList, jsonreader_map);
+        this->adjustCSV(writeCsvFolder, this->basicDataFileList);
     }
 
     std::cout << "Finish." << std::endl;
@@ -522,6 +524,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
     std::for_each(list.begin(), list.end(), [&writeRvCsv](const auto& path){ writeRvCsv(path); });
 
     this->fetchActorTextFromMap(translateFolderList, list, jsonreader_map);
+    this->adjustCSV(translateFolderList, list);
 
     std::cout << "Finish." << std::endl;
 }
@@ -854,6 +857,67 @@ void langscore::divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist&
         csvwriter::writePlain(actor_csv_filepath, std::move(plain_csv), MergeTextMode::AcceptTarget);
     }
 
+}
+
+
+void divisi_vxace::adjustCSV(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list)
+{
+    utility::u8stringlist rnLineFiles = {
+        u8"Actors.csv"s,  u8"Animations.csv"s, u8"Armors.csv"s,  u8"Classes.csv"s, 
+        u8"Enemies.csv"s, u8"Items.csv"s,      u8"Scripts.csv"s, u8"Skills.csv"s, 
+        u8"States.csv"s,  u8"System.csv"s,     u8"Weapons.csv"s
+    };
+
+    for(auto& folder : rewriteCSVFolder)
+    {
+        for(auto path : list)
+        {
+            auto csvPath = folder / path.filename().replace_extension(".csv");
+            if(fs::exists(csvPath) == false){ continue; }
+            csvreader csv;
+            auto plain_csv = csv.parsePlain(csvPath);
+
+            auto csvFileName = csvPath.filename();
+            const bool isRNLine = std::find(rnLineFiles.cbegin(), rnLineFiles.cend(), csvFileName) != rnLineFiles.cend();
+            const bool isRewrite = adjustCSVCore(plain_csv, isRNLine);
+
+            if(isRewrite){
+                csvwriter::writePlain(csvPath, std::move(plain_csv), MergeTextMode::AcceptTarget);
+            }
+        }
+    }
+}
+
+bool divisi_vxace::adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv, bool isRNLine)
+{
+    const std::u8string newLineEsc = isRNLine ? u8"\r\n" : u8"\n";
+    bool isRewrite = false;
+    for(auto& row : plain_csv)
+    {
+        for(auto& col : row)
+        {
+            if(col.find_first_of(newLineEsc) == col.npos){
+                continue;
+            }
+            auto lines = utility::split(col, u8'\n');
+            //1なら原文がそのまま入っている(=改行が無い)ので無視
+            if(lines.size() < 2){ continue; }
+            //for(auto& line : lines)
+            std::for_each(lines.begin(), lines.end() - 1, [&](auto& line)
+            {
+                auto newLine = utility::right_trim(line, u8"\r\n"s);
+                newLine.append(newLineEsc);
+                line.swap(newLine);
+            });
+            auto result = utility::join(lines, u8""s);
+            if(result != col){
+                col.swap(result);
+                isRewrite = true;
+            }
+        }
+    }
+
+    return isRewrite;
 }
 
 bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) const
