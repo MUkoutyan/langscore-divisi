@@ -51,6 +51,20 @@ namespace utility
         return result;
     }
 
+    template<typename basetype>
+    static std::vector<basetype> split(basetype str, basetype deci)
+    {
+        size_t pos = 0;
+        std::vector<basetype> result;
+        while((pos = str.find(deci)) != basetype::npos) {
+            auto token = str.substr(0, pos);
+            result.emplace_back(std::move(token));
+            str.erase(0, pos + deci.length());
+        }
+        result.emplace_back(str);
+        return result;
+    }
+
     template<typename str_type>
     static str_type replace(str_type str, str_type old, str_type newStr)
     {
