@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../invoker.h"
 #include "../include/config.h"
 #include "../utility.hpp"
@@ -38,6 +38,8 @@ namespace langscore
 
 		std::filesystem::copy_options convertCopyOption(MergeTextMode mode);
 		virtual std::filesystem::path exportFolderPath(std::filesystem::path fileName) = 0;
+
+		void writeFixedGraphFileNameData();
 
 		void copyFonts();
 

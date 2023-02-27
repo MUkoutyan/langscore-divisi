@@ -41,7 +41,6 @@ namespace langscore
 
 		void writeFixedBasicData();
 		void writeFixedRvScript();
-		void writeFixedGraphFileNameData();
 		void rewriteScriptList(bool& replaceScript);
 
 		void fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<jsonreaderbase>>&);

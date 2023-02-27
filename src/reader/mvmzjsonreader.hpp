@@ -23,11 +23,11 @@ namespace langscore
 			this->useLangs = std::move(useLangs);
 			if(json.is_array())
 			{
-				convertJArray(json);
+				convertJArray(json, 0);
 			}
 			else if(json.is_object())
 			{
-				convertJObject(json);
+				convertJObject(json, 0);
 			}
 		}
 
@@ -61,13 +61,25 @@ namespace langscore
 			{u8"pages",			{u8"list"}},
 			{u8"list",			{u8"code", u8"parameters"}},
 			{u8"terms",			{u8"basic", u8"commands", u8"params", u8"messages"}},
+			{u8"messages",		{u8"actionFailure", u8"actorDamage", u8"actorDrain", u8"actorGain", 
+								 u8"actorLoss", u8"actorNoDamage", u8"actorNoHit", u8"actorRecovery", 
+								 u8"alwaysDash", u8"bgmVolume", u8"bgsVolume", u8"buffAdd", u8"buffRemove", 
+								 u8"commandRemember", u8"counterAttack", u8"criticalToActor", u8"criticalToEnemy", 
+								 u8"debuffAdd", u8"defeat", u8"emerge", u8"enemyDamage", u8"enemyDrain", 
+								 u8"enemyGain", u8"enemyLoss", u8"enemyNoDamage", u8"enemyNoHit", 
+								 u8"enemyRecovery", u8"escapeFailure", u8"escapeStart", u8"evasion", 
+								 u8"expNext", u8"expTotal", u8"file", u8"levelUp", u8"loadMessage", 
+								 u8"magicEvasion", u8"magicReflection", u8"meVolume", u8"obtainExp", 
+								 u8"obtainGold", u8"obtainItem", u8"obtainSkill", u8"partyName", u8"possession", 
+								 u8"preemptive", u8"saveMessage", u8"seVolume", u8"substitute", u8"surprise",
+								 u8"useItem", u8"victory"}}
 		};
 
 		bool stackText;
 		std::u8string stackTextStr;
 		DataType currentDataType;
 
-		void addText(const nlohmann::json& json, std::u8string note = u8"")
+		void addText(const nlohmann::json& json, int code = 0)
 		{
 			std::string valStr;
 			json.get_to(valStr);
@@ -76,19 +88,25 @@ namespace langscore
 			//if(valStr.empty()){ return; }
 
 			std::u8string original(valStr.begin(), valStr.end());
-			addText(std::move(original), std::move(note));
+			addText(std::move(original), code);
 		}
-		void addText(std::u8string text, std::u8string note = u8"")
+		void addText(std::u8string text, int code = 0)
 		{
 			if(stackText){
 				//1行に付き必ず改行が挟まる。(VXAceのみの仕様？MV/MZは要確認)
 				stackTextStr += text + u8'\n';
 				return;
 			}
-			else {
+			else 
+			{
 				if(text.empty()){
 					//ただの空文は無視する。
 					return;
+				}
+				if(code == 401){
+					if(*(text.rbegin()) == u8'\n'){
+						text.erase((text.rbegin().base())-1);
+					}
 				}
 			}
 
@@ -106,6 +124,7 @@ namespace langscore
 			}
 
 			TranslateText t(std::move(text), useLangs);
+			t.code = code;
 			auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
 				return x.original == t.original;
 			});
@@ -156,9 +175,13 @@ namespace langscore
 					switch(code){
 						case 102: //選択肢
 						case 401: //文章の表示
-						case 405:
+						case 405: //スクロールの文章の表示
+						case 320: //アクター名の変更
+						case 324: //二つ名の変更
+						case 325: //プロフィールの変更
 							//case 231: //画像の表示
 							result = true;
+							break;
 						default:
 							break;
 					}
@@ -168,7 +191,7 @@ namespace langscore
 			}
 			return std::forward_as_tuple(result, code);
 		}
-		void convertJArray(const nlohmann::json& arr, std::u8string parentClass = u8"")
+		void convertJArray(const nlohmann::json& arr, int code, std::u8string parentClass = u8"")
 		{
 			if(detectKeyInObject.find(parentClass) != detectKeyInObject.end())
 			{
@@ -176,15 +199,15 @@ namespace langscore
 				for(auto s = arr.begin(); s != arr.end(); ++s)
 				{
 					if(s->is_array()){
-						convertJArray(*s, parentClass);
+						convertJArray(*s, code, parentClass);
 						continue;
 					}
 					else if(s->is_object())
 					{
-						convertJObjectInKey(parentClass, *s);
+						convertJObjectInKey(parentClass, *s, code);
 					}
 					else if(s->is_string()){
-						addText(*s);
+						addText(*s, code);
 					}
 				}
 			}
@@ -193,24 +216,42 @@ namespace langscore
 				for(auto s = arr.begin(); s != arr.end(); ++s)
 				{
 					if(s->is_array()){
-						convertJArray(*s, parentClass);
+						convertJArray(*s, code, parentClass);
 					}
 					else if(s->is_object()){
-						convertJObject(*s);
+						convertJObject(*s, code);
 					}
 					else if(s->is_string())
 					{
-						addText(*s);
+						addText(*s, code);
 					}
 				}
 			}
 		}
-		void convertJObject(const nlohmann::json& root)
+
+		void convertJObject(const nlohmann::json& root, int code)
 		{
 			if(root.empty()){ return; }
 
 			const auto& mainClassKeys = detectClassKeys.at(currentDataType);
+			convertJObjectCore(mainClassKeys, root, code);
+		}
 
+		void convertJObjectInKey(std::u8string rootKey, const nlohmann::json& root, int code)
+		{
+			if(root.empty()){ return; }
+
+			if(currentDataType == DataType::System && rootKey == u8"messages"){
+				spetializeSystemMessage(root);
+			}
+			else{
+				const auto& mainClassKeys = detectKeyInObject.at(rootKey);
+				convertJObjectCore(mainClassKeys, root, code);
+			}
+		}
+
+		void convertJObjectCore(utility::u8stringlist mainClassKeys, const nlohmann::json& root, int code)
+		{
 			for(auto s = root.begin(); s != root.end(); ++s)
 			{
 				if(s->is_null()){ continue; }
@@ -220,13 +261,14 @@ namespace langscore
 					if(checkKey != key){ continue; }
 
 					if(checkKey == u8"code"){
-						auto [result, code] = checkEventCommandCode(root);
+						auto [result, _code] = checkEventCommandCode(root);
+						code = _code;
 						if(stackText == false && (code == 401 || code == 405)){
 							stackText = true;
 						}
 						else if(stackText && (code != 401 && code != 405)){
 							stackText = false;
-							addText(stackTextStr);
+							addText(stackTextStr, 401);
 							stackTextStr.clear();
 						}
 						if(result == false){ return; }
@@ -236,20 +278,20 @@ namespace langscore
 					if(detectKeyInObject.find(checkKey) != detectKeyInObject.end())
 					{
 						if(val.is_array()){
-							convertJArray(val, key);
+							convertJArray(val, code, key);
 						}
 						else if(val.is_object()){
-							convertJObjectInKey(key, val);
+							convertJObjectInKey(key, val, code);
 						}
 						continue;
 					}
 
 					if(val.is_array()){
-						convertJArray(val, key);
+						convertJArray(val, code, key);
 						continue;
 					}
 					else if(val.is_object()){
-						convertJObject(val);
+						convertJObject(val, code);
 						continue;
 					}
 					else if(val.is_string() == false){ continue; }
@@ -258,67 +300,19 @@ namespace langscore
 						continue;
 					}
 
-					addText(*s, key + u8":" + key);
+					addText(*s, code);
 				}
 			}
 		}
 
-
-		void convertJObjectInKey(std::u8string rootKey, const nlohmann::json& root)
+		void spetializeSystemMessage(const nlohmann::json& root)
 		{
-			if(root.empty()){ return; }
-
-			const auto& mainClassKeys = detectKeyInObject.at(rootKey);
-
 			for(auto s = root.begin(); s != root.end(); ++s)
 			{
 				if(s->is_null()){ continue; }
-				auto key = utility::cnvStr<std::u8string>(s.key());
-				for(auto& checkKey : mainClassKeys)
-				{
-					if(checkKey != key){ continue; }
-
-					if(checkKey == u8"code"){
-						auto [result, code] = checkEventCommandCode(root);
-						if(stackText == false && code == 401){
-							stackText = true;
-						}
-						else if(stackText && code != 401){
-							stackText = false;
-							addText(stackTextStr);
-							stackTextStr.clear();
-						}
-						if(result == false){ return; }
-					}
-
-					const auto& val = s.value();
-					if(detectKeyInObject.find(checkKey) != detectKeyInObject.end())
-					{
-						if(val.is_array()){
-							convertJArray(val, key);
-						}
-						else if(val.is_object()){
-							convertJObject(val);
-						}
-						continue;
-					}
-
-					if(val.is_array()){
-						convertJArray(val, key);
-						continue;
-					}
-					else if(val.is_object()){
-						convertJObject(val);
-						continue;
-					}
-					else if(val.is_string() == false){ continue; }
-
-					if(checkIgnoreKey(key, key)){
-						continue;
-					}
-
-					addText(*s, key + u8":" + key);
-				}
+				const auto& val = s.value();
+				if(val.is_string() == false){ continue; }
+				addText(*s, 0);
 			}
 		}
 

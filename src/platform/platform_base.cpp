@@ -1,5 +1,6 @@
 ﻿#include "platform_base.h"
 #include "reader/csvreader.h"
+#include "writer/uniquerowcsvwriter.hpp"
 #include <iostream>
 
 using namespace langscore;
@@ -52,7 +53,6 @@ std::filesystem::copy_options langscore::platform_base::convertCopyOption(MergeT
 	return std::filesystem::copy_options::none;
 }
 
-
 void langscore::platform_base::copyFonts()
 {
     //フォントのコピー
@@ -102,8 +102,8 @@ utility::u8stringlist platform_base::GetScriptFileName(config& config, utility::
 		auto scriptListResult = std::find_if(scriptCsv.cbegin(), scriptCsv.cend(), [&name](const auto& x)
 		{
 			if(x.size() < 2){ return false; }
-		const auto& scriptName = x[1];
-		return scriptName == name;
+			const auto& scriptName = x[1];
+			return scriptName == name;
 		});
 		if(scriptListResult != scriptCsv.cend()){
 			result.emplace_back((*scriptListResult)[0]);
@@ -113,4 +113,29 @@ utility::u8stringlist platform_base::GetScriptFileName(config& config, utility::
 		}
 	}
 	return result;
+}
+
+
+void platform_base::writeFixedGraphFileNameData()
+{
+	std::cout << "writeFixedGraphFileNameData" << std::endl;
+
+	config config;
+	auto mergeTextMode = MergeTextMode::MergeKeepSource;
+	auto mergeTextModeRaw = config.globalWriteMode();
+	if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
+		mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
+	}
+	auto ignorePictures = config.ignorePictures();
+	std::vector<TranslateText> transTextList;
+	for(auto& f : graphicFileList){
+		auto result = std::find(ignorePictures.cbegin(), ignorePictures.cend(), f.generic_u8string());
+		if(result != ignorePictures.cend()){ continue; }
+		transTextList.emplace_back(f.generic_u8string(), supportLangs);
+	}
+
+	auto csvPath = exportFolderPath("Graphics.csv");
+	std::cout << "Write Graphics : " << csvPath << std::endl;
+	writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transTextList, mergeTextMode);
+	std::cout << "Finish." << std::endl;
 }

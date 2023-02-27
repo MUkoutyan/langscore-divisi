@@ -663,29 +663,6 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
     return result;
 }
 
-void divisi_vxace::writeFixedGraphFileNameData()
-{
-    std::cout << "writeFixedGraphFileNameData" << std::endl;
-
-    config config;
-    auto mergeTextMode = MergeTextMode::MergeKeepSource;
-    auto mergeTextModeRaw = config.globalWriteMode();
-    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
-        mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
-    }
-    auto ignorePictures = config.ignorePictures();
-    std::vector<TranslateText> transTextList;
-    for(auto& f : graphicFileList){
-        auto result = std::find(ignorePictures.cbegin(), ignorePictures.cend(), f.generic_u8string());
-        if(result != ignorePictures.cend()){ continue; }
-        transTextList.emplace_back(f.generic_u8string(), supportLangs);
-    }
-
-    auto csvPath = exportFolderPath("Graphics.csv");
-    std::cout << "Write Graphics : " << csvPath << std::endl;
-    writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transTextList, mergeTextMode);
-    std::cout << "Finish." << std::endl;
-}
 
 void divisi_vxace::rewriteScriptList(bool& replaceScript)
 {
@@ -801,7 +778,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript)
 
 }
 
-void langscore::divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>>& jsonreader_map)
+void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>>& jsonreader_map)
 {
     if(list.empty()){ return; }
     //アクター名の変更・二つ名の変更　の抽出

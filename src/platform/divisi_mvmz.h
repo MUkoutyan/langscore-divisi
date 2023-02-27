@@ -29,12 +29,16 @@ namespace langscore
 		std::tuple<utility::filelist, utility::filelist, utility::filelist> fetchFilePathList(std::u8string searchDir);
 
 		void writeAnalyzedBasicData();
-		void writeAnalyzedRvScript(std::u8string baseDirectory);
+		void writeAnalyzedScript(std::u8string baseDirectory);
 
 		void writeFixedBasicData();
-		void writeFixedRvScript();
-		void writeFixedGraphFileNameData();
-		void rewriteScriptList();
+		void writeFixedScript(std::u8string baseDirectory);
+
+		void fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<jsonreaderbase>>&);
+
+		void adjustCSV(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list);
+		bool adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv);
+
 
 		std::filesystem::path exportFolderPath(std::filesystem::path fileName) override;
 
