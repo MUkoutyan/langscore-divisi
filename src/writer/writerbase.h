@@ -62,7 +62,7 @@ namespace langscore
         std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path);
         enum class ProgressNextStep
         {
-            Continue,
+            Next,
             Break,
             Throught
         };

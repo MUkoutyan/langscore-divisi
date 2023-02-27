@@ -21,6 +21,7 @@ writerbase::writerbase(std::vector<std::u8string> langs, std::vector<TranslateTe
 	: useLangs(std::move(langs))
 	, texts(std::move(texts))
 	, overwriteMode(MergeTextMode::AcceptSource)
+	, rangeComment(false)
 {
 }
 
@@ -98,7 +99,7 @@ std::vector<TranslateText> writerbase::convertScriptToCSV(std::filesystem::path 
 		auto line = utility::cnvStr<std::u8string>(lineTemp);
 
 		auto isContinue = checkCommentLine(line);
-		if(isContinue == ProgressNextStep::Continue){
+		if(isContinue == ProgressNextStep::Next){
 			continue;
 		}
 		else if(isContinue == ProgressNextStep::Break){

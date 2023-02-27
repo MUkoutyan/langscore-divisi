@@ -225,7 +225,7 @@ writerbase::ProgressNextStep rbscriptwriter::checkCommentLine(TextCodec& line)
         });
         check_comment_line.erase(check_comment_line.begin(), pos);
         if(check_comment_line.empty() == false && check_comment_line[0] == Char('#')){
-            return ProgressNextStep::Continue;
+            return ProgressNextStep::Next;
         }
     }
     //途中のコメントを削除
@@ -250,12 +250,12 @@ writerbase::ProgressNextStep rbscriptwriter::checkCommentLine(TextCodec& line)
 
     if(line == u8"=begin"){
         rangeComment = true;
-        return ProgressNextStep::Continue;
+        return ProgressNextStep::Next;
     }
     else if(rangeComment)
     {
         if(line == u8"=end"){ rangeComment = false; }
-        return ProgressNextStep::Continue;
+        return ProgressNextStep::Next;
     }
 
     //規定の関数
@@ -289,7 +289,7 @@ writerbase::ProgressNextStep rbscriptwriter::checkCommentLine(TextCodec& line)
         TextCodec space(numText.size(), u8' ');
         line.replace(pos, detectLength, space);
     }
-    if(line.empty()){ ProgressNextStep::Continue; }
+    if(line.empty()){ ProgressNextStep::Next; }
 
     return ProgressNextStep::Throught;
 }
