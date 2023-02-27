@@ -82,15 +82,17 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 
     while(source_i != sourceTranslates.end() || target_i != this->texts.end())
     {
-        if(source_i != sourceTranslates.end()){
+        const bool validSource = source_i != sourceTranslates.end();
+        const bool validTarget = target_i != this->texts.end();
+        if(validSource){
             source_origin = AdjustText(source_i->original);
         }
-        if(target_i != this->texts.end()){
+        if(validTarget){
             target_origin = AdjustText(target_i->original);
         }
 
         //原文が一致した場合した場合、翻訳文が競合しているかで適宜マージを行う。
-        if(source_origin == target_origin)
+        if(validSource && validTarget && source_origin == target_origin)
         {
             if(source_origin.empty()){
                 ++source_i;
