@@ -5,8 +5,10 @@ cmake_minimum_required (VERSION 3.22)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+enable_testing()
 project (divisi_test VERSION 1)
 add_definitions(-DENABLE_TEST)
+include(CTest)
 
 # TODO: テストを追加し、必要な場合は、ターゲットをインストールします。
 
@@ -27,15 +29,15 @@ set(Test_Includes
 	"../"
 	"../include"
 	"../src"
-    "../iutest/include"
-	"../json/single_include"
-	"../hash-library"
+    "../3rdparty/iutest/include"
+	"../3rdparty/json/single_include"
+	"../3rdparty/hash-library"
 )
 
 file(GLOB_RECURSE DIVISI_SOURCES
 	../src/*.cpp
-    ../hash-library/md5.cpp
-    ../hash-library/crc32.cpp
+    ../3rdparty/hash-library/md5.cpp
+    ../3rdparty/hash-library/crc32.cpp
 )
 
 set(test_sources 
@@ -52,6 +54,7 @@ endforeach()
 
 # Now simply link against gtest or gtest_main as needed. Eg
 add_executable(${TestProjectName} ${test_sources})
+
 target_include_directories(${TestProjectName} PUBLIC ${Test_Includes})
+
 add_test(NAME test COMMAND ${TestProjectName})
-enable_testing()

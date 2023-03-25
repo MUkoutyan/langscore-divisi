@@ -8,14 +8,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(ENABLE_TEST)
 add_definitions(-DENABLE_TEST)
 include_directories(
-	"../iutest/include"
+	"../3rdparty/iutest/include"
 )
 endif()
 
 include_directories(
 	"./"
 	"../include"
-	"../json/single_include"
+	"../3rdparty/json/single_include"
 )
 
 set(lib_files 
@@ -45,9 +45,11 @@ set(lib_files
 	"platform/platform_base.h" 
 	"platform/platform_base.cpp"
 	${PROJECT_SOURCE_DIR}/rvcnv/rvcnv_hash.cpp
-	${PROJECT_SOURCE_DIR}/hash-library/md5.cpp
-	${PROJECT_SOURCE_DIR}/hash-library/crc32.cpp
- "writer/jsscriptwriter.h" "writer/jsscriptwriter.cpp")
+	${PROJECT_SOURCE_DIR}/3rdparty/hash-library/md5.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/hash-library/crc32.cpp
+    "writer/jsscriptwriter.h"
+	"writer/jsscriptwriter.cpp"
+)
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
 add_library (divisi_lib STATIC ${lib_files})
@@ -57,8 +59,8 @@ set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
 target_include_directories(divisi_lib PUBLIC 
 	./
 	${PROJECT_SOURCE_DIR}/include
-	${PROJECT_SOURCE_DIR}/json
-	${PROJECT_SOURCE_DIR}/hash-library
+	${PROJECT_SOURCE_DIR}/3rdparty/json
+	${PROJECT_SOURCE_DIR}/3rdparty/hash-library
 )
 
 

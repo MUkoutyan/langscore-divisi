@@ -17,9 +17,9 @@ set(DIVISI_RESOURCE rvcnv/ resource/)
 add_subdirectory(src)
 add_subdirectory(exec)
 
-if(ENABLE_TEST)
+#if(ENABLE_TEST)
 add_subdirectory(test)
-endif()
+#endif()
 
 if(DIVISI_BUILD_EXAMPLE)
 add_subdirectory(example)
