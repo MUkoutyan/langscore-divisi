@@ -4,9 +4,12 @@
 #include "invoker.h"
 #include "divisi.h"
 #include "..\\src\\platform\\divisi_vxace.h"
-#include "..\\src\\reader\\csvreader.h"
 #include "..\\src\\writer\\csvwriter.h"
 #include "..\\src\\writer\\rbscriptwriter.h"
+#include "..\\src\\reader\\csvreader.h"
+#include "..\\src\\reader\\speciftranstext.hpp"
+#include "..\\src\\reader\\rubyreader.hpp"
+#include "..\\src\\reader\\javascriptreader.hpp"
 #include "..\\src\\utility.hpp"
 #include "..\\src\\writer\\scripttextparser.hpp"
 #include <iostream>
@@ -16,6 +19,7 @@
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
+using namespace langscore;
 namespace fs = std::filesystem;
 
 
@@ -92,6 +96,14 @@ IUTEST(Langscore_Writer, DetectStringPosition)
 		IUTEST_ASSERT(result.empty());
 	}
 	{
+		auto result = scriptRegex.findStrings(u8"");
+		IUTEST_ASSERT(result.empty());
+	}
+	{
+		auto result = scriptRegex.findStrings(u8"hoge = \"\";");
+		IUTEST_ASSERT(result.empty());
+	}
+	{
 		auto result = scriptRegex.findStrings(u8"Test \"Line\" Script");
 		IUTEST_ASSERT_EQ(result.size(), 1);
 		IUTEST_ASSERT_EQ(std::get<0>(result[0]), u8"Line"s);
@@ -118,105 +130,240 @@ IUTEST(Langscore_Writer, DetectStringPosition)
 		IUTEST_ASSERT_EQ(result.size(), 1);
 		IUTEST_ASSERT_EQ(std::get<0>(result[0]), u8"\\C[16]プレイ時間\\X[104]\\C[0]\\T[%4$3d\\\"%3$02d]"s);
 	}
+	//langscore.rbで正しくCSVが出力されない問題の確認テスト。
+	//""括りかつ文字列内に,が存在する場合、""が括られたまま結果が出力される。(CSV用の変換)
+	//CSV用の変換はCSVの書き出し時点で行うため、findStringsで行うのは不適切。
+	{
+		auto result = scriptRegex.findStrings(u8"      raise \"Error!: Missmatch Num Cells : #{file_name}, #{mismatch_cells.to_s}\" "s);
+		IUTEST_ASSERT_EQ(result.size(), 1);
+		IUTEST_ASSERT_EQ(std::get<0>(result[0]), u8"Error!: Missmatch Num Cells : #{file_name}, #{mismatch_cells.to_s}"s);
+	}
 }
 
 IUTEST(Langscore_Writer, CheckRubyCommentLine)
 {
-	langscore::rbscriptwriter scriptWriter({}, {});
+	langscore::rubyreader scriptWriter({}, {});
 
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8"chstring";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
 		IUTEST_ASSERT_STREQ(text, original);
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8"#Commentout";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Continue);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::NextLine);
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8"=begin";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Continue);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::NextLine);
+		IUTEST_ASSERT(isRangeComment);
 	}
 	{
+		bool isRangeComment = false;
+		std::u8string original = u8"\"Hoge\" =begin";
+		std::u8string text = original;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8"\"Hoge\"       "s);
+		IUTEST_ASSERT(isRangeComment);
+	}
+	{
+		bool isRangeComment = false;
+		std::u8string original = u8"\"Hoge\" \"=begin\"Honi";
+		std::u8string text = original;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8"\"Hoge\" \"=begin\"Honi"s);
+		IUTEST_ASSERT(isRangeComment == false);
+	}
+	{
+		bool isRangeComment = false;
 		std::u8string original = u8"Valid Script Line";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Continue);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8"=end";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Continue);
+		isRangeComment = true;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::NextLine);
+		IUTEST_ASSERT(isRangeComment == false);
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8"Without Comment Block";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
 		IUTEST_ASSERT_EQ(text, original);
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8"Script~~~ #Comment";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
-		IUTEST_ASSERT_STREQ(text, u8"Script~~~ "s);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8"Script~~~         "s);
 	}
 	{
+		bool isRangeComment = false;
+		std::u8string original = u8"\"Key:#{Value}\"";
+		std::u8string text = original;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8"\"Key:#{Value}\""s);
+	}
+	{
+		bool isRangeComment = false;
 		std::u8string original = u8R"("Text".lstrans'Honi')";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
 		IUTEST_ASSERT_STREQ(text, u8R"("Text"              )");
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8R"("Text".lstrans"64:28:1")";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
 		IUTEST_ASSERT_STREQ(text, u8R"("Text"                 )");
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8R"("Text".lstrans(''))";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
 		IUTEST_ASSERT_STREQ(text, u8R"("Text"            )");
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8R"(Honi:"Te'xt".lstrans('Hoge') "DetectText")";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
 		IUTEST_ASSERT_STREQ(text, u8R"(Honi:"Te'xt"                 "DetectText")"s);
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8R"("Text".lstrans(""))";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
 		IUTEST_ASSERT_STREQ(text, u8R"("Text"            )");
 	}
 	{
+		bool isRangeComment = false;
 		std::u8string original = u8R"(Honi:"Text".lstrans("Hoge") "DetectText")";
 		std::u8string text = original;
-		auto result = scriptWriter.checkCommentLine(text);
-		IUTEST_ASSERT_EQ(result, langscore::writerbase::ProgressNextStep::Throught);
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
 		IUTEST_ASSERT_STREQ(text, u8R"(Honi:"Text"                 "DetectText")"s);
 	}
+}
+
+
+IUTEST(Langscore_Writer, CheckJavaScriptCommentLine)
+{
+	langscore::javascriptreader scriptWriter({}, {});
+
+	bool isRangeComment = false;
+	{
+		std::u8string original = u8"chstring";
+		std::u8string text = original;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, original);
+	}
+	{
+		std::u8string original = u8"//Commentout";
+		std::u8string text = original;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::NextLine);
+	}
+	{
+		std::u8string original = u8"/*Hoge";
+		std::u8string text = original;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::NextLine);
+		IUTEST_ASSERT_STREQ(text, u8"      ");
+		IUTEST_ASSERT(isRangeComment);
+	}
+	{
+		std::u8string original = u8"Hoge*/";
+		std::u8string text = original;
+		isRangeComment = true;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::NextLine);
+		IUTEST_ASSERT_STREQ(text, u8"      ");
+		IUTEST_ASSERT(!isRangeComment);
+	}
+	{
+		std::u8string original = u8"Hoge*/";
+		std::u8string text = original;
+		isRangeComment = false;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8"Hoge*/");
+		IUTEST_ASSERT(!isRangeComment);
+	}
+	{
+		std::u8string original = u8"\"Hoge\"/*Comment*/\"Honi\"";
+		std::u8string text = original;
+		isRangeComment = false;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8"\"Hoge\"           \"Honi\"");
+		IUTEST_ASSERT(!isRangeComment);
+	}
+	{
+		std::u8string original = u8"\"Hoge\"//Comment*/\"Honi\"";
+		std::u8string text = original;
+		isRangeComment = false;
+		auto result = scriptWriter.replaceCommentToSpace(text, isRangeComment);
+		IUTEST_ASSERT_EQ(result, langscore::readerbase::ProgressNextStep::Throught);
+		IUTEST_ASSERT_STREQ(text, u8"\"Hoge\"                 ");
+		IUTEST_ASSERT(!isRangeComment);
+	}
+}
+
+IUTEST(Langscore_Writer, DetectRubyString)
+{
+	std::u8string fileName = u8"detectstring";
+	langscore::rubyreader scriptWriter({}, {});
+
+	auto extracted_strings = scriptWriter.convertScriptToCSV(u8"./data/" + fileName + u8".rb");
+
+	IUTEST_ASSERT_EQ(10, extracted_strings.size());
+	IUTEST_ASSERT_STREQ(u8"Hello, world!", extracted_strings[0].original);
+	IUTEST_ASSERT_STREQ(u8"This is a \"quote\" character.", extracted_strings[1].original);
+	IUTEST_ASSERT_STREQ(u8"This string has a \n newline character.", extracted_strings[2].original);
+	IUTEST_ASSERT_STREQ(u8"This one has a , comma character.", extracted_strings[3].original);
+	IUTEST_ASSERT_STREQ(u8"This string has both \"quote\" and \n newline characters.", extracted_strings[4].original);
+	IUTEST_ASSERT_STREQ(u8"This is a 'single quote' character.", extracted_strings[5].original);
+	IUTEST_ASSERT_STREQ(u8"This string has a \"quote\", a 'single quote' and a \n newline character.", extracted_strings[6].original);
+	IUTEST_ASSERT_STREQ(u8"\"\"", extracted_strings[7].original);
+	IUTEST_ASSERT_STREQ(u8"\n", extracted_strings[8].original);
+	IUTEST_ASSERT_STREQ(u8",", extracted_strings[9].original);
 }
 
 IUTEST(Langscore_Writer, DetectStringPositionFromFile)
 {
 	std::u8string fileName = u8"chstring";
-	langscore::rbscriptwriter scriptWriter({}, {});
+	langscore::rubyreader scriptWriter({}, {});
 
 	auto result = scriptWriter.convertScriptToCSV(u8"./data/" + fileName + u8".rb");
 
@@ -253,6 +400,63 @@ IUTEST(Langscore_Writer, DetectStringPositionFromFile)
 	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":45:4");
 	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":47:2");
 	IUTEST_ASSERT_STREQ(result[i++].scriptLineInfo, fileName + u8":48:2");
+}
+
+IUTEST(Langscore_Writer, ConvertCsvText_ASCII)
+{
+	langscore::csvwriter writer(speciftranstext{{}, {}});
+
+	{
+		auto input = u8"Hello, World!";
+		auto result = writer.convertCsvText(input);
+		IUTEST_ASSERT_STREQ(result, u8"\"Hello, World!\"");
+	}
+	{
+		auto input = u8"First line\nSecond line";
+		auto result = writer.convertCsvText(input);
+		IUTEST_ASSERT_STREQ(result, u8"\"First line\nSecond line\"");
+	}
+	{
+		auto input = u8"Quote \" in the text";
+		auto result = writer.convertCsvText(input);
+		IUTEST_ASSERT_STREQ(result, u8"Quote \"\" in the text");
+	}
+	{
+		auto input = u8"Comma, and quote \"";
+		auto result = writer.convertCsvText(input);
+		IUTEST_ASSERT_STREQ(result, u8"\"Comma, and quote \"\"\"");
+	}
+}
+
+IUTEST(Langscore_Writer, ConvertCsvText_Multibyte)
+{
+	langscore::csvwriter writer(speciftranstext{{}, {}});
+
+	{
+		auto input = u8"こんにちは、世界！";
+		auto result = writer.convertCsvText(input);
+		IUTEST_ASSERT_STREQ(result, u8"こんにちは、世界！");
+	}
+	{
+		auto input = u8"こんにちは,世界！";
+		auto result = writer.convertCsvText(input);
+		IUTEST_ASSERT_STREQ(result, u8"\"こんにちは,世界！\"");
+	}
+	{
+		auto input = u8"最初の行\n次の行";
+		auto result = writer.convertCsvText(input);
+		IUTEST_ASSERT_STREQ(result, u8"\"最初の行\n次の行\"");
+	}
+	{
+		auto input = u8"文章中の\"記号";
+		auto result = writer.convertCsvText(input);
+		IUTEST_ASSERT_STREQ(result, u8"文章中の\"\"記号");
+	}
+	{
+		auto input = u8"コンマ,\"と引用符";
+		auto result = writer.convertCsvText(input);
+		IUTEST_ASSERT_STREQ(result, u8"\"コンマ,\"\"と引用符\"");
+	}
 }
 
 IUTEST(Langscore_Config, TmpDir)
@@ -309,15 +513,44 @@ IUTEST(Langscore_Config, CheckProjectPath)
 	IUTEST_ASSERT_STREQ(expected, actual.u8string());
 }
 
+IUTEST(Langscore_Csv, parsePlain)
+{
+	auto targetCsvList = plaincsvreader{".\\data\\csv\\parsePlain.csv"}.getPlainCsvTexts();
+	IUTEST_ASSERT(targetCsvList.empty() == false);
+
+	// 期待される解析結果を定義
+	std::vector<std::vector<std::u8string>> expected = {
+		{u8"ID", u8"Name", u8"Age", u8"Address", u8"Quote", u8"Description"},
+		{u8"1", u8"Yamada, Taro", u8"30", u8"Tokyo, Japan", u8"I love \"sushi\" and \"ramen\"", u8"Hobby: Basketball\nFavorite color: Blue"},
+		{u8"2", u8"Suzuki, Hanako", u8"25", u8"Osaka, Japan", u8"Life is like a box of chocolates", u8"Hobby: Painting\nFavorite color: Green"},
+		{u8"3", u8"Tanaka, Ken", u8"28", u8"Kyoto, Japan", u8"One,Two,Three,Four", u8"Hobby: Running\nFavorite color: Yellow"},
+		{u8"4", u8"Kato, Yuki", u8"22", u8"Hokkaido, Japan", u8"Hello, world! This is a test", u8"Hobby: Swimming\nFavorite color: Red"},
+		{u8"5", u8"Watanabe, Rika", u8"35", u8"Fukuoka, Japan", u8"こんにちは、元気ですか？", u8"趣味：読書\n好きな色：ピンク"},
+	};
+
+	// 解析結果が期待通りであることを確認    
+	for(size_t i = 0; i < expected.size(); ++i)
+	{
+		for(size_t j = 0; j < expected[i].size(); ++j)
+		{
+			if(expected[i][j] != targetCsvList[i][j]){
+				IUTEST_SCOPED_TRACE(::iutest::Message() << "No match Text. : " << expected[i][j] << ":" << targetCsvList[i][j]);
+				IUTEST_SCOPED_TRACE(::iutest::Message() << "i : " << i << " j : " << j);
+				IUTEST_FAIL();
+			}
+		}
+	}
+}
+
 IUTEST(Langscore_Csv, merge)
 {
 	{
-		langscore::csvreader reader;
-		auto targetCsv = reader.parse(".\\data\\csv\\after.csv");
+		langscore::csvreader reader{{}, ".\\data\\csv\\after.csv"};
+		auto& targetCsv = reader.curerntTexts();
 		IUTEST_ASSERT(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::AcceptSource;
-		langscore::csvwriter writer({}, targetCsv);
+		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
 		IUTEST_ASSERT(writer.merge(".\\data\\csv\\before.csv"));
 
@@ -330,12 +563,12 @@ IUTEST(Langscore_Csv, merge)
 		IUTEST_ASSERT_STREQ(merged[1].translates[u8"ja"], u8"");
 	}
 	{
-		langscore::csvreader reader;
-		auto targetCsv = reader.parse(".\\data\\csv\\after.csv");
+		langscore::csvreader reader{{}, ".\\data\\csv\\after.csv"};
+		auto& targetCsv = reader.curerntTexts();
 		IUTEST_ASSERT(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::AcceptTarget;
-		langscore::csvwriter writer({}, targetCsv);
+		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
 		IUTEST_ASSERT(writer.merge(".\\data\\csv\\before.csv"));
 
@@ -350,12 +583,12 @@ IUTEST(Langscore_Csv, merge)
 		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"さしすせそ");
 	}
 	{
-		langscore::csvreader reader;
-		auto targetCsv = reader.parse(".\\data\\csv\\after.csv");
+		langscore::csvreader reader{{}, ".\\data\\csv\\after.csv"};
+		auto& targetCsv = reader.curerntTexts();
 		IUTEST_ASSERT(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepTarget;
-		langscore::csvwriter writer({}, targetCsv);
+		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
 		IUTEST_ASSERT(writer.merge(".\\data\\csv\\before.csv"));
 
@@ -370,12 +603,12 @@ IUTEST(Langscore_Csv, merge)
 		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"さしすせそ");
 	}
 	{
-		langscore::csvreader reader;
-		auto targetCsv = reader.parse(".\\data\\csv\\before.csv");
+		langscore::csvreader reader{{}, ".\\data\\csv\\before.csv"};
+		auto& targetCsv = reader.curerntTexts();
 		IUTEST_ASSERT(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepTarget;
-		langscore::csvwriter writer({}, targetCsv);
+		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
 		IUTEST_ASSERT(writer.merge(".\\data\\csv\\after.csv"));
 
@@ -390,12 +623,12 @@ IUTEST(Langscore_Csv, merge)
 		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"");
 	}
 	{
-		langscore::csvreader reader;
-		auto targetCsv = reader.parse(".\\data\\csv\\after.csv");
+		langscore::csvreader reader{{}, ".\\data\\csv\\after.csv"};
+		auto& targetCsv = reader.curerntTexts();
 		IUTEST_ASSERT(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepSource;
-		langscore::csvwriter writer({}, targetCsv);
+		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
 		IUTEST_ASSERT(writer.merge(".\\data\\csv\\before.csv"));
 
@@ -410,12 +643,12 @@ IUTEST(Langscore_Csv, merge)
 		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"");
 	}
 	{
-		langscore::csvreader reader;
-		auto targetCsv = reader.parse(".\\data\\csv\\before.csv");
+		langscore::csvreader reader{{}, ".\\data\\csv\\before.csv"};
+		auto& targetCsv = reader.curerntTexts();
 		IUTEST_ASSERT(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepSource;
-		langscore::csvwriter writer({}, targetCsv);
+		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
 		IUTEST_ASSERT(writer.merge(".\\data\\csv\\after.csv"));
 
@@ -468,8 +701,7 @@ IUTEST(Langscore_Invoker, CheckValidScriptList)
 	invoker.analyze();
 
 	IUTEST_ASSERT(fs::exists(outputPath / "Scripts/_list.csv"));
-	langscore::csvreader csvreader;
-	auto scriptList = csvreader.parsePlain(outputPath / "Scripts/_list.csv");
+	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
 	
 	for(auto& file : fs::recursive_directory_iterator(outputPath/"Scripts"))
 	{
@@ -490,7 +722,6 @@ IUTEST(Langscore_Invoker, CheckValidScriptList)
 	IUTEST_SUCCEED();
 }
 
-
 IUTEST(Langscore_Divisi_Analyze, ValidateTexts)
 {
 	//テキストが一致するかの整合性を確認するテスト
@@ -501,11 +732,11 @@ IUTEST(Langscore_Divisi_Analyze, ValidateTexts)
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
 	IUTEST_ASSERT(fs::exists(outputPath / "Map001.csv"));
-	langscore::csvreader csvreader;
-	auto scriptCsv = csvreader.parse(outputPath / "Map001.csv");
+	langscore::csvreader csvreader({}, outputPath / "Map001.csv");
+	auto scriptCsv = csvreader.curerntTexts();
 	
 	std::vector<std::u8string> includeTexts = {
-		u8"マップ名",
+		u8"マップ名"s,
 		u8"\"12345こんにちは世界 HelloWorld\n\""s,
 		u8"\"12345HHEELLOO\n\""s,
 		u8"\"これは追加テキストです\n\""s,
@@ -530,6 +761,139 @@ IUTEST(Langscore_Divisi_Analyze, ValidateTexts)
 	IUTEST_SUCCEED();
 }
 
+IUTEST(Langscore_Divisi, CheckLangscoreRubyScript)
+{	
+	//念のため一時キャッシュ側も削除
+	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate")){
+		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate");
+	}
+	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze")){
+		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze");
+	}
+	{
+		langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+		IUTEST_ASSERT(divisi.analyze().valid());
+	}
+	{
+		//analyzeとwriteを同時に呼び出すことを想定していない。
+		//analyzeを呼び出すとコンストラクト時の言語リストが初期化されるため、
+		//インスタンスは別に分ける。
+		langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+		IUTEST_ASSERT(divisi.write().valid());
+	}
+	langscore::config config;
+	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
+
+	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
+	fs::path langscoreFilename;
+	{
+		auto result = std::ranges::find_if(scriptList, [](const auto& x){
+			return x[1] == platform_base::Script_File_Name;
+		});
+		IUTEST_ASSERT(result != scriptList.cend());
+		langscoreFilename = outputPath / "Scripts" / (std::u8string((*result)[0]) + u8".rb"s);
+	}
+
+	std::cout << "MESSAGE : Langscore.rb " << langscoreFilename;
+
+	IUTEST_ASSERT(fs::exists(langscoreFilename));
+	langscore::rubyreader rubyReader{{u8"ja"}, {langscoreFilename}};
+	auto scriptCsv = rubyReader.curerntTexts();
+	IUTEST_ASSERT(scriptCsv.size() == 75);
+
+	csvwriter csvwriter{rubyReader};
+	csvwriter.write(".\\data\\dummy.csv");
+
+	csvreader csvreader({u8"ja"}, ".\\data\\dummy.csv");
+	auto writedCsvTexts = csvreader.curerntTexts();
+	IUTEST_ASSERT(writedCsvTexts.size() == 75);
+
+	int i = 0;
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"en");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"en");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"VL Gothic");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"メイリオ");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Data/Translate");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"/");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Invalid CSV Data");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Error! : Missmatch Num Cells : #{mismatch_cells.first}");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"File : #{file_name}, Header size : #{size}, Languages : #{rows[0]}");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Error! : Missmatch Num Cells : #{mismatch_cells.first}");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8".rvdata2");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"load_data #{file_name}");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8".csv");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"rb:utf-8:utf-8");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"open #{file_name}");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Warning : Not Found Transcript File #{file_name}");
+
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\n");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8",");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\"");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\"");
+
+
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\"\"");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\"");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\"");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8",");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\n");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Graphics");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Scripts");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Troops");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"CommonEvents");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Actors");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"System");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Classes");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Skills");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"States");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Weapons");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Armors");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Items");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Enemies");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Map%03d");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Graphics");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Scripts");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Troops");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"CommonEvents");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"_");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"現在選択中の言語が表示されます。");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"en");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"The currently selected language is displayed.");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"現在選択中の言語が表示されます。");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"en");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"English");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"日本語");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"OK");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Reselect");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Cancel");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"kernel32");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"GetPrivateProfileString");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"L");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"kernel32");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"WritePrivateProfileString");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"i");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8" ");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Langscore");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Lang");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"./Game.ini");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Langscore Load ini : #{$langscore_current_language}");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Langscore");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Lang");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"./Game.ini");
+
+	if(i != 75){
+		IUTEST_SCOPED_TRACE(::iutest::Message() << "The number of tests in the string does not match. : " << i);
+		IUTEST_FAIL();
+	}
+}
+
 IUTEST(Langscore_Divisi, CheckScriptCSV)
 {	
 	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
@@ -539,9 +903,9 @@ IUTEST(Langscore_Divisi, CheckScriptCSV)
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
 	IUTEST_ASSERT(fs::exists(outputPath / "Scripts.csv"));
-	langscore::csvreader csvreader;
-	auto scriptCsv = csvreader.parse(outputPath / "Scripts.csv");
-	auto scriptList = csvreader.parsePlain(outputPath / "Scripts/_list.csv");
+	langscore::csvreader csvreader{{}, outputPath / "Scripts.csv"};
+	auto scriptCsv = csvreader.curerntTexts();
+	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
 
 	IUTEST_ASSERT(scriptCsv.empty() == false);
 
@@ -566,8 +930,13 @@ IUTEST(Langscore_Divisi, WriteVXAceProject)
 	fs::path scriptDataSrc(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
 	fs::path scriptDataDest(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
 
+
 	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate")){
 		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate");
+	}
+	//念のため一時キャッシュ側も削除
+	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate")){
+		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate");
 	}
 
 	if(fs::exists(scriptDataDest) == false){
@@ -579,20 +948,19 @@ IUTEST(Langscore_Divisi, WriteVXAceProject)
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
 	IUTEST_ASSERT(fs::exists(outputPath / "Scripts.csv"));
-	langscore::csvreader csvreader;
-	auto scriptList = csvreader.parsePlain(outputPath / "Scripts/_list.csv");
+	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
 
 	fs::path langscoreCustomFilename;
 	{
 		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [](const auto& x){
-			return x[1] == u8"langscore_custom";
+			return x[1] == platform_base::Custom_Script_File_Name;
 		});
 		IUTEST_ASSERT(result != scriptList.cend());
 		langscoreCustomFilename = outputPath / "Scripts" / (std::u8string((*result)[0]) + u8".rb"s);
 	}
 	{
 		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [](const auto& x){
-			return x[1] == u8"langscore";
+			return x[1] == platform_base::Script_File_Name;
 		});
 		IUTEST_ASSERT(result != scriptList.cend());
 	}
@@ -612,6 +980,10 @@ IUTEST(Langscore_Divisi, WriteVocab)
 	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate")){
 		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate");
 	}
+	//念のため一時キャッシュ側も削除
+	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate")){
+		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate");
+	}
 
 	if(fs::exists(scriptDataDest) == false){
 		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
@@ -622,20 +994,19 @@ IUTEST(Langscore_Divisi, WriteVocab)
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
 	IUTEST_ASSERT(fs::exists(outputPath / "Scripts.csv"));
-	langscore::csvreader csvreader;
-	auto scriptList = csvreader.parsePlain(outputPath / "Scripts/_list.csv");
+	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
 
 	fs::path langscoreCustomFilename;
 	{
 		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [](const auto& x){
-			return x[1] == u8"langscore_custom";
+			return x[1] == platform_base::Custom_Script_File_Name;
 		});
 		IUTEST_ASSERT(result != scriptList.cend());
 		langscoreCustomFilename = outputPath / "Scripts" / (std::u8string((*result)[0]) + u8".rb"s);
 	}
 	{
 		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [](const auto& x){
-			return x[1] == u8"langscore";
+			return x[1] == platform_base::Script_File_Name;
 		});
 		IUTEST_ASSERT(result != scriptList.cend());
 	}
@@ -652,8 +1023,9 @@ IUTEST(Langscore_Divisi, WriteLangscoreCustom)
 	divisi_vxace.setAppPath("./");
 	divisi_vxace.setProjectPath(config.gameProjectPath());
 
-	std::u8string fileName = u8"57856563";
-	langscore::rbscriptwriter scriptWriter({u8"en", u8"ja"}, {u8".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze\\Scripts\\"s + fileName + u8".rb"s});
+	std::u8string fileName = u8"57856563";	//Cacheスクリプト
+	langscore::rubyreader rubyReader({u8"en", u8"ja"}, {u8".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze\\Scripts\\"s + fileName + u8".rb"s});
+	langscore::rbscriptwriter scriptWriter(rubyReader);
 
 	const auto outputFileName = "./data/langscore_custom.rb"s;
 	if(fs::exists(outputFileName)){
@@ -672,10 +1044,10 @@ IUTEST(Langscore_Divisi, WriteLangscoreCustom)
 		{
 			std::string line;
 			std::getline(outputFile, line);
-			if(line.find("Langscore.translate_" + utility::cnvStr<std::string>(fileName)) != line.npos) {
+			if(line.find("\tLangscore.translate_" + utility::cnvStr<std::string>(fileName)) != line.npos) {
 				numSucceed++;
 			}
-			if(line.find("Scripts/Cache#15,18") != line.npos) {
+			if(line.find("Scripts/57856563#15,18") != line.npos) {
 				numSucceed++;
 			}
 			if(line.find("Langscore.translate_for_script(\"57856563:15:18\")") != line.npos) {
@@ -697,21 +1069,24 @@ IUTEST(Langscore_Divisi, ValidateLangscoreCustom)
 	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate")){
 		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate");
 	}
+	//念のため一時キャッシュ側も削除
+	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate")){
+		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate");
+	}
 
 	if(fs::exists(scriptDataDest) == false){
 		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
 	}
 
-	divisi.write().valid();
+	divisi.write();
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
-	langscore::csvreader csvreader;
-	auto scriptList = csvreader.parsePlain(outputPath / "Scripts/_list.csv");
+	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
 
 	fs::path langscoreCustomFilename;
 	{
-		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [](const auto& x){
+		auto result = std::ranges::find_if(scriptList, [](const auto& x){
 			return x[1] == u8"langscore_custom";
 		});
 		langscoreCustomFilename = outputPath / "Scripts" / (std::u8string((*result)[0]) + u8".rb"s);
@@ -741,11 +1116,19 @@ IUTEST(Langscore_Divisi, ValidateLangscoreCustom)
 
 IUTEST(Langscore_Divisi, VXAce_WriteScriptCSV)
 {
+	//Langscore_customに意図した通りに内容が書き込まれているかのテスト
 	fs::path scriptDataSrc(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
 	fs::path scriptDataDest(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
 
 	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate")){
 		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Translate");
+	}
+	//念のため一時キャッシュ側も削除
+	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate")){
+		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\Data\\Translate");
+	}
+	if(fs::exists(".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze")){
+		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze");
 	}
 
 	if(fs::exists(scriptDataDest) == false){
@@ -756,12 +1139,13 @@ IUTEST(Langscore_Divisi, VXAce_WriteScriptCSV)
 	langscore::divisi_vxace divisi_vxace;
 	divisi_vxace.setAppPath("./");
 	divisi_vxace.setProjectPath(config.gameProjectPath());
+	divisi_vxace.analyze();
+	divisi_vxace.write();
 
 
 	auto [scripts, dataList, graphics] = divisi_vxace.fetchFilePathList(config.langscoreAnalyzeDirectorty());
-	langscore::csvreader csvreader;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
-	auto scriptList = csvreader.parsePlain(outputPath / "Scripts/_list.csv");
+	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
 
 	fs::path langscoreCustomFilename;
 	{
@@ -779,12 +1163,13 @@ IUTEST(Langscore_Divisi, VXAce_WriteScriptCSV)
 		lines.emplace_back(std::move(line));
 	}
 
-	langscore::rbscriptwriter scriptWriter({u8"ja"s}, scripts);
+	rbscriptwriter scriptWriter(rubyreader{{u8"ja"s}, scripts});
 	
 	const auto funcName = [](auto str)
 	{
 		using Str = decltype(str);
 		using Char = Str::value_type;
+		str = utility::removeExtension(str);
 		for(auto i = str.find(Char(" ")); i != decltype(str)::npos; i = str.find(Char(" "))){
 			str.replace(i, 1, (Char*)"_");
 		}
@@ -798,22 +1183,19 @@ IUTEST(Langscore_Divisi, VXAce_WriteScriptCSV)
 		return result != lines.cend();
 	};
 
-	for(const auto& script : scriptWriter.scriptTranslates)
+
+	for(const auto& script : scriptWriter.scriptTranslatesMap)
 	{
 		//文字列のないスクリプトファイルを無視する
 		if(std::get<1>(script).empty()){ continue; }
 		auto fileName = std::get<0>(script);
-		auto result = std::find_if(scriptList.cbegin(), scriptList.cend(), [&fileName](const auto& x){
-			return x[0] == fileName;
-		});
 
-		IUTEST_ASSERT(result != scriptList.cend());
+		const auto& scriptName = scriptWriter.GetScriptName(fileName);
+		if(scriptName.empty()){ continue; }
+		IUTEST_ASSERT_STRNE(scriptName, platform_base::Script_File_Name);
+		IUTEST_ASSERT_STRNE(scriptName, platform_base::Custom_Script_File_Name);
 
-		const auto& scriptName = (*result)[1];
-		if(scriptName == u8"langscore"){ continue; }
-		else if(scriptName == u8"langscore_custom"){ continue; }
-
-		auto path = outputPath / "Scripts" / (fileName + u8".rb");
+		auto path = outputPath / "Scripts" / fileName;
 
 		if(fs::file_size(path) == 0){ continue; }
 
