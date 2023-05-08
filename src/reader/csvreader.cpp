@@ -1,15 +1,34 @@
 ﻿#include "csvreader.h"
 #include "csvreader.h"
+#include "csvreader.h"
+#include "csvreader.h"
+#include "csvreader.h"
+#include "csvreader.h"
 #include <fstream>
+#include <ranges>
 
 using namespace langscore;
+
+csvreader::csvreader(std::vector<std::u8string> langs, utility::filelist scriptFileList)
+	: readerbase(std::move(langs), std::move(scriptFileList))
+{
+	for(auto& path : this->scriptFileList){
+		auto texts = parse(std::move(path));
+		this->texts.insert(this->texts.end(), texts.begin(), texts.end());
+	}
+}
+
+csvreader::csvreader(std::vector<std::u8string> langs, std::filesystem::path path)
+	: csvreader(std::move(langs), utility::filelist{std::move(path)})
+{}
 
 csvreader::~csvreader()
 {}
 
+
 std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 {
-	auto csv = parsePlain(std::move(path));
+	auto csv = plaincsvreader{path}.getPlainCsvTexts();
 	if(csv.size() < 2){ return {}; }
 
 	const auto& header = csv[0];
@@ -28,7 +47,22 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 	return result;
 }
 
-std::vector<utility::u8stringlist> csvreader::parsePlain(std::filesystem::path path)
+plaincsvreader::plaincsvreader(utility::filelist path)
+	: readerbase({}, {std::move(path)})
+{
+	for(auto& path : scriptFileList){
+		this->plainCsvTexts = parse(path);
+	}
+}
+
+plaincsvreader::plaincsvreader(std::filesystem::path path)
+	: plaincsvreader(utility::filelist{std::move(path)})
+{}
+
+plaincsvreader::~plaincsvreader()
+{}
+
+std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path path)
 {
 	std::ifstream file(path, std::ios::binary);
 	if(!file){ return {}; }
@@ -38,33 +72,49 @@ std::vector<utility::u8stringlist> csvreader::parsePlain(std::filesystem::path p
 
 	const auto GetChar = [&file]()
 	{
-		std::u8string result;
+		std::u8string result = u8"";
 		if(file.eof()){ return result; }
 
-		char c;
+		char c; 
 		file.get(c);
+		if(file.eof()){ return result; }
 		auto length = utility::getUTF8ByteLength(c);
 		result.resize(length);
 		size_t i = 0;
-		while(true)
+		while(file.eof() == false)
 		{
 			result[i] = c;
 			i++;
-			if(file.eof() || length <= i){ break; }
+			if(length <= i){ break; }
 			file.get(c);
+			if(file.fail()){ break; }
 		} 
 			
 		return result;
 	};
 
-	bool find_dq = false;
+	const auto ReadAndPeekNextChar = [&file, &GetChar]()
+	{
+		auto current_pos = file.tellg(); // 現在のファイル位置を保存
+		auto result = GetChar();
+		if(file.eof()){ return result; } //EOFを検出した場合は変に戻さない。
+		file.seekg(current_pos); // 元の位置に戻す
+		return result;
+	};
+
+	bool bracketed_dq = false;
 	std::vector<utility::u8stringlist> csv;
 	std::u8string col = u8"";
 	utility::u8stringlist cols;
 
-	const auto AddCols = [&cols](std::u8string col){
-		if(col.empty() == false && col[col.size() - 1] == u8'\n'){ col.erase(col.size() - 1, 1); }
-		if(col.empty() == false && col[col.size() - 1] == u8'\r'){ col.erase(col.size() - 1, 1); }
+	const auto AddCols = [&cols](std::u8string col)
+	{
+		//if(col.empty() == false && col[col.size() - 1] == u8'\n'){ col.erase(col.size() - 1, 1); }
+		//if(col.empty() == false && col[col.size() - 1] == u8'\r'){ col.erase(col.size() - 1, 1); }
+		auto rpos = col.find(u8'\r');
+		if(rpos != std::u8string::npos){
+			col.erase(std::remove(col.begin(), col.end(), u8'\r'), col.end());
+		}
 		cols.emplace_back(std::move(col));
 	};
 
@@ -74,31 +124,87 @@ std::vector<utility::u8stringlist> csvreader::parsePlain(std::filesystem::path p
 		if(file.eof()){ break; }
 		if(c == u8""){ continue; }
 
-		if(c == u8"\""){ find_dq = !find_dq; }
+		//制御文字の検出
+		if(c == u8"\\")
+		{
+			auto next = ReadAndPeekNextChar();
 
-		if(find_dq){
-			std::copy(c.begin(), c.end(), std::back_inserter(col));
+			if(file.eof()){
+				std::ranges::copy(c, std::back_inserter(col));
+				break; 
+			}
+			bool find = true;
+			if(next == u8"a"){ next = u8"\a"; }
+			else if(next == u8"b"){ next = u8"\b"; }
+			else if(next == u8"t"){ next = u8"\t"; }
+			else if(next == u8"n"){ next = u8"\n"; }
+			else if(next == u8"r"){ next = u8"\r"; }
+			else if(next == u8"\""){ next = u8"\"\""; }
+			else if(next == u8"\\" ){ next = u8"\\"; }
+			else if(next == u8"\'"){ next = u8"\''"; }
+			else{
+				find = false;
+			}
+
+			if(find){
+				GetChar();	//先読みしたため先読み後の位置にする。
+				std::ranges::copy(next, std::back_inserter(col));
+			}
+			continue;
+		}
+
+		if(c == u8"\"")
+		{
+			auto next = ReadAndPeekNextChar();
+			if(file.eof()){ break; }
+			if(next == u8"\""){
+				GetChar();
+				//""を"として解釈するため、先読みした箇所まで読み込む。
+				std::ranges::copy(c, std::back_inserter(col));
+			}
+			else if(col.empty())	//文字が何も入っていない == セルの先頭
+			{
+				//セルの先頭が"で開始されていたら""で括られていると判定する。
+				bracketed_dq = true; 
+				//素通りさせると下記ifのbracketed_dq判定に引っかかるので、ここでcontinueさせる。
+				continue;
+			}
+			
+			if(bracketed_dq && (next == u8"," || next == u8"\r" || next == u8"\n"))
+			{
+				//bracketed_dqの時点でここに来たということは、クオートが閉じられた。
+				//,が続く場合はセルの末尾なので、括りフラグも無効にする。
+				bracketed_dq = false;
+			}
+			//\nや,を含む、クオートで括られているセルはクオートを除外して格納するため、ここでcontinue
+			continue;
+		}
+
+		if(bracketed_dq)
+		{
+			//クオートが閉じられるまで無条件で追加
+			std::ranges::copy(c, std::back_inserter(col));
 			continue;
 		}
 
 		if(c == u8","){
-			find_dq = false;
+			bracketed_dq = false;
 			AddCols(std::move(col));
 			col = u8"";
 			continue;
 		}
 		else if(c == u8"\n"){
-			find_dq = false;
+			bracketed_dq = false;
 			AddCols(std::move(col));
 			col = u8"";
 			csv.emplace_back(cols);
 			cols.clear();
 			continue;
 		}
-		std::copy(c.begin(), c.end(), std::back_inserter(col));
+		std::ranges::copy(c, std::back_inserter(col));
 	}
 
-	if(col.empty() == false){ cols.emplace_back(std::move(col)); }
+	if(col.empty() == false){ AddCols(std::move(col)); }
 
 	if(cols.empty() == false){
 		csv.emplace_back(std::move(cols));

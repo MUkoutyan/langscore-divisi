@@ -7,17 +7,17 @@ namespace langscore
 	class vxace_jsonreader : public jsonreaderbase
 	{
 	public:
-		vxace_jsonreader(nlohmann::json json)
-			: jsonreaderbase(std::move(json))
+		vxace_jsonreader(std::vector<std::u8string> useLangs, nlohmann::json json)
+			: jsonreaderbase(std::move(useLangs), std::move(json))
 			, stackText(false)
 			, stackTextStr(u8"")
 		{
+			json2tt();
 		}
 		~vxace_jsonreader() override {}
 
-		void json2tt(std::vector<std::u8string> useLangs) override
+		void json2tt() override
 		{
-			this->useLangs = std::move(useLangs);
 			if(json.is_array())
 			{
 				convertJArray(json, 0);
@@ -73,20 +73,9 @@ namespace langscore
 				}
 			}
 
-			bool wrapDq = false;
-			if(text.find(u8'\n') != std::u8string::npos){
-				wrapDq = true;
-			}
-			if(text.find(u8'\"') != std::u8string::npos){
-				wrapDq = true;
-				text = utility::replace<std::u8string>(text, u8"\"", u8"\"\"");
-			}
+			//※リード処理はCSV用のテキストに変換しない。
 
-			if(wrapDq){
-				text = u8"\"" + text + u8"\"";
-			}
-
-			TranslateText t(std::move(text), useLangs);
+			TranslateText t(std::move(text), useLangList);
 			t.code = code;
 			auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
 				return x.original == t.original;

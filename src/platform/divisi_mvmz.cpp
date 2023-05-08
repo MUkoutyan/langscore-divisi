@@ -5,6 +5,7 @@
 #include "writer/csvwriter.h"
 #include "reader/csvreader.h"
 #include "reader/mvmzjsonreader.hpp"
+#include "reader/javascriptreader.hpp"
 #include <iostream>
 
 #include <crc32.h>
@@ -130,7 +131,7 @@ ErrorStatus divisi_mvmz::update()
     utility::filelist throughCopyList;  //何もせずにコピーする
 
     //消されるファイルの列挙
-    for(auto s : analyzeCsvList){
+    for(const auto& s : analyzeCsvList){
         auto result = std::find_if(updateCsvList.begin(), updateCsvList.end(), [&s](const auto& x){
             return x.filename() == s.filename();
         });
@@ -139,7 +140,7 @@ ErrorStatus divisi_mvmz::update()
         }
     }
     //追加されるファイルの列挙
-    for(auto s : updateCsvList){
+    for(const auto& s : updateCsvList){
         auto result = std::find_if(analyzeCsvList.begin(), analyzeCsvList.end(), [&s](const auto& x){
             return x.filename() == s.filename();
         });
@@ -226,7 +227,7 @@ ErrorStatus divisi_mvmz::write()
     std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(config.langscoreAnalyzeDirectorty());
 
     writeFixedBasicData();
-    //writeFixedRvScript();
+    writeFixedScript();
     writeFixedGraphFileNameData();
 
     copyFonts();
@@ -246,14 +247,14 @@ ErrorStatus divisi_mvmz::write()
     return Status_Success;
 }
 
-void langscore::divisi_mvmz::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<jsonreaderbase>>& jsonreader_map)
+void langscore::divisi_mvmz::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<readerbase>>& jsonreader_map)
 {
     if(list.empty()){ return; }
     //アクター名の変更・二つ名の変更　の抽出
     utility::u8stringlist extend_names;
     fs::path actor_path;
     const std::array<int, 3> targetCode = {320, 324, 325};
-    for(auto path : list)
+    for(const auto& path : list)
     {
         auto filename = path.filename();
         if(filename.string().find("Actors") != std::string::npos){
@@ -264,7 +265,8 @@ void langscore::divisi_mvmz::fetchActorTextFromMap(const utility::u8stringlist& 
 
         if(jsonreader_map.find(filename) == jsonreader_map.end()) { continue; }
         const auto& json_reader = jsonreader_map.at(filename);
-        for(auto& text : json_reader->texts){
+        auto texts = json_reader->curerntTexts();
+        for(auto& text : texts){
             if(std::find(targetCode.cbegin(), targetCode.cend(), text.code) == targetCode.cend()){
                 continue;
             }
@@ -279,8 +281,8 @@ void langscore::divisi_mvmz::fetchActorTextFromMap(const utility::u8stringlist& 
     {
         auto actor_csv_filepath = folder / actor_filename;
         if(fs::exists(actor_csv_filepath) == false){ continue; }
-        csvreader actor;
-        auto plain_csv = actor.parsePlain(actor_csv_filepath.replace_extension(".csv"));
+
+        auto plain_csv = plaincsvreader{actor_csv_filepath.replace_extension(".csv")}.getPlainCsvTexts();
 
         for(const auto& name : extend_names)
         {
@@ -308,12 +310,11 @@ void divisi_mvmz::adjustCSV(const utility::u8stringlist& rewriteCSVFolder, const
     //MV/MZの改行は\nで統一
     for(auto& folder : rewriteCSVFolder)
     {
-        for(auto path : list)
+        for(const auto& path : list)
         {
             auto csvPath = folder / path.filename().replace_extension(".csv");
             if(fs::exists(csvPath) == false){ continue; }
-            csvreader csv;
-            auto plain_csv = csv.parsePlain(csvPath);
+            auto plain_csv = plaincsvreader{csvPath}.getPlainCsvTexts();
 
             auto csvFileName = csvPath.filename();
             const bool isRewrite = adjustCSVCore(plain_csv);
@@ -364,7 +365,7 @@ ErrorStatus divisi_mvmz::validate()
     const auto exportDirectory = config.exportDirectory(root);
     filelist csvPathList;
 
-    for(auto dir : exportDirectory)
+    for(const auto& dir : exportDirectory)
     {
         for(const auto& f : fs::recursive_directory_iterator{dir}){
             auto extension = f.path().extension();
@@ -409,8 +410,7 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
     scripts.resize(numScripts);
     filelist basicDataList;
 
-    csvreader scriptCsvReader;
-    auto scriptCsv = scriptCsvReader.parsePlain(scriptFolderPath + u8"/_list.csv"s);
+    auto scriptCsv = plaincsvreader{scriptFolderPath + u8"/_list.csv"s}.getPlainCsvTexts();
     for(auto& f : fs::directory_iterator{deserializeOutPath})
     {
         //Basic
@@ -469,7 +469,7 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
 void divisi_mvmz::writeAnalyzedBasicData()
 {
     std::cout << "writeAnalyzedBasicData" << std::endl;
-    std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>> jsonreader_map;
+    std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
     for(auto& path : this->basicDataFileList)
     {
         std::ifstream loadFile(path);
@@ -480,8 +480,8 @@ void divisi_mvmz::writeAnalyzedBasicData()
         csvFilePath.make_preferred().replace_extension(".csv");
         std::cout << "Write CSV : " << csvFilePath << std::endl;
 
-        std::unique_ptr<jsonreaderbase> reader = std::make_unique<mvmz_jsonreader>(path, std::move(json));
-        csvwriter writer(this->supportLangs, reader);
+        std::unique_ptr<readerbase> reader = std::make_unique<mvmz_jsonreader>(path, this->supportLangs, std::move(json));
+        csvwriter writer(reader);
         writer.write(csvFilePath, MergeTextMode::AcceptTarget);
         jsonreader_map[path.filename()] = std::move(reader);
     }
@@ -512,7 +512,7 @@ void langscore::divisi_mvmz::writeFixedBasicData()
 
     auto ignoreScripts = config.vxaceBasicData();
     auto list = this->basicDataFileList;
-    std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>> jsonreader_map;
+    std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
     for(auto& path : list)
     {
         auto result = std::find_if(ignoreScripts.cbegin(), ignoreScripts.cend(), [f = path.filename()](const auto& x){
@@ -531,7 +531,7 @@ void langscore::divisi_mvmz::writeFixedBasicData()
         for(auto& translateFolder : translateFolderList){
             csvFilePath = translateFolder / csvFilePath;
             std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
-            std::unique_ptr<jsonreaderbase> reader = std::make_unique<mvmz_jsonreader>(path, std::move(json));
+            std::unique_ptr<readerbase> reader = std::make_unique<mvmz_jsonreader>(path, this->supportLangs, json);
             writeFixedTranslateText<csvwriter>(csvFilePath, reader, mergeTextMode);
             jsonreader_map[path.filename()] = std::move(reader);
         }
@@ -541,13 +541,9 @@ void langscore::divisi_mvmz::writeFixedBasicData()
     std::cout << "Finish." << std::endl;
 }
 
-void langscore::divisi_mvmz::writeFixedScript(std::u8string baseDirectory)
+void langscore::divisi_mvmz::writeFixedScript()
 {
     std::cout << "writeFixedScript" << std::endl;
-    //無視リスト等を反映させて書き出す。
-    //書き出し先はプロジェクト直下のTranslateになる。
-
-    //Rubyスクリプトを予め解析してテキストを生成しておく。
     config config;
 
     auto mergeTextMode = MergeTextMode::MergeKeepSource;
@@ -556,7 +552,7 @@ void langscore::divisi_mvmz::writeFixedScript(std::u8string baseDirectory)
         mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
     }
 
-    auto scriptInfoList = config.vxaceScripts();
+    auto scriptInfoList = config.rpgMakerScripts();
     auto scriptList = scriptFileList;
     {
         auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&scriptInfoList](const auto& path){
@@ -570,16 +566,16 @@ void langscore::divisi_mvmz::writeFixedScript(std::u8string baseDirectory)
     }
 
     //スクリプトの翻訳を書き込むCSVの書き出し
-    jsscriptwriter scriptWriter(this->supportLangs, scriptList);
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-    auto transTexts = scriptWriter.curerntTexts();
-    transTexts = scriptWriter.acceptIgnoreScripts(scriptInfoList, std::move(transTexts));
+    javascriptreader scriptReader(this->supportLangs, scriptList);
+    auto transTexts = scriptReader.curerntTexts();
+    scriptReader.applyIgnoreScripts(scriptInfoList);
 
     std::u8string root;
     const auto translateFolderList = config.exportDirectory(root);
     for(auto& translateFolder : translateFolderList){
         std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, mergeTextMode);
+        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, scriptReader, mergeTextMode, false);
     }
 
     std::cout << "Finish." << std::endl;
@@ -592,14 +588,15 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
     std::cout << "writeAnalyzedScript" << std::endl;
 
     config config;
-    //Rubyスクリプトを予め解析してテキストを生成しておく。
-    jsscriptwriter scriptWriter(this->supportLangs, this->scriptFileList);
+    //Javascriptを予め解析してテキストを生成しておく。
+    javascriptreader scriptWriter(this->supportLangs, this->scriptFileList);
     auto& transTexts = scriptWriter.curerntTexts();
 
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     for(auto& t : transTexts){
         if(t.translates.find(def_lang) == t.translates.end()){ continue; }
         t.translates[def_lang] = t.original;
+        //t.scriptLineInfo.swap(t.original);
     }
     //=================================
 
@@ -616,7 +613,7 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
     }
 
     std::cout << "Write CSV : " << outputPath << std::endl;
-    csvwriter writer(supportLangs, std::move(transTexts));
+    csvwriter writer(scriptWriter);
     writer.write(outputPath, MergeTextMode::AcceptTarget);
 
     std::cout << "Finish." << std::endl;

@@ -8,19 +8,19 @@ namespace langscore
 	class mvmz_jsonreader: public jsonreaderbase
 	{
 	public:
-		mvmz_jsonreader(const std::filesystem::path& path, const nlohmann::json& json)
-			: jsonreaderbase(json)
+		mvmz_jsonreader(const std::filesystem::path& path, std::vector<std::u8string> useLangs, const nlohmann::json& json)
+			: jsonreaderbase(std::move(useLangs), json)
 			, stackText(false)
 			, stackTextStr(u8"")
 			, currentDataType(DetectDataType(path))
 		{
+			json2tt();	
 		}
 		~mvmz_jsonreader() override {}
 
 	private:
-		void json2tt(std::vector<std::u8string> useLangs) override
+		void json2tt() override
 		{
-			this->useLangs = std::move(useLangs);
 			if(json.is_array())
 			{
 				convertJArray(json, 0);
@@ -110,20 +110,9 @@ namespace langscore
 				}
 			}
 
-			bool wrapDq = false;
-			if(text.find(u8'\n') != std::u8string::npos){
-				wrapDq = true;
-			}
-			if(text.find(u8'\"') != std::u8string::npos){
-				wrapDq = true;
-				text = utility::replace<std::u8string>(text, u8"\"", u8"\"\"");
-			}
+			//※リード処理はCSV用のテキストに変換しない。
 
-			if(wrapDq){
-				text = u8"\"" + text + u8"\"";
-			}
-
-			TranslateText t(std::move(text), useLangs);
+			TranslateText t(std::move(text), useLangList);
 			t.code = code;
 			auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
 				return x.original == t.original;

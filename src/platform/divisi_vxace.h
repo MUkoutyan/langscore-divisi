@@ -43,7 +43,7 @@ namespace langscore
 		void writeFixedRvScript();
 		void rewriteScriptList(bool& replaceScript);
 
-		void fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<jsonreaderbase>>&);
+		void fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<readerbase>>&);
 		void adjustCSV(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list);
 		bool adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv, bool isRNLine);
 

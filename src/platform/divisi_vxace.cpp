@@ -4,6 +4,7 @@
 #include "../writer/rbscriptwriter.h"
 #include "../writer/uniquerowcsvwriter.hpp"
 #include "../reader/vxacejsonreader.hpp"
+#include "../reader/rubyreader.hpp"
 
 #include <nlohmann/json.hpp>
 #include <crc32.h>
@@ -131,8 +132,8 @@ ErrorStatus langscore::divisi_vxace::update()
     utility::filelist throughCopyList;  //何もせずにコピーする
 
     //消されるファイルの列挙
-    for(auto s : analyzeCsvList){
-        auto result = std::find_if(updateCsvList.begin(), updateCsvList.end(), [&s](const auto& x){
+    for(const auto& s : analyzeCsvList){
+        auto result = std::ranges::find_if(updateCsvList, [&s](const auto& x){
             return x.filename() == s.filename();
         });
         if(result == updateCsvList.end()){
@@ -140,8 +141,8 @@ ErrorStatus langscore::divisi_vxace::update()
         }
     }
     //追加されるファイルの列挙
-    for(auto s : updateCsvList){
-        auto result = std::find_if(analyzeCsvList.begin(), analyzeCsvList.end(), [&s](const auto& x){
+    for(const auto& s : updateCsvList){
+        auto result = std::ranges::find_if(analyzeCsvList, [&s](const auto& x){
             return x.filename() == s.filename();
         });
         if(result == analyzeCsvList.end()){
@@ -152,7 +153,7 @@ ErrorStatus langscore::divisi_vxace::update()
     //更新されるファイルのチェック    
     const auto CompareFileHash = [&messageList](std::filesystem::path path, const utility::filelist& files)
     {
-        auto result = std::find_if(files.begin(), files.end(), [&path](const auto& x){
+        auto result = std::ranges::find_if(files, [&path](const auto& x){
             return x.filename() == path.filename();
         });
         if(result == files.end()){
@@ -311,8 +312,7 @@ std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::d
     scripts.resize(numScripts);
     utility::filelist basicDataList;
 
-    csvreader scriptCsvReader;
-    auto scriptCsv = scriptCsvReader.parsePlain(deserializeOutPath + u8"/Scripts/_list.csv"s);
+    auto scriptCsv = plaincsvreader{deserializeOutPath + u8"/Scripts/_list.csv"s}.getPlainCsvTexts();
     for(auto& f : fs::recursive_directory_iterator{deserializeOutPath})
     {
         //Basic
@@ -369,7 +369,7 @@ std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::d
 void divisi_vxace::writeAnalyzedBasicData()
 {
     std::cout << "writeAnalyzedBasicData" << std::endl;
-    std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>> jsonreader_map;
+    std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
     for(auto& path : this->basicDataFileList)
     {
         std::ifstream loadFile(path);
@@ -380,8 +380,8 @@ void divisi_vxace::writeAnalyzedBasicData()
         csvFilePath.make_preferred().replace_extension(".csv");
         std::cout << "Write CSV : " << csvFilePath << std::endl;
 
-        std::unique_ptr<jsonreaderbase> reader = std::make_unique<vxace_jsonreader>(std::move(json));
-        csvwriter writer(this->supportLangs, reader);
+        std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, std::move(json));
+        csvwriter writer(reader);
         writer.write(csvFilePath, MergeTextMode::AcceptTarget);
         jsonreader_map[path.filename()] = std::move(reader);
     }
@@ -404,8 +404,8 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 
     config config;
     //Rubyスクリプトを予め解析してテキストを生成しておく。
-    rbscriptwriter scriptWriter(this->supportLangs, this->scriptFileList);
-    auto& transTexts = scriptWriter.curerntTexts();
+    rubyreader reader(this->supportLangs, this->scriptFileList);
+    auto& transTexts = reader.curerntTexts();
 
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     for(auto& t : transTexts){
@@ -415,11 +415,9 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 
     //デフォルトスクリプトのVocab.rb内の文字列は予めScriptsの中に翻訳済みの内容を入れておく
     auto resourceFolder = this->appPath.parent_path() / "resource";
-    csvreader reader;
-    auto vocabs = reader.parse(resourceFolder/"vocab.csv");
+    auto vocabs = csvreader{this->supportLangs, {resourceFolder / "vocab.csv"}}.curerntTexts();
     
-    csvreader csvReader;
-    auto scriptFileNameMap = csvReader.parsePlain(baseDirectory+u8"/Scripts/_list.csv"s);
+    auto scriptFileNameMap = plaincsvreader{baseDirectory + u8"/Scripts/_list.csv"s}.getPlainCsvTexts();
     const auto GetScriptName = [&scriptFileNameMap](std::u8string scriptName)
     {
         for(const auto& row : scriptFileNameMap){
@@ -428,7 +426,7 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
         return u8""s;
     };
 
-    auto& scriptTrans = scriptWriter.getScriptTexts();
+    auto& scriptTrans = reader.curerntScriptTransMap();
     for(auto& pathPair : scriptTrans)
     {
         auto scriptFileName = std::get<0>(pathPair);
@@ -438,8 +436,8 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
         const auto searchFunc = [&](const auto& x){
             return x.scriptLineInfo.find(scriptFileName) != std::u8string::npos;
         };
-        auto begin = std::find_if(transTexts.begin(), transTexts.end(), searchFunc);
-        auto end = std::find_if(transTexts.rbegin(), transTexts.rend(), searchFunc).base();
+        auto begin = std::find_if(transTexts.begin(),  transTexts.end(),  searchFunc);
+        auto end   = std::find_if(transTexts.rbegin(), transTexts.rend(), searchFunc).base();
 
         std::for_each(begin, end, [&](auto& texts)
         {
@@ -473,7 +471,7 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
     }
 
     std::cout << "Write CSV : " << outputPath << std::endl;
-    csvwriter writer(supportLangs, std::move(transTexts));
+    csvwriter writer(reader);
     writer.write(outputPath, MergeTextMode::AcceptTarget);
 
     std::cout << "Finish." << std::endl;
@@ -493,7 +491,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
         mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
     }
 
-    std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>> jsonreader_map;
+    std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
     auto writeRvCsv = [this, &translateFolderList, &jsonreader_map, mergeTextMode](fs::path inputPath)
     {
         std::ifstream loadFile(inputPath);
@@ -505,7 +503,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
         for(auto& translateFolder : translateFolderList){
             csvFilePath = translateFolder / csvFilePath;
             std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
-            std::unique_ptr<jsonreaderbase> reader = std::make_unique<vxace_jsonreader>(std::move(json));
+            std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, std::move(json));
             writeFixedTranslateText<csvwriter>(csvFilePath, reader, mergeTextMode);
             jsonreader_map[inputPath.filename()] = std::move(reader);
         }
@@ -544,7 +542,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
         mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
     }
 
-    auto scriptInfoList = config.vxaceScripts();
+    auto scriptInfoList = config.rpgMakerScripts();
     auto scriptList = scriptFileList;
     {
         auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&scriptInfoList](const auto& path){
@@ -558,20 +556,16 @@ void langscore::divisi_vxace::writeFixedRvScript()
     }
 
     //スクリプトの翻訳を書き込むCSVの書き出し
-    rbscriptwriter scriptWriter(this->supportLangs, scriptList);
+    rubyreader reader(this->supportLangs, scriptList);
+    rbscriptwriter scriptWriter(reader);
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-    auto transTexts = scriptWriter.curerntTexts();
-    transTexts = scriptWriter.acceptIgnoreScripts(scriptInfoList, std::move(transTexts));
-
-//#ifdef _DEBUG
-//    writerbase::ReplaceDebugTextByLang(transTexts, def_lang);
-//#endif
+    reader.applyIgnoreScripts(scriptInfoList);
 
     std::u8string root;
     const auto translateFolderList = config.exportDirectory(root);
     for(auto& translateFolder : translateFolderList){
         std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, transTexts, mergeTextMode);
+        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, reader, mergeTextMode);
     }
 
     std::cout << "Finish." << std::endl;
@@ -669,8 +663,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript)
     config config;
     const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
 
-    csvreader scriptList;
-    auto scriptListCsv = scriptList.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
+    auto scriptListCsv = plaincsvreader{lsAnalyzePath / "Scripts/_list.csv"}.getPlainCsvTexts();
     const auto GetID = [&scriptListCsv]()
     {
         std::vector<size_t> idList;
@@ -746,7 +739,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript)
     }
     if(replaceLsCustom){
         std::cout << "Write langscore_custom : " << outputPath / scriptFileNameList[1] << std::endl;
-        writeFixedTranslateText<rbscriptwriter>(rbscriptwriter{this->supportLangs, scriptFileList}, lsCustomScriptPath, langscore::MergeTextMode::AcceptTarget);
+        writeFixedTranslateText<rbscriptwriter>(rbscriptwriter{rubyreader{this->supportLangs, scriptFileList}}, lsCustomScriptPath, langscore::MergeTextMode::AcceptTarget, true);
     }
 
     //langscore.rbの出力
@@ -778,7 +771,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript)
 
 }
 
-void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<fs::path, std::unique_ptr<jsonreaderbase>>& jsonreader_map)
+void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<fs::path, std::unique_ptr<readerbase>>& jsonreader_map)
 {
     if(list.empty()){ return; }
     //アクター名の変更・二つ名の変更　の抽出
@@ -796,7 +789,8 @@ void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSV
 
         if(jsonreader_map.find(filename) == jsonreader_map.end()) { continue; }
         const auto& json_reader = jsonreader_map.at(filename);
-        for(auto& text : json_reader->texts){
+        auto texts = json_reader->curerntTexts();
+        for(auto& text : texts){
             if(std::find(targetCode.cbegin(), targetCode.cend(), text.code) == targetCode.cend()){
                 continue;
             }
@@ -811,8 +805,8 @@ void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSV
     {
         auto actor_csv_filepath = folder / actor_filename;
         if(fs::exists(actor_csv_filepath) == false){ continue; }
-        csvreader actor;
-        auto plain_csv = actor.parsePlain(actor_csv_filepath.replace_extension(".csv"));
+
+        auto plain_csv = plaincsvreader{actor_csv_filepath.replace_extension(".csv")}.getPlainCsvTexts();
 
         for(const auto& name : extend_names)
         {
@@ -851,8 +845,7 @@ void divisi_vxace::adjustCSV(const utility::u8stringlist& rewriteCSVFolder, cons
         {
             auto csvPath = folder / path.filename().replace_extension(".csv");
             if(fs::exists(csvPath) == false){ continue; }
-            csvreader csv;
-            auto plain_csv = csv.parsePlain(csvPath);
+            auto plain_csv = plaincsvreader{csvPath}.getPlainCsvTexts();
 
             auto csvFileName = csvPath.filename();
             const bool isRNLine = std::find(rnLineFiles.cbegin(), rnLineFiles.cend(), csvFileName) != rnLineFiles.cend();
@@ -899,11 +892,10 @@ bool divisi_vxace::adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv, 
 
 bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) const
 {
-    csvreader csvreader;
     bool result = true;
     for(auto& _path : csvPathList)
     {
-        auto texts = csvreader.parse(_path);
+        auto texts = csvreader{this->supportLangs, {_path}}.curerntTexts();
         result &= validateTranslateList(std::move(texts), std::move(_path));
     }
     return result;

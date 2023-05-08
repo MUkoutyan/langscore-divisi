@@ -52,6 +52,7 @@ static std::map<config::JsonKey, const char*> jsonKeys = {
 	MAKE_KEYVALUE(PackingInputDir),
 	MAKE_KEYVALUE(ApplicationVersion),
 	MAKE_KEYVALUE(ConfigVersion),
+	MAKE_KEYVALUE(AttachLsTransType),
 };
 
 const char* config::key(JsonKey key)
@@ -270,7 +271,7 @@ std::vector<config::BasicData> langscore::config::vxaceBasicData()
 	return result;
 }
 
-std::vector<config::ScriptData> langscore::config::vxaceScripts()
+std::vector<config::ScriptData> langscore::config::rpgMakerScripts()
 {
 	auto& write = pImpl->json[key(JsonKey::Write)];
 	auto& scripts = write[key(JsonKey::RPGMakerScripts)];
@@ -281,7 +282,7 @@ std::vector<config::ScriptData> langscore::config::vxaceScripts()
 		ScriptData data = {
 			utility::cnvStr<std::u8string>(pImpl->get(script[key(JsonKey::Name)], ""s)),
 			pImpl->get(script[key(JsonKey::Ignore)], false),
-			0,
+			0,	//writeMode
 			{}
 		};
 		auto& ignorePoints = script[key(JsonKey::IgnorePoints)];
@@ -291,6 +292,7 @@ std::vector<config::ScriptData> langscore::config::vxaceScripts()
 									pImpl->get(rc[key(JsonKey::Disable)], false),
 									pImpl->get(rc[key(JsonKey::Ignore)], false),
 									pImpl->get(rc[key(JsonKey::WriteType)], -1),
+									pImpl->get(script[key(JsonKey::AttachLsTransType)], 0),
 									utility::cnvStr<std::u8string>(pImpl->get(rc[key(JsonKey::Text)], ""s)));
 		}
 

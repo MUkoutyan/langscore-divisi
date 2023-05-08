@@ -11,6 +11,7 @@ class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, VXAce_WriteScriptCSV);
 
 namespace langscore
 {
+    //Langscore_CustomとなるRubyスクリプトを書き出すクラス
     class rbscriptwriter: public writerbase
     {
 #ifdef ENABLE_TEST
@@ -18,22 +19,19 @@ namespace langscore
         IUTEST_FRIEND_TEST(Langscore_Divisi, VXAce_WriteScriptCSV);
 #endif
     public:
-        using ScriptPathList = std::vector<std::tuple<std::u8string, std::vector<TranslateText>>>;
-        rbscriptwriter(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList);
+        template<typename Reader, typename = std::enable_if_t<!std::is_same_v<std::unique_ptr<readerbase>, std::decay_t<Reader>>>>
+        rbscriptwriter(Reader&& reader): writerbase(reader){
+            pluginInfoList = reader.curerntPluginInfoList();
+        }
+        rbscriptwriter(const std::unique_ptr<readerbase>& reader): rbscriptwriter(*reader) {}
         constexpr static const char* extension = "rb";
 
         bool merge(std::filesystem::path filePath) override;
         ErrorStatus write(std::filesystem::path path, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) override;
-        const ScriptPathList& getScriptTexts() const { return scriptTranslates; }
-
-        std::vector<TranslateText> acceptIgnoreScripts(const std::vector<config::ScriptData>&, std::vector<TranslateText> texts);
 
     private:
-        ScriptPathList scriptTranslates;
-        std::vector<std::filesystem::path> scriptFileList;
-        std::map<std::u8string, std::u8string> scriptNameMap;
+        std::vector<PluginInfo> pluginInfoList;
 
-        ProgressNextStep checkCommentLine(TextCodec&) override;
         void WriteVocab(std::ofstream& file, std::vector<TranslateText> texts);
         std::u8string GetScriptName(std::u8string filePath);
 

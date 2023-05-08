@@ -139,5 +139,17 @@ namespace utility
         }
         return length;
     }
+
+    //文字列から拡張子を除去するテンプレート関数
+    template<typename str_type>
+    str_type removeExtension(str_type str)
+    {
+		auto pos = str.find_last_of('.');
+        if(pos != str_type::npos){
+			str.erase(pos);
+		}
+		return str;
+	}
+
 }
 

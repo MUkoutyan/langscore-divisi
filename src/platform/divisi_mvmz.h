@@ -32,9 +32,9 @@ namespace langscore
 		void writeAnalyzedScript(std::u8string baseDirectory);
 
 		void writeFixedBasicData();
-		void writeFixedScript(std::u8string baseDirectory);
+		void writeFixedScript();
 
-		void fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<jsonreaderbase>>&);
+		void fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<readerbase>>&);
 
 		void adjustCSV(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list);
 		bool adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv);

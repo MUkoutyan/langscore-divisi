@@ -4,10 +4,23 @@
 #include "writerbase.h"
 #include "utility.hpp"
 
+#ifdef ENABLE_TEST
+#define NOMINMAX
+#include "iutest.hpp"
+
+class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, ConvertCsvText_ASCII);
+class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, ConvertCsvText_Multibyte);
+
+#endif
+
 namespace langscore
 {
     class csvwriter: public writerbase
     {
+#ifdef ENABLE_TEST
+        IUTEST_FRIEND_TEST(Langscore_Writer, ConvertCsvText_ASCII);
+        IUTEST_FRIEND_TEST(Langscore_Writer, ConvertCsvText_Multibyte);
+#endif
     public:
         using writerbase::writerbase;
         constexpr static const char* extension = "csv";
@@ -16,10 +29,6 @@ namespace langscore
         bool merge(std::filesystem::path sourceFilePath) override;
         ErrorStatus write(std::filesystem::path path, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) override;
         static ErrorStatus writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> text, MergeTextMode overwriteMode = MergeTextMode::AcceptSource);
-
-#ifdef ENABLE_TEST
-        friend class Langscore_Test_WriterBase;
-#endif
 
     protected:
         template<typename str_type>
@@ -48,6 +57,8 @@ namespace langscore
 
             return str;
         }
+
+        std::u8string convertCsvText(std::u8string_view text) const;
     };
 }
 

@@ -1,6 +1,7 @@
 ﻿#include "platform_base.h"
 #include "reader/csvreader.h"
 #include "writer/uniquerowcsvwriter.hpp"
+#include "reader/speciftranstext.hpp"
 #include <iostream>
 
 using namespace langscore;
@@ -94,8 +95,7 @@ void langscore::platform_base::copyFonts()
 utility::u8stringlist platform_base::GetScriptFileName(config& config, utility::u8stringlist scriptNameList)
 {
 	const auto deserializeOutPath = config.langscoreAnalyzeDirectorty();
-	csvreader scriptCsvReader;
-	auto scriptCsv = scriptCsvReader.parsePlain(deserializeOutPath + u8"/Scripts/_list.csv"s);
+	auto scriptCsv = plaincsvreader{deserializeOutPath + u8"/Scripts/_list.csv"s}.getPlainCsvTexts();
 	utility::u8stringlist result;
 	for(const auto& name : scriptNameList)
 	{
@@ -133,9 +133,10 @@ void platform_base::writeFixedGraphFileNameData()
 		if(result != ignorePictures.cend()){ continue; }
 		transTextList.emplace_back(f.generic_u8string(), supportLangs);
 	}
+	speciftranstext transText{supportLangs, std::move(transTextList)};
 
 	auto csvPath = exportFolderPath("Graphics.csv");
 	std::cout << "Write Graphics : " << csvPath << std::endl;
-	writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transTextList, mergeTextMode);
+	writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transText, mergeTextMode);
 	std::cout << "Finish." << std::endl;
 }

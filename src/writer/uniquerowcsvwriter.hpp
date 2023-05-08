@@ -17,8 +17,8 @@ namespace langscore
                 return true;
             }
 
-            langscore::csvreader reader;
-            auto sourceTranslates = reader.parse(sourceFilePath);
+            langscore::csvreader reader{this->useLangs, sourceFilePath};
+            auto sourceTranslates = reader.curerntTexts();
             if(sourceTranslates.empty()){ return true; }
 
             //ソース側を適用

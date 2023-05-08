@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <filesystem>
 #include <unordered_map>
 
@@ -34,9 +34,10 @@ namespace langscore
 			{
 				int row = 0;
 				int col = 0;
-				bool disable = false;	//Œ³ƒXƒNƒŠƒvƒg•ÏX‚É‚æ‚Á‚ÄˆÊ’u‚ªŠš‚İ‡‚í‚È‚­‚È‚Á‚½ê‡true
+				bool disable = false;	//å…ƒã‚¹ã‚¯ãƒªãƒ—ãƒˆå¤‰æ›´ã«ã‚ˆã£ã¦ä½ç½®ãŒå™›ã¿åˆã‚ãªããªã£ãŸå ´åˆtrue
 				bool ignore = false;
 				int writeMode = 0;
+				int ignoreContext = 0;
 				std::u8string text;
 			};
 			std::vector<TextPoint> texts;
@@ -77,6 +78,7 @@ namespace langscore
 			PackingInputDir,
 			ApplicationVersion,
 			ConfigVersion,
+			AttachLsTransType,
 
 			NumKeys,
 		};
@@ -105,7 +107,7 @@ namespace langscore
 		std::u8string outputTranslateFilePathForRPGMaker();
 		std::u8string packingInputDirectory();
 		std::vector<BasicData> vxaceBasicData();
-		std::vector<ScriptData> vxaceScripts();
+		std::vector<ScriptData> rpgMakerScripts();
 		utility::u8stringlist ignorePictures();
 		utility::u8stringlist globalFontList();
 		utility::u8stringlist localFontList();

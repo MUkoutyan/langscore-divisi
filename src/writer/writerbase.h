@@ -3,18 +3,13 @@
 
 #include "reader/jsonreader.hpp"
 #include "errorstatus.hpp"
+#include "reader/readerbase.h"
 #include <tuple>
 #include <filesystem>
 
 #ifdef ENABLE_TEST
+#define NOMINMAX
 #include "iutest.hpp"
-
-#ifdef min
-#undef min
-#endif
-#ifdef max
-#undef max
-#endif
 
 class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, CheckRubyCommentLine);
 class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, DetectStringPositionFromFile);
@@ -30,11 +25,14 @@ namespace langscore
         IUTEST_FRIEND_TEST(Langscore_Writer, DetectStringPositionFromFile);
 #endif
     public:
-
-        using TextCodec = std::u8string;
-
-        writerbase(std::vector<std::u8string> langs, const std::unique_ptr<jsonreaderbase>& json);
-        writerbase(std::vector<std::u8string> langs, std::vector<TranslateText> texts);
+        //Determine if Reader type is unique_ptr type
+        template<typename Reader, typename = std::enable_if_t<!std::is_same_v<std::unique_ptr<readerbase>, std::decay_t<Reader>>>>
+        writerbase(Reader&& reader)
+            : useLangs(reader.curerntUseLangList()), texts(reader.curerntTexts())
+            , scriptTranslatesMap(reader.curerntScriptTransMap())
+            , overwriteMode(MergeTextMode::AcceptSource), fillDefLangCol(false){
+        }
+        writerbase(const std::unique_ptr<readerbase>& reader): writerbase(*reader){}
         virtual ~writerbase();
 
         virtual ErrorStatus write(std::filesystem::path writePath, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) = 0;
@@ -43,7 +41,12 @@ namespace langscore
         void setOverwriteMode(MergeTextMode overwriteMode){
             this->overwriteMode = overwriteMode;
         }
+        void setFillDefLangCol(bool is){
+            this->fillDefLangCol = is;
+        }
         std::vector<TranslateText>& curerntTexts() { return texts; }
+        const ScriptPackage& getScriptTexts() const { return scriptTranslatesMap; }
+
         bool isDebug = false;
 
 #ifdef _DEBUG
@@ -54,20 +57,11 @@ namespace langscore
     protected:
         std::vector<std::u8string> useLangs;
         std::vector<TranslateText> texts;
+        ScriptPackage scriptTranslatesMap;
         MergeTextMode overwriteMode;
-        bool rangeComment;
+        bool fillDefLangCol;
 
         static void writeU8String(std::ofstream& out, std::u8string text);
-
-        std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path);
-        enum class ProgressNextStep
-        {
-            Next,
-            Break,
-            Throught
-        };
-        virtual ProgressNextStep checkCommentLine(TextCodec&) { return ProgressNextStep::Throught;  }
-
     };
 }
 

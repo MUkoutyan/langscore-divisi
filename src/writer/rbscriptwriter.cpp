@@ -7,6 +7,7 @@
 
 #include "csvwriter.h"
 #include "../reader/csvreader.h"
+#include "../reader/rubyreader.hpp"
 
 static std::mutex _mutex;
 static bool processing = false;
@@ -23,39 +24,6 @@ namespace
 
 }
 
-rbscriptwriter::rbscriptwriter(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)
-    : writerbase(std::move(langs), std::vector<TranslateText>{})
-    , scriptFileList(std::move(scriptFileList))
-{
-
-    utility::u8stringlist scriptNameList;
-    csvreader scriptList;
-    config config;
-    const auto lsAnalyzePath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
-    auto scriptListCsv = scriptList.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
-    for(auto& path : this->scriptFileList)
-    {
-        auto fileName = path.filename().stem().u8string();
-        auto result = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&fileName](const auto& x){
-            return x[0] == fileName;
-        });
-        if(result == scriptListCsv.cend()){ continue; }
-
-        auto scriptName = (*result)[1];
-
-        //更新時の場合はここでlangscoreスクリプトが含まれている可能性がある
-        if(scriptName == u8"langscore"){ continue; }
-        else if(scriptName == u8"langscore_custom"){ continue; }
-
-        scriptNameMap.emplace(fileName, scriptName);
-        auto transTextList = convertScriptToCSV(path);
-
-        std::copy(transTextList.begin(), transTextList.end(), std::back_inserter(this->texts));
-        scriptTranslates.emplace_back(fileName, std::move(transTextList));
-    }
-}
-
-
 bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
 {
     if(std::filesystem::exists(filePath) == false){ return true; }
@@ -69,7 +37,7 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
     return false;
 }
 
-ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, MergeTextMode overwriteMode)
+ErrorStatus rbscriptwriter::write(std::filesystem::path filePath, MergeTextMode overwriteMode)
 {
     //langscore_customの書き出し
     using namespace std::literals::string_literals;
@@ -79,14 +47,18 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Mer
     {
         using Str  = decltype(str);
         using Char = Str::value_type;
+        str = utility::removeExtension(str);
         for(auto i = str.find(Char(" ")); i != decltype(str)::npos; i = str.find(Char(" "))){
             str.replace(i, 1, (Char*)"_");
         }
         return Str(std::add_pointer_t<Char>("Langscore.translate_") + str);
     };
+    //Langscore_Custom内のRuby関数の書き出し
     const auto functionDef = [&](auto str){
+        str = utility::removeExtension(str);
         return decltype(str)("def " + funcName(str) + nl);
     };
+    //スクリプト名を目印として書き出す
     const auto functionComment = [&](auto str)
     {
         return decltype(str)("\t#========================================") + nl +
@@ -103,19 +75,11 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Mer
     outFile << nl;
 
     config config;
-    auto scriptInfoList = config.vxaceScripts();
-    auto scriptTranslatesTmp = scriptTranslates;
-
-    for(auto& pair : scriptTranslatesTmp){
-        std::get<1>(pair) = this->acceptIgnoreScripts(scriptInfoList, std::get<1>(pair));
-    }
-
-    auto rm_result = std::remove_if(scriptTranslatesTmp.begin(), scriptTranslatesTmp.end(), [this, &scriptInfoList](const auto& x){
+    std::erase_if(scriptTranslatesMap, [this](const auto& x){
         return std::get<1>(x).empty() || GetScriptName(std::get<0>(x)).empty();
     });
-    scriptTranslatesTmp.erase(rm_result, scriptTranslatesTmp.end());
 
-    for(auto& pair : scriptTranslatesTmp)
+    for(auto& pair : scriptTranslatesMap)
     {
         const auto& fileName = std::get<0>(pair);
         auto scriptName = GetScriptName(fileName);
@@ -126,7 +90,7 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Mer
 
     auto funcComment = config.usScriptFuncComment();
 
-    for(auto& pair : scriptTranslatesTmp)
+    for(auto& pair : scriptTranslatesMap)
     {
         const auto& fileName = std::get<0>(pair);
         auto scriptName = GetScriptName(fileName);
@@ -141,11 +105,11 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Mer
         {
             for(auto& line : list)
             {
-                auto parsed = utility::split(line.original, u8':');
+                auto parsed = utility::split(line.scriptLineInfo, u8':');
                 auto filepath = std::vformat(funcComment, std::make_format_args(utility::toString(parsed[0]), utility::toString(parsed[1]), utility::toString(parsed[2])));
                 outFile << tab << "#" + filepath << nl;
-                outFile << tab << "#original : " << utility::toString(line.scriptLineInfo) << nl;
-                outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.original) << "\")" << nl;
+                outFile << tab << "#original : " << utility::toString(line.original) << nl;
+                outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.scriptLineInfo) << "\")" << nl;
                 outFile << nl;
             }
         }
@@ -157,144 +121,8 @@ ErrorStatus langscore::rbscriptwriter::write(std::filesystem::path filePath, Mer
     return Status_Success;
 }
 
-std::vector<TranslateText> langscore::rbscriptwriter::acceptIgnoreScripts(const std::vector<config::ScriptData>& scriptInfoList, std::vector<TranslateText> transTexts)
-{
-    if(transTexts.empty()){ return {}; }
-    namespace fs = std::filesystem;
 
-    config config;
-    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-
-    for(auto& t : transTexts){
-        if(t.translates.find(def_lang) == t.translates.end()){ continue; }
-        t.translates[def_lang] = t.original;
-        t.scriptLineInfo.swap(t.original);
-    }
-
-    csvreader scriptListReader;
-    const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
-    auto scriptListCsv = scriptListReader.parsePlain(lsAnalyzePath / "Scripts/_list.csv");
-
-    //無視する行の判定
-    utility::u8stringlist ignoreRowName;
-    for(auto& scriptInfo : scriptInfoList)
-    {
-        auto fileName = fs::path(scriptInfo.filename).filename().stem().u8string();
-        auto scriptName = GetScriptName(fileName);
-        auto scriptCsvItr = std::find_if(scriptListCsv.cbegin(), scriptListCsv.cend(), [&fileName](const auto& x){ return x[1] == fileName; });
-        if(scriptCsvItr != scriptListCsv.cend()){
-            if((*scriptCsvItr)[1] == u8"langscore"s || (*scriptCsvItr)[1] == u8"langscore_custom"s){
-                continue;
-            }
-        }
-
-        if(scriptInfo.ignore == false){
-            for(const auto& textInfo : scriptInfo.texts)
-            {
-                if(textInfo.disable){ continue; }
-                if(textInfo.ignore){ continue; }
-                auto name = fileName + utility::cnvStr<std::u8string>(":" + std::to_string(textInfo.row) + ":" + std::to_string(textInfo.col));
-                ignoreRowName.emplace_back(std::move(name));
-            }
-        }
-        else{
-            auto rm_result = std::remove_if(transTexts.begin(), transTexts.end(), [&fileName](const auto& x){
-                return x.original.find(fileName) != std::remove_const_t<std::remove_reference_t<decltype(x.original)>>::npos;
-            });
-            transTexts.erase(rm_result, transTexts.end());
-        }
-    }
-    {
-        auto rm_result = std::remove_if(transTexts.begin(), transTexts.end(), [&ignoreRowName](const auto& t){
-            return std::find(ignoreRowName.cbegin(), ignoreRowName.cend(), t.original) != ignoreRowName.cend();
-        });
-        transTexts.erase(rm_result, transTexts.end());
-    }
-
-    return transTexts;
-}
-
-writerbase::ProgressNextStep rbscriptwriter::checkCommentLine(TextCodec& line)
-{		
-    //コメントのみの行かをチェック
-    using Char = TextCodec::value_type;
-    {
-        auto check_comment_line = line;
-        auto pos = std::find_if(check_comment_line.begin(), check_comment_line.end(), [](auto c){
-            return c != Char('\t') && c != Char(' ');
-        });
-        check_comment_line.erase(check_comment_line.begin(), pos);
-        if(check_comment_line.empty() == false && check_comment_line[0] == Char('#')){
-            return ProgressNextStep::Next;
-        }
-    }
-    //途中のコメントを削除
-    auto begin_cm = line.begin();
-    bool findQuote = false;
-    for(; begin_cm != line.end(); ++begin_cm)
-    {
-        auto c = *begin_cm;
-        if(findQuote == false && c == Char('#')){
-            auto next = (begin_cm + 1);
-            if(next != line.end() && *next != Char('{')){
-                break;
-            }
-        }
-        else if(c == Char('\"') || c == Char('\'')){
-            findQuote = !findQuote;
-        }
-    }
-    if(begin_cm != line.end()){
-        line.erase(begin_cm, line.end());
-    }
-
-    if(line == u8"=begin"){
-        rangeComment = true;
-        return ProgressNextStep::Next;
-    }
-    else if(rangeComment)
-    {
-        if(line == u8"=end"){ rangeComment = false; }
-        return ProgressNextStep::Next;
-    }
-
-    //規定の関数
-    ScriptTextParser textParser;
-    const std::u8string_view transFuncName = u8".lstrans";
-    auto pos = line.find(transFuncName);
-    for(;pos != TextCodec::npos;pos=line.find(transFuncName))
-    {
-        auto quotePos = pos + transFuncName.length();
-        auto quote = u8'\"';
-        constexpr auto sq = u8'\'';
-        //Rubyは(を書かなくてもいいので2通り見る
-        bool useBracket = false;
-        if(line[quotePos] == sq){ quote = sq; }
-        else if(line[quotePos] == u8'('){
-            quotePos++;
-            useBracket = true;
-            if(line[quotePos] == sq){
-                quote = sq;
-            }
-        }
-        auto endQuotePos = line.find_first_of(quote, quotePos + 1)+1;
-        if(useBracket){ endQuotePos++; }
-        //assert(endQuotePos != TextCodec::npos && "There's a weird script!");
-
-        //列数がズレるのが困るので、削除ではなく空白で置換
-        //UTF8も考慮して、マルチバイトを考慮した文字数を置換する。
-        const auto detectLength = endQuotePos - pos;
-        auto detectStr = line.substr(pos, detectLength);
-        auto numText = textParser.ConvertWordList(detectStr);
-        TextCodec space(numText.size(), u8' ');
-        line.replace(pos, detectLength, space);
-    }
-    if(line.empty()){ ProgressNextStep::Next; }
-
-    return ProgressNextStep::Throught;
-}
-
-void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<TranslateText> texts)
+void rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<TranslateText> texts)
 {
     std::vector<std::tuple<std::u8string, std::u8string, bool>> translates = {
         { u8"%s の経験値を獲得！", u8"ObtainExp", false },
@@ -371,10 +199,15 @@ void langscore::rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<Tran
     }
 }
 
-inline std::u8string langscore::rbscriptwriter::GetScriptName(std::u8string fileName)
+std::u8string rbscriptwriter::GetScriptName(std::u8string fileName)
 {
-    const auto& scriptName = scriptNameMap[fileName];
-    if(scriptName.empty()){ return u8""s; }
+    using namespace std::string_literals;
+
+    auto result = std::ranges::find_if(pluginInfoList, [&fileName](const auto& x){
+        return x.filename == fileName;
+    });
+    if(result == pluginInfoList.end()){ return u8""s; }
+    auto scriptName = (*result).name;
     if(scriptName == u8"langscore"){ return u8""s; }
     if(scriptName == u8"langscore_custom"){ return u8""s; }
     return scriptName;

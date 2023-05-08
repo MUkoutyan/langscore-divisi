@@ -1,3 +1,4 @@
+#pragma once
 #include "../serialize_base.h"
 #include "utility.hpp"
 #include <filesystem>
@@ -38,24 +39,33 @@ public:
 	void convertTranslateTextFromMatch(std::u8string line, size_t col, DataType& transTextList)
 	{
 		//文字列に,も改行もなければダブルクォーテーションを削除
-		if(line.find(',') == std::string::npos &&
-			line.find('\n') == std::string::npos)
-		{
-			auto start = line[0];
-			if(start == '\"' || start == '\''){
-				line.erase(0, 1);
-			}
-			auto end = line[line.size() - 1];
-			if(end == '\"' || end == '\''){
-				line.erase(line.size() - 1, 1);
-			}
-		}
-		else if(line.empty() == false)
-		{
-			//, \nが含まれている場合は念のため""括りされているかチェック
-			if(line[0] != '\"'){ line.insert(0, u8"\""); }
-			if(line[line.size() - 1] != '\"'){ line.insert(line.size(), u8"\""); }
-		}
+		//if(line.find(',') == std::string::npos &&
+		//   line.find('\n') == std::string::npos)
+		//{
+		//	auto start = line[0];
+		//	if(start == '\"' || start == '\''){
+		//		line.erase(0, 1);
+		//	}
+		//	auto end = line[line.size() - 1];
+		//	if(end == '\"' || end == '\''){
+		//		line.erase(line.size() - 1, 1);
+		//	}
+		//}
+		//else if(line.empty() == false)
+		//{
+		//	//, \nが含まれている場合は念のため""括りされているかチェック
+		//	if(line[0] != '\"'){ line.insert(0, u8"\""); }
+		//	if(line[line.size() - 1] != '\"'){ line.insert(line.size(), u8"\""); }
+		//}
+
+		//auto start = line[0];
+		//if(start == '\"' || start == '\''){
+		//	line.erase(0, 1);
+		//}
+		//auto end = line[line.size() - 1];
+		//if(end == '\"' || end == '\''){
+		//	line.erase(line.size() - 1, 1);
+		//}
 
 		if(line.empty()){ return; }
 
@@ -68,8 +78,11 @@ public:
 		}
 	}
 
+	//入力した文字列に言語の文字列があるかを判定する関数
 	DataType findStrings(std::u8string line)
 	{
+		if(line.empty()){ return {}; }
+
 		using namespace std::string_view_literals;
 		int col_diff_tmp = 0;
 		DataType transTextList;
@@ -96,10 +109,10 @@ public:
 				if(str == u8"\"" && findSq == false){
 					if(findDq == false){
 						col = index;
-						strStart = std::get<1>(strView);
+						strStart = std::get<1>(strView)+1;
 					}
 					else {
-						auto endPos = std::get<1>(strView) + 1;
+						auto endPos = std::get<1>(strView);
 						convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
 					}
 					findDq = !findDq;
@@ -107,10 +120,10 @@ public:
 				else if(str == u8"'" && findDq == false){
 					if(findSq == false){
 						col = index;
-						strStart = std::get<1>(strView);
+						strStart = std::get<1>(strView) + 1;
 					}
 					else {
-						auto endPos = std::get<1>(strView) + 1;
+						auto endPos = std::get<1>(strView);
 						convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
 					}
 					findSq = !findSq;
