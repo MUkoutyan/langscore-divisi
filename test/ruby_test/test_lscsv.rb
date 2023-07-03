@@ -135,7 +135,7 @@ class TestLSCSV < Test::Unit::TestCase
 		assert_not_nil result
 		assert(!result.empty?)
 		
-		text = "いろはにほへと\n\nちりぬるを\n\nわかよたれそ\n\nつねならむ\n\nういのおくやま\n\nけふこえて\n\nあさきゆめみし\n\nえひもせず"
+		text = "いろはにほへと\n\nちりぬるを\n\nわかよたれそ\n\nつねならむ\n\nういのおくやま\n\nけふこえて\n\nあさきゆめみし\n\nえひもせず\n"
 		assert(result.has_key?(text))
 		assert_equal(result[text]["ja"], text)
 
