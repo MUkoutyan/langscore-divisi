@@ -474,7 +474,7 @@ IUTEST(Langscore_Config, TmpDir)
 
 IUTEST(Langscore_Config, LoadLanguages)
 {
-	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	auto expected = config.languages();
 	utility::stringlist actual = {"en", "ja"};
@@ -486,7 +486,7 @@ IUTEST(Langscore_Config, LoadLanguages)
 
 IUTEST(Langscore_Config, CheckFontName)
 {
-	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	auto expected = config.languages();
 	for(int i = 0; i < expected.size(); ++i)
@@ -502,7 +502,7 @@ IUTEST(Langscore_Config, CheckFontName)
 
 IUTEST(Langscore_Config, CheckProjectPath)
 {
-	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	auto expected = config.gameProjectPath();
 #ifdef _DEBUG
@@ -667,7 +667,7 @@ IUTEST(Langscore_Csv, merge)
 
 IUTEST(Langscore_Invoker, NoAssignProject)
 {
-	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 	langscore::invoker invoker;
 	auto result = invoker.analyze();
 	IUTEST_ASSERT_EQ(result.moduleCode(), ErrorStatus::Module::INVOKER);
@@ -676,7 +676,7 @@ IUTEST(Langscore_Invoker, NoAssignProject)
 
 IUTEST(Langscore_Invoker, AnalyzeVXAceProject)
 {
-	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 	std::filesystem::remove_all(outputPath);
 	langscore::invoker invoker;
@@ -693,7 +693,7 @@ IUTEST(Langscore_Invoker, AnalyzeVXAceProject)
 
 IUTEST(Langscore_Invoker, CheckValidScriptList)
 {
-	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 	std::filesystem::remove_all(outputPath);
 	langscore::invoker invoker;
@@ -725,7 +725,7 @@ IUTEST(Langscore_Invoker, CheckValidScriptList)
 IUTEST(Langscore_Divisi_Analyze, ValidateTexts)
 {
 	//テキストが一致するかの整合性を確認するテスト
-	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	IUTEST_ASSERT(divisi.analyze().valid());
 	langscore::config config;
@@ -771,14 +771,14 @@ IUTEST(Langscore_Divisi, CheckLangscoreRubyScript)
 		fs::remove_all(".\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze");
 	}
 	{
-		langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+		langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 		IUTEST_ASSERT(divisi.analyze().valid());
 	}
 	{
 		//analyzeとwriteを同時に呼び出すことを想定していない。
 		//analyzeを呼び出すとコンストラクト時の言語リストが初期化されるため、
 		//インスタンスは別に分ける。
-		langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+		langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 		IUTEST_ASSERT(divisi.write().valid());
 	}
 	langscore::config config;
@@ -896,7 +896,7 @@ IUTEST(Langscore_Divisi, CheckLangscoreRubyScript)
 
 IUTEST(Langscore_Divisi, CheckScriptCSV)
 {	
-	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	IUTEST_ASSERT(divisi.analyze().valid());
 	langscore::config config;
@@ -925,7 +925,7 @@ IUTEST(Langscore_Divisi, CheckScriptCSV)
 
 IUTEST(Langscore_Divisi, WriteVXAceProject)
 {
-	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	fs::path scriptDataSrc(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
 	fs::path scriptDataDest(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
@@ -972,7 +972,7 @@ IUTEST(Langscore_Divisi, WriteVXAceProject)
 
 IUTEST(Langscore_Divisi, WriteVocab)
 {
-	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	fs::path scriptDataSrc(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
 	fs::path scriptDataDest(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
@@ -1061,7 +1061,7 @@ IUTEST(Langscore_Divisi, WriteLangscoreCustom)
 
 IUTEST(Langscore_Divisi, ValidateLangscoreCustom)
 {
-	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::divisi divisi("./", ".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	fs::path scriptDataSrc(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
 	fs::path scriptDataDest(".\\data\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
@@ -1304,7 +1304,7 @@ IUTEST(Langscore_Divisi, VXAce_Validate)
 
 int main(int argc, char** argv)
 {
-	langscore::config::attachConfigFile(".\\data\\ソポァゼゾタダＡボマミ_langscore\\test_config_with.json");
+	langscore::config::attachConfigFile(".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	IUTEST_INIT(&argc, argv);
 	return IUTEST_RUN_ALL_TESTS();
