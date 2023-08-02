@@ -262,12 +262,13 @@ ErrorStatus langscore::divisi_vxace::write()
 
 ErrorStatus langscore::divisi_vxace::validate()
 {
+    std::cout << "Validate..." << std::endl;
     config config;
     std::u8string root;
     const auto exportDirectory = config.exportDirectory(root);
     utility::filelist csvPathList;
 
-    for(auto dir : exportDirectory)
+    for(const auto& dir : exportDirectory)
     {
         for(const auto& f : fs::recursive_directory_iterator{dir}){
             auto extension = f.path().extension();
@@ -286,6 +287,7 @@ ErrorStatus langscore::divisi_vxace::validate()
         this->validateTranslateFileList(std::move(csvPathList));
     }
 
+    std::cout << "Done." << std::endl;
     return Status_Success;
 }
 
@@ -895,6 +897,7 @@ bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) cons
     bool result = true;
     for(auto& _path : csvPathList)
     {
+        const auto fileName = _path.filename().stem().string();
         auto texts = csvreader{this->supportLangs, {_path}}.curerntTexts();
         result &= validateTranslateList(std::move(texts), std::move(_path));
     }
@@ -903,8 +906,15 @@ bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) cons
 
 bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const
 {
-    const auto OutputError = [&path](auto type, auto main, auto lang, auto str, size_t row){
-        auto result = utility::join({type, main, lang, str, path.string(), std::to_string(row)}, ","s);
+    enum Summary : int{
+        EmptyCol = 0,   //翻訳文が空
+        NotFoundEsc,    //原文にある制御文字が翻訳文に含まれていない
+        UnclosedEsc,    //[]で閉じる必要のある制御文字が閉じられていない
+        IncludeCR,      //翻訳文にCR改行が含まれている。(マップのみ検出)
+    };
+
+    const auto OutputError = [&path](auto type, auto errorSummary, auto lang, auto str, size_t row){
+        auto result = utility::join({type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row)}, ","s);
         std::cout << result << std::endl;
     };
     size_t row = 1;
@@ -912,48 +922,74 @@ bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::
     for(auto& text : texts)
     {
         if(text.original.empty()){
-            OutputError("Error"s, "0"s, "original"s, ""s, row);
+            OutputError("Error"s, EmptyCol, "original"s, ""s, row);
             result = false;
         }
-        auto [withValEscList, EscList] = findEscChars(text.original);
+        //ツクールのテキストで使用する制御文字を検出。
+        //[]で括る必要のある制御文字と、単体で完結する制御文字の二種類。
+        auto [withValEscList, EscList] = findRPGMakerEscChars(text.original);
 
         std::vector<std::string> emptyTextLangs;
         for(auto& trans : text.translates)
         {
-            if(trans.second.empty()){
+            const auto& translatedText = trans.second;
+            if(translatedText.empty()){
                 emptyTextLangs.emplace_back(utility::cnvStr<std::string>(trans.first));
                 result = false;
                 continue;
             }
 
+            //制御文字の検出
             auto escStr = ""s;
             for(auto& esc : withValEscList){
-                if(trans.second.find(esc) == trans.second.npos){
+                if(translatedText.find(esc) == translatedText.npos){
                     escStr += utility::cnvStr<std::string>(esc) + " "s;
                     result = false;
                 }
             }
             for(auto& esc : EscList){
-                if(trans.second.find(esc) == trans.second.npos){
+                if(translatedText.find(esc) == translatedText.npos){
                     escStr += utility::cnvStr<std::string>(esc) + " "s;
                     result = false;
                 }
             }
 
             if(escStr.empty() == false){
-                OutputError("Error"s, "1"s, utility::cnvStr<std::string>(trans.first), escStr, row);
+                OutputError("Error"s, NotFoundEsc, utility::cnvStr<std::string>(trans.first), escStr, row);
             }
         }
         if(emptyTextLangs.empty() == false){
-            OutputError("Warning"s, "0"s, utility::join(emptyTextLangs, " "s), ""s, row);
+            OutputError("Warning"s, EmptyCol, utility::join(emptyTextLangs, " "s), ""s, row);
         }
         row++;
+    }
+
+    //Map以外はここで結果を返す
+    const auto fileName = path.filename().stem();
+    if (fileName.string().find("Map") != 0) {
+        return result;
+    }
+
+    //Mapの場合は改行のミスを検出する
+    bool exit = false;
+    for (auto& text : texts)
+    {
+        for (auto& trans : text.translates)
+        {
+            //文章毎に出力するメリットをあまり感じないので、ファイル単位で出力する。
+            if (trans.second.find(u8"\r\n") != std::u8string::npos) {
+                OutputError("Error"s, IncludeCR, "", "", 0);
+                exit = true;
+                break;
+            }
+        }
+        if (exit) { break; }
     }
 
     return result;
 }
 
-std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace::findEscChars(std::u8string originalText) const
+std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> divisi_vxace::findRPGMakerEscChars(std::u8string originalText) const
 {
     static const std::vector<std::u8string> escWithValueChars = {
         u8"\\v[", u8"\\n[", u8"\\p[", u8"\\c[", u8"\\l[", u8"\\r["
