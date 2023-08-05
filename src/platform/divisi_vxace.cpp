@@ -27,6 +27,14 @@ namespace fs = std::filesystem;
 const static std::u8string nl = u8"\n"s;
 const static std::u8string tab = u8"\t"s;
 
+
+enum ValidateSummary : int {
+    EmptyCol = 0,   //翻訳文が空
+    NotFoundEsc,    //原文にある制御文字が翻訳文に含まれていない
+    UnclosedEsc,    //[]で閉じる必要のある制御文字が閉じられていない
+    IncludeCR,      //翻訳文にCR改行が含まれている。(マップのみ検出)
+};
+
 divisi_vxace::divisi_vxace()
     : platform_base()
 {
@@ -265,16 +273,17 @@ ErrorStatus langscore::divisi_vxace::validate()
     std::cout << "Validate..." << std::endl;
     config config;
     std::u8string root;
-    const auto exportDirectory = config.exportDirectory(root);
+    fs::path packingDirectory = config.packingInputDirectory();
     utility::filelist csvPathList;
 
-    for(const auto& dir : exportDirectory)
-    {
-        for(const auto& f : fs::recursive_directory_iterator{dir}){
-            auto extension = f.path().extension();
-            if(extension == ".csv"){
-                csvPathList.emplace_back(f.path());
-            }
+    if (fs::exists(packingDirectory) == false) {
+        return ErrorStatus(ErrorStatus::Module::DIVISI_VXACE, 1);
+    }
+
+    for(const auto& f : fs::recursive_directory_iterator{ packingDirectory }){
+        auto extension = f.path().extension();
+        if(extension == ".csv"){
+            csvPathList.emplace_back(f.path());
         }
     }
 
@@ -892,12 +901,47 @@ bool divisi_vxace::adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv, 
     return isRewrite;
 }
 
+bool FindNewlineCR(fs::path path)
+{
+    std::fstream file(path, std::ios::binary | std::ios::in);
+    if (file.bad()) { return false; }
+
+    char c = 0;
+    bool findCr = false;
+    while (file.get(c)) 
+    {
+        if (c == '\r') {
+            findCr = true;
+        }
+        else if (findCr) {
+            if (c == '\n') {
+                std::cout << "find : " << file.tellg() << std::endl;
+                return true;
+            }
+            else {
+                findCr = false;
+            }
+        }
+        
+    }
+    return false;
+}
+
 bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) const
 {
+    const auto OutputError = [](auto path, auto type, auto errorSummary, auto lang, auto str, size_t row) {
+        auto result = utility::join({ type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row) }, ","s);
+        std::cout << result << std::endl;
+    };
     bool result = true;
     for(auto& _path : csvPathList)
     {
         const auto fileName = _path.filename().stem().string();
+        //マップは\r\nだとバグるのでチェックする。
+        if (fileName.find("Map") != std::string::npos && FindNewlineCR(_path)) {
+            OutputError(_path, "Warning"s, IncludeCR, ""s, ""s, 0);
+            continue;
+        }
         auto texts = csvreader{this->supportLangs, {_path}}.curerntTexts();
         result &= validateTranslateList(std::move(texts), std::move(_path));
     }
@@ -906,13 +950,6 @@ bool divisi_vxace::validateTranslateFileList(utility::filelist csvPathList) cons
 
 bool divisi_vxace::validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const
 {
-    enum Summary : int{
-        EmptyCol = 0,   //翻訳文が空
-        NotFoundEsc,    //原文にある制御文字が翻訳文に含まれていない
-        UnclosedEsc,    //[]で閉じる必要のある制御文字が閉じられていない
-        IncludeCR,      //翻訳文にCR改行が含まれている。(マップのみ検出)
-    };
-
     const auto OutputError = [&path](auto type, auto errorSummary, auto lang, auto str, size_t row){
         auto result = utility::join({type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row)}, ","s);
         std::cout << result << std::endl;
