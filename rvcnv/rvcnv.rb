@@ -1,3 +1,5 @@
+# encoding: UTF-8
+
 require 'zlib'
 require 'csv'
 require 'optparse'
@@ -510,7 +512,7 @@ opt.on('-o OUTPUTPATH', '-output OUTPUTPATH'){ |v|
   output_folder = File.absolute_path(v)
   output_folder.chop! if output_folder.end_with?('/')
 
-  Dir.mkdir(output_folder) unless File.exists?(output_folder)
+  Dir.mkdir(output_folder) unless File.exist?(output_folder)
 }
 
 compress = false
@@ -544,11 +546,14 @@ if packing
     origin = LsDumpData.new
     File.open(input_folder_path + "/" + fileName, 'rb:utf-8:utf-8') do |file|
       texts = file.readlines().join()
+      if fileName.match?(/Map\d+/)
+        texts = texts.gsub(/\r\n/, '\n')
+      end
       origin.data = texts
     end
     d = Marshal.dump(origin)
     output_path = output_folder + "/" + File.basename(fileName, ".csv") + ".rvdata2"
-    File.open(output_path, "wb") do                                     | dumpFile |
+    File.open(output_path, "wb") do | dumpFile |
       p "packing"
       p "  Input  : #{input_folder_path + "/" + fileName}"
       p "  Output : #{output_path}"
@@ -568,7 +573,7 @@ if compress
     scriptname = row[CSV_SCRIPTLIST_NAME]
     scriptname = "" if scriptname.include?(EMPTY_SCRIPT_NAME)
     filepath   = exported_script_folder+'/'+id.to_s+'.rb'
-    if File.exists?(filepath) == false
+    if File.exist?(filepath) == false
       compressData.push([id, scriptname, Zlib::Deflate.deflate("", Zlib::DEFAULT_COMPRESSION )])
     else 
       File.open(filepath, 'rb:utf-8:utf-8') do |file|
@@ -588,32 +593,36 @@ end
 
 if input_folder_path.empty?
   p "Need Project Folder" 
-  return
 end
 
 if output_folder.empty?
   p "Need Output Folder" 
 end
 
+p "Data Folder #{data_folder}"
+p "Script Folder #{script_folder}"
+
 #スクリプトの展開
 script_list = []
-File.open(data_folder+"/Scripts.rvdata2", 'rb') do |file|
-  Marshal.load(file.read).each do |id, name, script|
-    d = Zlib::Inflate.inflate(script)
-    
-    name = EMPTY_SCRIPT_NAME if name.empty?
+if File.exist?(data_folder+"/Scripts.rvdata2")
+  File.open(data_folder+"/Scripts.rvdata2", 'rb') do |file|
+    Marshal.load(file.read).each do |id, name, script|
+      d = Zlib::Inflate.inflate(script)
+      
+      name = EMPTY_SCRIPT_NAME if name.empty?
 
-    script_path = script_folder+'/'+id.to_s+'.rb'
-    script_list.push([id.to_s, script_path, name, d])
+      script_path = script_folder+'/'+id.to_s+'.rb'
+      script_list.push([id.to_s, script_path, name, d])
+    end
   end
 end
 
 
 #再圧縮のためにリストを用意しておく
-Dir.mkdir(script_folder) unless File.exists?(script_folder)
+Dir.mkdir(script_folder) unless File.exist?(script_folder)
 
 script_list_path = script_folder+'/_list.csv'
-File.delete(script_list_path) if File.exists?(script_list_path)
+File.delete(script_list_path) if File.exist?(script_list_path)
 
 CSV.open(script_list_path, 'w') do |file|
   script_list.each do |r|
@@ -626,45 +635,61 @@ CSV.open(script_list_path, 'w') do |file|
   end
 end
 
-rvdata_list = [
-  'Actors.rvdata2', 'Animations.rvdata2', 'Armors.rvdata2',
-  'Classes.rvdata2','CommonEvents.rvdata2','Enemies.rvdata2',
-  'Items.rvdata2',
-  *Dir.glob('Map[0-9][0-9][0-9].rvdata2', base: data_folder),
-  'Skills.rvdata2', 'States.rvdata2', 'System.rvdata2',
-  'Troops.rvdata2', 'Weapons.rvdata2'
-]
-rvdata_list.each do |rvdata|
-  data = ''
-  File.open(data_folder+"/"+File.basename(rvdata), 'rb') do |file|
+if File.exist?(data_folder)
+  # rvdata_list = [
+  #   'Actors.rvdata2', 'Animations.rvdata2', 'Armors.rvdata2',
+  #   'Classes.rvdata2','CommonEvents.rvdata2','Enemies.rvdata2',
+  #   'Items.rvdata2',
+  #   *Dir.glob('Map[0-9][0-9][0-9].rvdata2', base: data_folder),
+  #   'Skills.rvdata2', 'States.rvdata2', 'System.rvdata2',
+  #   'Troops.rvdata2', 'Weapons.rvdata2'
+  # ]
+  # Dir.foreach(data_folder) do |item|
+  #   next if item == '.' or item == '..'
+  #   puts item
+  # end
+  rvdata_list = []
+  Dir.foreach(data_folder) do |filename|
+    next if filename == '.' || filename == '..'
+    
+    if filename.match?(/\A(Actors|Animations|Armors|Classes|CommonEvents|Enemies|Items|Map[0-9]{3}|Skills|States|System|Troops|Weapons)\.rvdata2\z/)
+      p filename
+      rvdata_list << filename
+    end
+  end
+  rvdata_list.each do |rvdata|
+    data = ''
+    File.open(data_folder+"/"+File.basename(rvdata), 'rb') do |file|
+      begin 
+        data = Marshal.load(file.read)
+        File.open(output_folder+"/"+File.basename(rvdata, ".rvdata2")+".json", "wb") do |out|
+          out.write(data.to_json)
+        end
+      rescue => e
+        p "Load : #{data_folder+"/"+rvdata}"
+        p e
+      end
+    end
+  end
+
+  #マップ名を取得するためにMapInfosを解析。
+  #Jsonは手間なのでCSVで直接出力する [マップID, オーダー, マップ名]
+  File.open(data_folder+"/MapInfos.rvdata2", 'rb') do |info|
     begin 
-      data = Marshal.load(file.read)
-      File.open(output_folder+"/"+File.basename(rvdata, ".rvdata2")+".json", "wb") do |out|
-        out.write(data.to_json)
+      csvData = []
+      data = Marshal.load(info.read).each do |id, mapInfo|
+        csvData.push([id, mapInfo.order, mapInfo.name])
+      end
+
+      CSV.open(output_folder+"/MapInfos.csv", 'w') do |file|
+        csvData.each do |r| 
+          file.puts([r[0],r[1],r[2]]) 
+        end
       end
     rescue => e
       p "Load : #{data_folder+"/"+rvdata}"
       p e
     end
   end
-end
 
-#マップ名を取得するためにMapInfosを解析。
-#Jsonは手間なのでCSVで直接出力する [マップID, オーダー, マップ名]
-File.open(data_folder+"/MapInfos.rvdata2", 'rb') do |info|
-  begin 
-    csvData = []
-    data = Marshal.load(info.read).each do |id, mapInfo|
-      csvData.push([id, mapInfo.order, mapInfo.name])
-    end
-
-    CSV.open(output_folder+"/MapInfos.csv", 'w') do |file|
-      csvData.each do |r| 
-        file.puts([r[0],r[1],r[2]]) 
-      end
-    end
-  rescue => e
-    p "Load : #{data_folder+"/"+rvdata}"
-    p e
-  end
 end
