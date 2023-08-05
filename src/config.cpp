@@ -91,6 +91,7 @@ public:
 			loadFile >> json;
 		}
 		else{
+			std::cerr << "Can't Open File";
 			throw "Can't Open File";
 		}
 	}

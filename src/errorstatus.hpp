@@ -106,6 +106,11 @@ private:
     }
     std::string errorDivisiVxAce()
     {
+        switch (_code)
+        {
+        case NoError: return "";
+        case 1: return "error code 1 : validate error. Not Found Packing Input Directory.";
+        }
         return "";
     }
     std::string errorReaderBase()
