@@ -1217,48 +1217,48 @@ IUTEST(Langscore_Divisi, VXAce_FindEscChar)
 
 	{
 		std::u8string text = u8"HoniHoni";
-		auto [result1, result2] = divisi_vxace.findEscChars(text);
+		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() && result2.empty());
 	}
 	{
 		std::u8string text = u8"Honi\\V[0]Honi";
-		auto [result1, result2] = divisi_vxace.findEscChars(text);
+		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() == false && result2.empty());
 		IUTEST_ASSERT_STREQ(result1[0], u8"\\V[0]");
 	}
 	{
 		std::u8string text = u8"Honi\\N[funi]Honi";
-		auto [result1, result2] = divisi_vxace.findEscChars(text);
+		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() == false && result2.empty());
 		IUTEST_ASSERT_STREQ(result1[0], u8"\\N[funi]");
 	}
 	{
 		std::u8string text = u8"Honi\\P[58919047]Honi";
-		auto [result1, result2] = divisi_vxace.findEscChars(text);
+		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() == false && result2.empty());
 		IUTEST_ASSERT_STREQ(result1[0], u8"\\P[58919047]");
 	}
 	{
 		std::u8string text = u8"Honi\\C[16]Honi";
-		auto [result1, result2] = divisi_vxace.findEscChars(text);
+		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() == false && result2.empty());
 		IUTEST_ASSERT_STREQ(result1[0], u8"\\C[16]");
 	}
 	{
 		std::u8string text = u8"ほに\\l[16]ほに";
-		auto [result1, result2] = divisi_vxace.findEscChars(text);
+		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() == false && result2.empty());
 		IUTEST_ASSERT_STREQ(result1[0], u8"\\l[16]");
 	}
 	{
 		std::u8string text = u8"あいう\\{えお";
-		auto [result1, result2] = divisi_vxace.findEscChars(text);
+		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() && result2.empty() == false);
 		IUTEST_ASSERT_STREQ(result2[0], u8"\\{");
 	}
 	{
 		std::u8string text = u8"99999\\G 手に入れた！";
-		auto [result1, result2] = divisi_vxace.findEscChars(text);
+		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() && result2.empty() == false);
 		IUTEST_ASSERT_STREQ(result2[0], u8"\\G");
 	}
