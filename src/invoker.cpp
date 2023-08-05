@@ -3,7 +3,9 @@
 #include "utility.hpp"
 
 #include <process.h>
+#include <iostream>
 #include <fstream>
+#include <array>
 #include "../rvcnv/rvcnv_hash.cpp"
 #include "md5.h"
 
@@ -67,6 +69,18 @@ ErrorStatus langscore::invoker::packingVXAce(){
     return exec({"-i", inputDir.string(), "-o", outputDir.string(), "-p"});
 }
 
+int execProcess(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(cmd, "r"), _pclose);
+    if (!pipe) {
+        throw std::runtime_error("_popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        std::cout << buffer.data();
+    }
+    return _pclose(pipe.get());
+}
+
 ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
 {
     auto basePath = appPath.empty() ? "./" : appPath;
@@ -97,8 +111,9 @@ ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
 #endif
 
         auto process = "\"" + rvcnvPath.string() + "\"" + " " + utility::join(args, std::string(" "));
-        auto ret = system(process.c_str());
-        if(ret != 0){
+
+        auto ret = execProcess(process.c_str());
+        if(ret == -1){
             return ErrorStatus(ErrorStatus::Module::INVOKER, 4);
         }
     }
