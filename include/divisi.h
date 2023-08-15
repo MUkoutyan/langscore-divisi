@@ -9,7 +9,7 @@
 
 namespace langscore
 {
-enum class MergeTextMode;
+enum class MergeTextMode : size_t;
 
 class divisi
 {
