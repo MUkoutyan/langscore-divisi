@@ -1,29 +1,29 @@
-#pragma once
+ï»¿#pragma once
 #include <string>
 #include <vector>
 #include <map>
 
 namespace langscore
 {
-    enum class MergeTextMode
+    enum class MergeTextMode : size_t
     {
-        AcceptSource = 0,   //Œ³‚Ìƒtƒ@ƒCƒ‹‚ğc‚·
-        AcceptTarget = 1,   //æ‚Ìƒtƒ@ƒCƒ‹‚ğc‚·
-        MergeKeepSource,    //‹£‡‚µ‚½ê‡AŒ³ƒtƒ@ƒCƒ‹‚Ì“à—e‚ğ•Û‚·‚éB
-        MergeKeepTarget,    //‹£‡‚µ‚½ê‡Aæƒtƒ@ƒCƒ‹‚Ì“à—e‚ğ•Û‚·‚éB
-        Both,               //—¼•ûc‚·
+        AcceptSource = 0,   //å…ƒã®ãƒ•ã‚¡ã‚¤ãƒ«ã‚’æ®‹ã™
+        AcceptTarget = 1,   //å…ˆã®ãƒ•ã‚¡ã‚¤ãƒ«ã‚’æ®‹ã™
+        MergeKeepSource,    //ç«¶åˆã—ãŸå ´åˆã€å…ƒãƒ•ã‚¡ã‚¤ãƒ«ã®å†…å®¹ã‚’ä¿æŒã™ã‚‹ã€‚
+        MergeKeepTarget,    //ç«¶åˆã—ãŸå ´åˆã€å…ˆãƒ•ã‚¡ã‚¤ãƒ«ã®å†…å®¹ã‚’ä¿æŒã™ã‚‹ã€‚
+        Both,               //ä¸¡æ–¹æ®‹ã™
     };
 
     struct PluginInfo
     {
         std::u8string name;
-        std::u8string filename; //Šg’£q‚Í‚Â‚¯‚é‚±‚Æ
+        std::u8string filename; //æ‹¡å¼µå­ã¯ã¤ã‘ã‚‹ã“ã¨
         bool status = false;
         std::u8string description;
         std::map<std::u8string, std::u8string> parameters;
     };
 
-    //–|–óƒeƒLƒXƒg‚ÌƒNƒ‰ƒX
+    //ç¿»è¨³ãƒ†ã‚­ã‚¹ãƒˆã®ã‚¯ãƒ©ã‚¹
     class TranslateText
     {
     public:
@@ -35,12 +35,12 @@ namespace langscore
                 this->translates[lang] = u8"";
             }
         }
-        std::u8string original; //ƒIƒŠƒWƒiƒ‹‚Ì•¶Í
-        std::map<std::u8string, std::u8string> translates;  //ŠeŒ¾Œê–ˆ‚Ì•¶Í
-        std::u8string scriptLineInfo;   //ƒXƒNƒŠƒvƒg‚Å‚ÌƒIƒŠƒWƒiƒ‹‚Ì•¶Í‚Ìsî•ñ
-        int code;   //RPGƒcƒN[ƒ‹‚ÅƒRƒ}ƒ“ƒh‚ğŒŸo‚µ‚½Û‚Ég—p
+        std::u8string original; //ã‚ªãƒªã‚¸ãƒŠãƒ«ã®æ–‡ç« 
+        std::map<std::u8string, std::u8string> translates;  //å„è¨€èªæ¯ã®æ–‡ç« ã€‚[è¨€èªã‚³ãƒ¼ãƒ‰, æ–‡ç« ]ã®ãƒãƒƒãƒ—
+        std::u8string scriptLineInfo;   //ã‚¹ã‚¯ãƒªãƒ—ãƒˆã§ã®ã‚ªãƒªã‚¸ãƒŠãƒ«ã®æ–‡ç« ã®è¡Œæƒ…å ±
+        int code;   //RPGãƒ„ã‚¯ãƒ¼ãƒ«ã§ã‚³ãƒãƒ³ãƒ‰ã‚’æ¤œå‡ºã—ãŸéš›ã«ä½¿ç”¨
 
-        //CSV—p‚Ìƒwƒbƒ_[‚ğì¬
+        //CSVç”¨ã®ãƒ˜ãƒƒãƒ€ãƒ¼ã‚’ä½œæˆ
         auto createHeader() const
         {
             std::vector<std::u8string> result;
