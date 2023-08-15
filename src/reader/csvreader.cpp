@@ -38,8 +38,20 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 	std::vector<TranslateText> result;
 	std::for_each(csv.cbegin() + 1, csv.cend(), [this, &header, &result](const auto& row){
 		TranslateText t{row[0], useLangList};
-		for(int i = 1; i < row.size(); ++i){
-			t.translates[header[i]] = row[i];
+		for(int i = 1; i < row.size(); ++i)
+		{
+			if (i < header.size())
+			{
+				t.translates[header[i]] = row[i];
+				continue;
+			}
+			//何らかの原因でヘッダーと内容が噛み合わない場合、空欄の箇所に埋める。(クラッシュ防止)
+			for (auto& pair : t.translates) {
+				if (pair.second.empty()) {
+					pair.second = row[i];
+					break;
+				}
+			}
 		}
 		result.emplace_back(std::move(t));
 	});

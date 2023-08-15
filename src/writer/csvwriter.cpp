@@ -35,12 +35,19 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 
 	utility::u8stringlist languages;
 	{
-		auto& list = this->texts.size() < sourceTranslates.size() ? sourceTranslates : this->texts;
-		if(list.empty() == false){
-			for(auto& pair : list[0].translates){
-				languages.emplace_back(pair.first);
+		//AcceptSource,AcceptTarget以外の場合、言語は常にマージする。
+		for (auto& pair : sourceTranslates[0].translates) {
+			languages.emplace_back(pair.first);
+		}
+		if (this->texts.empty() == false) {
+			for (auto& pair : this->texts[0].translates) 
+			{
+				if (std::ranges::find(languages, pair.first) == languages.end()) {
+					languages.emplace_back(pair.first);
+				}
 			}
 		}
+		std::ranges::sort(languages);
 	}
 
 	auto source_i = sourceTranslates.begin();
@@ -48,25 +55,33 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 	std::u8string source_origin;
 	std::u8string target_origin;
 
-	enum MergeType
+	std::unordered_map<MergeTextMode, std::vector<size_t>> mergeInfo;
+	const auto AddForSource = [&]()
 	{
-		KeepSource = MergeTextMode::MergeKeepSource,
-		KeepTarget,
-		Both,
-		InsertSource,
-	};
-	std::unordered_map<MergeType, std::vector<size_t>> mergeInfo;
-	const auto AddForSource = [&](){
 		if(source_i == sourceTranslates.end()){ return false; }
+		if(source_i->translates.size() != languages.size()) {
+			for (const auto& lang : languages) {
+				if (source_i->translates.find(lang) == source_i->translates.end()) {
+					source_i->translates[lang] = u8"";
+				}
+			}
+		}
 		result.emplace_back(*source_i);
 		source_origin.clear();
-		mergeInfo[MergeType::InsertSource].emplace_back(result.size());
+		mergeInfo[MergeTextMode::MergeKeepTarget].emplace_back(result.size());
 		++source_i;
 		return true;
 	};
 	const auto AddForTarget = [&]()
 	{
 		if(target_i == this->texts.end()){ return false; }
+		if(target_i->translates.size() != languages.size()) {
+			for (const auto& lang : languages) {
+				if (target_i->translates.find(lang) == target_i->translates.end()) {
+					target_i->translates[lang] = u8"";
+				}
+			}
+		}
 		result.emplace_back(*target_i);
 		target_origin.clear();
 		++target_i;
@@ -115,11 +130,11 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 				//内容が異なる場合はマージモードに準拠して内容を入れ替える
 				if(sourceTransText != targetTransText)
 				{
-					if(overwriteMode == MergeTextMode::MergeKeepSource){
+					if(overwriteMode == MergeTextMode::AcceptSource){
 						trans_result.translates[lang] = sourceTransText;
 						continue;
 					}
-					else if(overwriteMode == MergeTextMode::MergeKeepTarget){
+					else if(overwriteMode == MergeTextMode::AcceptTarget){
 						//MergeKeepTargetは現在の内容を残すので、何もしない。
 						continue;
 					}
@@ -129,7 +144,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 						sourceTransText += trans_result.translates[lang];
 						trans_result.translates[lang] = sourceTransText;
 					}
-					mergeInfo[static_cast<MergeType>(overwriteMode)].emplace_back(result.size() + 1);
+					mergeInfo[static_cast<MergeTextMode>(overwriteMode)].emplace_back(result.size() + 1);
 				}
 				//内容が一致する場合は何もしない
 			}
@@ -176,6 +191,21 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 
 	this->texts = std::move(result);
 
+#if defined(_DEBUG)
+	//全ての列が検出した言語を含んでいるかをチェック(強制エラーなのでデバッグ時のみ使用)
+	if (std::ranges::all_of(this->texts, [this](const auto& t) {
+		return t.translates.size() == this->texts[0].translates.size();
+		}) == false) 
+	{
+		auto invalidCell = std::ranges::find_if(this->texts, [this](const auto& t) {
+			return t.translates.size() != this->texts[0].translates.size();
+		});
+		//ここに引っかかった場合、result.emplaceした要素に何らかの原因で新規追加した言語が含まれなかった。
+		std::cout << "Error! : The overall number of columns does not match. (line : " << std::distance(this->texts.begin(), invalidCell);
+		return false;
+	}
+#endif
+
 	if(mergeInfo.empty() == false)
 	{
 		std::cout << "Merge : " << sourceFilePath.filename() << std::endl;
@@ -183,16 +213,16 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		std::for_each(mergeInfo.begin(), mergeInfo.end(), [](const auto& x)
 		{
 			auto mode = std::get<0>(x);
-			if(mode == MergeType::KeepSource){
+			if(mode == MergeTextMode::AcceptSource){
 				std::cout << "\tKeepSource line:";
 			}
-			else if(mode == MergeType::KeepTarget){
+			else if(mode == MergeTextMode::AcceptTarget){
 				std::cout << "\tKeepTarget line:";
 			}
-			else if(mode == MergeType::Both){
+			else if(mode == MergeTextMode::MergeKeepSource){
 				std::cout << "\tBoth line:";
 			}
-			else if(mode == MergeType::InsertSource){
+			else if(mode == MergeTextMode::MergeKeepTarget){
 				std::cout << "\tInsert line:";
 			}
 			const auto& lines = std::get<1>(x);
