@@ -49,6 +49,7 @@ namespace langscore
                 //末尾にクオートが有っても、文字列としてのクオート括りではないので無視
                 return str;
             }
+            if (str.empty()) { return str; }
 
             auto pos = str.size() - 1;
             if(CheckQuote(str[pos])){
