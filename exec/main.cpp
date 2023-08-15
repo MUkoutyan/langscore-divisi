@@ -49,6 +49,7 @@ ARGS analyzeOption(int argc, const char* argv[])
 int main(int argc, const char* argv[])
 {
 	std::cout << "Langscore Divisi Version " << VER_FILEVERSION_STR << std::endl;
+	std::cout << "Build on " << __DATE__ << " " << __TIME__ << std::endl;
 	if(argc < 2){
 #ifdef _DEBUG
 		std::cerr << "Need Argments..." << std::endl;
