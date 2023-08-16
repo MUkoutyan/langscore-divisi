@@ -354,4 +354,5 @@ rvdata2json
 ruby
 .vscode
 
-iutest/*
+build/*
+3rdparty/*
