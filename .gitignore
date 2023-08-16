@@ -355,7 +355,6 @@ ruby
 .vscode
 
 build/*
-3rdparty/*
 test/data/ソポァゼゾタダＡボマミ_langscore
 rvcnv/rvcnv_hash.cpp
 rvcnv/zlib.so
