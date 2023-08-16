@@ -1,9 +1,6 @@
 [submodule "3rdparty/iutest"]
 	path = 3rdparty/iutest
 	url = https://github.com/srz-zumix/iutest.git
-[submodule "manual/doxygen-awesome-css"]
-	path = manual/doxygen-awesome-css
-	url = https://github.com/jothepro/doxygen-awesome-css.git
 [submodule "3rdparty/hash-library"]
 	path = 3rdparty/hash-library
 	url = https://github.com/stbrumme/hash-library.git
