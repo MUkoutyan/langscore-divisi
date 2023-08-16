@@ -1,4 +1,4 @@
-#ifndef WRITERBASE_H
+﻿#ifndef WRITERBASE_H
 #define WRITERBASE_H
 
 #include "reader/jsonreader.hpp"
