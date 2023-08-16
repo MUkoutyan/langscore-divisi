@@ -357,3 +357,7 @@ ruby
 build/*
 3rdparty/*
 test/data/ソポァゼゾタダＡボマミ_langscore
+rvcnv/rvcnv_hash.cpp
+rvcnv/zlib.so
+rvcnv/fiber.so
+rvcnv/icon.ico
