@@ -309,7 +309,7 @@ class Game_Map
 end
 
 class Game_Interpreter
-
+  #アクター名の変更
   alias ls_command_320 command_320
   def command_320
     ls_command_320
@@ -317,6 +317,7 @@ class Game_Interpreter
     Langscore.updateActor
   end
 
+  #二つ名の変更
   alias ls_command_324 command_324
   def command_324
     ls_command_324
