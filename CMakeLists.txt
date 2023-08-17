@@ -17,9 +17,10 @@ set(DIVISI_RESOURCE rvcnv/ resource/)
 add_subdirectory(src)
 add_subdirectory(exec)
 
-#if(ENABLE_TEST)
-add_subdirectory(test)
-#endif()
+if(CMAKE_BUILD_TYPE MATCHES "Test" OR CMAKE_BUILD_TYPE MATCHES "Test_Debug")
+	add_subdirectory(3rdparty/googletest)
+	add_subdirectory(test)
+endif()
 
 if(DIVISI_BUILD_EXAMPLE)
 add_subdirectory(example)

@@ -5,7 +5,7 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(ENABLE_TEST)
+if(CMAKE_BUILD_TYPE MATCHES "Test" OR CMAKE_BUILD_TYPE MATCHES "Test_Debug")
 add_definitions(-DENABLE_TEST)
 include_directories(
 	"../3rdparty/iutest/include"
