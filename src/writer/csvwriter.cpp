@@ -130,11 +130,11 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 				//内容が異なる場合はマージモードに準拠して内容を入れ替える
 				if(sourceTransText != targetTransText)
 				{
-					if(overwriteMode == MergeTextMode::AcceptSource){
+					if(overwriteMode == MergeTextMode::MergeKeepSource){
 						trans_result.translates[lang] = sourceTransText;
 						continue;
 					}
-					else if(overwriteMode == MergeTextMode::AcceptTarget){
+					else if(overwriteMode == MergeTextMode::MergeKeepTarget){
 						//MergeKeepTargetは現在の内容を残すので、何もしない。
 						continue;
 					}
