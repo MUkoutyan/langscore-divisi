@@ -24,6 +24,8 @@ if(MSVC)
     string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 endif(MSVC)
 
+# CMAKE_BUILD_TYPEをプリプロセッサ定数として追加
+add_definitions(-DCMAKE_BUILD_TYPE_STRING="${CMAKE_BUILD_TYPE}")
 
 set(Test_Includes
 	"../"
@@ -53,12 +55,6 @@ foreach(dir ${DIVISI_TEST_RESOURCE})
 file(COPY ./${dir} DESTINATION ${PROJECT_BINARY_DIR}/../${dir})
 endforeach()
 
-# Google Testの追加
-add_subdirectory(../3rdparty/googletest)
-
-# テスト用の実行ファイルを追加
-add_executable(your_test_name your_test_source_files.cpp)
-target_link_libraries(your_test_name gtest gtest_main)
 
 # Now simply link against gtest or gtest_main as needed. Eg
 add_executable(${TestProjectName} ${test_sources})

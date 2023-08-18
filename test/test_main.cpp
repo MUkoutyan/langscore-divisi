@@ -23,6 +23,19 @@ using namespace std::string_view_literals;
 using namespace langscore;
 namespace fs = std::filesystem;
 
+class test_reader : public readerbase {
+public:
+	test_reader(std::vector<std::u8string> langs)
+		: readerbase(std::move(langs), {}) {
+	}
+
+	void setTexts(std::vector<TranslateText> t) {
+		this->texts = std::move(t);
+	}
+	void addTexts(TranslateText t) {
+		this->texts.emplace_back(std::move(t));
+	}
+};
 
 IUTEST(Langscore_Writer, UTF8WordCount)
 {
@@ -465,11 +478,8 @@ IUTEST(Langscore_Config, TmpDir)
 	langscore::config config;
 	
 	auto expected = config.langscoreAnalyzeDirectorty();
-#ifdef _DEBUG
-	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\Test_Debug\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze"s);
-#else
-	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\Test\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze"s);
-#endif
+	auto build_folder = utility::cnvStr<std::u8string>(std::string{CMAKE_BUILD_TYPE_STRING});
+	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\"s + build_folder + u8"\\data\\ソポァゼゾタダＡボマミ_langscore\\analyze"s);
 	IUTEST_ASSERT_STREQ(expected, actual.u8string());
 }
 
@@ -506,12 +516,13 @@ IUTEST(Langscore_Config, CheckProjectPath)
 	langscore::config config(".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	auto expected = config.gameProjectPath();
-#ifdef _DEBUG
-	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\Test_Debug\\data\\ソポァゼゾタダＡボマミ"s);
-#else
-	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\Test\\data\\ソポァゼゾタダＡボマミ"s);
-#endif
-	IUTEST_ASSERT_STREQ(expected, actual.u8string());
+
+	auto build_folder = utility::cnvStr<std::u8string>(std::string{CMAKE_BUILD_TYPE_STRING});
+	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\"s + build_folder + u8"\\data\\ソポァゼゾタダＡボマミ"s);
+	IUTEST_ASSERT_STREQ(
+		expected, 
+		actual.u8string()
+	);
 }
 
 IUTEST(Langscore_Csv, parsePlain)
@@ -662,6 +673,40 @@ IUTEST(Langscore_Csv, merge)
 		IUTEST_ASSERT_STREQ(merged[1].translates[u8"ja"], u8"かきくけこ");
 		IUTEST_ASSERT_STREQ(merged[2].original, u8"さしすせそ");
 		IUTEST_ASSERT_STREQ(merged[2].translates[u8"ja"], u8"さしすせそ");
+	}
+	{
+		std::vector<std::u8string> langs{u8"en"s, u8"ja"s, u8"zh-cn"s};
+		test_reader reader(langs);
+		{
+			TranslateText t{u8"こんにちは"s, langs};
+			t.translates[u8"ja"] = u8"こんにちは";
+			t.translates[u8"zh-cn"] = u8"下午好";
+			reader.addTexts(std::move(t));
+		}
+		{
+			TranslateText t{u8"こん\nばんは"s, langs};
+			t.translates[u8"ja"] = u8"こん\nばんは";
+			t.translates[u8"zh-cn"] = u8"晚上\n好";
+			reader.addTexts(std::move(t));
+		}
+
+		auto mode = langscore::MergeTextMode::MergeKeepSource;
+		langscore::csvwriter writer(reader);
+		writer.setOverwriteMode(mode);
+
+		IUTEST_ASSERT(writer.merge(".\\data\\csv\\add_lang.csv"));
+
+		auto& merged = writer.curerntTexts();
+
+		IUTEST_ASSERT(merged.size() == 2);
+		IUTEST_ASSERT_STREQ(merged[0].original, u8"こんにちは");
+		IUTEST_ASSERT_STREQ(merged[0].translates[u8"en"], u8"");
+		IUTEST_ASSERT_STREQ(merged[0].translates[u8"ja"], u8"こんにちは");
+		IUTEST_ASSERT_STREQ(merged[0].translates[u8"zh-cn"], u8"下午好");
+		IUTEST_ASSERT_STREQ(merged[1].original, u8"こん\nばんは");
+		IUTEST_ASSERT_STREQ(merged[1].translates[u8"en"], u8"");
+		IUTEST_ASSERT_STREQ(merged[1].translates[u8"ja"], u8"こん\nばんは");
+		IUTEST_ASSERT_STREQ(merged[1].translates[u8"zh-cn"], u8"晚上\n好");
 	}
 }
 
@@ -1305,6 +1350,20 @@ IUTEST(Langscore_Divisi, VXAce_Validate)
 
 int main(int argc, char** argv)
 {
+	if(std::is_move_constructible<TranslateText>::value) {
+		std::cout << "MyClass has a move constructor." << std::endl;
+	}
+	else {
+		std::cout << "MyClass does not have a move constructor." << std::endl;
+	}
+
+	if(std::is_trivially_move_constructible<TranslateText>::value) {
+		std::cout << "MyClass has a trivial move constructor." << std::endl;
+	}
+	else {
+		std::cout << "MyClass does not have a trivial move constructor." << std::endl;
+	}
+
 	langscore::config::attachConfigFile(".\\data\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	IUTEST_INIT(&argc, argv);

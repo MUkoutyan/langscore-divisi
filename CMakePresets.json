@@ -57,24 +57,25 @@
             }
         },
         {
-            "description": "Visual Studio 開発環境を使用して Windows (64 ビット) をターゲットにします。(RelWithDebInfo)",
             "displayName": "Test",
             "inherits": "x64-release",
             "name": "Test",
             "cacheVariables": {
-                "ENABLE_TEST":  true
+                "ENABLE_TEST":  true,
+                "CMAKE_BUILD_TYPE": "Test"
             } 
         },
         {
-            "description": "Visual Studio 開発環境を使用して Windows (64 ビット) をターゲットにします。(RelWithDebInfo)",
             "displayName": "Test_Debug",
+            "inherits": "windows-base",
             "architecture": {
                 "value": "x64",
                 "strategy": "external"
             },
             "name": "Test_Debug",
             "cacheVariables": {
-                "ENABLE_TEST": true
+                "ENABLE_TEST": true,
+                "CMAKE_BUILD_TYPE": "Test_Debug"
             }
         }
     ]
