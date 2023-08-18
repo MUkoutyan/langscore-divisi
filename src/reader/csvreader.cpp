@@ -121,8 +121,6 @@ std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path p
 
 	const auto AddCols = [&cols](std::u8string col)
 	{
-		//if(col.empty() == false && col[col.size() - 1] == u8'\n'){ col.erase(col.size() - 1, 1); }
-		//if(col.empty() == false && col[col.size() - 1] == u8'\r'){ col.erase(col.size() - 1, 1); }
 		auto rpos = col.find(u8'\r');
 		if(rpos != std::u8string::npos){
 			col.erase(std::remove(col.begin(), col.end(), u8'\r'), col.end());
@@ -136,7 +134,45 @@ std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path p
 		if(file.eof()){ break; }
 		if(c == u8""){ continue; }
 
-		//制御文字の検出
+		//クオートを最優先に読み取る。
+		if(c == u8"\"")
+		{
+			auto next = ReadAndPeekNextChar();
+			if(file.eof()) { break; }
+			if(next == u8"\"") {
+				GetChar();
+				//""を"として解釈するため、先読みした箇所まで読み込む。
+				std::ranges::copy(c, std::back_inserter(col));
+			}
+			else if(col.empty())	//文字が何も入っていない == セルの先頭
+			{
+				//セルの先頭が"で開始されていたら""で括られていると判定する。
+				bracketed_dq = true;
+				//素通りさせると下記ifのbracketed_dq判定に引っかかるので、ここでcontinueさせる。
+				continue;
+			}
+
+			if(bracketed_dq && (next == u8"," || next == u8"\r" || next == u8"\n"))
+			{
+				//bracketed_dqの時点でここに来たということは、クオートが閉じられた。
+				//,が続く場合はセルの末尾なので、括りフラグも無効にする。
+				bracketed_dq = false;
+			}
+			//\nや,を含む、クオートで括られているセルはクオートを除外して格納するため、ここでcontinue
+			continue;
+		}
+
+		if(bracketed_dq)
+		{
+			//クオートが閉じられるまで無条件で追加
+			std::ranges::copy(c, std::back_inserter(col));
+			continue;
+		}
+
+		//制御文字の検出。
+		//クオートの処理より先に行うと、文字としての\rも制御文字として認識されてしまう。
+		//ツクールのプラグインによっては\rを制御文字としているプラグインもあるため、
+		//ASCIIとしての制御文字として解釈されないようにしなければいけない。
 		if(c == u8"\\")
 		{
 			auto next = ReadAndPeekNextChar();
@@ -161,42 +197,9 @@ std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path p
 			if(find){
 				GetChar();	//先読みしたため先読み後の位置にする。
 				std::ranges::copy(next, std::back_inserter(col));
-			}
-			continue;
-		}
-
-		if(c == u8"\"")
-		{
-			auto next = ReadAndPeekNextChar();
-			if(file.eof()){ break; }
-			if(next == u8"\""){
-				GetChar();
-				//""を"として解釈するため、先読みした箇所まで読み込む。
-				std::ranges::copy(c, std::back_inserter(col));
-			}
-			else if(col.empty())	//文字が何も入っていない == セルの先頭
-			{
-				//セルの先頭が"で開始されていたら""で括られていると判定する。
-				bracketed_dq = true; 
-				//素通りさせると下記ifのbracketed_dq判定に引っかかるので、ここでcontinueさせる。
 				continue;
 			}
-			
-			if(bracketed_dq && (next == u8"," || next == u8"\r" || next == u8"\n"))
-			{
-				//bracketed_dqの時点でここに来たということは、クオートが閉じられた。
-				//,が続く場合はセルの末尾なので、括りフラグも無効にする。
-				bracketed_dq = false;
-			}
-			//\nや,を含む、クオートで括られているセルはクオートを除外して格納するため、ここでcontinue
-			continue;
-		}
-
-		if(bracketed_dq)
-		{
-			//クオートが閉じられるまで無条件で追加
-			std::ranges::copy(c, std::back_inserter(col));
-			continue;
+			//制御文字が見つからない場合、ツクール系の制御文字の可能性があるので\\は追加する。
 		}
 
 		if(c == u8","){

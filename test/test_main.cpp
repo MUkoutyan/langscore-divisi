@@ -37,6 +37,19 @@ public:
 	}
 };
 
+class test_editable_csv_reader : public csvreader {
+public:
+	using csvreader::csvreader;
+
+	void setTexts(std::vector<TranslateText> t) {
+		this->texts = std::move(t);
+	}
+	void addTexts(TranslateText t) {
+		this->texts.emplace_back(std::move(t));
+	}
+	std::vector<TranslateText>& getTexts() { return this->texts; }
+};
+
 IUTEST(Langscore_Writer, UTF8WordCount)
 {
 	ScriptTextParser scriptRegex;
@@ -527,30 +540,49 @@ IUTEST(Langscore_Config, CheckProjectPath)
 
 IUTEST(Langscore_Csv, parsePlain)
 {
-	auto targetCsvList = plaincsvreader{".\\data\\csv\\parsePlain.csv"}.getPlainCsvTexts();
-	IUTEST_ASSERT(targetCsvList.empty() == false);
-
-	// 期待される解析結果を定義
-	std::vector<std::vector<std::u8string>> expected = {
-		{u8"ID", u8"Name", u8"Age", u8"Address", u8"Quote", u8"Description"},
-		{u8"1", u8"Yamada, Taro", u8"30", u8"Tokyo, Japan", u8"I love \"sushi\" and \"ramen\"", u8"Hobby: Basketball\nFavorite color: Blue"},
-		{u8"2", u8"Suzuki, Hanako", u8"25", u8"Osaka, Japan", u8"Life is like a box of chocolates", u8"Hobby: Painting\nFavorite color: Green"},
-		{u8"3", u8"Tanaka, Ken", u8"28", u8"Kyoto, Japan", u8"One,Two,Three,Four", u8"Hobby: Running\nFavorite color: Yellow"},
-		{u8"4", u8"Kato, Yuki", u8"22", u8"Hokkaido, Japan", u8"Hello, world! This is a test", u8"Hobby: Swimming\nFavorite color: Red"},
-		{u8"5", u8"Watanabe, Rika", u8"35", u8"Fukuoka, Japan", u8"こんにちは、元気ですか？", u8"趣味：読書\n好きな色：ピンク"},
-	};
-
-	// 解析結果が期待通りであることを確認    
-	for(size_t i = 0; i < expected.size(); ++i)
 	{
-		for(size_t j = 0; j < expected[i].size(); ++j)
+		auto targetCsvList = plaincsvreader{".\\data\\csv\\parsePlain.csv"}.getPlainCsvTexts();
+		IUTEST_ASSERT(targetCsvList.empty() == false);
+
+		// 期待される解析結果を定義
+		std::vector<std::vector<std::u8string>> expected = {
+			{u8"ID", u8"Name", u8"Age", u8"Address", u8"Quote", u8"Description"},
+			{u8"1", u8"Yamada, Taro", u8"30", u8"Tokyo, Japan", u8"I love \"sushi\" and \"ramen\"", u8"Hobby: Basketball\nFavorite color: Blue"},
+			{u8"2", u8"Suzuki, Hanako", u8"25", u8"Osaka, Japan", u8"Life is like a box of chocolates", u8"Hobby: Painting\nFavorite color: Green"},
+			{u8"3", u8"Tanaka, Ken", u8"28", u8"Kyoto, Japan", u8"One,Two,Three,Four", u8"Hobby: Running\nFavorite color: Yellow"},
+			{u8"4", u8"Kato, Yuki", u8"22", u8"Hokkaido, Japan", u8"Hello, world! This is a test", u8"Hobby: Swimming\nFavorite color: Red"},
+			{u8"5", u8"Watanabe, Rika", u8"35", u8"Fukuoka, Japan", u8"こんにちは、元気ですか？", u8"趣味：読書\n好きな色：ピンク"},
+		};
+
+		// 解析結果が期待通りであることを確認    
+		for(size_t i = 0; i < expected.size(); ++i)
 		{
-			if(expected[i][j] != targetCsvList[i][j]){
-				IUTEST_SCOPED_TRACE(::iutest::Message() << "No match Text. : " << expected[i][j] << ":" << targetCsvList[i][j]);
-				IUTEST_SCOPED_TRACE(::iutest::Message() << "i : " << i << " j : " << j);
-				IUTEST_FAIL();
+			for(size_t j = 0; j < expected[i].size(); ++j)
+			{
+				if(expected[i][j] != targetCsvList[i][j]) {
+					IUTEST_SCOPED_TRACE(::iutest::Message() << "No match Text. : " << expected[i][j] << ":" << targetCsvList[i][j]);
+					IUTEST_SCOPED_TRACE(::iutest::Message() << "i : " << i << " j : " << j);
+					IUTEST_FAIL();
+				}
 			}
 		}
+	}
+	{
+		auto targetCsvList = plaincsvreader{".\\data\\csv\\plaincsvreader.csv"}.getPlainCsvTexts();
+		IUTEST_ASSERT(targetCsvList.empty() == false);
+		IUTEST_EXPECT_EQ(4, targetCsvList.size());
+
+		IUTEST_ASSERT_STREQ(targetCsvList[1][0], u8"\\c[sigo]テスト\n1");
+		IUTEST_ASSERT_STREQ(targetCsvList[1][1], u8"\\c[sigo]テスト\n1");
+		IUTEST_ASSERT_STREQ(targetCsvList[1][2], u8"\\c[sigo]测试\n1");
+
+		IUTEST_ASSERT_STREQ(targetCsvList[2][0], u8"\\r[sigo]テスト\n2");
+		IUTEST_ASSERT_STREQ(targetCsvList[2][1], u8"\\r[sigo]テスト\n2");
+		IUTEST_ASSERT_STREQ(targetCsvList[2][2], u8"\\r[sigo]测试\n2");
+
+		IUTEST_ASSERT_STREQ(targetCsvList[3][0], u8"\\n[sigo]テスト\n3");
+		IUTEST_ASSERT_STREQ(targetCsvList[3][1], u8"\\n[sigo]テスト\n3");
+		IUTEST_ASSERT_STREQ(targetCsvList[3][2], u8"\\n[sigo]测试\n3");
 	}
 }
 
