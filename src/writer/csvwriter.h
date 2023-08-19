@@ -59,7 +59,7 @@ namespace langscore
             return str;
         }
 
-        std::u8string convertCsvText(std::u8string_view text) const;
+        static std::u8string convertCsvText(std::u8string_view text);
     };
 }
 

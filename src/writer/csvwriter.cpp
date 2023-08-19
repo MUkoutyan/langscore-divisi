@@ -289,10 +289,18 @@ ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
 	return Status_Success;
 }
 
-ErrorStatus langscore::csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, MergeTextMode overwriteMode)
+ErrorStatus csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, MergeTextMode overwriteMode)
 {
 	std::ofstream outputCSVFile(path, std::ios::binary);
 	if(outputCSVFile.bad()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
+
+
+	for(auto& text : textList)
+	{
+		for(auto& t : text) {
+			t = convertCsvText(t);
+		}
+	}
 
 	const std::u8string delimiter(u8",");
 	for(const auto& text : textList)
@@ -303,7 +311,7 @@ ErrorStatus langscore::csvwriter::writePlain(std::filesystem::path path, std::ve
 	return Status_Success;
 }
 
-std::u8string csvwriter::convertCsvText(std::u8string_view text) const
+std::u8string csvwriter::convertCsvText(std::u8string_view text)
 {
 	bool add_dq = false;
 	//セル自体を""で括るかのチェック。先頭と末尾が"でなければ"をそれぞれに追加する。
