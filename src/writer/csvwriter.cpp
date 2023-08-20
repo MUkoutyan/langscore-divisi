@@ -315,7 +315,10 @@ std::u8string csvwriter::convertCsvText(std::u8string_view text)
 {
 	bool add_dq = false;
 	//セル自体を""で括るかのチェック。先頭と末尾が"でなければ"をそれぞれに追加する。
-	if(text.find(u8"\n") != std::u8string::npos || text.find(u8",") != std::u8string::npos){
+	if(text.find(u8"\n") != std::u8string::npos || 
+	   text.find(u8"\"") != std::u8string::npos ||
+	   text.find(u8",") != std::u8string::npos)
+	{
 		add_dq = true;
 	}
 

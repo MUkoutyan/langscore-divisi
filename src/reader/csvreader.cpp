@@ -139,17 +139,20 @@ std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path p
 		{
 			auto next = ReadAndPeekNextChar();
 			if(file.eof()) { break; }
-			if(next == u8"\"") {
-				GetChar();
-				//""を"として解釈するため、先読みした箇所まで読み込む。
-				std::ranges::copy(c, std::back_inserter(col));
-			}
-			else if(col.empty())	//文字が何も入っていない == セルの先頭
+			if(bracketed_dq == false && col.empty())
 			{
+				//文字が何も入っていない == セルの先頭。
+				//ダブルクオーテーションを含むセルも""で括られているため、
+				//""の検出よりも先に行う。
 				//セルの先頭が"で開始されていたら""で括られていると判定する。
 				bracketed_dq = true;
 				//素通りさせると下記ifのbracketed_dq判定に引っかかるので、ここでcontinueさせる。
 				continue;
+			}
+			else if(next == u8"\"") {
+				GetChar();
+				//""を"として解釈するため、先読みした箇所まで読み込む。
+				std::ranges::copy(c, std::back_inserter(col));
 			}
 
 			if(bracketed_dq && (next == u8"," || next == u8"\r" || next == u8"\n"))

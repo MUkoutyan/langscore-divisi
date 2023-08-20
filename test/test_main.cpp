@@ -446,7 +446,7 @@ IUTEST(Langscore_Writer, ConvertCsvText_ASCII)
 	{
 		auto input = u8"Quote \" in the text";
 		auto result = writer.convertCsvText(input);
-		IUTEST_ASSERT_STREQ(result, u8"Quote \"\" in the text");
+		IUTEST_ASSERT_STREQ(result, u8"\"Quote \"\" in the text\"");
 	}
 	{
 		auto input = u8"Comma, and quote \"";
@@ -477,7 +477,7 @@ IUTEST(Langscore_Writer, ConvertCsvText_Multibyte)
 	{
 		auto input = u8"文章中の\"記号";
 		auto result = writer.convertCsvText(input);
-		IUTEST_ASSERT_STREQ(result, u8"文章中の\"\"記号");
+		IUTEST_ASSERT_STREQ(result, u8"\"文章中の\"\"記号\"");
 	}
 	{
 		auto input = u8"コンマ,\"と引用符";
@@ -570,7 +570,7 @@ IUTEST(Langscore_Csv, parsePlain)
 	{
 		auto targetCsvList = plaincsvreader{".\\data\\csv\\plaincsvreader.csv"}.getPlainCsvTexts();
 		IUTEST_ASSERT(targetCsvList.empty() == false);
-		IUTEST_EXPECT_EQ(4, targetCsvList.size());
+		IUTEST_EXPECT_EQ(5, targetCsvList.size());
 
 		IUTEST_ASSERT_STREQ(targetCsvList[1][0], u8"\\c[sigo]テスト\n1");
 		IUTEST_ASSERT_STREQ(targetCsvList[1][1], u8"\\c[sigo]テスト\n1");
@@ -583,6 +583,8 @@ IUTEST(Langscore_Csv, parsePlain)
 		IUTEST_ASSERT_STREQ(targetCsvList[3][0], u8"\\n[sigo]テスト\n3");
 		IUTEST_ASSERT_STREQ(targetCsvList[3][1], u8"\\n[sigo]テスト\n3");
 		IUTEST_ASSERT_STREQ(targetCsvList[3][2], u8"\\n[sigo]测试\n3");
+
+		IUTEST_ASSERT_STREQ(targetCsvList[4][0], u8"\"タ\"フ\"ルクォーテーションを含むテキストです\"");
 	}
 }
 
