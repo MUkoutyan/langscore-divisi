@@ -1,4 +1,5 @@
 //==========LSCSV==========
+
 class LSCSV
 {
 
@@ -21,10 +22,10 @@ class LSCSV
 
     //To Hash
     var result = new Map();
-    rows.slice(1, rows.size).forEach(function (r) {
+    //※ヘッダーと列数が一致しない行は除外
+    rows.slice(1, rows.size).filter(row => header.length === row.length).forEach(function (r) 
+    {
       var origin = r[0];
-      var trans = r.slice(1, header.size);
-
       var transhash = new Map();
       row_index.forEach(i => transhash[header[i]] = r[i]);
       result[origin] = transhash;
@@ -71,29 +72,46 @@ class LSCSV
     if (rows === null) { return; }
     var result = [];
     var cols = [];
-    var find_quote = false;
+    var bracketed_dq = false;
 
     const add_col = function (col) {
-      // col.chomp! //末尾に改行があれば削除
-      //セルに分けた時点で先頭・末尾の"が不要になるため、削除する
-      if (col.startsWith("\"") && col.endsWith("\"")) {
-        col = col.slice(1,col.length - 2);
-      }
-
-      //"を表すための""はCSVでのみ必須のため、読み込み時点で""は"と解釈。
-      col.replace("\"\"", "\"");
+      col = col.replace(/(\r\n|\n|\r)$/, "");  //末尾に改行があれば削除
       cols.push(col);
     }
+
+    const read_and_poeek_next_char = function(i)
+    {
+      if(rows.length <= (i+1)){ return ""; }
+      return rows[i+1];
+    };
 
     var col = "";
     for (var i = 0; i < rows.length; ++i) 
     {
       var c = rows[i];
-      if (c === "\"") {
-        find_quote = !find_quote;
+      if (c === "\"") 
+      {
+        var next_char = read_and_poeek_next_char(i);
+        if(next_char === ""){ break; }
+
+        if(bracketed_dq === false && col.length === 0){
+          bracketed_dq = true;
+          continue;
+        }
+        else if(next_char === "\""){
+          i += 1;
+          col += next_char;
+        }
+
+        if(bracketed_dq && (next_char === "," || next_char === "\r" || next_char === "\n"))
+        {
+          bracketed_dq = false;
+        }
+
+        continue;
       }
 
-      if (find_quote) {
+      if (bracketed_dq) {
         //""内なら無条件で追加
         col += c;
         continue;
@@ -101,13 +119,13 @@ class LSCSV
 
       //以下は""で括られていない場合に通る
       if (c === ",") {
-        find_quote = false;
+        bracketed_dq = false;
         add_col(col);
         col = "";
       }
       else if (c === "\n") {
+        bracketed_dq = false;
         col += c //一旦改行を追加。add_col内のchompが適用できるようにする。
-        find_quote = false;
         add_col(col);
         col = "";
 
@@ -143,3 +161,4 @@ class LSCSV
   }
 }
 const _lscsv = new LSCSV();
+//==========LSCSV==========
