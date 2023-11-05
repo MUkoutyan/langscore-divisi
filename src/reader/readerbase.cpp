@@ -97,7 +97,7 @@ readerbase::ProgressNextStep readerbase::checkRangeComment(TextCodec& line, bool
 		//コメント開始部分が検出済み。
 		auto pos = line.find(this->rangeCommentEnd);
 		if(pos == TextCodec::npos){
-			return line.empty() ? ProgressNextStep::NextLine : ProgressNextStep::Throught;
+			return ProgressNextStep::NextLine;
 		}
 
 		inRangeComment = false;
@@ -127,8 +127,11 @@ readerbase::ProgressNextStep readerbase::checkRangeComment(TextCodec& line, bool
 	auto endPos = line.find(this->rangeCommentEnd, pos);
 	if(endPos == TextCodec::npos){
 		inRangeComment = true;
-
+		//行の途中で範囲コメントされていた場合の対応。
 		std::fill_n(line.begin() + pos, line.size() - pos, TextCodecChar(' '));
+		if(isValidProgramLine(line) == false) {
+			return ProgressNextStep::NextLine;
+		}
 		return line.empty() ? ProgressNextStep::NextLine : ProgressNextStep::Throught;
 	}
 
