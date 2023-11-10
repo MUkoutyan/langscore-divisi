@@ -1,5 +1,5 @@
 #pragma once
-#include "../serialize_base.h"
+#include "serialize_base.h"
 #include "utility.hpp"
 #include <filesystem>
 #include <string>
@@ -12,7 +12,7 @@ public:
 
 	using DataType = std::vector<std::tuple<std::u8string, size_t>>;
 
-
+	//単語ごとの配列に変換
 	std::vector<std::tuple<std::u8string_view, size_t>> ConvertWordList(std::u8string_view str)
 	{
 		std::vector<std::tuple<std::u8string_view, size_t>> result;
@@ -79,63 +79,63 @@ public:
 	}
 
 	//入力した文字列に言語の文字列があるかを判定する関数
-	DataType findStrings(std::u8string line)
-	{
-		if(line.empty()){ return {}; }
+	//DataType findStrings(std::u8string line)
+	//{
+	//	if(line.empty()){ return {}; }
 
-		using namespace std::string_view_literals;
-		int col_diff_tmp = 0;
-		DataType transTextList;
-		auto wordList = ConvertWordList(line);
+	//	using namespace std::string_view_literals;
+	//	//行内の文字を抽出。マルチバイト文字を1文字とカウントするための形式。
+	//	auto wordList = ConvertWordList(line);
 
-		//文字列が無ければ無視
-		if(std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"\""sv; }) == wordList.cend() &&
-		   std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"'"sv; }) == wordList.cend())
-		{
-			return {};
-		}
+	//	//文字列が無ければ無視
+	//	if(std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"\""sv; }) == wordList.cend() &&
+	//	   std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"'"sv; }) == wordList.cend())
+	//	{
+	//		return {};
+	//	}
 
-		size_t strStart = 0;
-		bool findDq = false;
-		bool findSq = false;
-		size_t col = 0;
-		size_t index = 1;
-		bool beforeEsc = false;
-		for(auto& strView : wordList)
-		{
-			auto str = std::get<0>(strView);
-			if(beforeEsc == false)
-			{
-				if(str == u8"\"" && findSq == false){
-					if(findDq == false){
-						col = index;
-						strStart = std::get<1>(strView)+1;
-					}
-					else {
-						auto endPos = std::get<1>(strView);
-						convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
-					}
-					findDq = !findDq;
-				}
-				else if(str == u8"'" && findDq == false){
-					if(findSq == false){
-						col = index;
-						strStart = std::get<1>(strView) + 1;
-					}
-					else {
-						auto endPos = std::get<1>(strView);
-						convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
-					}
-					findSq = !findSq;
-				}
-			}
-			
-			beforeEsc = str == u8"\\";
+	//	DataType transTextList;
+	//	size_t strStart = 0;
+	//	bool findDq = false;
+	//	bool findSq = false;
+	//	size_t col = 0;
+	//	size_t index = 1;
+	//	bool beforeEsc = false;
+	//	for(auto& strView : wordList)
+	//	{
+	//		auto& str = std::get<0>(strView);
+	//		if(beforeEsc == false)
+	//		{
+	//			if(str == u8"\"" && findSq == false){
+	//				if(findDq == false){
+	//					col = index;
+	//					strStart = std::get<1>(strView)+1;
+	//				}
+	//				else {
+	//					auto endPos = std::get<1>(strView);
+	//					convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
+	//				}
+	//				findDq = !findDq;
+	//			}
+	//			else if(str == u8"'" && findDq == false){
+	//				if(findSq == false){
+	//					col = index;
+	//					strStart = std::get<1>(strView) + 1;
+	//				}
+	//				else {
+	//					auto endPos = std::get<1>(strView);
+	//					convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
+	//				}
+	//				findSq = !findSq;
+	//			}
+	//		}
+	//		
+	//		beforeEsc = str == u8"\\";
 
-			index++;
-		}
-		return transTextList;
-	}
+	//		index++;
+	//	}
+	//	return transTextList;
+	//}
 
 private:
 };

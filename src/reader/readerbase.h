@@ -2,6 +2,7 @@
 
 #include "../serialize_base.h"
 #include "config.h"
+#include "scripttextparser.hpp"
 #include <vector>
 #include <filesystem>
 
@@ -48,6 +49,8 @@ namespace langscore
 		TextCodec rangeCommentBegin;
 		TextCodec rangeCommentEnd;
 
+		virtual ScriptTextParser::DataType findStrings(std::u8string line) const { return {}; };
+
 		//lineComment, rangeComment~のセット関数を定義
 		void setComment(TextCodec line, TextCodec begin, TextCodec end);
 
@@ -57,7 +60,7 @@ namespace langscore
 		virtual ProgressNextStep checkRangeComment(TextCodec& lineText, bool& inRangeComment, size_t pos) const;
 		virtual ProgressNextStep checkLineComment(TextCodec& lineText) const;
 
-		std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path) const;
+		virtual std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path) const;
 		TextCodecChar findBeginEnclose(TextCodecView text, size_t endPos) const;
 		bool isValidProgramLine(TextCodecView text) const;
 	};

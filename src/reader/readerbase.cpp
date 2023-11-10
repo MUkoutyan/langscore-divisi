@@ -1,14 +1,5 @@
 ﻿#include "readerbase.h"
-#include "readerbase.h"
-#include "readerbase.h"
-#include "readerbase.h"
-#include "readerbase.h"
-#include "readerbase.h"
-#include "readerbase.h"
-#include "readerbase.h"
-#include "readerbase.h"
-#include "readerbase.h"
-#include "writer/scripttextparser.hpp"
+#include "scripttextparser.hpp"
 
 using namespace langscore;
 
@@ -222,7 +213,7 @@ std::vector<TranslateText> readerbase::convertScriptToCSV(std::filesystem::path 
 			break;
 		}
 
-		auto dqResult = scriptParser.findStrings(line);
+		auto dqResult = this->findStrings(line);
 
 		auto lineCountStr = std::to_string(lineCount);
 		std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());

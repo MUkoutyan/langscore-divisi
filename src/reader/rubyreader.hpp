@@ -3,7 +3,7 @@
 #include "utility.hpp"
 #include "csvreader.h"
 #include "config.h"
-#include "writer/scripttextparser.hpp"
+#include "scripttextparser.hpp"
 #include <filesystem>
 #include <ranges>
 
@@ -147,6 +147,65 @@ namespace langscore
 				return ProgressNextStep::NextLine;
 			}
 			return lineText.empty() ? ProgressNextStep::NextLine : ProgressNextStep::Throught;
+		}
+
+		ScriptTextParser::DataType findStrings(std::u8string line) const
+		{
+			if(line.empty()) { return {}; }
+
+			using namespace std::string_view_literals;
+			ScriptTextParser parser;
+			//行内の文字を抽出。マルチバイト文字を1文字とカウントするための形式。
+			auto wordList = parser.ConvertWordList(line);
+
+			//文字列が無ければ無視
+			if(std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x) { return std::get<0>(x) == u8"\""sv; }) == wordList.cend() &&
+				std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x) { return std::get<0>(x) == u8"'"sv; }) == wordList.cend())
+			{
+				return {};
+			}
+
+			ScriptTextParser::DataType transTextList;
+			size_t strStart = 0;
+			bool findDq = false;
+			bool findSq = false;
+			size_t col = 0;
+			size_t index = 1;
+			bool beforeEsc = false;
+			for(auto& strView : wordList)
+			{
+				auto& str = std::get<0>(strView);
+				if(beforeEsc == false)
+				{
+					if(str == u8"\"" && findSq == false) {
+						if(findDq == false) {
+							col = index;
+							strStart = std::get<1>(strView) + 1;
+						}
+						else {
+							auto endPos = std::get<1>(strView);
+							parser.convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
+						}
+						findDq = !findDq;
+					}
+					else if(str == u8"'" && findDq == false) {
+						if(findSq == false) {
+							col = index;
+							strStart = std::get<1>(strView) + 1;
+						}
+						else {
+							auto endPos = std::get<1>(strView);
+							parser.convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
+						}
+						findSq = !findSq;
+					}
+				}
+
+				beforeEsc = str == u8"\\";
+
+				index++;
+			}
+			return transTextList;
 		}
 	};
 

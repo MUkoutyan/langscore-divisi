@@ -232,17 +232,6 @@ ErrorStatus divisi_mvmz::write()
 
     copyFonts();
 
-    std::cout << "Export script files." << std::endl;
-    //rewriteScriptList();
-    std::cout << "Done." << std::endl;
-
-    //std::cout << "Compress." << std::endl;
-    //auto runResult = this->invoker.recompressVXAce();
-    //if(runResult.val() != 0){
-    //    return runResult;
-    //}
-    //std::cout << "Done." << std::endl;
-
     std::cout << "Write Translate File Done." << std::endl;
     return Status_Success;
 }
@@ -250,7 +239,7 @@ ErrorStatus divisi_mvmz::write()
 void langscore::divisi_mvmz::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<readerbase>>& jsonreader_map)
 {
     if(list.empty()){ return; }
-    //アクター名の変更・二つ名の変更　の抽出
+    //アクター名の変更・二つ名の変更・ニックネームの変更　の抽出
     utility::u8stringlist extend_names;
     fs::path actor_path;
     const std::array<int, 3> targetCode = {320, 324, 325};
@@ -557,10 +546,10 @@ void langscore::divisi_mvmz::writeFixedScript()
     {
         auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&scriptInfoList](const auto& path){
             auto osPath = path.stem();
-        auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&osPath](const auto& script){
-            return script.filename == osPath && script.ignore;
-        });
-        return result != scriptInfoList.cend();
+            auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&osPath](const auto& script){
+                return script.filename == osPath && script.ignore;
+            });
+            return result != scriptInfoList.cend();
         });
         scriptList.erase(rm_result, scriptList.end());
     }

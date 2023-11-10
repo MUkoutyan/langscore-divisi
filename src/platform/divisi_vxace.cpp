@@ -514,7 +514,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
         for(auto& translateFolder : translateFolderList){
             csvFilePath = translateFolder / csvFilePath;
             std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
-            std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, std::move(json));
+            std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, json);
             writeFixedTranslateText<csvwriter>(csvFilePath, reader, mergeTextMode);
             jsonreader_map[inputPath.filename()] = std::move(reader);
         }

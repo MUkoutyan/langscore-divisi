@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 
 namespace langscore
 {
@@ -14,13 +14,19 @@ namespace langscore
         Both,               //両方残す
     };
 
+    struct PluginParameter {
+        std::u8string key;
+        std::u8string type;
+        std::u8string value;
+    };
+
     struct PluginInfo
     {
         std::u8string name;
         std::u8string filename; //拡張子はつけること
         bool status = false;
         std::u8string description;
-        std::map<std::u8string, std::u8string> parameters;
+        std::unordered_map<std::u8string, std::vector<PluginParameter>> parameters;
     };
 
     //翻訳テキストのクラス
@@ -29,15 +35,16 @@ namespace langscore
     public:
         TranslateText():TranslateText(u8"", {}) {}
         TranslateText(std::u8string origin, std::vector<std::u8string> langs)
-            : original(std::move(origin)), translates(), scriptLineInfo(), code(0)
+            : original(std::move(origin)), translates(), scriptLineInfo(), scriptParamType(), code(0)
         {
             for(auto& lang : langs){
                 this->translates[lang] = u8"";
             }
         }
         std::u8string original; //オリジナルの文章
-        std::map<std::u8string, std::u8string> translates;  //各言語毎の文章。[言語コード, 文章]のマップ
+        std::unordered_map<std::u8string, std::u8string> translates;  //各言語毎の文章。[言語コード, 文章]のマップ
         std::u8string scriptLineInfo;   //スクリプトでのオリジナルの文章の行情報
+        std::u8string scriptParamType;  //(MV,MZ)プラグインのパラメータの型
         int code;   //RPGツクールでコマンドを検出した際に使用
 
         //CSV用のヘッダーを作成

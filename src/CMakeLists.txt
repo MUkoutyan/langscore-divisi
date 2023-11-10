@@ -30,7 +30,7 @@ set(lib_files
 	"writer/csvwriter.h"
 	"writer/writerbase.cpp"
 	"writer/writerbase.h"
-	"writer/scripttextparser.hpp"
+	"scripttextparser.hpp"
 	"reader/vxacejsonreader.hpp"
 	"reader/readerbase.h"
 	"reader/readerbase.cpp"
@@ -61,8 +61,13 @@ target_include_directories(divisi_lib PUBLIC
 	${PROJECT_SOURCE_DIR}/include
 	${PROJECT_SOURCE_DIR}/3rdparty/json
 	${PROJECT_SOURCE_DIR}/3rdparty/hash-library
+	${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/include
 )
 
+target_link_libraries(divisi_lib
+	debug ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/tree-sitterD.lib
+    optimized ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/tree-sitter.lib
+)
 
 install(TARGETS divisi_lib
         LIBRARY DESTINATION ${PROJECT_SOURCE_DIR}/lib)
