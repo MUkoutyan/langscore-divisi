@@ -22,7 +22,9 @@
  * Langscore changeLanguage lang 
  */
 
- (() => {
+var _langscore;
+
+(() => {
   'use strict';
 /*
 %{SUPPORT_LANGUAGE}%
@@ -60,6 +62,8 @@ class Langscore
 
   static langscore_current_language = String(Langscore_Parameters['Default Language']);
   static currentFont = Langscore.FontList[Langscore.langscore_current_language];
+
+  _updateMethods = [];
 
   static isNull(obj){
     return obj === null || obj === undefined;
@@ -116,15 +120,15 @@ class Langscore
     // return sprintf(text, *args)
   }
 
-  translate(text, langscore_hash, lang = Langscore.langscore_current_language)
+  translate(text, langscore_map, lang = Langscore.langscore_current_language)
   {
-    if(Langscore.isNull(langscore_hash)){
+    if(Langscore.isNull(langscore_map)){
       return text;
     }
     
     var key = text;
 
-    var translatedList = langscore_hash[key];
+    var translatedList = langscore_map[key];
     if(!translatedList){ return text; }
     var t = translatedList[lang];
     if(t){
@@ -138,11 +142,18 @@ class Langscore
     if(!this.ls_current_map){ return text; }
     
     var parent = this;
-    var currentMapId = $gameMap._interpreter._mapId;
-    var currentMapTranslatedHash = this.ls_current_map[currentMapId];
-    if(!currentMapTranslatedHash){ return text; }
+    var currentMapId = 0;
+    //会話などで処理中のMapIDが指定されている場合はそちらのIDを使用する。
+    if($gameMap._interpreter.isOnCurrentMap() === false){
+      currentMapId = $gameMap._interpreter._mapId;
+    }
+    else{
+      currentMapId = $gameMap._mapId;
+    }
+    var currentMapTranslatedmap = this.ls_current_map[currentMapId];
+    if(!currentMapTranslatedmap){ return text; }
 
-    var translate_result = parent.translate(text, currentMapTranslatedHash);
+    var translate_result = parent.translate(text, currentMapTranslatedmap);
     if(translate_result !== text){
       return translate_result;
     }
@@ -153,10 +164,10 @@ class Langscore
     return this.translate(text, this.ls_scripts_tr);
   };
 
-  fetch_original_text(transed_text, langscore_hash) 
+  fetch_original_text(transed_text, langscore_map) 
   {
     var origin = transed_text;
-    var a = langscore_hash.entries();
+    var a = langscore_map.entries();
     for (const [originText, transList] of a) {
       for (let transText of transList.values()) {
           if (transText === origin) {
@@ -169,9 +180,6 @@ class Langscore
 
   translate_list_reset()
   {
-    if(test === false){
-      return;
-    }
     this.ls_actors_tr.clear();
     this.ls_system_tr.clear();
     this.ls_classes_tr.clear();
@@ -181,17 +189,17 @@ class Langscore
     this.ls_armors_tr.clear();
     this.ls_items_tr.clear();
     this.ls_enemies_tr.clear();
-    this.ls_graphics_tr = _lscsv.to_hash("Graphics")
-    this.ls_scripts_tr = _lscsv.to_hash("Scripts")
-    this.ls_troops_tr = _lscsv.to_hash("Troops")
-    this.ls_common_event = _lscsv.to_hash("CommonEvents")
+    this.ls_graphics_tr = _lscsv.to_map("Graphics")
+    this.ls_scripts_tr = _lscsv.to_map("Scripts")
+    this.ls_troops_tr = _lscsv.to_map("Troops")
+    this.ls_common_event = _lscsv.to_map("CommonEvents")
   
     changeLanguage($langscore_current_language)
   }
 
-  changeLanguage(lang)
+  changeLanguage(lang, forceUpdate = false)
   {
-    if(Langscore.langscore_current_language === lang){
+    if(forceUpdate === false && Langscore.langscore_current_language === lang){
       return;
     }
 
@@ -200,6 +208,7 @@ class Langscore
     }
     
     Langscore.langscore_current_language = lang;
+    this.updatePluginParameters();
     this.updateFont(lang);
   
     this.updateSkills();
@@ -213,6 +222,11 @@ class Langscore
   
     //Game_Actors.newをしているため並列処理から除外
     this.updateActor();
+
+    this._updateMethods.forEach(function(method) {
+      method();
+    });
+    Langscore_PluginCustom();
     
     this.ls_graphic_cache = {};
     this.ls_graphic_cache.clear
@@ -225,7 +239,6 @@ class Langscore
     }
 
     if(Langscore.isNull(this.currentFont) === false){
-      console.log(this.currentFont);
       this.beforeFontName = this.currentFont["name"];
     }
     if (this.FontList.find(item => item.lang === lang)) {
@@ -238,11 +251,11 @@ class Langscore
   updateForNameAndDesc(data_list, tr_list) 
   {
     const elm_trans =(el) => {
-      el = this.translate(el, tr_list);
+      return this.translate(el, tr_list);
     }
     data_list.forEach(function(obj,i){
       if(data_list[i] === null){ return; }
-      data_list[i].name        = elm_trans(obj.name);
+      data_list[i].name         = elm_trans(obj.name);
       data_list[i].description = elm_trans(obj.description);
     });
   };
@@ -250,7 +263,7 @@ class Langscore
   updateForName(data_list, tr_list) 
   {
     const elm_trans =(el) => {
-      el = this.translate(el, tr_list);
+      return this.translate(el, tr_list);
     }
     data_list.forEach(function(obj,i){
       if (data_list[i] === null) { return; }
@@ -260,20 +273,18 @@ class Langscore
 
   updateActor()
   {
-
     //大元のデータベースを更新。Game_Actor作成時に使用されるため必要。
     this.updateForNameAndDesc($dataActors, this.ls_actors_tr);
     
     const elm_trans =(el) => {
-        el = this.translate(el, this.ls_actors_tr);
+      return this.translate(el, this.ls_actors_tr);
     }
-
-    //既にGame_Actorが作成されている場合、インスタンス側も更新。
-    //他のデータベースと同様に初期化を行うと、パラメータ値等も全部初期化されるので、名前以外の内容は保持する。
 
     if($dataActors === null || $gameActors === null){
       return;
     }
+    //既にGame_Actorが作成されている場合、インスタンス側も更新。
+    //他のデータベースと同様に初期化を行うと、パラメータ値等も全部初期化されるので、名前以外の内容は保持する。
     for (var i = 0; i < $dataActors.length; ++i) {
       var actor = $gameActors.actor(i);
       if (!actor){ continue; }
@@ -286,22 +297,32 @@ class Langscore
       if(nickname){
         $gameActors.actor(i)._nickname = elm_trans(nickname);
       }
+      var profile = this.fetch_original_text(actor._profile, this.ls_actors_tr);
+      if(profile){
+        $gameActors.actor(i)._profile = elm_trans(profile);
+      }
     }
   };
 
+  
+  //配列の全要素に対してmodifyFunctionを適用するヘルパー関数
+  internal_modifyArray(arr, modifyFunction) {
+    arr.forEach((el, index) => {
+        arr[index] = modifyFunction(el);
+    });
+    return arr;
+  }
+
   updateSystem(){ 
-    const elm_trans =(el) => {
-      el = this.translate(el, this.ls_system_tr);
-    }
-    // $dataSystem.elements.map(elm_trans);
-    // $dataSystem.skillTypes.map(elm_trans);
-    $dataSystem.terms.params.map(elm_trans);
-    $dataSystem.terms.commands.map(elm_trans);
-    $dataSystem.terms.basic.map(elm_trans);
+    this.internal_modifyArray($dataSystem.terms.params, (el) => el = this.translate(el, this.ls_system_tr) );
+    this.internal_modifyArray($dataSystem.terms.commands, (el) => el = this.translate(el, this.ls_system_tr) );
+    this.internal_modifyArray($dataSystem.terms.basic, (el) => el = this.translate(el, this.ls_system_tr) );
     Object.keys($dataSystem.terms.messages).forEach(key => {
       var value = $dataSystem.terms.messages[key];
       $dataSystem.terms.messages[key] = this.translate(value, this.ls_system_tr);
     });
+
+    this.internal_modifyArray($dataSystem.skillTypes, (el) => el = this.translate(el, this.ls_system_tr) )
 
     $dataSystem.currencyUnit = this.translate($dataSystem.currencyUnit, this.ls_system_tr);
   }
@@ -313,7 +334,7 @@ class Langscore
   updateSkills(){
 
     const elm_trans =(el) => {
-      el = this.translate(el, this.ls_skills_tr);
+      return this.translate(el, this.ls_skills_tr);
     };
     $dataSkills.forEach(function(skill,i){
       if($dataSkills[i] === null){ return; }
@@ -327,7 +348,7 @@ class Langscore
   updateStates(){
     
     const elm_trans =(el) => {
-      el = this.translate(el, this.ls_states_tr);
+      return this.translate(el, this.ls_states_tr);
     };
     $dataStates.forEach(function(skill,i){
       if($dataStates[i] === null){ return; }
@@ -355,7 +376,81 @@ class Langscore
     this.updateForName($dataEnemies, this.ls_enemies_tr);
   }
 
+  replaceNestedJSON(jsonData, path, newValue) 
+  {
+    // "/"区切りで指定されたパスの先の値を書き換えるメソッド
+    // 値が文字列の場合
+    const keys = path.split('/');
+    let current = jsonData;
+    const stackJSONValues = [];
 
+    for (let i = 0; i < keys.length - 1; i++) {
+        if (typeof current[keys[i]] === 'string') {
+            try {
+              current[keys[i]] = JSON.parse(current[keys[i]]);
+              //JSONとして解析できたもののみを積んでいく
+              stackJSONValues.push(current[keys[i]]);
+            } catch (e) {
+            }
+        }
+        current = current[keys[i]];
+    }
+
+    const lastKey = keys[keys.length - 1];
+    current[lastKey] = newValue;
+
+    //積んだJSONのデータを文字列に変換し、
+    //ひとつ上のstackの値に置き換える。
+    for(let i=keys.length-2; i>0; i--)
+    {
+      var data = JSON.stringify(stackJSONValues.pop());
+      stackJSONValues[stackJSONValues.length-1][keys[i]] = data;
+    }
+
+    //ツクールの場合、渡ってくるjsonDataは既に辞書化されているため、
+    //最後にpathの先頭のキーで置き換え
+    var result = JSON.stringify(stackJSONValues.pop());
+    jsonData[keys[0]] = result;
+
+    return jsonData;
+  }
+
+  updatePluginParameters()
+  {
+    if(!this.ls_scripts_tr){ return; }
+    var parent = this;
+    Object.keys(this.ls_scripts_tr).forEach(function(key){
+      var infos = key.split(':');
+      if(infos.length <= 1 || 2 < infos.length){ return; }
+      var params = PluginManager.parameters(infos[0]);
+      if(!params){ return; }
+
+      //パスの場合の処理
+      if(infos[1].includes("/")){
+        var trans = parent.ls_scripts_tr[key];
+        if(trans){
+            var text = trans[Langscore.langscore_current_language];
+            if(text){
+                // JSON文字列である可能性があるため、replaceNestedJSONを呼び出す
+                params = parent.replaceNestedJSON(params, infos[1], text);
+                // 更新されたパラメータを再設定
+                PluginManager._parameters[infos[0].toLowerCase()] = params;
+            }
+        }
+      }
+      else{
+        //通常の文字列の場合の処理
+        var param = params[infos[1]];
+        var trans = parent.ls_scripts_tr[key];
+        if(param && trans){
+          var text = trans[Langscore.langscore_current_language];
+          if(text){
+            PluginManager._parameters[infos[0].toLowerCase()][infos[1]] = text;
+          }
+        }
+      }
+    });
+  }
 
   loadSystemDataFile(varName, fileName) {
     var xhr = new XMLHttpRequest();
@@ -365,7 +460,7 @@ class Langscore
     xhr.overrideMimeType('application/json');
     xhr.onload = function() {
       if (xhr.status < 400) {
-        parent[varName] = _lscsv.to_hash(xhr.responseText, varName);
+        parent[varName] = _lscsv.to_map(xhr.responseText, varName);
       }
       else{
         parent[varName] = {};
@@ -390,7 +485,7 @@ class Langscore
     
     xhr.onload = function() {
       if (xhr.status < 400) {
-        parent.ls_current_map[mapID] = _lscsv.to_hash(xhr.responseText, url);
+        parent.ls_current_map[mapID] = _lscsv.to_map(xhr.responseText, url);
       }
       else{
         parent.ls_current_map[mapID] = {};
@@ -405,9 +500,15 @@ class Langscore
     xhr.send();
   };
 
+  registerUpdateMethodAtLanguageUpdate(method) {
+    if (typeof method === "function") {
+        this._updateMethods.push(method);
+    }
+  }
+
 } //class Langscore
 
-const _langscore = new Langscore();
+_langscore = new Langscore();
 
 const Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
 Game_Interpreter.prototype.pluginCommand = function( command, args ) {
@@ -447,46 +548,31 @@ DataManager.loadMapData = function(mapId)
   }
 };
 
-/*
+
 //-----------------------------------------------------
 
-class Game_Map
-
-  def Game_Map.ls_finalize
-    proc {
-      this.ls_current_map.delete(@map_id)
-    }
-  }
-  
-  alias ls_base_setup setup
-  function setup(map_id) {
-      ls_base_setup(map_id)
-    load_langscore_file(map_id)
-  }
-
-  function load_langscore_file(map_id) {
-      file_name  = sprintf("Map%03d", @map_id)
-
-    return if this.ls_current_map.include?(@map_id)
-    this.ls_current_map[@map_id] = _lscsv.to_hash(file_name)
-    //メモリ節約のためファイナライズで翻訳内容を消す。GC頼りなのでおまじない程度の気持ち。
-    //会話中に何故かクラッシュした場合は真っ先に外す。
-    ObjectSpace.define_finalizer(this, Game_Map.ls_finalize)
-  }
-}
-*/
 //アクター名の変更
-var Game_Interpreter_command_320 = Game_Interpreter.command_320;
-Game_Interpreter.command_320 = function() {
-  Game_Interpreter_command_320.call(this);
+var Game_Interpreter_command320 = Game_Interpreter.prototype.command320;
+Game_Interpreter.prototype.command320 = function() {
+  var result = Game_Interpreter_command320.call(this);
   _langscore.updateActor();
+  return result;  //戻り値は元のコマンドに合わせること。適切に値が返らないと入力の反映が止まる。
 };
 
 //二つ名の変更
-var Game_Interpreter_command_320 = Game_Interpreter.command_324;
-Game_Interpreter.command_324 = function() {
-  Game_Interpreter_command_324.call(this);
+var Game_Interpreter_command324 = Game_Interpreter.prototype.command324;
+Game_Interpreter.prototype.command324 = function() {
+  var result = Game_Interpreter_command324.call(this);
   _langscore.updateActor();
+  return result;
+};
+
+//プロフィールの変更
+var Game_Interpreter_command325 = Game_Interpreter.prototype.command325;
+Game_Interpreter.prototype.command325 = function() {
+  var result = Game_Interpreter_command325.call(this);
+  _langscore.updateActor();
+  return result; 
 };
 
 var Window_Base_convertEscapeCharacters = Window_Base.prototype.convertEscapeCharacters;
@@ -534,7 +620,7 @@ DataManager.isDatabaseLoaded = function(){
     if(_langscore.isLoaded() === false){
       return false;
     }
-    _langscore.changeLanguage(Langscore.langscore_current_language);
+    _langscore.changeLanguage(Langscore.langscore_current_language, true);
   }
   return result;
 }
@@ -544,23 +630,32 @@ DataManager.isDatabaseLoaded = function(){
 var DataManager_makeSaveContents = DataManager.makeSaveContents;
 DataManager.makeSaveContents = function(){
 
-  DataManager_makeSaveContents.call(this);
-  // var data_temp = Marshal.dump($gameActors)
-  // for (var i = 0; i < $dataActors.length; ++i) {
-  //   var actor = $gameActors.actor(i);
-  //   if (!actor){ continue; }
-    
-  //   $gameActors[i].name       = this.fetch_original_text(actor.name, this.ls_actors_tr)
-  //   $gameActors[i].nickname = this.fetch_original_text(actor.nickname, this.ls_actors_tr)
-  //   if (actor.equips().contains(item)) return true;
-  // }
+  var gameActorsTemp = $gameActors;
 
-  // //セーブ本処理
-  // result = ls_make_save_contents
+    for (var i = 0; i < $dataActors.length; ++i) {
+      var actor = $gameActors.actor(i);
+      if (!actor){ continue; }
 
-  // $gameActors = Marshal.load(data_temp)
+      let name = this.fetch_original_text(actor._name, this.ls_actors_tr);
+      if(name){
+        $gameActors.actor(i)._name = name;
+      }
+      var nickname = this.fetch_original_text(actor._nickname, this.ls_actors_tr);
+      if(nickname){
+        $gameActors.actor(i)._nickname = nickname;
+      }
+      var profile = this.fetch_original_text(actor._profile, this.ls_actors_tr);
+      if(profile){
+        $gameActors.actor(i)._profile = profile;
+      }
+    }
 
-  // return result;
+  //セーブ本処理
+  result = DataManager_makeSaveContents.call(this);
+
+  $gameActors = gameActorsTemp
+
+  return result;
 };
 
 //セーブデータは原文で保存されているため、起動時の言語設定で置き換える。
@@ -619,5 +714,32 @@ ImageManager.loadBitmap = function(folder_name, filename, hue = 0)
   return ImageManager_loadMitmap.call(this, folder_name, filename, hue);
 }
 
+
+var SceneManager_initialize = SceneManager.initialize;
+SceneManager.initialize = function() {
+  SceneManager_initialize.call(this);
+  _langscore.updatePluginParameters();
+};
+
+
+var ConfigManager_makeData = ConfigManager.makeData;
+ConfigManager.makeData = function() {
+  var config = ConfigManager_makeData.call(this);
+  config.currentLanguage = Langscore.langscore_current_language;
+  return config;
+};
+
+
+var ConfigManager_applyData = ConfigManager.applyData;
+ConfigManager.applyData = function(config) {
+  ConfigManager_applyData.apply(this, arguments);
+  var lang = config["currentLanguage"];
+  if(lang !== undefined){
+    Langscore.langscore_current_language = lang;
+  }
+  else{
+    Langscore.langscore_current_language = Langscore.Default_Language;
+  }
+};
 
 })(); //'use strict';
