@@ -16,7 +16,6 @@ namespace langscore
 
     struct PluginParameter {
         std::u8string key;
-        std::u8string type;
         std::u8string value;
     };
 
