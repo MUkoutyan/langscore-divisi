@@ -167,10 +167,10 @@ class Langscore
   fetch_original_text(transed_text, langscore_map) 
   {
     var origin = transed_text;
-    var a = langscore_map.entries();
-    for (const [originText, transList] of a) {
-      for (let transText of transList.values()) {
-          if (transText === origin) {
+    for (const originText of Object.keys(langscore_map)) {
+      var transMap = langscore_map[originText];
+      for (let transText of Object.values(transMap)) {
+          if (transText === transed_text) {
               return originText;
           }
       }
@@ -307,8 +307,11 @@ class Langscore
   
   //配列の全要素に対してmodifyFunctionを適用するヘルパー関数
   internal_modifyArray(arr, modifyFunction) {
-    arr.forEach((el, index) => {
-        arr[index] = modifyFunction(el);
+    arr.forEach((elem, index) => {
+      var origin_text = this.fetch_original_text(elem, this.ls_system_tr);
+      if(origin_text){
+        arr[index] = modifyFunction(origin_text);
+}
     });
     return arr;
   }
@@ -319,12 +322,16 @@ class Langscore
     this.internal_modifyArray($dataSystem.terms.basic, (el) => el = this.translate(el, this.ls_system_tr) );
     Object.keys($dataSystem.terms.messages).forEach(key => {
       var value = $dataSystem.terms.messages[key];
-      $dataSystem.terms.messages[key] = this.translate(value, this.ls_system_tr);
+      var origin_text = this.fetch_original_text(value, this.ls_system_tr);
+      if(origin_text){  
+        $dataSystem.terms.messages[key] = this.translate(origin_text, this.ls_system_tr);
+}
     });
 
     this.internal_modifyArray($dataSystem.skillTypes, (el) => el = this.translate(el, this.ls_system_tr) )
 
     $dataSystem.currencyUnit = this.translate($dataSystem.currencyUnit, this.ls_system_tr);
+
   }
 
   updateClasses(){
