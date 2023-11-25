@@ -6,7 +6,7 @@ class LSCSV
   constructor(){
   }
 
-  to_hash(file, file_name = '') 
+  to_map(file, file_name = '') 
   {
     // var file = open(Langscore.TRANSLATE_FOLDER + "/" + file_name)
     // if (file === null) { return {} }
@@ -34,7 +34,7 @@ class LSCSV
   }
 
   to_array_without_origin(file_name) {
-    hash = this.to_hash(file_name);
+    hash = this.to_map(file_name);
     return hash.values;
   }
 
