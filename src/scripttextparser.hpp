@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "serialize_base.h"
 #include "utility.hpp"
 #include <filesystem>
@@ -12,10 +12,10 @@ public:
 
 	using DataType = std::vector<std::tuple<std::u8string, size_t>>;
 
-	//’PŒê‚²‚Æ‚Ì”z—ñ‚É•ÏŠ·
-	std::vector<std::tuple<std::u8string_view, size_t>> ConvertWordList(std::u8string_view str)
+	//å˜èªã”ã¨ã®é…åˆ—ã«å¤‰æ›ã€‚size_tã¯å˜èªã®é–‹å§‹ä½ç½®ã€‚
+	std::vector<std::tuple<std::u8string, size_t>> ConvertWordList(std::u8string_view str)
 	{
-		std::vector<std::tuple<std::u8string_view, size_t>> result;
+		std::vector<std::tuple<std::u8string, size_t>> result;
 		result.reserve(wordCountUTF8(str));
 		for(size_t i = 0; i < str.size();)
 		{
@@ -38,7 +38,7 @@ public:
 
 	void convertTranslateTextFromMatch(std::u8string line, size_t col, DataType& transTextList)
 	{
-		//•¶š—ñ‚É,‚à‰üs‚à‚È‚¯‚ê‚Îƒ_ƒuƒ‹ƒNƒH[ƒe[ƒVƒ‡ƒ“‚ğíœ
+		//æ–‡å­—åˆ—ã«,ã‚‚æ”¹è¡Œã‚‚ãªã‘ã‚Œã°ãƒ€ãƒ–ãƒ«ã‚¯ã‚©ãƒ¼ãƒ†ãƒ¼ã‚·ãƒ§ãƒ³ã‚’å‰Šé™¤
 		//if(line.find(',') == std::string::npos &&
 		//   line.find('\n') == std::string::npos)
 		//{
@@ -53,7 +53,7 @@ public:
 		//}
 		//else if(line.empty() == false)
 		//{
-		//	//, \n‚ªŠÜ‚Ü‚ê‚Ä‚¢‚éê‡‚Í”O‚Ì‚½‚ß""Š‡‚è‚³‚ê‚Ä‚¢‚é‚©ƒ`ƒFƒbƒN
+		//	//, \nãŒå«ã¾ã‚Œã¦ã„ã‚‹å ´åˆã¯å¿µã®ãŸã‚""æ‹¬ã‚Šã•ã‚Œã¦ã„ã‚‹ã‹ãƒã‚§ãƒƒã‚¯
 		//	if(line[0] != '\"'){ line.insert(0, u8"\""); }
 		//	if(line[line.size() - 1] != '\"'){ line.insert(line.size(), u8"\""); }
 		//}
@@ -69,7 +69,7 @@ public:
 
 		if(line.empty()){ return; }
 
-		//+1‚Í " ‚Ì•ª
+		//+1ã¯ " ã®åˆ†
 		col += 1;
 		if(std::find_if(transTextList.cbegin(), transTextList.cend(), [col](const auto& x){
 			return std::get<1>(x) == col;
@@ -78,64 +78,64 @@ public:
 		}
 	}
 
-	//“ü—Í‚µ‚½•¶š—ñ‚ÉŒ¾Œê‚Ì•¶š—ñ‚ª‚ ‚é‚©‚ğ”»’è‚·‚éŠÖ”
-	//DataType findStrings(std::u8string line)
-	//{
-	//	if(line.empty()){ return {}; }
+	//å…¥åŠ›ã—ãŸæ–‡å­—åˆ—ã«è¨€èªã®æ–‡å­—åˆ—ãŒã‚ã‚‹ã‹ã‚’åˆ¤å®šã™ã‚‹é–¢æ•°
+	DataType findStrings(std::u8string line)
+	{
+		if(line.empty()){ return {}; }
 
-	//	using namespace std::string_view_literals;
-	//	//s“à‚Ì•¶š‚ğ’ŠoBƒ}ƒ‹ƒ`ƒoƒCƒg•¶š‚ğ1•¶š‚ÆƒJƒEƒ“ƒg‚·‚é‚½‚ß‚ÌŒ`®B
-	//	auto wordList = ConvertWordList(line);
+		using namespace std::string_view_literals;
+		//è¡Œå†…ã®æ–‡å­—ã‚’æŠ½å‡ºã€‚ãƒãƒ«ãƒãƒã‚¤ãƒˆæ–‡å­—ã‚’1æ–‡å­—ã¨ã‚«ã‚¦ãƒ³ãƒˆã™ã‚‹ãŸã‚ã®å½¢å¼ã€‚
+		auto wordList = ConvertWordList(line);
 
-	//	//•¶š—ñ‚ª–³‚¯‚ê‚Î–³‹
-	//	if(std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"\""sv; }) == wordList.cend() &&
-	//	   std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"'"sv; }) == wordList.cend())
-	//	{
-	//		return {};
-	//	}
+		//æ–‡å­—åˆ—ãŒç„¡ã‘ã‚Œã°ç„¡è¦–
+		if(std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"\""sv; }) == wordList.cend() &&
+		   std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x){ return std::get<0>(x) == u8"'"sv; }) == wordList.cend())
+		{
+			return {};
+		}
 
-	//	DataType transTextList;
-	//	size_t strStart = 0;
-	//	bool findDq = false;
-	//	bool findSq = false;
-	//	size_t col = 0;
-	//	size_t index = 1;
-	//	bool beforeEsc = false;
-	//	for(auto& strView : wordList)
-	//	{
-	//		auto& str = std::get<0>(strView);
-	//		if(beforeEsc == false)
-	//		{
-	//			if(str == u8"\"" && findSq == false){
-	//				if(findDq == false){
-	//					col = index;
-	//					strStart = std::get<1>(strView)+1;
-	//				}
-	//				else {
-	//					auto endPos = std::get<1>(strView);
-	//					convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
-	//				}
-	//				findDq = !findDq;
-	//			}
-	//			else if(str == u8"'" && findDq == false){
-	//				if(findSq == false){
-	//					col = index;
-	//					strStart = std::get<1>(strView) + 1;
-	//				}
-	//				else {
-	//					auto endPos = std::get<1>(strView);
-	//					convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
-	//				}
-	//				findSq = !findSq;
-	//			}
-	//		}
-	//		
-	//		beforeEsc = str == u8"\\";
+		DataType transTextList;
+		size_t strStart = 0;
+		bool findDq = false;
+		bool findSq = false;
+		size_t col = 0;
+		size_t index = 1;
+		bool beforeEsc = false;
+		for(auto& strView : wordList)
+		{
+			auto& str = std::get<0>(strView);
+			if(beforeEsc == false)
+			{
+				if(str == u8"\"" && findSq == false){
+					if(findDq == false){
+						col = index;
+						strStart = std::get<1>(strView)+1;
+					}
+					else {
+						auto endPos = std::get<1>(strView);
+						convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
+					}
+					findDq = !findDq;
+				}
+				else if(str == u8"'" && findDq == false){
+					if(findSq == false){
+						col = index;
+						strStart = std::get<1>(strView) + 1;
+					}
+					else {
+						auto endPos = std::get<1>(strView);
+						convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
+					}
+					findSq = !findSq;
+				}
+			}
+			
+			beforeEsc = str == u8"\\";
 
-	//		index++;
-	//	}
-	//	return transTextList;
-	//}
+			index++;
+		}
+		return transTextList;
+	}
 
 private:
 };

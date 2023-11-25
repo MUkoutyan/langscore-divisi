@@ -79,6 +79,7 @@ namespace langscore
 			ApplicationVersion,
 			ConfigVersion,
 			AttachLsTransType,
+			ExportAllScriptStrings,
 
 			NumKeys,
 		};

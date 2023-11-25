@@ -4,6 +4,7 @@
 #include "scripttextparser.hpp"
 #include <fstream>
 #include <format>
+#include <mutex>
 
 #include "csvwriter.h"
 #include "../reader/csvreader.h"

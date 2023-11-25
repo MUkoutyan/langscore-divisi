@@ -39,6 +39,8 @@ namespace langscore
 		void adjustCSV(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list);
 		bool adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv);
 
+		void updatePluginInfo();
+		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 
 		std::filesystem::path exportFolderPath(std::filesystem::path fileName) override;
 

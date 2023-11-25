@@ -4,7 +4,7 @@
 cmake_minimum_required (VERSION 3.22)
 set(CMAKE_CXX_STANDARD 20)
 
-project (divisi_project VERSION 0.6.7)
+project (divisi_project VERSION 0.7.0)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")

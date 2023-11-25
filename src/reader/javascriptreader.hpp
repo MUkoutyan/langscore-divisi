@@ -5,7 +5,7 @@
 #include "csvreader.h"
 #include "config.h"
 #include "utility.hpp"
-#include "tree_sitter/api.h"
+#include "treesitter_wrapper.hpp"
 #include <filesystem>
 
 #include <iostream>
@@ -231,55 +231,290 @@ private:
         std::string type = ts_node_type(node);
         return type == "arguments" || type == "assignment_expression";
     }
-
-    // string_fragmentのノードを探して出力する関数
-    std::vector<TranslateText> convertStringFragmentsIfParentMatches(TSNode node, const std::string& source_code, const std::u8string& filename) const
-    {
-        std::vector<TranslateText> result;
-
-        if(strcmp(ts_node_type(node), "string_fragment") == 0) {
-            TSNode parent_node = ts_node_parent(node);
-            // 親がargumentsまたはassignment_expressionノードであることを確認
-            // ※つまり、引数か代入となっている文字列のみを抽出
-            if(isTargetParentNode(ts_node_parent(parent_node))) 
-            {
-                //該当文字列の抽出
-                auto start_byte = ts_node_start_byte(node);
-                auto end_byte = ts_node_end_byte(node);
-                std::string text = source_code.substr(start_byte, end_byte - start_byte);
-
-                //行・列の抽出
-                auto start_point = ts_node_start_point(node);
-                auto start_row = start_point.row + 1;
-                auto start_column = start_point.column;
-
-                langscore::TranslateText t = {
-                    utility::cnvStr<std::u8string>(text),
-                    this->useLangList
-                };
-
-                auto lineCountStr = std::to_string(start_row);
-                std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());
-                auto colCountStr = std::to_string(start_column);
-                std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
-                auto scriptPos = filename + u8":" + u8lineCount + u8":" + u8ColCountStr;
-                t.scriptLineInfo = scriptPos;
-                result.emplace_back(std::move(t));
-            }
-        }
-        else 
-        {
-            // 再帰的に子ノードを処理
-            auto nodes = ts_node_child_count(node);
-            for(unsigned i = 0; i < nodes; ++i) {
-                auto r = convertStringFragmentsIfParentMatches(ts_node_child(node, i), source_code, filename);
-                std::copy(r.begin(), r.end(), std::back_inserter(result));
-            }
-        }
-
-        return result;
+    bool isIdentifierNode(const TSNode& node) const {
+        return std::string(ts_node_type(node)) == "identifier";
     }
 
+    // 指定したノードから最初の identifier ノードを探す関数
+    TSNode findFirstIdentifierNode(TSNode node) const {
+        uint32_t childCount = ts_node_child_count(node);
+
+        for(uint32_t i = 0; i < childCount; i++) {
+            TSNode child = ts_node_child(node, i);
+
+            // 子ノードが identifier の場合、そのノードを返す
+            if(isIdentifierNode(child)) {
+                return child;
+            }
+
+            // 子ノードが identifier でない場合、その子ノード内を再帰的に探索
+            TSNode identifierNode = findFirstIdentifierNode(child);
+            if(ts_node_is_null(identifierNode) == false) {
+                return identifierNode;
+            }
+        }
+
+        // identifier ノードが見つからなかった場合、nullノードを返す
+        return TSNode();
+    }
+
+    // string_fragmentのノードを探して出力する関数
+    TSLanguage* tree_sittrer_lang = tree_sitter_javascript();
+    // string_fragmentのノードを探して出力する関数
+
+    struct ParseInfo {
+        TSNode node;
+        std::string_view source_code;
+
+        std::string_view substr(TSNode n) const {
+            auto start_byte = ts_node_start_byte(n);
+            auto end_byte = ts_node_end_byte(n);
+            auto text = this->source_code.substr(start_byte, end_byte - start_byte);
+            return text;
+        }
+        std::tuple<std::string_view, uint32_t, uint32_t> substrWithLineInfo(TSNode n) const {
+            auto start_byte = ts_node_start_byte(n);
+            auto end_byte = ts_node_end_byte(n);
+            auto text = this->source_code.substr(start_byte, end_byte - start_byte);
+            auto [row, column] = GetNodePoint(n, false, false);
+            return {text, row, column};
+        }
+    };
+    void extractStringFragments(ParseInfo parseInfo, std::vector<TSNode>& result, bool through_string = false) const
+    {
+
+        static const std::vector<std::string> ignore_type = {
+            "binary_expression", "subscript_expression",
+            "regex", "throw_statement",
+            "identifier",
+            "(", ")", "[", "]", ";", "if" "\"", "||", "&&", ".", "{", "}", "="
+        };
+        static const std::vector<std::string> ignore_method = {
+            "console.log", "xhr.open"
+        };
+        static const std::vector<std::string> ignore_function = {
+            "require"
+        };
+        static const std::vector<std::string> ignore_identifier = {
+            "RegExp", "Error"
+        };
+
+        std::string node_type = ts_node_type(parseInfo.node);
+        //それ以上探索する必要のないノード
+        if(std::ranges::find(ignore_type, node_type) != ignore_type.cend()) {
+            return;
+        }
+
+        if(through_string) {
+            //左辺値に文字列が含まれている場合に無視するための処理。
+            if(node_type == "string" || node_type == "string_fragment") {
+                return;
+            }
+        }
+
+        if(through_string == false && node_type == "string_fragment") {
+            auto text = parseInfo.substr(parseInfo.node);
+            if(text == "use strict") {
+                return;
+            }
+
+            result.emplace_back(parseInfo.node);
+        }
+        //関数呼び出し
+        else if(node_type == "function_declaration")
+        {
+            //関数名の抽出
+            {
+                auto child = findFirstChildNode(parseInfo.node, "identifier");
+                if(ts_node_is_null(child) == false)
+                {
+                    auto [text, row, column] = parseInfo.substrWithLineInfo(child);
+
+                    if(std::ranges::find(ignore_function, text) != ignore_function.cend()) {
+                        return;
+                    }
+                }
+            }
+            //引数の抽出
+            auto formal = findFirstChildNode(parseInfo.node, "formal_parameters");
+            if(ts_node_is_null(formal) == false)
+            {
+
+                //identifierなら変数指定
+                auto args = findChildNodeList(formal, "identifier");
+                if(args.empty() == false)
+                {
+                    for(auto& arg : args) {
+                        auto [text, row, column] = parseInfo.substrWithLineInfo(arg);
+                    }
+                }
+
+                auto str_args = findChildNodeList(formal, "string_fragment", true);
+                if(str_args.empty() == false)
+                {
+                    for(auto& arg : str_args) {
+                        result.emplace_back(arg);
+                        auto [text, row, column] = parseInfo.substrWithLineInfo(arg);
+                    }
+                }
+                return;
+            }
+        }
+        //メソッドの呼び出し
+        else if(node_type == "call_expression")
+        {
+            auto member_expressions = findChildNodeList(parseInfo.node, "member_expression");
+            if(member_expressions.empty() == false)
+            {
+                //メソッド名の抽出
+                //member_expressionは二重
+                auto method_name = findMethodName(member_expressions[0], parseInfo.source_code, "member_expression");
+
+                if(std::ranges::find(ignore_method, method_name) != ignore_method.cend()) {
+                    return;
+                }
+
+                //メソッドの特殊対応。組み込み済みのメソッドのみに使用。
+                if(method_name == "Object.defineProperty")
+                {
+                    //引数の抽出
+                    auto formal = findFirstChildNode(parseInfo.node, "arguments");
+                    //Object.definePropertyは第2引数までを無視する。
+                    //第3引数以降はgetterに文字列が含まれている可能性があるため一応残す。
+                    auto numChilds = ts_node_child_count(formal);
+                    for(auto i = 0; i < numChilds; ++i)
+                    {
+                        //,が含まれるので*2
+                        if(i < (2 * 2)) { continue; }
+                        auto child_node = ts_node_child(formal, i);
+                        extractStringFragments({child_node, parseInfo.source_code}, result);
+                    }
+                    return;
+                }
+            }
+        }
+        //代入式
+        else if(node_type == "assignment_expression")
+        {
+            auto numChilds = ts_node_child_count(parseInfo.node);
+            bool findEqual = false;
+            for(auto i = 0; i < numChilds; ++i) {
+
+                auto child_node = ts_node_child(parseInfo.node, i);
+                if(ts_node_is_null(child_node)) { continue; }
+
+                std::string child_type = ts_node_type(child_node);
+                if(findEqual == false && child_type == "=") {
+                    findEqual = true;
+                    continue;
+                }
+
+                extractStringFragments({child_node, parseInfo.source_code}, result, findEqual == false);
+            }
+            return;
+        }
+        //[]の判定
+        else if(node_type == "subscript_expression")
+        {
+            auto parent_node = ts_node_parent(parseInfo.node);
+            if(std::string(ts_node_type(parent_node)) == "assignment_expression")
+            {
+                if(through_string) {
+                    //左辺値の配列内の文字列は無視
+                    return;
+                }
+            }
+        }
+        else if(node_type == "pair")
+        {
+            auto numChilds = ts_node_child_count(parseInfo.node);
+            bool findCoron = false;
+            for(auto i = 0; i < numChilds; ++i) {
+
+                auto child_node = ts_node_child(parseInfo.node, i);
+                if(ts_node_is_null(child_node)) { continue; }
+
+                std::string child_type = ts_node_type(child_node);
+                if(findCoron == false && child_type == ":") {
+                    findCoron = true;
+                    continue;
+                }
+
+                extractStringFragments({child_node, parseInfo.source_code}, result, findCoron == false);
+            }
+            return;
+        }
+        //var hoge = new Hogeのようなnewの場合の処理。
+        else if(node_type == "new_expression")
+        {
+            auto numChilds = ts_node_child_count(parseInfo.node);
+            for(auto i = 0; i < numChilds; ++i)
+            {
+                auto child_node = ts_node_child(parseInfo.node, i);
+                if(std::string(ts_node_type(child_node)) == "identifier") {
+
+                    auto text = parseInfo.substr(child_node);
+
+                    if(std::ranges::find(ignore_identifier, text) != ignore_identifier.cend()) {
+                        return;
+                    }
+                }
+            }
+        }
+        else if(node_type == "switch_statement")
+        {
+            //switchの条件式を無視。switch_bodyが処理本体なのでそこまで読み飛ばす。
+            auto num_child = ts_node_child_count(parseInfo.node);
+            bool find_switch_body = false;
+            for(unsigned i = 0; i < num_child; ++i) 
+            {
+                auto child_node = ts_node_child(parseInfo.node, i);
+                if(ts_node_type(child_node) == std::string("switch_body")) {
+                    find_switch_body = true;
+                }
+                if(find_switch_body == false) { continue; }
+                extractStringFragments({child_node, parseInfo.source_code}, result);
+            }
+            return;
+        }
+        else if(node_type == "switch_case")
+        {
+            //case ~:の無視。念のためcaseの開始を判定する。
+            auto num_child = ts_node_child_count(parseInfo.node);
+            bool through_type = false;
+            for(unsigned i = 0; i < num_child; ++i)
+            {
+                auto child_node = ts_node_child(parseInfo.node, i);
+                std::string type = ts_node_type(child_node);
+                if(through_type == false && type == "case") {
+                    through_type = true;
+                    continue;
+                }
+                else if(through_type && type == ":") {
+                    through_type = false;
+                    continue;
+                }
+
+                if(through_type) { continue; }
+                extractStringFragments({child_node, parseInfo.source_code}, result);
+            }
+            return;
+        }
+
+        // 再帰的に子ノードを処理
+        auto num_child = ts_node_child_count(parseInfo.node);
+        for(unsigned i = 0; i < num_child; ++i) {
+            auto child_node = ts_node_child(parseInfo.node, i);
+            extractStringFragments({child_node, parseInfo.source_code}, result);
+        }
+    }
+
+    ScriptTextParser::DataType findStrings(std::u8string line) const override {
+        ScriptTextParser scriptParser;
+        return scriptParser.findStrings(line);
+    }
+
+    
     std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path) const override
     {
         std::ifstream input_file(path);
@@ -287,18 +522,69 @@ private:
             std::cerr << "Could not open the file - '" << path << "'" << std::endl;
             return {};
         }
-        auto file_contents = std::string((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
+
+        std::string file_contents;
+        {
+            auto tmp = std::string((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
+            file_contents.reserve(tmp.size());
+            std::istringstream stream(tmp);
+            std::string line;
+            size_t row = 0;
+
+            auto filename = path.filename().stem();
+            while(std::getline(stream, line)) {
+                // 列数が多すぎる場合、外部ソースコードが埋め込まれている可能性がある。
+                // 解析からは弾く。
+                if(line.length() <= 4096) {
+                    file_contents += line + "\n";  // 行を追加し、改行を保持する
+                }
+#ifdef _DEBUG
+                else {
+                    std::cout << filename << " Ignore Row : " << row << std::endl;
+                }
+#endif
+                row++;
+            }
+        }
+
+        //記号のみのテキストは無視するかのフラグ。要configオプション化。
+        const bool ignore_not_include_alpha = true;
 
         // tree-sitterの初期化
         TSParser* parser = ts_parser_new();
-        ts_parser_set_language(parser, tree_sitter_javascript());
+        ts_parser_set_language(parser, tree_sittrer_lang);
 
         // JavaScriptのソースコードを解析。
         TSTree* tree = ts_parser_parse_string(parser, nullptr, file_contents.c_str(), file_contents.length());
 
         // ルートから文字列の抽出
         TSNode root_node = ts_tree_root_node(tree);
-        auto result = convertStringFragmentsIfParentMatches(root_node, file_contents, path.filename().stem().u8string());
+        std::vector<TSNode> parse_result;
+        extractStringFragments({root_node, file_contents}, parse_result);
+
+        ScriptTextParser wordConverter;
+        std::vector<TranslateText> result;
+        auto filename = path.filename().stem().u8string();
+        for(auto& node : parse_result)
+        {
+            auto [row, column] = GetNodePoint(node);
+            auto [start_byte, end_byte] = GetNodeStartEndByte(node);
+            std::string text = file_contents.substr(start_byte, end_byte - start_byte);
+
+            langscore::TranslateText t = {
+                utility::cnvStr<std::u8string>(text),
+                this->useLangList
+            };
+
+            auto lineCountStr = std::to_string(row);
+            std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());
+            auto colCountStr = std::to_string(column);
+            std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
+            auto scriptPos = filename + u8":" + u8lineCount + u8":" + u8ColCountStr;
+            t.scriptLineInfo = scriptPos;
+            result.emplace_back(std::move(t));
+        }
+
 
         // tree-sitterの開放
         ts_tree_delete(tree);
@@ -306,7 +592,7 @@ private:
 
         return result;
     }
-
+    
 };
 
 }
