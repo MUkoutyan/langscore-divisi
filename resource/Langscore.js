@@ -1,66 +1,86 @@
 //---------------------------------------------------------------
 // 
 // Langscore CoreScript "Unison" 
-// Version 0.9.4
+// Version 0.9.6
 // Written by BreezeSinfonia 來奈津
 // 
 // 注意：このスクリプトは自動生成されました。編集は非推奨です。
 //---------------------------------------------------------------
-
- /*:
- * @plugindesc v0.9.4 LangscoreのMV用プラグインです。
- * 注意：このスクリプトは自動生成されているため、編集は非推奨です。
- * @author BreezeSinfonia 來奈津
- * 
- * @param Default Language
- * @desc ゲーム初回起動時に適用する言語です。
- * @default ja
+ /*:en
+ * @target MV MZ
+ * @plugindesc Translate plugin Langscore for RPG Tskool MV/MZ.
+ * @author BreezeSinfonia Kunatsu
+ * @url https://github.com/MUkoutyan/langscore-app/releases
  * 
  * @help
+ * Note: This script is auto-generated, so editing is deprecated.
+ * If you want to change supported languages.exe., please edit it using Langscore.exe.
+ * 
+ * [Instructions for MV]
+ * Plugin commands
+ * Specify language character for #lang. Possible characters are %{SUPPORT_LANGUAGE_STR}%.
+ * Langscore changeLanguage #lang 
+ * 
+ * @command changeLanguage
+ * @text changeLanguage
+ * @desc Specify language character.
+ * 
+ * @arg language
+ * @text language to change
+ * @desc The characters that can be specified are "en", "ja".
+ * 
+ * @param Default Language
+ * @text Default language.
+ * @desc Language to be applied "at first launch" of the game. Specify the language in which the game was created.
+ * @default ja
+ * 
+ */
+ /*:ja
+ * @target MV MZ
+ * @plugindesc 翻訳アプリLangscoreのRPGツクールMV/MZ用プラグインです。
+ * @author BreezeSinfonia 來奈津
+ * @url https://github.com/MUkoutyan/langscore-app/releases
+ * 
+ * @help
+ * 注意：このスクリプトは自動生成されているため、編集は非推奨です。
+ * サポート言語等を変更する場合、Langscore.exeを使用して編集してください。
+ * 
+ * [MV向けの説明]
  * プラグインコマンド
- * #langに言語文字を指定します。指定可能な文字は%{SUPPORT_LANGUAGE_STR}です。
- * Langscore changeLanguage lang 
+ * #langに言語文字を指定します。指定可能な文字は%{SUPPORT_LANGUAGE_STR}%です。
+ * Langscore changeLanguage #lang 
+ *  
+ * @command changeLanguage
+ * @text 言語の変更
+ * @desc 言語文字を指定します。
+ * 
+ * @arg language
+ * @text 変更する言語
+ * @desc 指定可能な文字は"en","ja"です。
+ * 
+ * @param Default Language
+ * @text デフォルト言語
+ * @desc ゲーム初回起動時に適用する言語です。ゲームを作成した際の言語を指定してください。
+ * @default %{DEFAULT_LANGUAGE}%
+ * 
+ * %{REQUIRED_ASSETS}%
+ * 
  */
 
-var _langscore;
-
-(() => {
-  'use strict';
-/*
-%{SUPPORT_LANGUAGE}%
-%{DEFAULT_LANGUAGE}%
-
-%{SUPPORT_FONTS}%
-
-%{TRANSLATE_FOLDER}%
-
-*/
-//ハッシュそのものからハッシュを格納するハッシュに変更。
-//イベント中にマップ移動が行われた場合、翻訳内容がクリアされる問題への対応のため。
-
-
-var Langscore_Parameters = PluginManager.parameters('Langscore');
-
-//-----------------------------------------------------
-
-//%{UNISON_LSCSV}%
-
-//-----------------------------------------------------
+ 
+%{UNISON_LSCSV}%
 
 class Langscore 
 {
-  // static Support_Language = ["ja", "en", "zh-cn"];
-  static Support_Language = ["ja", "en"];
-  static Default_Language = String(Langscore_Parameters['Default Language']);
-  static Translate_Folder = "Data/Translate"
+  static Langscore_Parameters = PluginManager.parameters('Langscore');
+  static Support_Language = %{SUPPORT_LANGUAGE}%;
+  static Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
+  
+  _lscsv = new LSCSV();
 
-  static FontList = [
-    {lang: "ja", font:  {name: "VL Gothic", size: 22}},
-    {lang: "en", font:  {name: "VL Gothic", size: 22}},
-    // {lang: "zh-cn", font : {name: "Source Han Sans CN Regular", size: 22}},
-  ]
+  %{SUPPORT_FONTS}%
 
-  static langscore_current_language = String(Langscore_Parameters['Default Language']);
+  static langscore_current_language = String(Langscore.Langscore_Parameters['Default Language']);
   static currentFont = Langscore.FontList[Langscore.langscore_current_language];
 
   _updateMethods = [];
@@ -71,6 +91,9 @@ class Langscore
 
   constructor()
   {
+    this._lscsv = new LSCSV();
+    this._updateMethods = [];
+
     this._databaseFiles = [
       { name: 'ls_actors_tr', src: 'Actors.csv' },
       { name: 'ls_classes_tr', src: 'Classes.csv' },
@@ -189,12 +212,12 @@ class Langscore
     this.ls_armors_tr.clear();
     this.ls_items_tr.clear();
     this.ls_enemies_tr.clear();
-    this.ls_graphics_tr = _lscsv.to_map("Graphics")
-    this.ls_scripts_tr = _lscsv.to_map("Scripts")
-    this.ls_troops_tr = _lscsv.to_map("Troops")
-    this.ls_common_event = _lscsv.to_map("CommonEvents")
+    this.ls_graphics_tr = this._lscsv.to_map("Graphics")
+    this.ls_scripts_tr = this._lscsv.to_map("Scripts")
+    this.ls_troops_tr = this._lscsv.to_map("Troops")
+    this.ls_common_event = this._lscsv.to_map("CommonEvents")
   
-    changeLanguage($langscore_current_language)
+    changeLanguage(Langscore.langscore_current_language)
   }
 
   changeLanguage(lang, forceUpdate = false)
@@ -219,17 +242,17 @@ class Langscore
     this.updateArmors();
     this.updateWeapons();
     this.updateSystem();
-  
-    //Game_Actors.newをしているため並列処理から除外
     this.updateActor();
 
     this._updateMethods.forEach(function(method) {
       method();
     });
-    Langscore_PluginCustom();
+    this.Langscore_PluginCustom();
     
     this.ls_graphic_cache = {};
     this.ls_graphic_cache.clear
+    
+    ConfigManager.save();
   }
 
   updateFont(lang) {
@@ -255,8 +278,8 @@ class Langscore
     }
     data_list.forEach(function(obj,i){
       if(data_list[i] === null){ return; }
-      data_list[i].name         = elm_trans(obj.name);
-      data_list[i].description = elm_trans(obj.description);
+      data_list[i].name         = elm_trans(_langscore.fetch_original_text(obj.name, tr_list));
+      data_list[i].description = elm_trans(_langscore.fetch_original_text(obj.description, tr_list));
     });
   };
 
@@ -267,7 +290,7 @@ class Langscore
     }
     data_list.forEach(function(obj,i){
       if (data_list[i] === null) { return; }
-      data_list[i].name = elm_trans(obj.name);
+      data_list[i].name = elm_trans(_langscore.fetch_original_text(obj.name, tr_list));
     });
   };
 
@@ -304,19 +327,20 @@ class Langscore
     }
   };
 
-  
   //配列の全要素に対してmodifyFunctionを適用するヘルパー関数
-  internal_modifyArray(arr, modifyFunction) {
+  internal_modifyArray(arr, modifyFunction) 
+  {
     arr.forEach((elem, index) => {
       var origin_text = this.fetch_original_text(elem, this.ls_system_tr);
       if(origin_text){
         arr[index] = modifyFunction(origin_text);
-}
+      }
     });
     return arr;
-  }
+  };
 
-  updateSystem(){ 
+  updateSystem()
+  { 
     this.internal_modifyArray($dataSystem.terms.params, (el) => el = this.translate(el, this.ls_system_tr) );
     this.internal_modifyArray($dataSystem.terms.commands, (el) => el = this.translate(el, this.ls_system_tr) );
     this.internal_modifyArray($dataSystem.terms.basic, (el) => el = this.translate(el, this.ls_system_tr) );
@@ -325,18 +349,18 @@ class Langscore
       var origin_text = this.fetch_original_text(value, this.ls_system_tr);
       if(origin_text){  
         $dataSystem.terms.messages[key] = this.translate(origin_text, this.ls_system_tr);
-}
+      }
     });
 
     this.internal_modifyArray($dataSystem.skillTypes, (el) => el = this.translate(el, this.ls_system_tr) )
 
     $dataSystem.currencyUnit = this.translate($dataSystem.currencyUnit, this.ls_system_tr);
 
-  }
+  };
 
   updateClasses(){
     this.updateForName($dataClasses, this.ls_classes_tr);
-  }
+  };
 
   updateSkills(){
 
@@ -350,7 +374,7 @@ class Langscore
       $dataSkills[i].message1   = elm_trans(skill.message1);
       $dataSkills[i].message2   = elm_trans(skill.message2);
     });
-  }
+  };
 
   updateStates(){
     
@@ -365,7 +389,7 @@ class Langscore
       $dataStates[i].message3  = elm_trans(skill.message3);
       $dataStates[i].message4  = elm_trans(skill.message4);
     });
-  }
+  };
 
   updateWeapons(){
     this.updateForNameAndDesc($dataWeapons, this.ls_weapons_tr);
@@ -392,17 +416,24 @@ class Langscore
     const stackJSONValues = [];
 
     for (let i = 0; i < keys.length - 1; i++) {
-        if (typeof current[keys[i]] === 'string') {
-            try {
-              current[keys[i]] = JSON.parse(current[keys[i]]);
-              //JSONとして解析できたもののみを積んでいく
-              stackJSONValues.push(current[keys[i]]);
-            } catch (e) {
-            }
+        try {
+          if (typeof current[keys[i]] === 'string') {
+              try {
+                current[keys[i]] = JSON.parse(current[keys[i]]);
+                //JSONとして解析できたもののみを積んでいく
+                stackJSONValues.push(current[keys[i]]);
+              } catch (e) {
+              }
+          }
+        } catch(e){
         }
         current = current[keys[i]];
     }
 
+    if(!current){ 
+      console.error("Langscore Error", `Script.csvの${path}が解釈できません。Langscore.exeで再度翻訳ファイルを出力してください。`);
+      return;
+    }
     const lastKey = keys[keys.length - 1];
     current[lastKey] = newValue;
 
@@ -430,7 +461,7 @@ class Langscore
       var infos = key.split(':');
       if(infos.length <= 1 || 2 < infos.length){ return; }
       var params = PluginManager.parameters(infos[0]);
-      if(!params){ return; }
+      if(!params || Object.keys(params).length === 0 && params.constructor === Object){ return; }
 
       //パスの場合の処理
       if(infos[1].includes("/")){
@@ -464,10 +495,10 @@ class Langscore
     var url = 'data/translates/' + fileName;
     var parent = this;
     xhr.open('GET', url);
-    xhr.overrideMimeType('application/json');
+    xhr.overrideMimeType('text/plain');
     xhr.onload = function() {
       if (xhr.status < 400) {
-        parent[varName] = _lscsv.to_map(xhr.responseText, varName);
+        parent[varName] = parent._lscsv.to_map(xhr.responseText, varName);
       }
       else{
         parent[varName] = {};
@@ -476,7 +507,9 @@ class Langscore
     xhr.onerror = parent._mapLoader || function() {
       //無限ループにさせないようにnullではなく空にしておく。
       parent[varName] = {};
-      DataManager._errorUrl = DataManager._errorUrl || url;
+      console.error(`File ${DataManager._errorUrl || url} could not be read.`);
+      // Graphics.csv等は存在しない場合があるため、クリティカルなエラーではなくログ表示のみに留める。
+      // DataManager._errorUrl = DataManager._errorUrl || url;
     };
     parent[varName] = null;
     xhr.send();
@@ -488,11 +521,11 @@ class Langscore
     var url = 'data/translates/Map%1.csv'.format(mapID.padZero(3));
     var parent = this;
     xhr.open('GET', url);
-    xhr.overrideMimeType('application/json');
+    xhr.overrideMimeType('text/plain');
     
     xhr.onload = function() {
       if (xhr.status < 400) {
-        parent.ls_current_map[mapID] = _lscsv.to_map(xhr.responseText, url);
+        parent.ls_current_map[mapID] = parent._lscsv.to_map(xhr.responseText, url);
       }
       else{
         parent.ls_current_map[mapID] = {};
@@ -512,11 +545,29 @@ class Langscore
         this._updateMethods.push(method);
     }
   }
+  
+  Langscore_PluginCustom(){
+    //Langscore_Customで上書きされるメソッド
+  }
 
 } //class Langscore
 
+//MV向けのクラス変数定義
+Langscore.Langscore_Parameters = PluginManager.parameters('Langscore');
+Langscore.Support_Language = ["en","ja"]
+Langscore.Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
+
+Langscore.FontList = [
+  { lang: "en", font: {name:"M+ 1m regular", size:22} },
+  { lang: "ja",  font: {name:"M+ 1m regular", size:22} },
+]
+Langscore.langscore_current_language = String(Langscore.Langscore_Parameters['Default Language']);
+Langscore.currentFont = Langscore.FontList[Langscore.langscore_current_language];
+
 _langscore = new Langscore();
 
+(function() {
+  'use strict';
 const Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
 Game_Interpreter.prototype.pluginCommand = function( command, args ) {
   Game_Interpreter_pluginCommand.call( this, command, args );
@@ -638,29 +689,42 @@ var DataManager_makeSaveContents = DataManager.makeSaveContents;
 DataManager.makeSaveContents = function(){
 
   var gameActorsTemp = $gameActors;
+  var classesTemp = $dataClasses;
 
-    for (var i = 0; i < $dataActors.length; ++i) {
-      var actor = $gameActors.actor(i);
-      if (!actor){ continue; }
+  for (var i = 0; i < $dataActors.length; ++i) {
+    var actor = $gameActors.actor(i);
+    if (!actor){ continue; }
 
-      let name = this.fetch_original_text(actor._name, this.ls_actors_tr);
-      if(name){
-        $gameActors.actor(i)._name = name;
-      }
-      var nickname = this.fetch_original_text(actor._nickname, this.ls_actors_tr);
-      if(nickname){
-        $gameActors.actor(i)._nickname = nickname;
-      }
-      var profile = this.fetch_original_text(actor._profile, this.ls_actors_tr);
-      if(profile){
-        $gameActors.actor(i)._profile = profile;
+    let name = _langscore.fetch_original_text(actor._name, _langscore.ls_actors_tr);
+    if(name){
+      $gameActors.actor(i).setName(name);
+    }
+    var nickname = _langscore.fetch_original_text(actor._nickname, _langscore.ls_actors_tr);
+    if(nickname){
+      $gameActors.actor(i).setNickname(nickname);
+    }
+    var profile = _langscore.fetch_original_text(actor._profile, _langscore.ls_actors_tr);
+    if(profile){
+      $gameActors.actor(i).setProfile(profile);
+    }
+  }
+
+  for (var i = 0; i < $dataClasses.length; ++i) {
+    
+    var classData = $dataClasses[i];
+    if(classData){
+      var className = _langscore.fetch_original_text(classData.name, _langscore.ls_actors_tr);
+      if(className){
+        $dataClasses[i].name = className;
       }
     }
+  }
 
   //セーブ本処理
-  result = DataManager_makeSaveContents.call(this);
+  var result = DataManager_makeSaveContents.call(this);
 
   $gameActors = gameActorsTemp
+  $dataClasses = classesTemp
 
   return result;
 };
@@ -670,55 +734,40 @@ DataManager.makeSaveContents = function(){
 var DataManager_extractSaveContents = DataManager.extractSaveContents;
 DataManager.extractSaveContents = function(contents) {
   DataManager_extractSaveContents.call(this, contents);
-  _langscore.changeLanguage($langscore_current_language)
+  _langscore.changeLanguage(Langscore.langscore_current_language, true)
 };
 
-//セーブデータロード時のマップ更新はversion_idに依存しているが、
-//version_idの変更タイミングが謎なのでMapが更新されたりされなかったりするように見える。
-//Langscoreの場合$game_map.setupが行われないと翻訳文が読み込まれないため、
-//reload_map_if_updatedの分岐に関わらずロードするようにする。
-// def this.reload_map_if_updated
-//   ls_reload_map_if_updated
-//   $game_map.load_langscore_file($game_map.map_id)
-// }
-
-var ImageManager_loadMitmap = ImageManager.loadBitmap;
+var ImageManager_loadBitmap = ImageManager.loadBitmap;
 ImageManager.loadBitmap = function(folder_name, filename, hue = 0) 
 {    
   if(_langscore.ls_graphic_cache === null){
-    return ImageManager_loadMitmap.call(this, folder_name, filename, hue);
+    return ImageManager_loadBitmap.call(this, folder_name, filename, hue);
   }
   var path = folder_name+filename;
-  var ts_path = _langscore.translate(path, this.ls_graphics_tr);
+  var ts_path = _langscore.translate(path, _langscore.ls_graphics_tr);
   if(ts_path !== path){
-    filename = ts_path.sub(folder_name, "")
+    filename = ts_path.replace(folder_name, "")
   }
-  else
+  else if(StorageManager.isLocalMode() && (Langscore.langscore_current_language !== Langscore.Default_Language))
   {
-    //翻訳テキスト内で明示的に画像が指定されていない場合、ファイル名検索
-    //filenameは元から拡張子なしなのでそのまま結合
+    //ブラウザ実行の場合、ファイルの存在確認をする術が無いため、
+    //ファイル名による画像切替はデスクトップアプリ実行時のみにする。
+
     var new_filename = filename + '_' + Langscore.langscore_current_language;
-    
     var has_key = _langscore.ls_graphic_cache[filename];
-    if(has_key === false){
-      try
-      {
-        bitmap = ImageManager_loadMitmap.call(this, folder_name, new_filename, hue);
-        _langscore.ls_graphic_cache.set(filename, true);
-        return bitmap;
-      }
-      catch(e)
-      {
-        _langscore.ls_graphic_cache.set(filename, false);
-      }
-    }
+
+    var fs = require('fs');
+    if(has_key === undefined){
+      //MVの仕様に合わせてpngのみ対応にする。
+      _langscore.ls_graphic_cache[filename] = fs.existsSync(folder_name + new_filename + ".png");
+          }
 
     if (_langscore.ls_graphic_cache[filename]) {
       filename = new_filename;
     }
   }
 
-  return ImageManager_loadMitmap.call(this, folder_name, filename, hue);
+  return ImageManager_loadBitmap.call(this, folder_name, filename, hue);
 }
 
 

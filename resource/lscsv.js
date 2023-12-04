@@ -160,5 +160,5 @@ class LSCSV
     return result;
   }
 }
-const _lscsv = new LSCSV();
+
 //==========LSCSV==========
