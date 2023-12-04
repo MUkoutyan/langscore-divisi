@@ -737,7 +737,7 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
             auto list = this->supportLangs;
             for(auto& t : list) { t = u8"\"" + t + u8"\""; }
             auto langs = utility::join(list, u8","s);
-            _line = tab + u8"static Support_Language = [" + langs + u8"]";
+            _line = u8"Langscore.Support_Language = [" + langs + u8"]";
         }
         else if(findStr(_line, u8"%{SUPPORT_LANGUAGE_STR}%"))
         {
@@ -750,15 +750,15 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {
             auto fonts = config.languages();
-            _line = tab + u8"static FontList = [" + nl;
+            _line = u8"Langscore.FontList = {" + nl;
             for(auto& pair : fonts)
             {
                 auto lang = utility::cnvStr<std::u8string>(pair.name);
                 auto sizeStr = utility::cnvStr<std::u8string>(std::to_string(pair.font.size));
-                _line += tab + tab;
-                _line += u8"{ lang: \"" + lang + u8"\", font: {name:\"" + pair.font.name + u8"\", size:" + sizeStr + u8"} }," + nl;
+                _line += tab;
+                _line += u8"\"" + lang + u8"\": {name:\"" + pair.font.name + u8"\", size:" + sizeStr + u8", isLoaded: false}," + nl;
             }
-            _line += tab + u8"]\n";
+            _line += u8"}\n";
         }
         else if(findStr(_line, u8"%{UNISON_LSCSV}%"))
         {

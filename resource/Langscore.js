@@ -72,18 +72,7 @@
 
 class Langscore 
 {
-  static Langscore_Parameters = PluginManager.parameters('Langscore');
-  static Support_Language = %{SUPPORT_LANGUAGE}%;
-  static Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
-  
-  _lscsv = new LSCSV();
 
-  %{SUPPORT_FONTS}%
-
-  static langscore_current_language = String(Langscore.Langscore_Parameters['Default Language']);
-  static currentFont = Langscore.FontList[Langscore.langscore_current_language];
-
-  _updateMethods = [];
 
   static isNull(obj){
     return obj === null || obj === undefined;
@@ -257,17 +246,32 @@ class Langscore
 
   updateFont(lang) {
 
-    if(Langscore.isNull(this.FontList)){
+    if(Langscore.isNull(Langscore.FontList)){
       return;
     }
 
-    if(Langscore.isNull(this.currentFont) === false){
-      this.beforeFontName = this.currentFont["name"];
+        Langscore.currentFont = Langscore.FontList[lang];
+if(!Langscore.currentFont){
+      console.error(`Langscore: No font is set for ${lang}. Skip font update.`)
+      return;
     }
-    if (this.FontList.find(item => item.lang === lang)) {
-      return this.beforeFontName !== this.currentFont["name"];
+    var currentFontName = Langscore.currentFont["name"];
+    
+    if(currentFontName === ""){
+      Langscore.currentFont = undefined;
+      return;
     }
-    this.currentFont = this.FontList[lang];
+
+    //デフォルトのM+1フォントの場合、GameFontとしてロード&定義済みなのでそちらを使う。
+    //M+ 1m regularとするとフォントサイズがやたらと小さくなる現象が起こる。調査しづらいので暫定でこの対処。
+    if(currentFontName === "M+ 1m regular"){
+      Langscore.currentFont.name = "GameFont";
+    }
+
+    if(Langscore.currentFont["isLoaded"] === false){
+      Graphics.loadFont(currentFontName,`fonts/${currentFontName}.tff`)
+      Langscore.currentFont["isLoaded"] = true;
+    }
   };
 
 
@@ -552,15 +556,15 @@ class Langscore
 
 } //class Langscore
 
+_lscsv = new LSCSV();
+
 //MV向けのクラス変数定義
 Langscore.Langscore_Parameters = PluginManager.parameters('Langscore');
-Langscore.Support_Language = ["en","ja"]
+%{SUPPORT_LANGUAGE}%;
 Langscore.Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
 
-Langscore.FontList = [
-  { lang: "en", font: {name:"M+ 1m regular", size:22} },
-  { lang: "ja",  font: {name:"M+ 1m regular", size:22} },
-]
+%{SUPPORT_FONTS}%
+
 Langscore.langscore_current_language = String(Langscore.Langscore_Parameters['Default Language']);
 Langscore.currentFont = Langscore.FontList[Langscore.langscore_current_language];
 
@@ -608,6 +612,26 @@ DataManager.loadMapData = function(mapId)
 
 
 //-----------------------------------------------------
+
+Game_System.prototype.isJapanese = function() {
+  return Langscore.currentLanguage ? Langscore.currentLanguage === "ja" : false;
+};
+
+Game_System.prototype.isChinese = function() {
+  return Langscore.currentLanguage ? Langscore.currentLanguage.match(/^zh/) : false;
+};
+
+Game_System.prototype.isKorean = function() {
+  return Langscore.currentLanguage ? Langscore.currentLanguage === "ko" : false;
+};
+
+Game_System.prototype.isCJK = function() {
+  return Langscore.currentLanguage ? Langscore.currentLanguage.match(/^(ja|zh|ko)/) : false;
+};
+
+Game_System.prototype.isRussian = function() {
+  return Langscore.currentLanguage ? Langscore.currentLanguage === "ru" : false;
+};
 
 //アクター名の変更
 var Game_Interpreter_command320 = Game_Interpreter.prototype.command320;
@@ -657,14 +681,15 @@ Window_Base.prototype.convertEscapeCharacters = function(text)
 }
 
 
+
 var Window_Base_standardFontFace = Window_Base.prototype.standardFontFace;
 Window_Base.prototype.standardFontFace = function() {
-  return Langscore.isNull(_langscore.currentFont) === false ? _langscore.currentFont.name : Window_Base_standardFontFace.call(this);
+  return Langscore.currentFont ? Langscore.currentFont["name"] : Window_Base_standardFontFace.call(this);
 };
 
 var Window_Base_standardFontSize = Window_Base.prototype.standardFontSize;
 Window_Base.prototype.standardFontSize = function() {
-  return Langscore.isNull(_langscore.currentFont) === false ? _langscore.currentFont.size : Window_Base_standardFontSize.call(this);
+  return Langscore.currentFont ? Langscore.currentFont["size"] : Window_Base_standardFontSize.call(this);
 };
 
 
