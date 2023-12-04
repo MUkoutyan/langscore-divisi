@@ -53,6 +53,7 @@ static std::map<config::JsonKey, const char*> jsonKeys = {
 	MAKE_KEYVALUE(ApplicationVersion),
 	MAKE_KEYVALUE(ConfigVersion),
 	MAKE_KEYVALUE(AttachLsTransType),
+	MAKE_KEYVALUE(ExportAllScriptStrings),
 };
 
 const char* config::key(JsonKey key)

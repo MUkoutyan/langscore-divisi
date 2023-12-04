@@ -18,13 +18,15 @@ namespace fs = std::filesystem;
 const static std::u8string nl = u8"\n"s;
 const static std::u8string tab = u8"\t"s;
 
-const static std::u8string pluginDescription = u8"LangscoreのRPGツクールMV/MZ用プラグインです。\r\n注意：このスクリプトは自動生成されているため、編集は非推奨です。";
+const static std::u8string pluginDescription = u8"翻訳アプリLangscoreのRPGツクールMV/MZ用プラグインです。";
 
 
 divisi_mvmz::divisi_mvmz()
     : platform_base()
 {
     config config;
+
+    this->defaultLanguage = utility::cnvStr<std::u8string>(config.defaultLanguage());
 
     for(auto langs = config.languages(); auto lang : langs){
         this->supportLangs.emplace_back(cnvStr<std::u8string>(lang.name));
@@ -235,7 +237,8 @@ ErrorStatus divisi_mvmz::write()
     writeFixedScript();
     writeFixedGraphFileNameData();
 
-    copyFonts();
+    auto fontDestPath = fs::path(config.gameProjectPath()) / u8"fonts"s;
+    copyFonts(fontDestPath);
 
     std::cout << "Write Translate File Done." << std::endl;
     return Status_Success;
@@ -446,12 +449,12 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
     for(auto& f : graphItr)
     {
         if(f.is_directory()){ continue; }
-        //パス区切り文字は\\ではなく/に統一(\\はRubyで読み取れない)
         const auto& path = f.path();
-        const auto ext = path.stem();
-        if(ext == ".png"){
+        const auto ext = path.extension();
+        const auto stem = path.stem();
+        if(ext == ".jpg" || ext == ".png" || ext == ".bmp"){
             auto relative_path = "img" / path.lexically_relative(graphicsPath);
-            graphics.emplace_back(relative_path.parent_path() / ext);
+            graphics.emplace_back(relative_path.parent_path() / stem);
         }
     }
 
@@ -587,7 +590,7 @@ void langscore::divisi_mvmz::writeFixedScript()
         std::cout << "Done." << std::endl;
 
         //現在の設定を元にlangscore.jsのカスタマイズ
-        auto fileLines = this->formatSystemVariable(outputScriptFilePath);
+        auto fileLines = this->formatSystemVariable(langscoreScriptFilePath);
 
         if(fs::exists(outputScriptFilePath))
         {
@@ -713,6 +716,22 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
             desc = utility::replace(desc, u8"\r\n"s, u8"\r\n * "s);
             _line = pluginDescription;
         }
+        else if(findStr(_line, u8"%{DEFAULT_LANGUAGE}%"))
+        {
+            _line = utility::replace(_line, u8"%{DEFAULT_LANGUAGE}%"s, this->defaultLanguage);
+        }
+        else if(findStr(_line, u8"%{COMBO_LANGUAGE}%"))
+        {
+            auto list = this->supportLangs;
+            std::u8string text;
+            for(auto& t : list) { 
+                text += u8" * @option " + t + u8" \n";
+                text += u8" * @value " + t + u8" \n";
+            }
+            text += u8" * ";
+
+            _line = utility::replace(_line, u8"%{COMBO_LANGUAGE}%"s, std::move(text));
+        }
         else if(findStr(_line, u8"%{SUPPORT_LANGUAGE}%"))
         {
             auto list = this->supportLangs;
@@ -750,6 +769,16 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
             assert(lscsv.good());
             ss << lscsv.rdbuf();
             lscsv.close();
+            _line = utility::cnvStr<std::u8string>(ss.str());
+        }
+        else if(findStr(_line, u8"%{REQUIRED_ASSETS}%"))
+        {
+            std::stringstream ss;
+            for(const auto& file : this->basicDataFileList) {
+                ss << " * @requiredAssets data/translates/" << file.filename().stem().string()+".csv" << utility::cnvStr<std::string>(nl);
+            }
+            ss << " * @requiredAssets data/translates/Graphics.csv" << utility::cnvStr<std::string>(nl);
+            ss << " * @requiredAssets data/translates/Scripts.csv";
             _line = utility::cnvStr<std::u8string>(ss.str());
         }
 

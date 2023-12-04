@@ -54,7 +54,7 @@ std::filesystem::copy_options langscore::platform_base::convertCopyOption(MergeT
 	return std::filesystem::copy_options::none;
 }
 
-void langscore::platform_base::copyFonts()
+void langscore::platform_base::copyFonts(fs::path fontDestPath)
 {
     //フォントのコピー
     config config;
@@ -65,7 +65,6 @@ void langscore::platform_base::copyFonts()
 
     if(globalFonts.empty() && localFonts.empty()){ return; }
 
-    auto fontDestPath = fs::path(config.gameProjectPath()) / u8"Fonts"s;
     if(fs::exists(fontDestPath) == false){
         fs::create_directory(fontDestPath);
     }

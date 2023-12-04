@@ -39,6 +39,8 @@ divisi_vxace::divisi_vxace()
     : platform_base()
 {
     config config;
+
+    this->defaultLanguage = utility::cnvStr<std::u8string>(config.defaultLanguage());
    
     for(auto langs = config.languages(); auto lang : langs){
         this->supportLangs.emplace_back(utility::cnvStr<std::u8string>(lang.name));
@@ -248,7 +250,8 @@ ErrorStatus langscore::divisi_vxace::write()
     writeFixedRvScript();
     writeFixedGraphFileNameData();
 
-    copyFonts();
+    auto fontDestPath = fs::path(config.gameProjectPath()) / u8"Fonts"s;
+    copyFonts(fontDestPath);
 
     std::cout << "Export script files." << std::endl;
     bool replaceScript = false;
@@ -367,7 +370,7 @@ std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::d
         if(f.is_directory()){ continue; }
         //パス区切り文字は\\ではなく/に統一(\\はRubyで読み取れない)
         const auto& path = f.path();
-        const auto ext = path.stem();
+        const auto ext = path.extension();
         if(ext == ".jpg" || ext == ".png" || ext == ".bmp"){
             auto relative_path = "Graphics" / path.lexically_relative(graphicsPath);
             graphics.emplace_back(relative_path.parent_path() / ext);

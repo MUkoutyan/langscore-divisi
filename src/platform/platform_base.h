@@ -44,7 +44,7 @@ namespace langscore
 
 		void writeFixedGraphFileNameData();
 
-		void copyFonts();
+		void copyFonts(std::filesystem::path fontDestPath);
 		static std::unordered_map<std::u8string, std::u8string> Help_Text;
 		static std::unordered_map<std::u8string, std::u8string> Language_Items;
 
