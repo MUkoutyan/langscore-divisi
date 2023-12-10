@@ -42,7 +42,5 @@ namespace langscore
 		void updatePluginInfo();
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 
-		std::filesystem::path exportFolderPath(std::filesystem::path fileName) override;
-
 	};
 }

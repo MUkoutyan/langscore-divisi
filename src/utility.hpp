@@ -91,6 +91,23 @@ namespace utility
         return To{str.begin(), str.end()};
     }
 
+    template<class To, class From>
+    std::vector<To> cnvStr(std::vector<From> str) {
+        std::vector<To> result;
+        result.reserve(str.size());
+        for(const auto& s : str) {
+            result.emplace_back(cnvStr<To>(s));
+        }
+        return result;
+    }
+
+    template<typename str_type>
+    bool includes(str_type source, str_type search)
+    {
+        auto start = source.find(search);
+        return (start != str_type::npos);
+    }
+
     const auto toString = [](const std::u8string& str){
         return std::string(str.begin(), str.end());
     };

@@ -39,26 +39,6 @@ void divisi_mvmz::setProjectPath(std::filesystem::path path){
     this->invoker.setProjectPath(invoker::ProjectType::VXAce, std::move(path));
 }
 
-std::filesystem::path divisi_mvmz::exportFolderPath(std::filesystem::path fileName)
-{
-    config config;
-    std::u8string exportPath;
-    auto pathList = config.exportDirectory(exportPath);
-
-    if(std::filesystem::exists(exportPath) == false){
-        std::filesystem::create_directories(exportPath);
-    }
-
-    for(auto& path : pathList)
-    {
-        if(std::filesystem::exists(path) == false){
-            std::filesystem::create_directories(path);
-        }
-    }
-
-    return fs::path(exportPath) /= fileName;
-}
-
 ErrorStatus divisi_mvmz::analyze()
 {
     config config;
@@ -377,9 +357,10 @@ ErrorStatus divisi_mvmz::validate()
     }
     else
     {
-        //this->validateTranslateFileList(std::move(csvPathList));
+        this->validateTranslateFileList(std::move(csvPathList));
     }
 
+    std::cout << "Done." << std::endl;
     return Status_Success;
 }
 
@@ -525,10 +506,10 @@ void langscore::divisi_mvmz::writeFixedBasicData()
         auto csvFilePath = path.filename();
         csvFilePath.make_preferred().replace_extension(".csv");
         for(auto& translateFolder : translateFolderList){
-            csvFilePath = translateFolder / csvFilePath;
-            std::cout << "Write Fix Data CSV : " << csvFilePath << std::endl;
+            auto outputPath = translateFolder / csvFilePath;
+            std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
             std::unique_ptr<readerbase> reader = std::make_unique<mvmz_jsonreader>(path, this->supportLangs, json);
-            writeFixedTranslateText<csvwriter>(csvFilePath, reader, mergeTextMode);
+            writeFixedTranslateText<csvwriter>(outputPath, reader, mergeTextMode);
             jsonreader_map[path.filename()] = std::move(reader);
         }
     }
@@ -639,42 +620,55 @@ var $plugins =
 
     bool findPluginInfo = false;
 
+    auto list = this->supportLangs;
+    for(auto& t : list) { t = u8"\"" + t + u8"\""; }
+    auto langs = cnvStr<std::string>(u8"["s + utility::join(list, u8","s) + u8"]");
+
+    auto picturesPath = config.gameProjectPath() + u8"/img";
+    utility::u8stringlist pictureFiles;
+    for(const auto& f : fs::recursive_directory_iterator(picturesPath)) {
+
+        if(f.is_directory()) { continue; }
+        auto fileName = f.path().filename().u8string();
+        auto relativePath = f.path().lexically_relative(picturesPath);
+        for(const auto& t : this->supportLangs) {
+            if(utility::includes(fileName, u8"_" + t)) {
+                pictureFiles.emplace_back((relativePath.parent_path()/relativePath.stem()).generic_u8string());
+            }
+        }
+    }
+
     int index = 0;
+    const auto size = jsonObject.size();
     for(auto begin = jsonObject.begin(); begin != jsonObject.end(); ++begin)
     {
+        index++;
         if((*begin)["name"] == "Langscore") {
 
             findPluginInfo = true;
             auto& params = (*begin)["parameters"];
 
-            if(params["Support Language"].empty() == false)
-            {
-                auto list = this->supportLangs;
-                for(auto& t : list) { t = u8"\"" + t + u8"\""; }
-                auto langs = utility::join(list, u8","s);
-                params["Support Language"] = cnvStr<std::string>(u8"["s + langs + u8"]");
-            }
+            params["Support Language"] = langs;
+
             if(params["Default Language"].empty() == false) {
                 auto defLanguage = config.defaultLanguage();
                 params["Default Language"] = defLanguage;
             }
+            nlohmann::json jsonObj = utility::cnvStr<std::string>(pictureFiles);
+            params["MustBeIncludedImage"] = jsonObj.dump();
         }
 
 
         // プラグインを整形して追加
         formattedJson << (*begin).dump();
-        if(index < (*begin).size()) {
+        if(index < size) {
             formattedJson << ",";
         }
         formattedJson << "\n";
-        index++;
     }
 
     if(findPluginInfo == false)
     {
-        auto list = this->supportLangs;
-        for(auto& t : list) { t = u8"\"" + t + u8"\""; }
-        auto langs = cnvStr<std::string>(u8"["s + utility::join(list, u8","s) + u8"]");
 
         nlohmann::ordered_json newPlugin = {
             {"name", "Langscore"},
@@ -682,7 +676,8 @@ var $plugins =
             {"description", cnvStr<std::string>(pluginDescription)},
             {"parameters", {
                 {"Support Language", langs},
-                {"Default Language", config.defaultLanguage()}
+                {"Default Language", config.defaultLanguage()},
+                {"MustBeIncludedImage", {utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s))}}
             }}
         };
         formattedJson << "," << newPlugin.dump();
@@ -691,7 +686,7 @@ var $plugins =
 
 
     // ファイルに書き戻す
-    std::ofstream outFile(std::filesystem::path(config.gameProjectPath()) / u8"js/plugins_test.js"s);
+    std::ofstream outFile(std::filesystem::path(config.gameProjectPath()) / u8"js/plugins.js"s);
     outFile << formattedJson.str();
     outFile.close();
 }

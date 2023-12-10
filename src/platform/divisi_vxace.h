@@ -47,13 +47,7 @@ namespace langscore
 		void adjustCSV(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list);
 		bool adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv, bool isRNLine);
 
-		bool validateTranslateFileList(utility::filelist csvPathList) const;
-		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;
-		std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> findRPGMakerEscChars(std::u8string text) const;
-
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
-		
-		std::filesystem::path exportFolderPath(std::filesystem::path fileName) override;
 
 	};
 }

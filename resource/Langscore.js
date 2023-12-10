@@ -34,6 +34,12 @@
  * @desc Language to be applied "at first launch" of the game. Specify the language in which the game was created.
  * @default ja
  * 
+ * @param MustBeIncludedImage
+ * @desc 
+ * @default Always specify files to be included even when "Do not include unused files" is checked during deployment.
+ * @require 1
+ * @dir img/
+ * @type file[]
  */
  /*:ja
  * @target MV MZ
@@ -42,7 +48,7 @@
  * @url https://github.com/MUkoutyan/langscore-app/releases
  * 
  * @help
- * 注意：このスクリプトは自動生成されているため、編集は非推奨です。
+ * 注意：このスクリプトは自動生成されています。Langscore.exeを使用すると更新されるため、編集は非推奨です。
  * サポート言語等を変更する場合、Langscore.exeを使用して編集してください。
  * 
  * [MV向けの説明]
@@ -62,6 +68,13 @@
  * @text デフォルト言語
  * @desc ゲーム初回起動時に適用する言語です。ゲームを作成した際の言語を指定してください。
  * @default %{DEFAULT_LANGUAGE}%
+ * 
+ * @param MustBeIncludedImage
+ * @desc デプロイメント時に「未使用ファイルを含まない」をチェックした際も必ず含めるファイルを指定します。
+ * @default
+ * @require 1
+ * @dir img/
+ * @type file[]
  * 
  * %{REQUIRED_ASSETS}%
  * 
@@ -792,7 +805,7 @@ ImageManager.loadBitmap = function(folder_name, filename, hue = 0)
       var searchPath = _langscore.path.join(_langscore.basePath, folder_name + new_filename + ".png")
       //MVの仕様に合わせてpngのみ対応にする。
       _langscore.ls_graphic_cache[filename] = _langscore.fs.existsSync(searchPath);
-          }
+    }
 
     if (_langscore.ls_graphic_cache[filename]) {
       filename = new_filename;
