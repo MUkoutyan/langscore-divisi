@@ -115,6 +115,10 @@ class Langscore
     
     this.ls_current_map = new Map;
     this.ls_graphic_cache = {};
+
+    this.fs = require('fs');
+    this.path = require('path');
+    this.basePath = this.path.dirname(process.mainModule.filename);
   }
 
   isLoaded()
@@ -538,7 +542,9 @@ if(!Langscore.currentFont){
     xhr.onerror = parent._mapLoader || function() {
       //無限ループにさせないようにnullではなく空にしておく。
       parent.ls_current_map[mapID] = {};
-      DataManager._errorUrl = DataManager._errorUrl || url;
+      console.error(`File ${DataManager._errorUrl || url} could not be read.`);
+      // イベントによるマップ遷移時の場合、遷移先マップにメッセージイベントが無くCSVが出力されていない場合があるのでエラーとしない。
+      // DataManager._errorUrl = DataManager._errorUrl || url;
     };
     parent.ls_current_map[mapID] = null;
     xhr.send();
@@ -765,7 +771,7 @@ DataManager.extractSaveContents = function(contents) {
 var ImageManager_loadBitmap = ImageManager.loadBitmap;
 ImageManager.loadBitmap = function(folder_name, filename, hue = 0) 
 {    
-  if(_langscore.ls_graphic_cache === null){
+  if(_langscore.ls_graphic_cache === null || filename === ""){
     return ImageManager_loadBitmap.call(this, folder_name, filename, hue);
   }
   var path = folder_name+filename;
@@ -781,10 +787,11 @@ ImageManager.loadBitmap = function(folder_name, filename, hue = 0)
     var new_filename = filename + '_' + Langscore.langscore_current_language;
     var has_key = _langscore.ls_graphic_cache[filename];
 
-    var fs = require('fs');
-    if(has_key === undefined){
+    if(has_key === undefined)
+    {
+      var searchPath = _langscore.path.join(_langscore.basePath, folder_name + new_filename + ".png")
       //MVの仕様に合わせてpngのみ対応にする。
-      _langscore.ls_graphic_cache[filename] = fs.existsSync(folder_name + new_filename + ".png");
+      _langscore.ls_graphic_cache[filename] = _langscore.fs.existsSync(searchPath);
           }
 
     if (_langscore.ls_graphic_cache[filename]) {
