@@ -69,7 +69,7 @@
  * @desc ゲーム初回起動時に適用する言語です。ゲームを作成した際の言語を指定してください。
  * @default %{DEFAULT_LANGUAGE}%
  * 
- * @param MustBeIncludedImage
+ * @param Must Be Included Image
  * @desc デプロイメント時に「未使用ファイルを含まない」をチェックした際も必ず含めるファイルを指定します。
  * @default
  * @require 1
@@ -90,6 +90,15 @@ class Langscore
   static isNull(obj){
     return obj === null || obj === undefined;
   }
+
+  
+  static isMV(){
+    return Utils.RPGMAKER_NAME === 'MV';
+  }
+  static isMZ(){
+    return Utils.RPGMAKER_NAME === 'MZ';
+  }
+
 
   constructor()
   {
@@ -129,9 +138,11 @@ class Langscore
     this.ls_current_map = new Map;
     this.ls_graphic_cache = {};
 
+if(StorageManager.isLocalMode()){
     this.fs = require('fs');
     this.path = require('path');
     this.basePath = this.path.dirname(process.mainModule.filename);
+}
   }
 
   isLoaded()
@@ -279,18 +290,29 @@ if(!Langscore.currentFont){
       return;
     }
 
+
+    if(Langscore.isMV())
+    {
     //デフォルトのM+1フォントの場合、GameFontとしてロード&定義済みなのでそちらを使う。
     //M+ 1m regularとするとフォントサイズがやたらと小さくなる現象が起こる。調査しづらいので暫定でこの対処。
-    if(currentFontName === "M+ 1m regular"){
+    if(currentFontName.toLowerCase() === "m+ 1m regular"){
       Langscore.currentFont.name = "GameFont";
     }
 
     if(Langscore.currentFont["isLoaded"] === false){
-      Graphics.loadFont(currentFontName,`fonts/${currentFontName}.tff`)
+      Graphics.loadFont(currentFontName,`fonts/${Langscore.currentFont.fileName}`)
       Langscore.currentFont["isLoaded"] = true;
     }
+    }
+    else if(Langscore.isMZ())
+    {      
+      if(currentFontName.toLowerCase() === "m+ 1m regular"){
+        Langscore.currentFont.name = "rmmz-mainfont";
+        Langscore.currentFont.fileName = "mplus-1m-regular.woff";
+      }
+      FontManager.load(Langscore.currentFont.name, Langscore.currentFont.fileName);
+    }
   };
-
 
   updateForNameAndDesc(data_list, tr_list) 
   {
@@ -622,10 +644,20 @@ var DataManager_loadMapData = DataManager.loadMapData;
 DataManager.loadMapData = function(mapId) 
 {
   DataManager_loadMapData.call(this, mapId);
+if(Langscore.isMV())
+  {
   if(mapId > 0){
     var fileName = 'Map%1.csv'.format(mapId.padZero(3));
     _langscore.mapLoader = ResourceHandler.createLoader('data/translates/' + fileName, _langscore.loadMapDataFile.bind(this, mapId));
     _langscore.loadMapDataFile(mapId);
+}
+  }
+  else if(Langscore.isMZ())
+  {
+    if(mapId > 0){
+      var fileName = 'Map%1.csv'.format(mapId.padZero(3));
+      _langscore.loadMapDataFile(mapId);
+    }
   }
 };
 
@@ -653,28 +685,77 @@ Game_System.prototype.isRussian = function() {
 };
 
 //アクター名の変更
-var Game_Interpreter_command320 = Game_Interpreter.prototype.command320;
-Game_Interpreter.prototype.command320 = function() {
-  var result = Game_Interpreter_command320.call(this);
-  _langscore.updateActor();
-  return result;  //戻り値は元のコマンドに合わせること。適切に値が返らないと入力の反映が止まる。
+if(Langscore.isMV())
+{
+  var Game_Interpreter_command320 = Game_Interpreter.prototype.command320;
+  Game_Interpreter.prototype.command320 = function() {
+    var result = Game_Interpreter_command320.call(this);
+    _langscore.updateActor();
+    return result;  //戻り値は元のコマンドに合わせること。適切に値が返らないと入力の反映が止まる。
+  };
+
+  //二つ名の変更
+  var Game_Interpreter_command324 = Game_Interpreter.prototype.command324;
+  Game_Interpreter.prototype.command324 = function() {
+    var result = Game_Interpreter_command324.call(this);
+    _langscore.updateActor();
+    return result;
+  };
+
+  //プロフィールの変更
+  var Game_Interpreter_command325 = Game_Interpreter.prototype.command325;
+  Game_Interpreter.prototype.command325 = function() {
+    var result = Game_Interpreter_command325.call(this);
+    _langscore.updateActor();
+    return result; 
+  };
+
+  var Window_Base_standardFontFace = Window_Base.prototype.standardFontFace;
+  Window_Base.prototype.standardFontFace = function() 
+  {
+    return Langscore.currentFont ? Langscore.currentFont["name"] : Window_Base_standardFontFace.call(this);
+  };
+
+  var Window_Base_standardFontSize = Window_Base.prototype.standardFontSize;
+  Window_Base.prototype.standardFontSize = function() {
+    return Langscore.currentFont ? Langscore.currentFont["size"] : Window_Base_standardFontSize.call(this);
+  };
+
+}
+else if(Langscore.isMZ())
+{
+  var Game_Interpreter_command320 = Game_Interpreter.prototype.command320;
+  Game_Interpreter.prototype.command320 = function(params) {
+    var result = Game_Interpreter_command320.call(this, params);
+    _langscore.updateActor();
+    return result;  //戻り値は元のコマンドに合わせること。適切に値が返らないと入力の反映が止まる。
+  };
+
+  //二つ名の変更
+  var Game_Interpreter_command324 = Game_Interpreter.prototype.command324;
+  Game_Interpreter.prototype.command324 = function(params) {
+    var result = Game_Interpreter_command324.call(this, params);
+    _langscore.updateActor();
+    return result;
+  };
+
+  //プロフィールの変更
+  var Game_Interpreter_command325 = Game_Interpreter.prototype.command325;
+  Game_Interpreter.prototype.command325 = function(params) {
+    var result = Game_Interpreter_command325.call(this, params);
+    _langscore.updateActor();
+    return result; 
+  };
+
+  Game_System.prototype.mainFontFace = function() {
+    return Langscore.currentFont.name + ", " + $dataSystem.advanced.fallbackFonts;
+  };
+  Game_System.prototype.mainFontSize = function() {
+    return Langscore.currentFont.size;
 };
 
-//二つ名の変更
-var Game_Interpreter_command324 = Game_Interpreter.prototype.command324;
-Game_Interpreter.prototype.command324 = function() {
-  var result = Game_Interpreter_command324.call(this);
-  _langscore.updateActor();
-  return result;
-};
+}
 
-//プロフィールの変更
-var Game_Interpreter_command325 = Game_Interpreter.prototype.command325;
-Game_Interpreter.prototype.command325 = function() {
-  var result = Game_Interpreter_command325.call(this);
-  _langscore.updateActor();
-  return result; 
-};
 
 var Window_Base_convertEscapeCharacters = Window_Base.prototype.convertEscapeCharacters;
 Window_Base.prototype.convertEscapeCharacters = function(text) 
@@ -698,18 +779,6 @@ Window_Base.prototype.convertEscapeCharacters = function(text)
   
   return Window_Base_convertEscapeCharacters(text);
 }
-
-
-
-var Window_Base_standardFontFace = Window_Base.prototype.standardFontFace;
-Window_Base.prototype.standardFontFace = function() {
-  return Langscore.currentFont ? Langscore.currentFont["name"] : Window_Base_standardFontFace.call(this);
-};
-
-var Window_Base_standardFontSize = Window_Base.prototype.standardFontSize;
-Window_Base.prototype.standardFontSize = function() {
-  return Langscore.currentFont ? Langscore.currentFont["size"] : Window_Base_standardFontSize.call(this);
-};
 
 
 //モジュールの上書き
