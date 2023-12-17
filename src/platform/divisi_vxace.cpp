@@ -42,7 +42,7 @@ divisi_vxace::divisi_vxace()
 divisi_vxace::~divisi_vxace(){}
 
 void divisi_vxace::setProjectPath(std::filesystem::path path){
-    this->invoker.setProjectPath(invoker::ProjectType::VXAce, std::move(path));
+    this->invoker.setProjectPath(std::move(path));
 }
 
 ErrorStatus divisi_vxace::analyze()

@@ -36,7 +36,7 @@ divisi_mvmz::divisi_mvmz()
 divisi_mvmz::~divisi_mvmz(){}
 
 void divisi_mvmz::setProjectPath(std::filesystem::path path){
-    this->invoker.setProjectPath(invoker::ProjectType::VXAce, std::move(path));
+    this->invoker.setProjectPath(std::move(path));
 }
 
 ErrorStatus divisi_mvmz::analyze()
@@ -638,6 +638,10 @@ var $plugins =
         }
     }
 
+    constexpr auto SupportLanguage = "Support Language";
+    constexpr auto DefaultLanguage = "Default Language";
+    constexpr auto MustBeIncludedImage = "Must Be Included Image";
+
     int index = 0;
     const auto size = jsonObject.size();
     for(auto begin = jsonObject.begin(); begin != jsonObject.end(); ++begin)
@@ -648,14 +652,14 @@ var $plugins =
             findPluginInfo = true;
             auto& params = (*begin)["parameters"];
 
-            params["Support Language"] = langs;
+            params[SupportLanguage] = langs;
 
-            if(params["Default Language"].empty() == false) {
+            if(params[DefaultLanguage].empty() == false) {
                 auto defLanguage = config.defaultLanguage();
-                params["Default Language"] = defLanguage;
+                params[DefaultLanguage] = defLanguage;
             }
             nlohmann::json jsonObj = utility::cnvStr<std::string>(pictureFiles);
-            params["MustBeIncludedImage"] = jsonObj.dump();
+            params[MustBeIncludedImage] = jsonObj.dump();
         }
 
 
@@ -675,14 +679,14 @@ var $plugins =
             {"status", true},
             {"description", cnvStr<std::string>(pluginDescription)},
             {"parameters", {
-                {"Support Language", langs},
-                {"Default Language", config.defaultLanguage()},
-                {"MustBeIncludedImage", {utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s))}}
+                {SupportLanguage,   langs},
+                {DefaultLanguage,   config.defaultLanguage()},
+                {MustBeIncludedImage, {utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s))}}
             }}
         };
-        formattedJson << "," << newPlugin.dump();
+        formattedJson << newPlugin.dump();
     }
-    formattedJson << "];\n";
+    formattedJson << "\n];\n";
 
 
     // ファイルに書き戻す
@@ -751,7 +755,7 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
                 auto lang = utility::cnvStr<std::u8string>(pair.name);
                 auto sizeStr = utility::cnvStr<std::u8string>(std::to_string(pair.font.size));
                 _line += tab;
-                _line += u8"\"" + lang + u8"\": {name:\"" + pair.font.name + u8"\", size:" + sizeStr + u8", isLoaded: false}," + nl;
+                _line += u8"\"" + lang + u8"\": {name:\"" + pair.font.name + u8"\", size:" + sizeStr + u8", fileName: \"" + pair.font.file.filename().u8string() + u8"\", isLoaded : false }, " + nl;
             }
             _line += u8"}\n";
         }

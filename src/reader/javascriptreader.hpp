@@ -206,7 +206,7 @@ private:
 
             for(const auto& [key, value] : (*item)["parameters"].items()) 
             {
-                ////パラメータが構造体(JSON)かどうかを判別
+                //パラメータが構造体(JSON)かどうかを判別
                 auto str = utility::cnvStr<std::u8string>(value.get<std::string>());
                 nlohmann::json jsonStruct = nlohmann::json::parse(str, nullptr, false);
                 if(jsonStruct.is_discarded()) {

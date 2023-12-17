@@ -5,6 +5,7 @@
 #include <functional>
 #include <filesystem>
 #include "errorstatus.hpp"
+#include "config.h"
 
 namespace langscore
 {
@@ -13,21 +14,13 @@ class invoker
 {
 public:
 
-    enum ProjectType {
-        None,
-        VXAce,
-        MV,
-        MZ,
-    };
 
     invoker();
     ~invoker();
 
     void setApplicationFolder(std::filesystem::path path);
-    void setProjectPath(ProjectType type, std::filesystem::path path);
+    void setProjectPath(std::filesystem::path path);
     
-    ProjectType projectType() const noexcept;
-
     ErrorStatus analyze();
     ErrorStatus update();
     ErrorStatus recompressVXAce();
@@ -37,7 +30,6 @@ private:
     std::filesystem::path appPath;
     std::filesystem::path _projectPath;
     std::vector<std::u8string> langs;
-    ProjectType currentProjectType;
 
     ErrorStatus exec(std::vector<std::string> args);
 };

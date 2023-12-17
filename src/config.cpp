@@ -8,6 +8,7 @@
 #include "config.h"
 #include "config.h"
 #include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -68,6 +69,7 @@ public:
 	static nlohmann::json json;
 	static std::filesystem::path configPath;
 	std::filesystem::path path;
+	config::ProjectType projectType = config::ProjectType::None;
 
 	template<typename Value>
 	Value get(nlohmann::json::reference j, Value defValue = 0)
@@ -162,15 +164,21 @@ std::vector<config::Language> config::languages()
 
 	std::vector<Language> result;
 
+
+	std::string fontFamily = "VL Gothic"s;
+	std::string fontFileName = "VL-Gothic-Regular.ttf"s;
+
 	for(auto s = langs.begin(); s != langs.end(); ++s)
 	{
 		auto& lang = s.value();
 		if(pImpl->get(lang[key(JsonKey::Enable)], false) == false){ continue; }
 
+
 		result.emplace_back(
 			pImpl->get(lang[key(JsonKey::LanguageName)], "ja"s),
 			FontData{
-				utility::cnvStr<std::u8string>(pImpl->get(lang[key(JsonKey::FontName)], "VL Gothic"s)),
+				utility::cnvStr<std::u8string>(pImpl->get(lang[key(JsonKey::FontName)], fontFamily)),
+				pImpl->get(lang[key(JsonKey::FontPath)], fontFileName),
 				pImpl->get(lang[key(JsonKey::FontSize)], 22)
 			}
 		);
@@ -236,6 +244,49 @@ bool langscore::config::exportByLanguage()
 bool langscore::config::overwriteLangscore()
 {
 	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::OverwriteLangscore)], false);
+}
+
+config::ProjectType langscore::config::projectType()
+{
+	if(pImpl->projectType != ProjectType::None) {
+		return pImpl->projectType;
+	}
+
+	const auto hasHeader = [](std::filesystem::path path, std::string_view headerText)
+	{
+		std::ifstream proj(path);
+		if(proj.is_open()) {
+			std::string header(5, ' ');
+			proj.read(&header[0], 5);
+			return header == headerText;
+		}
+		return false;
+	};
+
+	std::filesystem::directory_iterator it(gameProjectPath());
+	for(auto& file : it) {
+		auto ext = file.path().extension();
+		if(ext == ".rvproj2") {
+			pImpl->projectType = config::ProjectType::VXAce;
+			break;
+		}
+		else if(ext == ".rmmzproject")
+		{
+			if(hasHeader(file.path(), "RPGMZ")) {
+				pImpl->projectType = config::ProjectType::MZ;
+				break;
+			}
+		}
+		else if(ext == ".rpgproject")
+		{
+			if(hasHeader(file.path(), "RPGMV")) {
+				pImpl->projectType = config::ProjectType::MV;
+				break;
+			}
+		}
+	}
+
+	return pImpl->projectType;
 }
 
 bool langscore::config::overwriteLangscoreCustom()

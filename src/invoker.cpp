@@ -14,7 +14,6 @@ using namespace langscore;
 invoker::invoker()
     : appPath("")
     , _projectPath("")
-    , currentProjectType(None)
 {
 }
 
@@ -26,9 +25,8 @@ void invoker::setApplicationFolder(std::filesystem::path path){
     appPath = appPath.parent_path();
 }
 
-void invoker::setProjectPath(ProjectType type, std::filesystem::path path)
+void invoker::setProjectPath(std::filesystem::path path)
 {
-    this->currentProjectType = type;
     this->_projectPath = std::move(path);
 }
 
@@ -84,7 +82,8 @@ int execProcess(const char* cmd) {
 ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
 {
     auto basePath = appPath.empty() ? "./" : appPath;
-    if(currentProjectType == VXAce)
+    config config;
+    if(config.projectType() == config::VXAce)
     {
         auto rvcnvPath = (basePath / "rvcnv.exe");
 
@@ -124,8 +123,4 @@ ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
 
 
     return Status_Success;
-}
-
-invoker::ProjectType invoker::projectType() const noexcept {
-    return this->currentProjectType;
 }

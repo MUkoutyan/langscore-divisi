@@ -32,42 +32,21 @@ public:
     void createConverter(fs::path gameProjectPath)
     {
         this->converter = nullptr;
-        const auto hasHeader = [](fs::path path, std::string_view headerText)
-        {
-            std::ifstream proj(path);
-            if(proj.is_open()){
-                std::string header(5, ' ');
-                proj.read(&header[0], 5);
-                return header == headerText;
-            }
-            return false;
-        };
 
         fs::directory_iterator it(gameProjectPath);
-        auto type = invoker::ProjectType::None;
-        for(auto& file : it){
-            auto ext = file.path().extension();
-            if(ext == ".rvproj2"){
-                type = invoker::ProjectType::VXAce;
-                this->converter = std::make_unique<divisi_vxace>();
-                break;
-            }
-            else if(ext == ".rmmzproject")
-            {
-                if(hasHeader(file.path(), "RPGMZ")){
-                    type = invoker::ProjectType::MZ;
-                    this->converter = std::make_unique<divisi_mvmz>();
-                    break;
-                }
-            }
-            else if(ext == ".rpgproject")
-            {
-                if(hasHeader(file.path(), "RPGMV")){
-                    type = invoker::ProjectType::MV;
-                    this->converter = std::make_unique<divisi_mvmz>();
-                    break;
-                }
-            }
+
+        config config;
+        switch(config.projectType())
+        {
+        case config::ProjectType::VXAce:
+            this->converter = std::make_unique<divisi_vxace>();
+            break;
+        case config::ProjectType::MZ:
+            this->converter = std::make_unique<divisi_mvmz>();
+            break;
+        case config::ProjectType::MV:
+            this->converter = std::make_unique<divisi_mvmz>();
+            break;
         }
     }
 

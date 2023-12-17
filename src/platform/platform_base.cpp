@@ -85,31 +85,52 @@ void langscore::platform_base::copyFonts(fs::path fontDestPath)
     auto globalFonts = config.globalFontList();
     auto localFonts = config.localFontList();
 
-    if(globalFonts.empty() && localFonts.empty()){ return; }
-
-    if(fs::exists(fontDestPath) == false){
-        fs::create_directory(fontDestPath);
-    }
-
-    auto globalFontFolder = this->appPath.parent_path() / "../resources/fonts";
-    for(auto& relativePath : globalFonts)
+    if(globalFonts.empty() == false || localFonts.empty() == false)
     {
-        auto path = globalFontFolder / relativePath;
-        if(fs::exists(path) == false){
-            std::cerr << "Warning! : not found global font file : " << path << std::endl;
-            continue;
+
+        if(fs::exists(fontDestPath) == false) {
+            fs::create_directory(fontDestPath);
         }
-        fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
+
+        auto globalFontFolder = this->appPath.parent_path() / "../resources/fonts";
+        for(auto& relativePath : globalFonts)
+        {
+            auto path = globalFontFolder / relativePath;
+            if(fs::exists(path) == false) {
+                std::cerr << "Warning! : not found global font file : " << path << std::endl;
+                continue;
+            }
+            fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
+        }
+        auto localFontFolder = lsProjectPath / "Fonts";
+        for(auto& relativePath : localFonts)
+        {
+            auto path = localFontFolder / relativePath;
+            if(fs::exists(path) == false) {
+                std::cerr << "Warning! : not found local font file : " << path << std::endl;
+                continue;
+            }
+            fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
+        }
     }
-    auto localFontFolder = lsProjectPath / "Fonts";
-    for(auto& relativePath : localFonts)
+    else
     {
-        auto path = localFontFolder / relativePath;
-        if(fs::exists(path) == false){
-            std::cerr << "Warning! : not found local font file : " << path << std::endl;
-            continue;
+        auto languages = config.languages();
+        for(auto& language : languages)
+        {
+            auto destPath = fontDestPath / language.font.file.filename();
+            //appPathはbin/divisi.exeとなる。
+            //また、Langscore.exeから呼び出されることを想定しているため、
+            //2つ階層を上に上げるとLangscore.exeと同階層になり、resourceフォルダが存在する。
+            //そのため素のデバッグ実行では正しく確認できない。
+            auto global = this->appPath.parent_path().parent_path() / language.font.file;
+            if(fs::exists(global)) {
+                fs::copy_file(global, destPath, fs::copy_options::skip_existing);
+            }
+            else if(fs::exists(lsProjectPath / language.font.file)) {
+                fs::copy_file(lsProjectPath / language.font.file, destPath, fs::copy_options::skip_existing);
+            }
         }
-        fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
     }
 }
 
