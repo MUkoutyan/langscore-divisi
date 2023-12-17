@@ -10,9 +10,17 @@ namespace langscore
 	{
 	public:
 
+		enum ProjectType {
+			None,
+			VXAce,
+			MV,
+			MZ,
+		};
+
 		struct FontData
 		{
 			std::u8string name = u8"";
+			std::filesystem::path file;
 			int size = 22;
 		};
 		struct Language
@@ -76,6 +84,7 @@ namespace langscore
 			OverwriteLangscore,
 			OverwriteLangscoreCustom,
 			PackingInputDir,
+
 			ApplicationVersion,
 			ConfigVersion,
 			AttachLsTransType,
@@ -94,6 +103,8 @@ namespace langscore
 		~config();
 
 		std::u8string langscoreProjectPath();
+
+		ProjectType projectType();
 
 		std::vector<Language> languages();
 		std::string defaultLanguage();
