@@ -25,7 +25,29 @@ ARGS analyzeOption(int argc, const char* argv[])
 		std::string_view str = argv[i];
 		if(str.find("-c") != std::string_view::npos){
 			++i;	//次の要素を読み込む
+			std::string path = argv[i];
 			args.configFile = argv[i];
+
+			if(path.empty()) { continue; }
+			if(path[0] != '\"') {
+				args.configFile = path;
+				continue;
+			}
+
+			i += 1;
+			for(; i < argc; ++i) {
+				std::string nextPath = argv[i];
+				path += " " + nextPath;
+				if(*(nextPath.rbegin()) == '\"') {
+					break;
+				}
+			}
+
+			path.erase(path.size()-1, 1);
+			path.erase(path.begin());
+
+			args.configFile = path;
+
 		}
 		else if(str.find("--analyze") != std::string_view::npos){
 			args.analyze = true;

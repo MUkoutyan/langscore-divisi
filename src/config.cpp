@@ -94,7 +94,7 @@ public:
 			loadFile >> json;
 		}
 		else{
-			std::cerr << "Can't Open File";
+			std::cerr << "Can't Open  config File : " << this->path;
 			throw "Can't Open File";
 		}
 	}
