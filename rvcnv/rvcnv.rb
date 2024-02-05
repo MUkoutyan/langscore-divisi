@@ -1,4 +1,5 @@
 # encoding: UTF-8
+Encoding.default_external = 'UTF-8'
 
 require 'zlib'
 require 'csv'
@@ -591,16 +592,23 @@ if compress
   exit
 end
 
+is_exit = false
 if input_folder_path.empty?
   p "Need Project Folder" 
+  is_exit = true
 end
 
 if output_folder.empty?
   p "Need Output Folder" 
+  is_exit = true
 end
 
 p "Data Folder #{data_folder}"
 p "Script Folder #{script_folder}"
+
+if is_exit
+  exit -1
+end
 
 #スクリプトの展開
 script_list = []
