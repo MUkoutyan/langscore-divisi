@@ -20,17 +20,30 @@ ARGS analyzeOption(int argc, const char* argv[])
 {
 	ARGS args;
 	args.appPath = argv[0];
+	std::cout << "Options : ";
 	for(int i = 1; i < argc; ++i)
 	{
 		std::string_view str = argv[i];
+		std::cout << str << " ";
 		if(str.find("-c") != std::string_view::npos){
 			++i;	//次の要素を読み込む
 			std::string path = argv[i];
 			args.configFile = argv[i];
 
 			if(path.empty()) { continue; }
+			//"で括られていなければそのまま解釈。
 			if(path[0] != '\"') {
 				args.configFile = path;
+				std::cout << path << " ";
+				continue;
+			}
+			//"で括られている場合でも、取得した文字列が"で終わるなら
+			//空白文字が無いパターンなので、そのまま解釈。
+			if(*(path.rbegin()) == '\"') {
+				path.erase(path.size() - 1, 1);
+				path.erase(path.begin());
+				args.configFile = path;
+				std::cout << path << " ";
 				continue;
 			}
 
@@ -47,6 +60,7 @@ ARGS analyzeOption(int argc, const char* argv[])
 			path.erase(path.begin());
 
 			args.configFile = path;
+			std::cout << path << " ";
 
 		}
 		else if(str.find("--analyze") != std::string_view::npos){
@@ -65,6 +79,7 @@ ARGS analyzeOption(int argc, const char* argv[])
 			args.packing = true;
 		}
 	}
+	std::cout << std::endl;
 	return args;
 }
 
@@ -103,6 +118,7 @@ int main(int argc, const char* argv[])
 		std::cerr << result.toStr() << std::endl;
 		return result.val();
 	}
+	
 
 	return 0;
 }
