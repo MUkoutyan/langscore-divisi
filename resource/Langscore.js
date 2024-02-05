@@ -535,7 +535,7 @@ if(!Langscore.currentFont){
 
   loadSystemDataFile(varName, fileName) {
     var xhr = new XMLHttpRequest();
-    var url = 'data/translates/' + fileName;
+    var url = 'data/translate/' + fileName;
     var parent = this;
     xhr.open('GET', url);
     xhr.overrideMimeType('text/plain');
@@ -561,7 +561,7 @@ if(!Langscore.currentFont){
   
   loadMapDataFile(mapID) {
     var xhr = new XMLHttpRequest();
-    var url = 'data/translates/Map%1.csv'.format(mapID.padZero(3));
+    var url = 'data/translate/Map%1.csv'.format(mapID.padZero(3));
     var parent = this;
     xhr.open('GET', url);
     xhr.overrideMimeType('text/plain');
@@ -648,7 +648,7 @@ if(Langscore.isMV())
   {
   if(mapId > 0){
     var fileName = 'Map%1.csv'.format(mapId.padZero(3));
-    _langscore.mapLoader = ResourceHandler.createLoader('data/translates/' + fileName, _langscore.loadMapDataFile.bind(this, mapId));
+    _langscore.mapLoader = ResourceHandler.createLoader('data/translate/' + fileName, _langscore.loadMapDataFile.bind(this, mapId));
     _langscore.loadMapDataFile(mapId);
 }
   }
