@@ -35,6 +35,7 @@ set(Test_Includes
     "../3rdparty/googletest/googletest/include"
 	"../3rdparty/json/single_include"
 	"../3rdparty/hash-library"
+	"../3rdparty/tree-sitter/include"
 )
 
 file(GLOB_RECURSE DIVISI_SOURCES
@@ -60,6 +61,11 @@ endforeach()
 add_executable(${TestProjectName} ${test_sources})
 
 target_include_directories(${TestProjectName} PUBLIC ${Test_Includes})
+
+target_link_libraries(${TestProjectName}
+	debug ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
+    optimized ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitter.lib
+)
 
 add_test(NAME test COMMAND ${TestProjectName})
 

@@ -22,7 +22,7 @@ namespace langscore
 		IUTEST_FRIEND_TEST(Langscore_Writer, CheckRubyCommentLine);
 		IUTEST_FRIEND_TEST(Langscore_Writer, DetectRubyString);
 		IUTEST_FRIEND_TEST(Langscore_Writer, DetectStringPositionFromFile);
-		IUTEST_FRIEND_TEST(Langscore_Divisi, VXAce_WriteScriptCSV);
+		IUTEST_FRIEND_TEST(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV);
 #endif
 	public:
 		rubyreader(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)

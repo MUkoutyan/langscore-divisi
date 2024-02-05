@@ -6,7 +6,7 @@
 
 #ifdef ENABLE_TEST
 class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, CheckRubyCommentLine);
-class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, VXAce_WriteScriptCSV);
+class IUTEST_TEST_CLASS_NAME_(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV);
 #endif
 
 namespace langscore
@@ -16,7 +16,7 @@ namespace langscore
     {
 #ifdef ENABLE_TEST
         IUTEST_FRIEND_TEST(Langscore_Writer, CheckRubyCommentLine);
-        IUTEST_FRIEND_TEST(Langscore_Divisi, VXAce_WriteScriptCSV);
+        IUTEST_FRIEND_TEST(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV);
 #endif
     public:
         template<typename Reader, typename = std::enable_if_t<!std::is_same_v<std::unique_ptr<readerbase>, std::decay_t<Reader>>>>

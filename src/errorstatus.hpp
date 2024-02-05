@@ -100,6 +100,7 @@ private:
             case 5: return "error code 5 : Invalid ExecuteFile!!!!";
             case 6: return "error code 6 : Failed Create Output File.";
             case 7: return "error code 7 : Failed Create Output File.";
+            case 8: return "error code 8 : Failed Create Output File.";
             case 255: return this->specMsg;
         }
         return "";

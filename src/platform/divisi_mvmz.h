@@ -4,10 +4,6 @@
 
 #ifdef ENABLE_TEST
 #include "iutest.hpp"
-//class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, VXAce_WriteScriptCSV);
-//class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, ValidateLangscoreCustom);
-//class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, VXAce_Validate);
-//class IUTEST_TEST_CLASS_NAME_(Langscore_Divisi, VXAce_FindEscChar);
 #endif
 
 namespace langscore

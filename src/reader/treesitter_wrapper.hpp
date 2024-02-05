@@ -1,17 +1,16 @@
-
 #include "tree_sitter/api.h"
 #include <string>
 #include <vector>
 #include <tuple>
 
-std::tuple<uint32_t, uint32_t> GetNodeStartEndByte(TSNode node)
+static std::tuple<uint32_t, uint32_t> GetNodeStartEndByte(TSNode node)
 {
     uint32_t start = ts_node_start_byte(node);
     uint32_t end = ts_node_end_byte(node);
     return {start, end};
 }
 
-std::tuple<uint32_t, uint32_t> GetNodePoint(TSNode node, bool start_row_zero = false, bool start_col_zero = true)
+static std::tuple<uint32_t, uint32_t> GetNodePoint(TSNode node, bool start_row_zero = false, bool start_col_zero = true)
 {
     auto pos = ts_node_start_point(node);
     unsigned row = pos.row;
@@ -28,7 +27,7 @@ std::tuple<uint32_t, uint32_t> GetNodePoint(TSNode node, bool start_row_zero = f
 }
 
 
-std::string joinChildNodeTexts(const TSNode root, std::string_view source_code, bool recursive = false)
+static std::string joinChildNodeTexts(const TSNode root, std::string_view source_code, bool recursive = false)
 {
     auto numChilds = ts_node_child_count(root);
     std::string result;
@@ -54,7 +53,7 @@ std::string joinChildNodeTexts(const TSNode root, std::string_view source_code, 
     return result;
 }
 
-TSNode findFirstChildNode(const TSNode& node, std::string_view findNodeType, bool recursive = false)
+static TSNode findFirstChildNode(const TSNode& node, std::string_view findNodeType, bool recursive = false)
 {
     auto numChilds = ts_node_child_count(node);
     for(auto i = 0; i < numChilds; ++i) {
@@ -75,7 +74,7 @@ TSNode findFirstChildNode(const TSNode& node, std::string_view findNodeType, boo
     return TSNode();
 }
 
-std::vector<TSNode> findChildNodeList(const TSNode& node, std::string_view findNodeType, bool recursive = false)
+static std::vector<TSNode> findChildNodeList(const TSNode& node, std::string_view findNodeType, bool recursive = false)
 {
     std::vector<TSNode> result;
 
@@ -98,7 +97,7 @@ std::vector<TSNode> findChildNodeList(const TSNode& node, std::string_view findN
     return result;
 }
 
-std::string findMethodName(const TSNode& node, std::string_view source_code, std::string_view function_type)
+static std::string findMethodName(const TSNode& node, std::string_view source_code, std::string_view function_type)
 {
     if(ts_node_is_null(node)) {
         return "";
