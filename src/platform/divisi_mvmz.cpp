@@ -41,13 +41,19 @@ void divisi_mvmz::setProjectPath(std::filesystem::path path){
 
 ErrorStatus divisi_mvmz::analyze()
 {
+    std::cout << "Analyze Project..." << std::endl;
     config config;
     auto gameProjPath = config.gameProjectPath()+u8"\\data";
-    const auto baseDirecotry = config.langscoreAnalyzeDirectorty();
-    fs::copy(gameProjPath, baseDirecotry, fs::copy_options::overwrite_existing);
+    const auto baseDirectory = config.langscoreAnalyzeDirectorty();
+    if(fs::exists(baseDirectory) == false) {
+        std::cout << "Create Langscore Project Folder... : " << utility::cnvStr<std::string>(baseDirectory) << std::endl;
+        fs::create_directories(baseDirectory);
+    }
+
+    fs::copy(gameProjPath, baseDirectory, fs::copy_options::overwrite_existing);
 
     auto scriptProjPath = config.gameProjectPath()+u8"\\js\\plugins";
-    auto destScriptPath = baseDirecotry+u8"\\Scripts";
+    auto destScriptPath = baseDirectory+u8"\\Scripts";
     if(std::filesystem::exists(destScriptPath) == false){
         std::filesystem::create_directories(destScriptPath);
     }
@@ -57,10 +63,10 @@ ErrorStatus divisi_mvmz::analyze()
     //解析では言語を使用しない。 書き出されるCSVはオリジナル文のみを表示させる。
     this->supportLangs.clear();
 
-    std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(baseDirecotry);
+    std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(baseDirectory);
 
     this->writeAnalyzedBasicData();
-    this->writeAnalyzedScript(baseDirecotry);
+    this->writeAnalyzedScript(baseDirectory);
 
     std::cout << "AnalyzeProject Done." << std::endl;
     return Status_Success;
@@ -618,12 +624,13 @@ var $plugins =
 [
 )";
 
-    bool findPluginInfo = false;
 
+    //SupportLanguageに埋めるパラメータの作成
     auto list = this->supportLangs;
     for(auto& t : list) { t = u8"\"" + t + u8"\""; }
     auto langs = cnvStr<std::string>(u8"["s + utility::join(list, u8","s) + u8"]");
 
+    //MustBeIncludedImageに埋めるパラメータの作成
     auto picturesPath = config.gameProjectPath() + u8"/img";
     utility::u8stringlist pictureFiles;
     for(const auto& f : fs::recursive_directory_iterator(picturesPath)) {
@@ -633,7 +640,7 @@ var $plugins =
         auto relativePath = f.path().lexically_relative(picturesPath);
         for(const auto& t : this->supportLangs) {
             if(utility::includes(fileName, u8"_" + t)) {
-                pictureFiles.emplace_back((relativePath.parent_path()/relativePath.stem()).generic_u8string());
+                pictureFiles.emplace_back(u8"\""s + (relativePath.parent_path() / relativePath.stem()).generic_u8string() + u8"\""s);
             }
         }
     }
@@ -642,11 +649,12 @@ var $plugins =
     constexpr auto DefaultLanguage = "Default Language";
     constexpr auto MustBeIncludedImage = "Must Be Included Image";
 
-    int index = 0;
+    int numPlugins = 0;
     const auto size = jsonObject.size();
+    bool findPluginInfo = false;
+
     for(auto begin = jsonObject.begin(); begin != jsonObject.end(); ++begin)
     {
-        index++;
         if((*begin)["name"] == "Langscore") {
 
             findPluginInfo = true;
@@ -658,22 +666,14 @@ var $plugins =
                 auto defLanguage = config.defaultLanguage();
                 params[DefaultLanguage] = defLanguage;
             }
-            nlohmann::json jsonObj = utility::cnvStr<std::string>(pictureFiles);
-            params[MustBeIncludedImage] = jsonObj.dump();
+            params[MustBeIncludedImage] = "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s;
         }
-
-
-        // プラグインを整形して追加
-        formattedJson << (*begin).dump();
-        if(index < size) {
-            formattedJson << ",";
-        }
-        formattedJson << "\n";
     }
 
     if(findPluginInfo == false)
     {
-
+        //他のプラグインがLangscoreのオブザーバーに追加できるようにするために、
+        //必ず先頭に埋め込む。
         nlohmann::ordered_json newPlugin = {
             {"name", "Langscore"},
             {"status", true},
@@ -681,10 +681,20 @@ var $plugins =
             {"parameters", {
                 {SupportLanguage,   langs},
                 {DefaultLanguage,   config.defaultLanguage()},
-                {MustBeIncludedImage, {utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s))}}
+                {MustBeIncludedImage, "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s}
             }}
         };
-        formattedJson << newPlugin.dump();
+        formattedJson << newPlugin.dump() << ",\n";
+    }
+
+    for(auto begin = jsonObject.begin(); begin != jsonObject.end(); ++begin)
+    {
+        // プラグインを整形して追加
+        numPlugins++;
+        formattedJson << (*begin).dump();
+        if(numPlugins < size) {
+            formattedJson << ",\n";
+        }
     }
     formattedJson << "\n];\n";
 
