@@ -84,7 +84,7 @@ namespace langscore
 			std::string valStr;
 			json.get_to(valStr);
 
-			//手動の中央揃え等で空行を使用する場合があるため、空文字の検出は行わない。
+			//stackTextが有効の場合、手動の中央揃え等で空行を使用する場合があるため、空文字の検出は行わない。
 			//if(valStr.empty()){ return; }
 
 			std::u8string original(valStr.begin(), valStr.end());
@@ -97,7 +97,7 @@ namespace langscore
 				stackTextStr += text + u8'\n';
 				return;
 			}
-			else 
+			else
 			{
 				if(text.empty()){
 					//ただの空文は無視する。
