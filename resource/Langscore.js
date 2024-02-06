@@ -747,12 +747,14 @@ else if(Langscore.isMZ())
     return result; 
   };
 
+  var Game_System_prototype_mainFontFace = Game_System.prototype.mainFontFace;
   Game_System.prototype.mainFontFace = function() {
-    return Langscore.currentFont.name + ", " + $dataSystem.advanced.fallbackFonts;
+    return Langscore.currentFont ? Langscore.currentFont.name + ", " + $dataSystem.advanced.fallbackFonts : Game_System_prototype_mainFontFace.call(this);
   };
+  var Game_System_prototype_mainFontSize = Game_System.prototype.mainFontSize;
   Game_System.prototype.mainFontSize = function() {
-    return Langscore.currentFont.size;
-};
+    return Langscore.currentFont ? Langscore.currentFont.size : Game_System_prototype_mainFontSize.call(this);
+  };
 
 }
 
