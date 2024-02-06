@@ -344,16 +344,13 @@ ErrorStatus divisi_mvmz::validate()
 {
     config config;
     std::u8string root;
-    const auto exportDirectory = config.exportDirectory(root);
+    const auto exportDirectory = config.packingInputDirectory();
     filelist csvPathList;
 
-    for(const auto& dir : exportDirectory)
-    {
-        for(const auto& f : fs::recursive_directory_iterator{dir}){
-            auto extension = f.path().extension();
-            if(extension == ".csv"){
-                csvPathList.emplace_back(f.path());
-            }
+    for(const auto& f : fs::recursive_directory_iterator{exportDirectory}){
+        auto extension = f.path().extension();
+        if(extension == ".csv"){
+            csvPathList.emplace_back(f.path());
         }
     }
 

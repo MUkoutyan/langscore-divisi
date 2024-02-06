@@ -228,7 +228,22 @@ bool platform_base::validateTranslateFileList(utility::filelist csvPathList) con
             OutputError(_path, "Warning"s, IncludeCR, ""s, ""s, 0);
             continue;
         }
-        auto texts = csvreader{this->supportLangs, {_path}}.curerntTexts();
+        auto csvReader = csvreader{this->supportLangs, {_path}};
+        auto texts = csvReader.curerntTexts();
+
+        auto csvUseLangs = csvReader.curerntUseLangList();
+        if(this->supportLangs.size() != csvUseLangs.size()) {
+            OutputError(_path, "Warning"s, NotEQLang, ""s, ""s, 0);
+        }
+        else {
+            auto lang = this->supportLangs;
+            std::sort(lang.begin(), lang.end());
+            std::sort(csvUseLangs.begin(), csvUseLangs.end());
+            if(false == std::equal(lang.begin(), lang.end(), csvUseLangs.begin(), csvUseLangs.end())) {
+                OutputError(_path, "Warning"s, NotEQLang, ""s, ""s, 0);
+            }
+        }
+
         result &= validateTranslateList(std::move(texts), std::move(_path));
     }
     return result;
@@ -239,7 +254,7 @@ bool platform_base::validateTranslateList(std::vector<TranslateText> texts, std:
     const auto OutputError = [&path](auto type, auto errorSummary, auto lang, auto str, size_t row) {
         auto result = utility::join({type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row)}, ","s);
         std::cout << result << std::endl;
-        };
+    };
     size_t row = 1;
     bool result = true;
     for(auto& text : texts)
