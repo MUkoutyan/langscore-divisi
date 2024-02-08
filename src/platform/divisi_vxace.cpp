@@ -47,6 +47,8 @@ void divisi_vxace::setProjectPath(std::filesystem::path path){
 
 ErrorStatus divisi_vxace::analyze()
 {
+    std::cout << "VXAce Analyze..." << std::endl;
+
     auto runResult = this->invoker.analyze();
     if(runResult.val() != 0){
         std::cerr << runResult.toStr() << std::endl;
@@ -69,6 +71,8 @@ ErrorStatus divisi_vxace::analyze()
 
 ErrorStatus langscore::divisi_vxace::update()
 {
+    std::cout << "VXAce Update..." << std::endl;
+
     config config;
     //変にマージしないように一旦全削除
     const auto updateDirPath = config.langscoreUpdateDirectorty();
@@ -206,7 +210,7 @@ ErrorStatus langscore::divisi_vxace::update()
 
 ErrorStatus langscore::divisi_vxace::write()
 {
-    std::cout << "Write..." << std::endl;
+    std::cout << "VXAce Write..." << std::endl;
     config config;
     std::u8string rootPath;
     auto exportFolderList = config.exportDirectory(rootPath);
@@ -222,8 +226,15 @@ ErrorStatus langscore::divisi_vxace::write()
     writeFixedRvScript();
     writeFixedGraphFileNameData();
 
-    auto fontDestPath = fs::path(config.gameProjectPath()) / u8"Fonts"s;
-    copyFonts(fontDestPath);
+    std::cout << "Copy fonts" << std::endl;
+    try {
+        auto fontDestPath = fs::path(config.gameProjectPath()) / u8"Fonts"s;
+        copyFonts(fontDestPath);
+    }
+    catch(const std::exception& e) {
+        std::cout << e.what() << std::endl;
+    }
+    std::cout << "Done." << std::endl;
 
     std::cout << "Export script files." << std::endl;
     bool replaceScript = false;

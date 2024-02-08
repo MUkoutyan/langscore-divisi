@@ -85,12 +85,12 @@ void langscore::platform_base::copyFonts(fs::path fontDestPath)
     auto globalFonts = config.globalFontList();
     auto localFonts = config.localFontList();
 
+    if(fs::exists(fontDestPath) == false) {
+        fs::create_directory(fontDestPath);
+    }
+
     if(globalFonts.empty() == false || localFonts.empty() == false)
     {
-
-        if(fs::exists(fontDestPath) == false) {
-            fs::create_directory(fontDestPath);
-        }
 
         auto globalFontFolder = this->appPath.parent_path() / "../resources/fonts";
         for(auto& relativePath : globalFonts)
