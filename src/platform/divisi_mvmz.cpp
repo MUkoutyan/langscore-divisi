@@ -681,7 +681,13 @@ var $plugins =
                 {MustBeIncludedImage, "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s}
             }}
         };
-        formattedJson << newPlugin.dump() << ",\n";
+
+        if(size == 0) {
+            formattedJson << newPlugin.dump() << "\n";
+        }
+        else {
+            formattedJson << newPlugin.dump() << ",\n";
+        }
     }
 
     for(auto begin = jsonObject.begin(); begin != jsonObject.end(); ++begin)
