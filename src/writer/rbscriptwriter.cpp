@@ -32,7 +32,7 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
     switch(overwriteMode)
     {
         case MergeTextMode::AcceptTarget:
-            return true;
+            return true; 
             break;
     }
     return false;
@@ -183,7 +183,11 @@ void rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<TranslateText> 
 
     for(auto& t : texts)
     {
-        auto& original = t.translates[def_lang];
+        auto original = t.translates[def_lang];
+        if(original.empty()) {
+            original = t.original;
+        }
+
         auto result = std::find_if(translates.begin(), translates.end(), [&original](const auto& x){
             return std::get<0>(x) == original && std::get<2>(x) == false;
         });

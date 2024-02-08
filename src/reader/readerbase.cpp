@@ -190,6 +190,12 @@ std::vector<TranslateText> readerbase::convertScriptToCSV(std::filesystem::path 
 	if(loadFile.is_open() == false){ return {}; }
 	auto fileName = path.filename().stem();
 
+	std::u8string defaultLanguage;
+	{
+		config config;
+		defaultLanguage = utility::cnvStr<std::u8string>(config.defaultLanguage());
+	}
+
 	ScriptTextParser scriptParser;
 	std::vector<TranslateText> transTextList;
 	bool rangeComment = false;
@@ -234,6 +240,9 @@ std::vector<TranslateText> readerbase::convertScriptToCSV(std::filesystem::path 
 			std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
 			auto scriptPos = fileName.u8string() + u8":" + u8lineCount + u8":" + u8ColCountStr;
 			t.scriptLineInfo = scriptPos;
+			if(t.translates.find(defaultLanguage) != t.translates.end()) {
+				t.translates[defaultLanguage] = original;
+			}
 			transTextList.emplace_back(std::move(t));
 		}
 	}
