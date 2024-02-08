@@ -69,29 +69,32 @@ target_link_libraries(${TestProjectName}
 
 add_test(NAME test COMMAND ${TestProjectName})
 
+configure_file( ${CMAKE_SOURCE_DIR}/test/test_config.h.in ${CMAKE_SOURCE_DIR}/test/test_config.h )
+
 # テストデータをコピーするディレクトリを定義
-set(TEST_DATA_OUTPUT_DIR "./data")
+#set(TEST_DATA_OUTPUT_DIR "./data")
 
 # テストデータのコピー先ディレクトリを作成
-file(MAKE_DIRECTORY ${TEST_DATA_OUTPUT_DIR})
+#file(MAKE_DIRECTORY ${TEST_DATA_OUTPUT_DIR})
 
 # テストデータをコピーするカスタムターゲットを作成
-add_custom_target(copy_test_data ALL)
+#add_custom_target(copy_test_data ALL)
+
 
 # テストデータファイルを一つずつコピー
-file(GLOB TEST_DATA_FILES "./data/*")
-foreach(TEST_DATA_FILE ${TEST_DATA_FILES})
-    get_filename_component(FILE_NAME ${TEST_DATA_FILE} NAME)
-    set(OUTPUT_FILE "${TEST_DATA_OUTPUT_DIR}/${FILE_NAME}")
-    
-    # 依存関係を削除して、コピー元ファイルを常に新しいものとみなす
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${TEST_DATA_FILE})
-
-    add_custom_command(
-        TARGET copy_test_data
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${TEST_DATA_FILE}
-                ${OUTPUT_FILE}
-        DEPENDS ${TEST_DATA_FILE}
-    )
-endforeach()
+#file(GLOB TEST_DATA_FILES "./data/*")
+#foreach(TEST_DATA_FILE ${TEST_DATA_FILES})
+#    get_filename_component(FILE_NAME ${TEST_DATA_FILE} NAME)
+#    set(OUTPUT_FILE "${TEST_DATA_OUTPUT_DIR}/${FILE_NAME}")
+#    
+#    # 依存関係を削除して、コピー元ファイルを常に新しいものとみなす
+#    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${TEST_DATA_FILE})
+#
+#    add_custom_command(
+#        TARGET copy_test_data
+#        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#                ${TEST_DATA_FILE}
+#                ${OUTPUT_FILE}
+#        DEPENDS ${TEST_DATA_FILE}
+#    )
+#endforeach()

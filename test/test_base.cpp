@@ -1,4 +1,33 @@
-﻿IUTEST(Langscore_Config, TmpDir)
+﻿IUTEST(Langscore_Utility_Join, HandlesEmptyList) {
+	std::vector<std::string> list;
+	std::string separator = ", ";
+	std::string expected = "";
+	IUTEST_ASSERT_STREQ(expected, utility::join(list, separator));
+}
+
+IUTEST(Langscore_Utility_Join, HandlesSingleElement) {
+	std::vector<std::string> list = {"Hello"};
+	std::string separator = ", ";
+	std::string expected = "Hello";
+	IUTEST_ASSERT_STREQ(expected, utility::join(list, separator));
+}
+
+IUTEST(Langscore_Utility_Join, HandlesMultipleElements) {
+	std::vector<std::string> list = {"Hello", "World"};
+	std::string separator = ", ";
+	std::string expected = "Hello, World";
+	IUTEST_ASSERT_STREQ(expected, utility::join(list, separator));
+}
+
+IUTEST(Langscore_Utility_Join, HandlesMixedEmptyAndNonEmptyElements) {
+	std::vector<std::string> list = {"Hello", "", "World"};
+	std::string separator = ", ";
+	std::string expected = "Hello, , World";
+	IUTEST_ASSERT_STREQ(expected, utility::join(list, separator));
+}
+
+
+IUTEST(Langscore_Config, TmpDir)
 {
 	langscore::config config;
 

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <iutest.hpp>
 #include "config.h"
 #include "invoker.h"
@@ -16,6 +17,8 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+
+#include "test_config.h"
 
 
 using namespace std::string_literals;

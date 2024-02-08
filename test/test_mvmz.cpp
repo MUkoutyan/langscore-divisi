@@ -290,3 +290,48 @@ IUTEST(Langscore_MV_Divisi_Write, WritePluginJS)
 	IUTEST_SUCCEED();
 }
 
+
+IUTEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
+{
+	ClearGenerateFiles();
+	//テキストが一致するかの整合性を確認するテスト
+	langscore::config::detachConfigFile();
+	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_NoPlugins_langscore\\config.json");
+
+	IUTEST_ASSERT(divisi.analyze().valid());
+
+	IUTEST_ASSERT(divisi.write().valid());
+	langscore::config config;
+	auto outputPath = fs::path(config.gameProjectPath());
+
+	auto pluginJs = outputPath / "js" / "plugins.js";
+	IUTEST_ASSERT(fs::exists(pluginJs));
+
+	std::ifstream loadFile(pluginJs);
+	std::string content((std::istreambuf_iterator<char>(loadFile)), std::istreambuf_iterator<char>());
+	loadFile.close();
+
+	std::size_t startPos = content.find('[');
+	std::size_t endPos = content.rfind(']');
+
+	if(startPos == std::string::npos || endPos == std::string::npos) {
+		IUTEST_LOG_(FATAL) << "Not Found Backet" << std::endl;
+	}
+
+	auto jsonStr = utility::cnvStr<std::u8string>(content.substr(startPos, endPos - startPos + 1));
+
+	nlohmann::json jsonStruct = nlohmann::json::parse(jsonStr, nullptr);
+	//plugins.jsの読み込み失敗
+	if(jsonStruct.is_discarded()) {
+		IUTEST_LOG_(FATAL) << "Failure to load plugins.js" << std::endl;
+		IUTEST_FAIL();
+	}
+
+	auto item = jsonStruct.begin();
+	auto firstScriptName = (*item)["name"].get<std::string>();
+	IUTEST_ASSERT_STREQ(firstScriptName, "Langscore");
+
+	IUTEST_SUCCEED();
+}
+
+
