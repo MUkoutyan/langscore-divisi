@@ -27,7 +27,7 @@
  * 
  * @arg language
  * @text language to change
- * @desc The characters that can be specified are "en", "ja".
+ * @desc The characters that can be specified are %{SUPPORT_LANGUAGE_STR}%.
  * 
  * @param Default Language
  * @text Default language.
@@ -62,7 +62,7 @@
  * 
  * @arg language
  * @text 変更する言語
- * @desc 指定可能な文字は"en","ja"です。
+ * @desc 指定可能な文字は%{SUPPORT_LANGUAGE_STR}%です。
  * 
  * @param Default Language
  * @text デフォルト言語
@@ -138,11 +138,11 @@ class Langscore
     this.ls_current_map = new Map;
     this.ls_graphic_cache = {};
 
-if(StorageManager.isLocalMode()){
-    this.fs = require('fs');
-    this.path = require('path');
-    this.basePath = this.path.dirname(process.mainModule.filename);
-}
+    if(StorageManager.isLocalMode()){
+        this.fs = require('fs');
+        this.path = require('path');
+        this.basePath = this.path.dirname(process.mainModule.filename);
+    }
   }
 
   isLoaded()
@@ -210,9 +210,9 @@ if(StorageManager.isLocalMode()){
     for (const originText of Object.keys(langscore_map)) {
       var transMap = langscore_map[originText];
       for (let transText of Object.values(transMap)) {
-          if (transText === transed_text) {
-              return originText;
-          }
+        if (transText === transed_text) {
+            return originText;
+        }
       }
   }
     return origin;
@@ -278,8 +278,8 @@ if(StorageManager.isLocalMode()){
       return;
     }
 
-        Langscore.currentFont = Langscore.FontList[lang];
-if(!Langscore.currentFont){
+    Langscore.currentFont = Langscore.FontList[lang];
+    if(!Langscore.currentFont){
       console.error(`Langscore: No font is set for ${lang}. Skip font update.`)
       return;
     }
@@ -293,16 +293,16 @@ if(!Langscore.currentFont){
 
     if(Langscore.isMV())
     {
-    //デフォルトのM+1フォントの場合、GameFontとしてロード&定義済みなのでそちらを使う。
-    //M+ 1m regularとするとフォントサイズがやたらと小さくなる現象が起こる。調査しづらいので暫定でこの対処。
-    if(currentFontName.toLowerCase() === "m+ 1m regular"){
-      Langscore.currentFont.name = "GameFont";
-    }
+      //デフォルトのM+1フォントの場合、GameFontとしてロード&定義済みなのでそちらを使う。
+      //M+ 1m regularとするとフォントサイズがやたらと小さくなる現象が起こる。調査しづらいので暫定でこの対処。
+      if(currentFontName.toLowerCase() === "m+ 1m regular"){
+        Langscore.currentFont.name = "GameFont";
+      }
 
-    if(Langscore.currentFont["isLoaded"] === false){
-      Graphics.loadFont(currentFontName,`fonts/${Langscore.currentFont.fileName}`)
-      Langscore.currentFont["isLoaded"] = true;
-    }
+      if(Langscore.currentFont["isLoaded"] === false){
+        Graphics.loadFont(currentFontName,`fonts/${Langscore.currentFont.fileName}`)
+        Langscore.currentFont["isLoaded"] = true;
+      }
     }
     else if(Langscore.isMZ())
     {      
@@ -459,18 +459,18 @@ if(!Langscore.currentFont){
     const stackJSONValues = [];
 
     for (let i = 0; i < keys.length - 1; i++) {
-        try {
-          if (typeof current[keys[i]] === 'string') {
-              try {
-                current[keys[i]] = JSON.parse(current[keys[i]]);
-                //JSONとして解析できたもののみを積んでいく
-                stackJSONValues.push(current[keys[i]]);
-              } catch (e) {
-              }
+      try {
+        if (typeof current[keys[i]] === 'string') {
+          try {
+            current[keys[i]] = JSON.parse(current[keys[i]]);
+            //JSONとして解析できたもののみを積んでいく
+            stackJSONValues.push(current[keys[i]]);
+          } catch (e) {
           }
-        } catch(e){
         }
-        current = current[keys[i]];
+      } catch(e){
+      }
+      current = current[keys[i]];
     }
 
     if(!current){ 
@@ -631,9 +631,9 @@ Game_Interpreter.prototype.pluginCommand = function( command, args ) {
 
 //MZ向けの対応
 if(Langscore.isMZ()){
-PluginManager.registerCommand('Langscore', "changeLanguage", args => {
-  _langscore.changeLanguage(args['language']);
-});
+  PluginManager.registerCommand('Langscore', "changeLanguage", args => {
+    _langscore.changeLanguage(args['language']);
+  });
 }
 
 
@@ -653,13 +653,13 @@ var DataManager_loadMapData = DataManager.loadMapData;
 DataManager.loadMapData = function(mapId) 
 {
   DataManager_loadMapData.call(this, mapId);
-if(Langscore.isMV())
+  if(Langscore.isMV())
   {
-  if(mapId > 0){
-    var fileName = 'Map%1.csv'.format(mapId.padZero(3));
-    _langscore.mapLoader = ResourceHandler.createLoader('data/translate/' + fileName, _langscore.loadMapDataFile.bind(this, mapId));
-    _langscore.loadMapDataFile(mapId);
-}
+    if(mapId > 0){
+      var fileName = 'Map%1.csv'.format(mapId.padZero(3));
+      _langscore.mapLoader = ResourceHandler.createLoader('data/translate/' + fileName, _langscore.loadMapDataFile.bind(this, mapId));
+      _langscore.loadMapDataFile(mapId);
+    }
   }
   else if(Langscore.isMZ())
   {
