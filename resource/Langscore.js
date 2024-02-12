@@ -54,7 +54,14 @@
  * [MV向けの説明]
  * プラグインコマンド
  * #langに言語文字を指定します。指定可能な文字は%{SUPPORT_LANGUAGE_STR}%です。
+ * ダブルクォーテーションは含まないで下さい。
  * Langscore changeLanguage #lang 
+ * 
+ * [MZ向けの説明]
+ * プラグインコマンド
+ * コマンド名「言語の変更」を選び、変更する言語の項目に言語文字を指定します。
+ * 指定可能な文字は%{SUPPORT_LANGUAGE_STR}%です。
+ * ダブルクォーテーションは含まないで下さい。
  *  
  * @command changeLanguage
  * @text 言語の変更
@@ -70,7 +77,7 @@
  * @default %{DEFAULT_LANGUAGE}%
  * 
  * @param Must Be Included Image
- * @desc デプロイメント時に「未使用ファイルを含まない」をチェックした際も必ず含めるファイルを指定します。
+ * @desc デプロイメント時に「未使用ファイルを含まない」をチェックした際も、必ず含めるファイルを指定します。
  * @default
  * @require 1
  * @dir img/
