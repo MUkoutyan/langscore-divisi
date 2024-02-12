@@ -632,7 +632,7 @@ Game_Interpreter.prototype.pluginCommand = function( command, args ) {
 //MZ向けの対応
 if(Langscore.isMZ()){
 PluginManager.registerCommand('Langscore', "changeLanguage", args => {
-  _langscore.changeLanguage(args[1]);
+  _langscore.changeLanguage(args['language']);
 });
 }
 
