@@ -613,6 +613,8 @@ _langscore = new Langscore();
 
 (function() {
   'use strict';
+
+//MV向けの対応
 const Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
 Game_Interpreter.prototype.pluginCommand = function( command, args ) {
   Game_Interpreter_pluginCommand.call( this, command, args );
@@ -626,6 +628,13 @@ Game_Interpreter.prototype.pluginCommand = function( command, args ) {
         break;
     }
 };
+
+//MZ向けの対応
+if(Langscore.isMZ()){
+PluginManager.registerCommand('Langscore', "changeLanguage", args => {
+  _langscore.changeLanguage(args[1]);
+});
+}
 
 
 var DataManager_loadDatabase = DataManager.loadDatabase;
