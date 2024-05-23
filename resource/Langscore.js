@@ -779,7 +779,7 @@ var Window_Base_convertEscapeCharacters = Window_Base.prototype.convertEscapeCha
 Window_Base.prototype.convertEscapeCharacters = function(text) 
 {
   if (text.length === 0) {
-    return Window_Base_convertEscapeCharacters(text)
+    return Window_Base_convertEscapeCharacters.call(this, text);
   }
 
   let result = _langscore.translate_for_map(text);
@@ -795,7 +795,7 @@ Window_Base.prototype.convertEscapeCharacters = function(text)
     return Window_Base_convertEscapeCharacters.call(this, result);
   }
   
-  return Window_Base_convertEscapeCharacters(text);
+  return Window_Base_convertEscapeCharacters.call(this, text);
 }
 
 
