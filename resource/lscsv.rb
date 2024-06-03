@@ -23,7 +23,7 @@ class LSCSV
     #To Hash
     result = {}
     rows[1...rows.size].each do |r|
-      origin = r[0]
+      origin = r[0].chomp("\n")
       trans  = r[1...header.size]
 
       transhash = {}

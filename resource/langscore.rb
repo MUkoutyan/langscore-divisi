@@ -1,7 +1,7 @@
 #---------------------------------------------------------------
 # 
 # Langscore CoreScript "Unison" 
-# Version 1.0.0
+# Version 1.0.1
 # Written by BreezeSinfonia 來奈津
 # 
 # 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -333,20 +333,22 @@ class Window_Base < Window
     if text.empty?
       return ls_base_convert_escape_characters(text)
     end
-
+    
+    key = text.chomp("\n");
+    
     #マップ・バトル・コモンイベントかを判別できないので苦肉の策
     result_text = [text, text, text]
     updateThreads = []
     if $ls_current_map
       updateThreads << Thread.new do
-        result_text[0] = Langscore.translate_for_map(text)
+        result_text[0] = Langscore.translate_for_map(key)
       end
     end
     updateThreads << Thread.new do
-      result_text[1] = Langscore.translate(text, $ls_troop_tr)
+      result_text[1] = Langscore.translate(key, $ls_troop_tr)
     end
     updateThreads << Thread.new do
-      result_text[2] = Langscore.translate(text, $ls_common_event)
+      result_text[2] = Langscore.translate(key, $ls_common_event)
     end
 
     updateThreads.each { |t| t.join }
@@ -358,8 +360,9 @@ class Window_Base < Window
     if result.empty? 
       return ls_base_convert_escape_characters(text)
     end
-
-    ls_base_convert_escape_characters(result[0])
+    
+    #Game_Message.all_textと同様に改行を付与する。
+    ls_base_convert_escape_characters(result[0] + "\n")
   end
 
 end
