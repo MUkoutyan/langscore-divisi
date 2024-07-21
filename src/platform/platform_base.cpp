@@ -331,9 +331,10 @@ std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> platform_base
 {
     static const std::vector<std::u8string> escWithValueChars = {
         u8"\\v[", u8"\\n[", u8"\\p[", u8"\\c[", u8"\\l[", u8"\\r["
+        u8"\\V[", u8"\\N[", u8"\\P[", u8"\\C[", u8"\\L[", u8"\\R["
     };
     static const std::vector<std::u8string> escChars = {
-        u8"\\g", u8"\\{", u8"\\}", u8"\\$", u8"\\.", u8"\\|",
+        u8"\\g", u8"\\G", u8"\\{", u8"\\}", u8"\\$", u8"\\.", u8"\\|",
         u8"\\!", u8"\\>", u8"\\<", u8"\\^", u8"\\\\"
     };
 

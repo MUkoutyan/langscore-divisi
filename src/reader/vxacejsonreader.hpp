@@ -61,8 +61,9 @@ namespace langscore
 		}
 		void addText(std::u8string text, int code = 0)
 		{
+            using namespace std::literals::string_literals;
+
 			if(stackText){
-				//1行に付き必ず改行が挟まる。(VXAceのみの仕様？MV/MZは要確認)
 				stackTextStr += text + u8'\n';
 				return;
 			}
@@ -72,6 +73,8 @@ namespace langscore
 					return;
 				}
 			}
+
+            text = utility::right_trim(text, u8"\n"s);
 
 			//※リード処理はCSV用のテキストに変換しない。
 

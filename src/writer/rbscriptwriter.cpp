@@ -107,7 +107,10 @@ ErrorStatus rbscriptwriter::write(std::filesystem::path filePath, MergeTextMode 
             for(auto& line : list)
             {
                 auto parsed = utility::split(line.scriptLineInfo, u8':');
-                auto filepath = std::vformat(funcComment, std::make_format_args(utility::toString(parsed[0]), utility::toString(parsed[1]), utility::toString(parsed[2])));
+                auto arg1 = utility::toString(parsed[0]);
+                auto arg2 = utility::toString(parsed[1]);
+                auto arg3 = utility::toString(parsed[2]);
+                auto filepath = std::vformat(funcComment, std::make_format_args(arg1, arg2, arg3));
                 outFile << tab << "#" + filepath << nl;
                 outFile << tab << "#original : " << utility::toString(line.original) << nl;
                 outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.scriptLineInfo) << "\")" << nl;

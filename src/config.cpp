@@ -1,18 +1,7 @@
 #include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
-#include <array>
 
 using namespace langscore;
 using namespace std::literals::string_literals;
@@ -396,4 +385,3 @@ int langscore::config::globalWriteMode()
 	auto& write = pImpl->json[key(JsonKey::Write)];
 	return pImpl->get(write[key(JsonKey::WriteType)], 0);
 }
-

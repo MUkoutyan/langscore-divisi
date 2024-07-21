@@ -5,7 +5,7 @@
 
 namespace langscore
 {
-    enum class MergeTextMode : size_t
+    enum class MergeTextMode : int
     {
         AcceptSource = 0,   //元のファイルを残す
         AcceptTarget = 1,   //先のファイルを残す

@@ -9,7 +9,7 @@
 
 namespace langscore
 {
-enum class MergeTextMode : size_t;
+enum class MergeTextMode : int;
 
 class divisi
 {
@@ -22,6 +22,10 @@ public:
     ErrorStatus write();
     ErrorStatus validate();
     ErrorStatus packing();
+
+    ErrorStatus createConfig(std::filesystem::path gameProjectDirectory);
+
+    ErrorStatus outputTestScript(config::ProjectType projType);
 
 private:
     class Impl;
