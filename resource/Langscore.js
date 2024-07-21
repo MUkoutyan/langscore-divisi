@@ -419,10 +419,10 @@ class Langscore
     };
     $dataSkills.forEach(function(skill,i){
       if($dataSkills[i] === null){ return; }
-      $dataSkills[i].name         = elm_trans(skill.name);
-      $dataSkills[i].description = elm_trans(skill.description);
-      $dataSkills[i].message1   = elm_trans(skill.message1);
-      $dataSkills[i].message2   = elm_trans(skill.message2);
+      $dataSkills[i].name        = elm_trans(_langscore.fetch_original_text(skill.name, _langscore.ls_skills_tr));
+      $dataSkills[i].description = elm_trans(_langscore.fetch_original_text(skill.description, _langscore.ls_skills_tr));
+      $dataSkills[i].message1    = elm_trans(_langscore.fetch_original_text(skill.message1, _langscore.ls_skills_tr));
+      $dataSkills[i].message2    = elm_trans(_langscore.fetch_original_text(skill.message2, _langscore.ls_skills_tr));
     });
   };
 
@@ -431,13 +431,13 @@ class Langscore
     const elm_trans =(el) => {
       return this.translate(el, this.ls_states_tr);
     };
-    $dataStates.forEach(function(skill,i){
+    $dataStates.forEach(function(state,i){
       if($dataStates[i] === null){ return; }
-      $dataStates[i].name        = elm_trans(skill.name);
-      $dataStates[i].message1  = elm_trans(skill.message1);
-      $dataStates[i].message2  = elm_trans(skill.message2);
-      $dataStates[i].message3  = elm_trans(skill.message3);
-      $dataStates[i].message4  = elm_trans(skill.message4);
+      $dataStates[i].name      = elm_trans(state.name);
+      $dataStates[i].message1  = elm_trans(state.message1);
+      $dataStates[i].message2  = elm_trans(state.message2);
+      $dataStates[i].message3  = elm_trans(state.message3);
+      $dataStates[i].message4  = elm_trans(state.message4);
     });
   };
 
@@ -814,13 +814,35 @@ DataManager.isDatabaseLoaded = function(){
   return result;
 }
 
+function deepCloneWithPrototype(obj) 
+{
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  // 新しいオブジェクトを元のオブジェクトのプロトタイプを用いて作成
+  const copy = Object.create(Object.getPrototypeOf(obj));
+
+  // プロパティを再帰的にコピー
+  for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+          copy[key] = deepCloneWithPrototype(obj[key]);
+      }
+  }
+
+  return copy;
+}
 //セーブを行う際は原文で保存
 //プラグインを外した際に変に翻訳文が残ることを避ける。
 var DataManager_makeSaveContents = DataManager.makeSaveContents;
-DataManager.makeSaveContents = function(){
+DataManager.makeSaveContents = function()
+{
 
-  var gameActorsTemp = $gameActors;
-  var classesTemp = $dataClasses;
+  //=代入はシャローコピーになるため、Tempにも変更が反映される。
+  //また、JSONを使用するディープコピーもprotoがコピーされず、
+  //.actor()等へのアクセスが行えなくなるため注意。
+  var gameActorsTemp = deepCloneWithPrototype($gameActors);
+  var classesTemp = deepCloneWithPrototype($dataClasses);
 
   for (var i = 0; i < $dataActors.length; ++i) {
     var actor = $gameActors.actor(i);
