@@ -51,7 +51,7 @@ set(test_sources
 
 set(TestProjectName ${PROJECT_NAME}-test)
 
-set(DIVISI_TEST_RESOURCE data/)
+set(DIVISI_TEST_RESOURCE plugin/data/)
 foreach(dir ${DIVISI_TEST_RESOURCE})
 file(COPY ./${dir} DESTINATION ${PROJECT_BINARY_DIR}/../${dir})
 endforeach()

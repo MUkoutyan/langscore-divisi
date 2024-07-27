@@ -1,6 +1,20 @@
 #!/bin/bash
 
 # 使用するポート番号を指定
+# 引数の数を確認
+if [ "$#" -eq 0 ]; then
+    echo "エラー: 引数が指定されていません。" >&2
+    exit 1
+fi
+
+# 各引数が空かどうかを確認
+for arg in "$@"; do
+    if [ -z "$arg" ]; then
+        echo "エラー: 引数に空の値が含まれています。" >&2
+        exit 1
+    fi
+done
+
 FOLDER=$1
 PORT=8180
 DIRECTORY=/mnt/d/Programming/Github/langscore-divisi/test/plugin/$FOLDER
@@ -12,6 +26,8 @@ if lsof -i:$PORT -t >/dev/null; then
 fi
 
 echo "Starting http-server on port $PORT"
+
+rm http-server.log
 
 nohup http-server $DIRECTORY -p $PORT > http-server.log 2>&1 &
 HTTP_SERVER_PID=$!
