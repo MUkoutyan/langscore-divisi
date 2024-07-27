@@ -6,6 +6,7 @@ require 'csv'
 require 'optparse'
 require 'json'
 
+
 module RPG
   module ToJson
     def to_json(*a)
@@ -509,7 +510,7 @@ opt.on_head('-i PROJPATH', '--input PROJPATH'){ |v|
 }
 
 output_folder = ""
-opt.on('-o OUTPUTPATH', '-output OUTPUTPATH'){ |v| 
+opt.on('-o OUTPUTPATH', '--output OUTPUTPATH'){ |v| 
   output_folder = File.absolute_path(v)
   output_folder.chop! if output_folder.end_with?('/')
 
@@ -538,15 +539,18 @@ CSV_SCRIPTLIST_NAME = 1
 EMPTY_SCRIPT_NAME   = "_NONAME_"
 
 if packing
+  p "Packing..."
   class LsDumpData
     attr_accessor :data
   end
   read_dir = input_folder_path
+  p "Check #{read_dir}"
   Dir.glob('*.csv', base: read_dir).each do |fileName|
   
     origin = LsDumpData.new
     File.open(input_folder_path + "/" + fileName, 'rb:utf-8:utf-8') do |file|
       texts = file.readlines().join()
+      #Map系に\r\nが含まれていたら\nに変換
       if fileName.match?(/Map\d+/)
         texts = texts.gsub(/\r\n/, '\n')
       end
@@ -565,7 +569,7 @@ if packing
 end
 
 if compress
-  
+  p "Compress..."
   compressData = []
   exported_script_folder = input_folder_path+'_langscore/analyze/Scripts'
   script_list_path = exported_script_folder + '/_list.csv'
@@ -613,6 +617,7 @@ end
 #スクリプトの展開
 script_list = []
 if File.exist?(data_folder+"/Scripts.rvdata2")
+  p "Extending Scripts.rvdata2"
   File.open(data_folder+"/Scripts.rvdata2", 'rb') do |file|
     Marshal.load(file.read).each do |id, name, script|
       d = Zlib::Inflate.inflate(script)
@@ -660,10 +665,11 @@ if File.exist?(data_folder)
   Dir.foreach(data_folder) do |filename|
     next if filename == '.' || filename == '..'
     
-    if filename.match?(/\A(Actors|Animations|Armors|Classes|CommonEvents|Enemies|Items|Map[0-9]{3}|Skills|States|System|Troops|Weapons)\.rvdata2\z/)
+    if filename =~ /\A(Actors|Animations|Armors|Classes|CommonEvents|Enemies|Items|Map[0-9]{3}|Skills|States|System|Troops|Weapons)\.rvdata2\z/
       p filename
       rvdata_list << filename
     end
+    
   end
   rvdata_list.each do |rvdata|
     data = ''
