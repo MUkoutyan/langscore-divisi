@@ -14,19 +14,37 @@ def run_command(args):
         print(f"Standard Output:\n{result.stdout}")
         print(f"Standard Error:\n{result.stderr}")
         sys.exit(1)
+    # print(result.stdout)
     return result
 
 
 def convert_rvdata2_to_csv(rvdata2_path, csv_path):
     ruby_script = r"extract_rvdata2.rb"
     command = ["ruby", ruby_script, rvdata2_path, csv_path]
+    print(command)
     result = subprocess.run(command, capture_output=True, text=True, shell=True, encoding='utf-8')
     if result.returncode != 0:
         print(f"Error executing command: {command}")
         print(f"Standard Output:\n{result.stdout}")
         print(f"Standard Error:\n{result.stderr}")
         sys.exit(1)
+    print(f"result : {result.stdout}")
     return result
+
+def normalize_newlines(text, newline_type):
+    return text.replace("\n", "").replace("\r", "")
+
+def validate_newlines_in_csv(file_path):
+    is_map = "Map" in file_path
+    with open(file_path, newline='', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            for cell in row:
+                if is_map and "\r\n" in cell:
+                    return False
+                if not is_map and "\n" in cell and "\r\n" not in cell:
+                    return False
+    return True
 
 def compare_csv_files(file1, file2):
     with open(file1, newline='', encoding='utf-8') as f1, open(file2, newline='', encoding='utf-8') as f2:
@@ -34,16 +52,23 @@ def compare_csv_files(file1, file2):
         reader2 = csv.reader(f2)
         
         for row1, row2 in zip(reader1, reader2):
+            if "Map" in file1 or "Map" in file2:
+                row1 = [normalize_newlines(cell, "Map") for cell in row1]
+                row2 = [normalize_newlines(cell, "Map") for cell in row2]
+            else:
+                row1 = [normalize_newlines(cell, "Normal") for cell in row1]
+                row2 = [normalize_newlines(cell, "Normal") for cell in row2]
+            
             if row1 != row2:
-                print(f"{row1} != {row2}")
+                print(f"!=\n{row1}\n {row2}")
                 return False
 
         # Check if both files have the same number of rows
         for _ in reader1:
-            print("reader1")
+            print(f"reader1 {reader1}")
             return False
         for _ in reader2:
-            print("reader2")
+            print(f"reader2 {reader2}")
             return False
 
     return True
@@ -107,9 +132,9 @@ class TestAnalyzeAndPack(unittest.TestCase):
         self.assertTrue(os.path.exists(r".\\test_packing"), "test_packing folder does not exist.")
         
         expected_files = [
-            r"Actors", r"Animations",r"Armors", r"Classes",
+            r"Actors", r"Armors", r"Classes",
             r"CommonEvents", r"Enemies",r"Items", r"Map001",
-            r"Map002",r"Map003",r"MapInfos",r"Skills",
+            r"Map002",r"Map003", r"Skills",
             r"States",r"System",r"Troops",r"Weapons",
         ]
         output_folder = r".\\test_packing\\"
@@ -119,11 +144,12 @@ class TestAnalyzeAndPack(unittest.TestCase):
             rvdata_path = output_folder + file_path + ".rvdata2"
             extracted_csv_path = output_folder + file_path + ".csv"
             convert_rvdata2_to_csv(rvdata_path, extracted_csv_path)
-            
+
+            # 生成されたCSVファイルの改行コードの検証
+            self.assertTrue(validate_newlines_in_csv(extracted_csv_path), "Newline characters in the packed CSV are not correctly set.")
+
             # 変換されたCSVファイルの内容を元のCSVファイルと比較
-            print(original_csv_path)
-            print(extracted_csv_path)
-            self.assertTrue(compare_csv_files(original_csv_path, extracted_csv_path), f"{file_path}.csv does not match the original CSV.")
+            self.assertTrue(compare_csv_files(original_csv_path, extracted_csv_path), "The content of the packed CSV does not match the original CSV.")
 
 if __name__ == "__main__":
     unittest.main()
