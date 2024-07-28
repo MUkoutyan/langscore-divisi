@@ -5,6 +5,7 @@ require 'zlib'
 require 'csv'
 require 'optparse'
 require 'json'
+require_relative '../resource/lscsv.rb'
 
 
 module RPG
@@ -497,6 +498,40 @@ ObjectSpace.each_object(Class) do |c|
   end
 end
 
+def fix_newlines_in_csv(input_texts)
+  header = LSCSV.fetch_header(input_texts)
+  rows = LSCSV.parse_col(header, LSCSV.parse_row(input_texts))
+
+  # 改行文字の修正
+  rows[1...rows.size].each do |row|
+    row.map! do |field|
+      is_add_dq = false
+      if field.include?("\n") && !field.include?("\r\n")
+        field.gsub!("\n", "\r\n")
+        is_add_dq = true
+      elsif field.include?("\"")
+        field.gsub!("\"", "\"\"")
+        is_add_dq = true
+      elsif field.include?(",")
+        is_add_dq = true
+      end
+
+      if is_add_dq
+        field = "\"" + field + "\""
+      else
+        field
+      end
+    end
+  end
+
+  result = ""
+  result += header.join(",") + "\n"
+  rows[1...rows.size].each do |r|
+    result += r.join(",") + "\n"
+  end
+  return result.chomp("\n")
+end
+
 
 #================================================
 opt = OptionParser.new
@@ -550,9 +585,15 @@ if packing
     origin = LsDumpData.new
     File.open(input_folder_path + "/" + fileName, 'rb:utf-8:utf-8') do |file|
       texts = file.readlines().join()
-      #Map系に\r\nが含まれていたら\nに変換
       if fileName.match?(/Map\d+/)
+        #Map系に\r\nが含まれていたら\nに変換
         texts = texts.gsub(/\r\n/, '\n')
+      elsif fileName.include?("Scripts")
+        #スクリプト系は一旦無加工にする。
+      else
+        #その他のデータ内の文字列は改行文字が\r\nとなるため、
+        #\nのみの改行だった場合は\r\nに修正して埋める。
+        texts = fix_newlines_in_csv(texts)
       end
       origin.data = texts
     end
