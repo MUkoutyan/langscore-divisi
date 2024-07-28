@@ -24,6 +24,7 @@ namespace langscore
 		};
 		struct Language
 		{
+            bool isEnable;
 			std::string name;
 			FontData font;
 		};

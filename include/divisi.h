@@ -23,7 +23,7 @@ public:
     ErrorStatus validate();
     ErrorStatus packing();
 
-    ErrorStatus createConfig(std::filesystem::path gameProjectDirectory);
+    ErrorStatus createConfig();
 
     ErrorStatus outputTestScript(config::ProjectType projType);
 

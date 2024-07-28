@@ -1,9 +1,7 @@
 #include "divisi.h"
-#include "divisi.h"
-#include "divisi.h"
-#include "divisi.h"
 #include "utility.hpp"
 #include "invoker.h"
+#include "config_writer.h"
 #include "nlohmann/json.hpp"
 
 #include "writer/rbscriptwriter.h"
@@ -17,6 +15,7 @@
 #include <chrono>
 #include <thread>
 #include <future>
+#include <ranges>
 #include <mutex>
 
 using namespace langscore;
@@ -26,6 +25,7 @@ class divisi::Impl
 {
 public:
     fs::path appPath;
+    fs::path configPath;
 
     std::unique_ptr<platform_base> converter;
 
@@ -73,9 +73,10 @@ public:
 divisi::divisi(fs::path appPath, std::filesystem::path configPath)
     : pImpl(std::make_unique<Impl>())
 {
-    config::attachConfigFile(std::move(configPath));
     pImpl->converter = nullptr;
     pImpl->appPath = std::move(appPath);
+    pImpl->configPath = configPath;
+    config::attachConfigFile(std::move(configPath));
 }
 
 divisi::~divisi(){}
@@ -113,5 +114,17 @@ ErrorStatus divisi::packing()
     auto result = pImpl->setupConverter();
     if(result.invalid()){ return result; }
     return pImpl->converter->packing();
+}
+
+ErrorStatus langscore::divisi::createConfig()
+{
+    config_writer writer(pImpl->configPath);
+
+    return writer.write() ? ErrorStatus::Module::None : ErrorStatus::Module::None;
+}
+
+ErrorStatus divisi::outputTestScript(config::ProjectType projType)
+{
+    return ErrorStatus::Module::None;
 }
 

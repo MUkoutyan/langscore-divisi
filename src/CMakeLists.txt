@@ -48,7 +48,7 @@ set(lib_files
 	${PROJECT_SOURCE_DIR}/3rdparty/hash-library/md5.cpp
 	${PROJECT_SOURCE_DIR}/3rdparty/hash-library/crc32.cpp
     "writer/jsscriptwriter.h"
-	"writer/jsscriptwriter.cpp")
+	"writer/jsscriptwriter.cpp" "config_writer.cpp")
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
 add_library (divisi_lib STATIC ${lib_files})

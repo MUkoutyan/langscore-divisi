@@ -164,6 +164,7 @@ std::vector<config::Language> config::languages()
 
 
 		result.emplace_back(
+            lang[key(JsonKey::Enable)],
 			pImpl->get(lang[key(JsonKey::LanguageName)], "ja"s),
 			FontData{
 				utility::cnvStr<std::u8string>(pImpl->get(lang[key(JsonKey::FontName)], fontFamily)),

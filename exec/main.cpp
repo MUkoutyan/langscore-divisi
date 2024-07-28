@@ -3,18 +3,55 @@
 #include "../src/reader/csvreader.h"
 #include <iostream>
 #include "versioninfo.h"
+#include "config.h"
 
 struct ARGS
 {
 	std::filesystem::path appPath;
 	std::filesystem::path configFile;
+    bool createConfigFile = false;
 	bool analyze = false;
 	bool update = false;
 	bool write = false;
 	bool validate = false;
 	bool packing = false;
+    bool outputTestScript = false;
 	langscore::MergeTextMode overwriteMode = langscore::MergeTextMode::AcceptSource;
+    langscore::config::ProjectType projectType = langscore::config::ProjectType::None;
 };
+
+std::filesystem::path getFilePathFromArgs(int& i, const int argc, const char* argv[])
+{
+    std::string path = argv[i];
+
+    if(path.empty()) { return ""; }
+    //"で括られていなければそのまま解釈。
+    if(path[0] != '\"') {
+        return path;
+    }
+    //"で括られている場合でも、取得した文字列が"で終わるなら
+    //空白文字が無いパターンなので、そのまま解釈。
+    if(*(path.rbegin()) == '\"') {
+        path.erase(path.size() - 1, 1);
+        path.erase(path.begin());
+        return path;
+    }
+
+    i += 1;
+    for(; i < argc; ++i) {
+        std::string nextPath = argv[i];
+        path += " " + nextPath;
+        if(*(nextPath.rbegin()) == '\"') {
+            break;
+        }
+    }
+
+    if(*(path.rbegin()) == '\\' || *(path.rbegin()) == '/') {
+        path.erase(path.size() - 1, 1);
+    }
+    path.erase(path.begin());
+    return path;
+}
 
 ARGS analyzeOption(int argc, const char* argv[])
 {
@@ -25,42 +62,10 @@ ARGS analyzeOption(int argc, const char* argv[])
 	{
 		std::string_view str = argv[i];
 		std::cout << str << " ";
-		if(str.find("-c") != std::string_view::npos){
+		if(str == "-c"){
 			++i;	//次の要素を読み込む
-			std::string path = argv[i];
-			args.configFile = argv[i];
-
-			if(path.empty()) { continue; }
-			//"で括られていなければそのまま解釈。
-			if(path[0] != '\"') {
-				args.configFile = path;
-				std::cout << path << " ";
-				continue;
-			}
-			//"で括られている場合でも、取得した文字列が"で終わるなら
-			//空白文字が無いパターンなので、そのまま解釈。
-			if(*(path.rbegin()) == '\"') {
-				path.erase(path.size() - 1, 1);
-				path.erase(path.begin());
-				args.configFile = path;
-				std::cout << path << " ";
-				continue;
-			}
-
-			i += 1;
-			for(; i < argc; ++i) {
-				std::string nextPath = argv[i];
-				path += " " + nextPath;
-				if(*(nextPath.rbegin()) == '\"') {
-					break;
-				}
-			}
-
-			path.erase(path.size()-1, 1);
-			path.erase(path.begin());
-
-			args.configFile = path;
-			std::cout << path << " ";
+            args.configFile = getFilePathFromArgs(i, argc, argv);
+			std::cout << args.configFile << " ";
 
 		}
 		else if(str.find("--analyze") != std::string_view::npos){
@@ -78,6 +83,39 @@ ARGS analyzeOption(int argc, const char* argv[])
 		else if(str.find("--packing") != std::string_view::npos){
 			args.packing = true;
 		}
+        else if(str.find("--outputTestScript") != std::string_view::npos) {
+            args.outputTestScript = true;
+            ++i;	//次の要素を読み込む
+            args.configFile = getFilePathFromArgs(i, argc, argv);
+            std::string type = argv[i];
+            std::transform(type.cbegin(), type.cend(), type.begin(), [](unsigned char c) { return std::toupper(c); });
+            if(type == "MV") {
+                args.projectType = langscore::config::MV;
+            }
+            else if(type == "MZ") {
+                args.projectType = langscore::config::MZ;
+            }
+            else if(type == "VXACE") {
+                args.projectType = langscore::config::VXAce;
+            }
+        }
+        else if(str.find("--createConfigFile") != std::string_view::npos) {
+            args.createConfigFile = true;
+            ++i;	//次の要素を読み込む
+            args.configFile = getFilePathFromArgs(i, argc, argv);
+            //std::string type = argv[i];
+            //std::transform(type.begin(), type.end(), type.begin(), [](unsigned char c) { return std::toupper(c); });
+            //if(type == "MV") {
+            //    args.projectType = langscore::config::MV;
+            //}
+            //else if(type == "MZ") {
+            //    args.projectType = langscore::config::MZ;
+            //}
+            //else if(type == "VXACE") {
+            //    args.projectType = langscore::config::VXAce;
+            //}
+        }
+        
 	}
 	std::cout << std::endl;
 	return args;
@@ -99,6 +137,10 @@ int main(int argc, const char* argv[])
 	langscore::divisi divisi(args.appPath, args.configFile);
 
 	ErrorStatus result;
+    if(args.createConfigFile) {
+        result = divisi.createConfig();
+    }
+
 	if(args.analyze){
 		result = divisi.analyze();
 	}
