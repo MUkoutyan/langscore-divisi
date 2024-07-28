@@ -5,6 +5,7 @@ import csv
 import sys
 import unittest
 
+is_delete_files = True
 def run_command(args):
     RVCNV_PATH = r"..\\..\\..\\rvcnv\\rvcnv.exe"
     command = [RVCNV_PATH] + args
@@ -13,22 +14,34 @@ def run_command(args):
         print(f"Error executing command: {command}")
         print(f"Standard Output:\n{result.stdout}")
         print(f"Standard Error:\n{result.stderr}")
+        is_delete_files = False
         sys.exit(1)
-    # print(result.stdout)
     return result
 
 
 def convert_rvdata2_to_csv(rvdata2_path, csv_path):
     ruby_script = r"extract_rvdata2.rb"
     command = ["ruby", ruby_script, rvdata2_path, csv_path]
-    print(command)
     result = subprocess.run(command, capture_output=True, text=True, shell=True, encoding='utf-8')
     if result.returncode != 0:
         print(f"Error executing command: {command}")
         print(f"Standard Output:\n{result.stdout}")
         print(f"Standard Error:\n{result.stderr}")
+        is_delete_files = False
         sys.exit(1)
-    print(f"result : {result.stdout}")
+    return result
+
+    
+def extract_script_data(project_path, output_path):
+    ruby_script = r"extract_script.rb"
+    command = ["ruby", ruby_script, project_path, output_path]
+    result = subprocess.run(command, capture_output=True, text=True, shell=True, encoding='utf-8')
+    if result.returncode != 0:
+        print(f"Error executing command: {command}")
+        print(f"Standard Output:\n{result.stdout}")
+        print(f"Standard Error:\n{result.stderr}")
+        is_delete_files = False
+        sys.exit(1)
     return result
 
 def normalize_newlines(text, newline_type):
@@ -73,21 +86,52 @@ def compare_csv_files(file1, file2):
 
     return True
 
+def check_files_in_directory(directory, filename_contains):
+    """
+    [使用例]
+    directory = "./path/to/directory"  # チェックするディレクトリのパスを指定
+    filename_contains = "example"  # ファイル名に含まれるべき文字列を指定
+    check_files_in_directory(directory, filename_contains)
+    """
+    try:
+        files = os.listdir(directory)
+        for file in files:
+            if filename_contains in file:
+                file_path = os.path.join(directory, file)
+                file_size = os.path.getsize(file_path)
+                if file_size <= 0:
+                    print(f"{file} found but empty.")
+                    return False
+                return True
+        print(f"No files containing '{filename_contains}' were found in {directory}")
+        return False
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False
+
 class TestAnalyzeAndPack(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         # テスト用のディレクトリを作成して必要なファイルを配置するなどの準備を行う
         # ここにテストに必要なファイルの作成コードを追加
-        pass
+        if os.path.exists(r".\\test_analyze"):
+            shutil.rmtree(r".\\test_analyze")
+        if os.path.exists(r".\\test_compress"):
+            shutil.rmtree(r".\\test_compress")
+        if os.path.exists(r".\\test_packing"):
+            shutil.rmtree(r".\\test_packing")
 
     @classmethod
     def tearDownClass(cls):
         # テスト用に作成したファイルやディレクトリを削除する
-        # if os.path.exists(r".\\test_analyze"):
-        #     shutil.rmtree(r".\\test_analyze")
-        # if os.path.exists(r".\\test_packing"):
-        #     shutil.rmtree(r".\\test_packing")
+        if is_delete_files:
+            if os.path.exists(r".\\test_analyze"):
+                shutil.rmtree(r".\\test_analyze")
+            # if os.path.exists(r".\\test_compress"):
+            #     shutil.rmtree(r".\\test_compress")
+            if os.path.exists(r".\\test_packing"):
+                shutil.rmtree(r".\\test_packing")
         pass
 
     def setUp(self):
@@ -124,6 +168,23 @@ class TestAnalyzeAndPack(unittest.TestCase):
                 file_path = os.path.join(r".\\test_analyze\\Scripts", f"{file_id}.rb")
                 self.assertTrue(os.path.exists(file_path), f"{file_path} does not exist.")
     
+    def test_compress(self):
+        shutil.copytree('..\\data\\vxace\\ソポァゼゾタダＡボマミ', '.\\test_compress\\ソポァゼゾタダＡボマミ')
+        ret = shutil.copytree('..\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore', '.\\test_compress\\ソポァゼゾタダＡボマミ_langscore')
+
+        compress_args = ['-c', '-i', '.\\test_compress\\ソポァゼゾタダＡボマミ', '-o', '.\\test_compress\\dest']
+        run_command(compress_args)
+
+        self.assertTrue(extract_script_data(".\\test_compress\\ソポァゼゾタダＡボマミ\\Data", '.\\test_compress\\dest'), "test_packing folder does not exist.")
+
+        self.assertTrue(check_files_in_directory('.\\test_compress\\dest', "langscore"), "langscore script is not written.")
+        self.assertTrue(check_files_in_directory('.\\test_compress\\dest', "langscore_custom"), "langscore_custom script is not written.")
+
+        before_script_data = os.path.getsize("..\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2")
+        after_script_data = os.path.getsize(".\\test_compress\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2")
+        self.assertLess(before_script_data, after_script_data, "書き出し後のファイルサイズが書き出し前を下回っています。")
+
+
     def test_packing(self):
         base_csv_folder = "..\\data\\Translate"
         packing_args = ['-p', '-i', base_csv_folder, '-o', '.\\test_packing']
