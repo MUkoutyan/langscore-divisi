@@ -1,0 +1,101 @@
+original,ja,en
+CustomizeConfigItem:319:22,CustomizeConfigItem,
+CustomizeConfigItem:390:46,NumberOptions,
+CustomizeConfigItem:390:63,数値項目,
+CustomizeConfigItem:391:46,StringOptions,
+CustomizeConfigItem:391:63,文字項目,
+CustomizeConfigItem:392:46,SwitchOptions,
+CustomizeConfigItem:392:63,スイッチ項目,
+CustomizeConfigItem:393:46,VolumeOptions,
+CustomizeConfigItem:393:63,音量項目,
+CustomizeConfigItem:422:36,Number,
+CustomizeConfigItem:423:36,Boolean,
+CustomizeConfigItem:424:36,String,
+CustomizeConfigItem:425:36,Volume,
+CustomizeConfigItem:457:59,no item,
+CustomizeConfigItem:736:29,shift,
+CustomizeConfigItem:746:54,NumberOptions,
+CustomizeConfigItem:746:71,数値項目,
+CustomizeConfigItem:747:54,StringOptions,
+CustomizeConfigItem:747:71,文字項目,
+CustomizeConfigItem:748:54,SwitchOptions,
+CustomizeConfigItem:748:71,スイッチ項目,
+CustomizeConfigItem:749:54,VolumeOptions,
+CustomizeConfigItem:749:71,音量項目,
+CustomizeConfigItem:451:36,,Number
+CustomizeConfigItem:452:36,,Boolean
+CustomizeConfigItem:453:36,,String
+CustomizeConfigItem:454:36,,Volume
+CustomizeConfigItem:799:29,,shift
+CustomizeConfigItem:スイッチ項目/0/AddPosition,alwaysDash,
+CustomizeConfigItem:スイッチ項目/0/Name,スイッチ項目1,Switch Item 1
+CustomizeConfigItem:スイッチ項目/0/Script,,
+CustomizeConfigItem:数値項目/0/AddPosition,,
+CustomizeConfigItem:数値項目/0/Name,数値項目1,Numeric Item 1
+CustomizeConfigItem:数値項目/0/Script,,
+CustomizeConfigItem:数値項目/1/AddPosition,,
+CustomizeConfigItem:数値項目/1/Name,数値項目2,Numeric Item 2
+CustomizeConfigItem:数値項目/1/Script,,
+CustomizeConfigItem:文字項目/0/AddPosition,,
+CustomizeConfigItem:文字項目/0/Name,難易度,difficulty
+CustomizeConfigItem:文字項目/0/Script,,
+CustomizeConfigItem:文字項目/0/StringItems/0,易しい,Easy
+CustomizeConfigItem:文字項目/0/StringItems/1,難しい,Difficult
+CustomizeConfigItem:文字項目/0/StringItems/2,地獄,Hell
+CustomizeConfigItem:音量項目/0/AddPosition,,
+CustomizeConfigItem:音量項目/0/Name,音量項目1,Volume Item 1
+CustomizeConfigItem:音量項目/0/Script,,
+CustomizeConfigItem:音量項目/1/AddPosition,,
+CustomizeConfigItem:音量項目/1/Name,音量項目2,Volume Item 2
+CustomizeConfigItem:音量項目/1/Script,,
+TMLogWindow:178:40,TMLogWindow,
+TMLogWindow:305:20, / ,
+TMLogWindow:573:30,ok,
+TMLogWindow:574:30,cancel,
+YED_Hospital:235:53,,YED_Hospital
+YED_Hospital:240:40,,","
+YED_Hospital:708:22,,Actor Help (Healthy)
+YED_Hospital:710:22,,Actor Help (Treat)
+YED_Hospital:929:38,,healOne
+YED_Hospital:930:38,,healAll
+YED_Hospital:950:31,,cancel
+YED_Hospital:963:22,,Heal One Help
+YED_Hospital:967:26,,Heal All Help (Healthy)
+YED_Hospital:969:26,,Heal All Help (Treat)
+YED_Hospital:973:22,,Exit Help
+YED_Hospital:1197:40,,healOne
+YED_Hospital:1199:40,,healAll
+YED_Hospital:1201:40,,cancel
+YED_Hospital:1234:39,,ok
+YED_Hospital:1235:39,,cancel
+YED_Hospital:Actor Help (Healthy),%1 does not need to be recovered,%1は回復の必要はない
+YED_Hospital:Heal One Command,Recover one.,1人を回復する
+YED_Hospital:Actor Help (Treat),%1needs to be recovered.,%1は回復が必要だ
+YED_Hospital:Heal All Help (Treat),Pay%1G to recover all members,%1Gを払ってメンバー全員を回復させます
+YED_Hospital:Exit Command,Exit,Exit
+YED_Hospital:Exit Help,Exit.,外に出る
+YED_Hospital:Heal All Command,Recover all members.,全員を回復する
+YED_Hospital:Heal All Help (Healthy),There is no member who needs to be healed.,回復が必要なメンバーが居ません
+YED_Hospital:Heal One Help,Heal each member individually,メンバーを個別に回復させます
+YED_Hospital:Nurse Face,"People4, 1","People4, 1"
+YED_Hospital:Nurse Message,"Hello, how can I help you today?",こんにちは、今日はどうされましたか？
+YED_Hospital:Nurse Name,Loli,Loli
+YED_Hospital:Text Alignment,,center
+YED_Hospital:[Default Price],,
+YED_Hospital:[Visual Setting],,
+_DummyPlugin:AdvancedArray/0/arrayParam1,en:Advanced Array 1,Advanced Array 1
+_DummyPlugin:AdvancedArray/0/arrayParam2,en:Advanced Array 2,Advanced Array 2
+_DummyPlugin:AdvancedArray/1/arrayParam1,Advanced Array 1,アドバンス Array 1
+_DummyPlugin:AdvancedArray/1/arrayParam2,Advanced Array 2,アドバンス Array 2
+_DummyPlugin:AdvancedArray/2/arrayParam1,Advanced Array 3,アドバンス Array 3
+_DummyPlugin:AdvancedArray/2/arrayParam2,Advanced Array 4,アドバンス Array 4
+_DummyPlugin:MapRef,,Map001
+_DummyPlugin:AdvancedSettings,,
+_DummyPlugin:MultipleChoices/0,Choice 1,チョイス 1
+_DummyPlugin:MultipleChoices/1,Choice 2,チョイス 2
+_DummyPlugin:CustomNotes,,<dynamicNote:custom>
+_DummyPlugin:DynamicSettings,,
+_DummyPlugin:GameReferences,,
+_DummyPlugin:DynamicChoice,Dynamic 1,Dynamic 1
+_DummyPlugin:NestedSettings/innerSetting1,Inner Value 1,Inner Value 1
+_DummyPlugin:NestedSettings/innerSetting2,Inner Value 2,Inner Value 2
