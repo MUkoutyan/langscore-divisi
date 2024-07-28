@@ -1,8 +1,8 @@
-
+ï»¿
 IUTEST(Langscore_VXAce_Invoker, NoAssignProject)
 {
 	langscore::config::detachConfigFile();
-	langscore::config::attachConfigFile(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_Invalid_langscore\\config.json");
+	langscore::config::attachConfigFile(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_Invalid_langscore\\config.json");
 	langscore::invoker invoker;
 	auto result = invoker.analyze();
 	IUTEST_ASSERT_EQ(result.moduleCode(), ErrorStatus::Module::INVOKER);
@@ -12,7 +12,7 @@ IUTEST(Langscore_VXAce_Invoker, NoAssignProject)
 IUTEST(Langscore_VXAce_Invoker, AnalyzeVXAceProject)
 {
 	langscore::config::detachConfigFile();
-	langscore::config::attachConfigFile(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\config.json");
+	langscore::config::attachConfigFile(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\config.json");
 	langscore::config config;
 	ClearGenerateFiles(config);
 
@@ -54,7 +54,7 @@ IUTEST(Langscore_VXAce_Invoker, AnalyzeWhiteSpaceVXAceProject)
 IUTEST(Langscore_VXAce_Invoker, CheckValidScriptList)
 {
 	langscore::config::detachConfigFile();
-	langscore::config::attachConfigFile(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\config.json");
+	langscore::config::attachConfigFile(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\config.json");
 	langscore::config config;
 	ClearGenerateFiles(config);
 
@@ -86,10 +86,10 @@ IUTEST(Langscore_VXAce_Invoker, CheckValidScriptList)
 }
 
 
-IUTEST(Langscore_VXAce_Divisi, IUTEST_JAPANESE_NAME(‹ó”’‚ğŠÜ‚ŞƒpƒX‚Ì‰ğßƒ`ƒFƒbƒN))
+IUTEST(Langscore_VXAce_Divisi, IUTEST_JAPANESE_NAME(ç©ºç™½ã‚’å«ã‚€ãƒ‘ã‚¹ã®è§£é‡ˆãƒã‚§ãƒƒã‚¯))
 {
 	ClearGenerateFiles();
-	//ƒeƒLƒXƒg‚ªˆê’v‚·‚é‚©‚Ì®‡«‚ğŠm”F‚·‚éƒeƒXƒg
+	//ãƒ†ã‚­ã‚¹ãƒˆãŒä¸€è‡´ã™ã‚‹ã‹ã®æ•´åˆæ€§ã‚’ç¢ºèªã™ã‚‹ãƒ†ã‚¹ãƒˆ
 	langscore::config::detachConfigFile();
 	langscore::divisi divisi("./", ".\\data\\vxace\\Include WhiteSpacePath Project_langscore\\config.json");
 
@@ -101,9 +101,9 @@ IUTEST(Langscore_VXAce_Divisi, IUTEST_JAPANESE_NAME(‹ó”’‚ğŠÜ‚ŞƒpƒX‚Ì‰ğßƒ`ƒFƒbƒN
 IUTEST(Langscore_VXAce_Divisi_Analyze, ValidateTexts)
 {
 	ClearGenerateFiles();
-	//ƒeƒLƒXƒg‚ªˆê’v‚·‚é‚©‚Ì®‡«‚ğŠm”F‚·‚éƒeƒXƒg
+	//ãƒ†ã‚­ã‚¹ãƒˆãŒä¸€è‡´ã™ã‚‹ã‹ã®æ•´åˆæ€§ã‚’ç¢ºèªã™ã‚‹ãƒ†ã‚¹ãƒˆ
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\config.json");
+	langscore::divisi divisi("./", ".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\config.json");
 
 	IUTEST_ASSERT(divisi.analyze().valid());
 	langscore::config config;
@@ -113,18 +113,19 @@ IUTEST(Langscore_VXAce_Divisi_Analyze, ValidateTexts)
 	auto scriptCsv = plaincsvreader{outputPath / "Map001.csv"}.getPlainCsvTexts();
 	IUTEST_ASSERT(scriptCsv.empty() == false);
 
+    //Ver.0.7.4ã‹ã‚‰VXAceã«ãŠã„ã¦æœ«å°¾ã«æ”¹è¡Œã‚’ä»˜ã‘ãªã„ã‚ˆã†ã«å¤‰æ›´ã—ãŸã€‚
 	std::vector<std::u8string> includeTexts = {
 		u8"original",
-		u8"ƒ}ƒbƒv–¼"s,
-		u8"12345‚±‚ñ‚É‚¿‚Í¢ŠE HelloWorld\n"s,
-		u8"12345HHEELLOO\n"s,
-		u8"‚±‚ê‚Í’Ç‰ÁƒeƒLƒXƒg‚Å‚·\n"s,
-		u8"Œ¾Œê@Ø‚è‘Ö‚¦‚é‚æ\n"s,
-		u8"\nè“®‚Å’†‰›‘µ‚¦\n"s,
-		u8"\n\\{’†‰›‘µ‚¦+ƒtƒHƒ“ƒgƒTƒCƒY‘å\n"s,
-		u8"“ú–{Œê"s,
-		u8"‰pŒê"s,
-		u8"’†‘Œê"s,
+		u8"ãƒãƒƒãƒ—å"s,
+		u8"12345ã“ã‚“ã«ã¡ã¯ä¸–ç•Œ HelloWorld"s,
+		u8"12345HHEELLOO"s,
+		u8"ã“ã‚Œã¯è¿½åŠ ãƒ†ã‚­ã‚¹ãƒˆã§ã™"s,
+		u8"è¨€èªã€€åˆ‡ã‚Šæ›¿ãˆã‚‹ã‚ˆ"s,
+		u8"\næ‰‹å‹•ã§ä¸­å¤®æƒãˆ"s,
+		u8"\n\\{ä¸­å¤®æƒãˆ+ãƒ•ã‚©ãƒ³ãƒˆã‚µã‚¤ã‚ºå¤§"s,
+		u8"æ—¥æœ¬èª"s,
+		u8"è‹±èª"s,
+		u8"ä¸­å›½èª"s,
 	};
 
 	for(auto& row : scriptCsv)
@@ -147,15 +148,15 @@ IUTEST(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 	ClearGenerateFiles();
 	{
 		langscore::config::detachConfigFile();
-		langscore::divisi divisi("./", ".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\config.json");
+		langscore::divisi divisi("./", ".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\config.json");
 		IUTEST_ASSERT(divisi.analyze().valid());
 	}
 	{
-		//analyze‚Æwrite‚ğ“¯‚ÉŒÄ‚Ño‚·‚±‚Æ‚ğ‘z’è‚µ‚Ä‚¢‚È‚¢B
-		//analyze‚ğŒÄ‚Ño‚·‚ÆƒRƒ“ƒXƒgƒ‰ƒNƒg‚ÌŒ¾ŒêƒŠƒXƒg‚ª‰Šú‰»‚³‚ê‚é‚½‚ßA
-		//ƒCƒ“ƒXƒ^ƒ“ƒX‚Í•Ê‚É•ª‚¯‚éB
+		//analyzeã¨writeã‚’åŒæ™‚ã«å‘¼ã³å‡ºã™ã“ã¨ã‚’æƒ³å®šã—ã¦ã„ãªã„ã€‚
+		//analyzeã‚’å‘¼ã³å‡ºã™ã¨ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ãƒˆæ™‚ã®è¨€èªãƒªã‚¹ãƒˆãŒåˆæœŸåŒ–ã•ã‚Œã‚‹ãŸã‚ã€
+		//ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã¯åˆ¥ã«åˆ†ã‘ã‚‹ã€‚
 		langscore::config::detachConfigFile();
-		langscore::divisi divisi("./", ".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\config.json");
+		langscore::divisi divisi("./", ".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\config.json");
 		IUTEST_ASSERT(divisi.write().valid());
 	}
 	langscore::config config;
@@ -173,17 +174,18 @@ IUTEST(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 
 	std::cout << "MESSAGE : Langscore.rb " << langscoreFilename;
 
+    constexpr size_t numExpectedTexts = 78;
 	IUTEST_ASSERT(fs::exists(langscoreFilename));
 	langscore::rubyreader rubyReader{{u8"ja"}, {langscoreFilename}};
 	auto scriptCsv = rubyReader.curerntTexts();
-	IUTEST_ASSERT(scriptCsv.size() == 75);
+	IUTEST_ASSERT(scriptCsv.size() == numExpectedTexts);
 
 	csvwriter csvwriter{rubyReader};
 	csvwriter.write(".\\data\\dummy.csv");
 
 	csvreader csvreader({u8"ja"}, ".\\data\\dummy.csv");
 	auto writedCsvTexts = csvreader.curerntTexts();
-	IUTEST_ASSERT(writedCsvTexts.size() == 75);
+	IUTEST_ASSERT(writedCsvTexts.size() == numExpectedTexts);
 
 	int i = 0;
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"en");
@@ -192,9 +194,10 @@ IUTEST(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"en");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"VL Gothic");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
-	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ƒƒCƒŠƒI");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ãƒ¡ã‚¤ãƒªã‚ª");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Data/Translate");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"/");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\n");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Invalid CSV Data");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Error! : Missmatch Num Cells : #{mismatch_cells.first}");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"File : #{file_name}, Header size : #{size}, Languages : #{rows[0]}");
@@ -231,20 +234,22 @@ IUTEST(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Items");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Enemies");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Map%03d");
+    IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\n");
+    IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"\n");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Graphics");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Scripts");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Troops");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"CommonEvents");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"_");
-	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Œ»İ‘I‘ğ’†‚ÌŒ¾Œê‚ª•\¦‚³‚ê‚Ü‚·B");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ç¾åœ¨é¸æŠä¸­ã®è¨€èªãŒè¡¨ç¤ºã•ã‚Œã¾ã™ã€‚");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"en");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"The currently selected language is displayed.");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
-	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Œ»İ‘I‘ğ’†‚ÌŒ¾Œê‚ª•\¦‚³‚ê‚Ü‚·B");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ç¾åœ¨é¸æŠä¸­ã®è¨€èªãŒè¡¨ç¤ºã•ã‚Œã¾ã™ã€‚");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"en");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"English");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"ja");
-	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"“ú–{Œê");
+	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"æ—¥æœ¬èª");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"OK");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Reselect");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Cancel");
@@ -265,7 +270,7 @@ IUTEST(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"Lang");
 	IUTEST_ASSERT_STREQ(writedCsvTexts[i++].original, u8"./Game.ini");
 
-	if(i != 75) {
+	if(i != numExpectedTexts) {
 		IUTEST_SCOPED_TRACE(::iutest::Message() << "The number of tests in the string does not match. : " << i);
 		IUTEST_FAIL();
 	}
@@ -275,7 +280,7 @@ IUTEST(Langscore_VXAce_Divisi, CheckScriptCSV)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\config.json");
+	langscore::divisi divisi("./", ".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\config.json");
 
 	IUTEST_ASSERT(divisi.analyze().valid());
 	langscore::config config;
@@ -306,10 +311,10 @@ IUTEST(Langscore_VXAce_Divisi, WriteVXAceProject)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\config.json");
+	langscore::divisi divisi("./", ".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\config.json");
 
-	fs::path scriptDataSrc(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~\\Data\\Scripts.rvdata2");
-	fs::path scriptDataDest(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~\\Data\\Scripts_backup.rvdata2");
+	fs::path scriptDataSrc(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ\\Data\\Scripts_backup.rvdata2");
 
 
 	if(fs::exists(scriptDataDest) == false) {
@@ -348,10 +353,10 @@ IUTEST(Langscore_VXAce_Divisi, WriteVocab)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\config.json");
+	langscore::divisi divisi("./", ".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\config.json");
 
-	fs::path scriptDataSrc(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~\\Data\\Scripts.rvdata2");
-	fs::path scriptDataDest(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~\\Data\\Scripts_backup.rvdata2");
+	fs::path scriptDataSrc(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ\\Data\\Scripts_backup.rvdata2");
 
 	if(fs::exists(scriptDataDest) == false) {
 		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
@@ -394,8 +399,8 @@ IUTEST(Langscore_VXAce_Divisi, WriteLangscoreCustom)
 	divisi_vxace.setProjectPath(config.gameProjectPath());
 	divisi_vxace.analyze();
 
-	std::u8string fileName = u8"57856563";	//CacheƒXƒNƒŠƒvƒg
-	langscore::rubyreader rubyReader({u8"en", u8"ja"}, {u8".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\analyze\\Scripts\\"s + fileName + u8".rb"s});
+	std::u8string fileName = u8"57856563";	//Cacheã‚¹ã‚¯ãƒªãƒ—ãƒˆ
+	langscore::rubyreader rubyReader({u8"en", u8"ja"}, {u8".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\analyze\\Scripts\\"s + fileName + u8".rb"s});
 	langscore::rbscriptwriter scriptWriter(rubyReader);
 
 	const auto outputFileName = "./data/langscore_custom.rb"s;
@@ -430,10 +435,10 @@ IUTEST(Langscore_VXAce_Divisi, ValidateLangscoreCustom)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\config.json");
+	langscore::divisi divisi("./", ".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\config.json");
 
-	fs::path scriptDataSrc(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~\\Data\\Scripts.rvdata2");
-	fs::path scriptDataDest(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~\\Data\\Scripts_backup.rvdata2");
+	fs::path scriptDataSrc(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ\\Data\\Scripts_backup.rvdata2");
 
 	if(fs::exists(scriptDataDest) == false) {
 		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
@@ -479,9 +484,9 @@ IUTEST(Langscore_VXAce_Divisi, ValidateLangscoreCustom)
 IUTEST(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV)
 {
 	ClearGenerateFiles();
-	//Langscore_custom‚ÉˆÓ}‚µ‚½’Ê‚è‚É“à—e‚ª‘‚«‚Ü‚ê‚Ä‚¢‚é‚©‚ÌƒeƒXƒg
-	fs::path scriptDataSrc(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~\\Data\\Scripts.rvdata2");
-	fs::path scriptDataDest(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~\\Data\\Scripts_backup.rvdata2");
+	//Langscore_customã«æ„å›³ã—ãŸé€šã‚Šã«å†…å®¹ãŒæ›¸ãè¾¼ã¾ã‚Œã¦ã„ã‚‹ã‹ã®ãƒ†ã‚¹ãƒˆ
+	fs::path scriptDataSrc(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ\\Data\\Scripts_backup.rvdata2");
 
 
 	if(fs::exists(scriptDataDest) == false) {
@@ -539,7 +544,7 @@ IUTEST(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV)
 
 	for(const auto& script : scriptWriter.scriptTranslatesMap)
 	{
-		//•¶š—ñ‚Ì‚È‚¢ƒXƒNƒŠƒvƒgƒtƒ@ƒCƒ‹‚ğ–³‹‚·‚é
+		//æ–‡å­—åˆ—ã®ãªã„ã‚¹ã‚¯ãƒªãƒ—ãƒˆãƒ•ã‚¡ã‚¤ãƒ«ã‚’ç„¡è¦–ã™ã‚‹
 		if(std::get<1>(script).empty()) { continue; }
 		auto fileName = std::get<0>(script);
 
@@ -598,19 +603,19 @@ IUTEST(Langscore_VXAce_Divisi, VXAce_FindEscChar)
 		IUTEST_ASSERT_STREQ(result1[0], u8"\\C[16]");
 	}
 	{
-		std::u8string text = u8"‚Ù‚É\\l[16]‚Ù‚É";
+		std::u8string text = u8"ã»ã«\\l[16]ã»ã«";
 		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() == false && result2.empty());
 		IUTEST_ASSERT_STREQ(result1[0], u8"\\l[16]");
 	}
 	{
-		std::u8string text = u8"‚ ‚¢‚¤\\{‚¦‚¨";
+		std::u8string text = u8"ã‚ã„ã†\\{ãˆãŠ";
 		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() && result2.empty() == false);
 		IUTEST_ASSERT_STREQ(result2[0], u8"\\{");
 	}
 	{
-		std::u8string text = u8"99999\\G è‚É“ü‚ê‚½I";
+		std::u8string text = u8"99999\\G æ‰‹ã«å…¥ã‚ŒãŸï¼";
 		auto [result1, result2] = divisi_vxace.findRPGMakerEscChars(text);
 		IUTEST_ASSERT(result1.empty() && result2.empty() == false);
 		IUTEST_ASSERT_STREQ(result2[0], u8"\\G");
@@ -626,9 +631,9 @@ IUTEST(Langscore_VXAce_Divisi, VXAce_Validate)
 		langscore::TranslateText text;
 		text.original = u8"HoniHoni";
 		text.translates[u8"en"] = u8"HoniHoni";
-		text.translates[u8"ja"] = u8"‚Ù‚É‚Ù‚É";
-		text.translates[u8"zh-tw"] = u8"[[’n";
-		text.translates[u8"zh-cn"] = u8"[[’n";
+		text.translates[u8"ja"] = u8"ã»ã«ã»ã«";
+		text.translates[u8"zh-tw"] = u8"æ·±æ·±åœ°";
+		text.translates[u8"zh-cn"] = u8"æ·±æ·±åœ°";
 
 		IUTEST_ASSERT(divisi_vxace.validateTranslateList({text}, ""));
 	}
@@ -636,9 +641,9 @@ IUTEST(Langscore_VXAce_Divisi, VXAce_Validate)
 		langscore::TranslateText text;
 		text.original = u8"Honi\\V[10]Honi";
 		text.translates[u8"en"] = u8"Honi\\V[10]Honi";
-		text.translates[u8"ja"] = u8"‚Ù‚É\\V[10]‚Ù‚É";
-		text.translates[u8"zh-tw"] = u8"[[\\V[10]’n";
-		text.translates[u8"zh-cn"] = u8"[[\\V[10]’n";
+		text.translates[u8"ja"] = u8"ã»ã«\\V[10]ã»ã«";
+		text.translates[u8"zh-tw"] = u8"æ·±æ·±\\V[10]åœ°";
+		text.translates[u8"zh-cn"] = u8"æ·±æ·±\\V[10]åœ°";
 
 		IUTEST_ASSERT(divisi_vxace.validateTranslateList({text}, ""));
 	}
@@ -646,9 +651,9 @@ IUTEST(Langscore_VXAce_Divisi, VXAce_Validate)
 		langscore::TranslateText text;
 		text.original = u8"Honi\\V[10]Honi";
 		text.translates[u8"en"] = u8"HoniHoni";
-		text.translates[u8"ja"] = u8"‚Ù‚É‚Ù‚É";
-		text.translates[u8"zh-tw"] = u8"[[’n";
-		text.translates[u8"zh-cn"] = u8"[[’n";
+		text.translates[u8"ja"] = u8"ã»ã«ã»ã«";
+		text.translates[u8"zh-tw"] = u8"æ·±æ·±åœ°";
+		text.translates[u8"zh-cn"] = u8"æ·±æ·±åœ°";
 
 		IUTEST_ASSERT_NOT(divisi_vxace.validateTranslateList({text}, ""));
 	}
