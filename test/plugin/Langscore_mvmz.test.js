@@ -8,6 +8,87 @@ const { before } = require('mocha');
 const { JSDOM } = require("jsdom");
 const { createCanvas } = require('canvas');
 
+let fontKit = null;
+let fetch = null;
+let Worker = null;
+if(process.env.IS_MZ)
+{
+  console.log(process.env.IS_MZ);
+  //MZのみの対応
+  fontKit = require('fontkit');
+  fetch = require('node-fetch');
+  wt = require('worker_threads');
+  Worker = wt.Worker;
+
+  global.FontFace = class {
+    constructor(family, source) {
+      this.family = family;
+      this.source = source;
+      this.status = 'unloaded';
+    }
+
+    async load() {
+      try {
+        const response = await fetch(this.source.slice(4, -1)); // Remove "url(" and ")"
+        const arrayBuffer = await response.arrayBuffer();
+        const font = fontkit.create(arrayBuffer);
+        this.status = 'loaded';
+        return font;
+      } catch (error) {
+        this.status = 'error';
+        throw error;
+      }
+    }
+  };
+}
+
+getNodeWorkerClass = function()
+{
+  if(process.env.IS_MV){
+    return null;
+  }
+  //Vorbisのエミュレートに必要
+  class NodeWorker {
+    constructor(scriptURL) {
+      this.worker = new Worker(scriptURL, { eval: true });
+
+      this.worker.on('message', (message) => {
+        if (this.onmessage) this.onmessage({ data: message });
+      });
+
+      this.worker.on('error', (error) => {
+        if (this.onerror) this.onerror(error);
+      });
+    }
+
+    postMessage(message) {
+      this.worker.postMessage(message);
+    }
+
+    terminate() {
+      this.worker.terminate();
+    }
+
+    addEventListener(type, listener) {
+      if (type === 'message') {
+        this.onmessage = listener;
+      } else if (type === 'error') {
+        this.onerror = listener;
+      }
+    }
+
+    removeEventListener(type, listener) {
+      if (type === 'message' && this.onmessage === listener) {
+        this.onmessage = null;
+      } else if (type === 'error' && this.onerror === listener) {
+        this.onerror = null;
+      }
+    }
+  }
+
+  return NodeWorker;
+}
+
 // START OF GENERATED CONTENT
 const testActors = [{'ja': 'エルーシェ', 'en': 'eluche'}, {'ja': '雑用係', 'en': 'Compassionate'}, {'ja': 'ラフィーナ', 'en': 'Rafina'}, {'ja': '傲慢ちき', 'en': 'arrogant'}, {'ja': 'ケスティニアスの雑用係。\nそんなに仕事は無い。', 'en': "Kestinius' scullery maid.\nThere is not that much work."}, {'ja': 'チビのツンデレウーマン。\n魔法が得意。', 'en': 'Tiny tsundere woman.\nHe is good at magic.'}];
 const testArmors = [{'ja': '盾', 'en': 'Shield'}, {'ja': '帽子', 'en': 'Had'}, {'ja': '服', 'en': 'Wear'}, {'ja': '指輪', 'en': 'Ring'}];
@@ -51,7 +132,9 @@ initializeRPGMaker = async function()
 {
   // 環境変数の設定を確認
   // index.htmlのパスを指定
-  const htmlFilePath = path.resolve(__dirname, 'index.html');
+  var index_root = path.resolve(process.mainModule.path, "../../../");
+  index_root = path.join(index_root, process.env.PROJ_NAME);
+  const htmlFilePath = path.resolve(index_root, 'index.html');
   // HTMLファイルの内容を読み込む
   const htmlContent = fs.readFileSync(htmlFilePath, 'utf-8');
   dom = new JSDOM(htmlContent, {
@@ -74,7 +157,6 @@ initializeRPGMaker = async function()
           filename: rootPath + "/window.Langscore.test.js",
           path: rootPath
         };
-        
         window.require = require;
       }
       else
@@ -82,10 +164,16 @@ initializeRPGMaker = async function()
         window.process = undefined;
         window.require = undefined;
       }
+
+      window.FontFace = global.FontFace;
     }
   });
 
   window = dom.window;
+
+  if(process.env.IS_MZ){
+    dom.window.Worker = getNodeWorkerClass();
+  }
 
   // DOMContentLoadedの完了を待つ
   await new Promise(resolve => {
@@ -285,8 +373,6 @@ describe('LSCSV', function() {
     expect(result['複合させます\n\\{\\C[2]\\N[2]\\I[22]']['ja']).to.equal('複合させます\n\\{\\C[2]\\N[2]\\I[22]');
     expect(result['複合させます\n\\{\\C[2]\\N[2]\\I[22]']['en']).to.equal('Compounding\n\\{\\C[2]\\N[2]\\I[22]');
   });
-
-  // 他のテストケースも必要に応じて追加
 });
 
 describe('Langscore', function() 
@@ -482,7 +568,7 @@ describe('Langscore for Map', function()
     testMap001.map(text => {
       var inText   = text.ja;
       var outText  = text.en;
-      var dymmy_window = new window.Window_Base(0,0,0,0);
+      var dymmy_window = new window.Window_Base(new window.Rectangle(0,0,0,0));
       const _actual = dymmy_window.convertEscapeCharacters(inText);
       const _expect = dymmy_window.convertEscapeCharacters(outText);
       expect(_actual).to.equal(_expect);
@@ -509,13 +595,13 @@ describe('Langscore for Map', function()
     testMap001.map(text => {
       var inText   = text.ja;
       var outText  = text.ja;
-      var dymmy_window = new window.Window_Base(0,0,0,0);
+      var dymmy_window = new window.Window_Base(new window.Rectangle(0,0,0,0));
       const _actual = dymmy_window.convertEscapeCharacters(inText);
       const _expect = dymmy_window.convertEscapeCharacters(outText);
       expect(_actual).to.equal(_expect);
     });
     //日本語を指定した状態でセーブ
-    window.DataManager.saveGameWithoutRescue(1);
+    window.DataManager.saveGame(1);
 
     //英語に変更
     window._langscore.changeLanguage("en", true);
@@ -526,14 +612,14 @@ describe('Langscore for Map', function()
     testMap001.map(text => {
       var inText   = text.ja;
       var outText  = text.en;
-      var dymmy_window = new window.Window_Base(0,0,0,0);
+      var dymmy_window = new window.Window_Base(new window.Rectangle(0,0,0,0));
       const _actual = dymmy_window.convertEscapeCharacters(inText);
       const _expect = dymmy_window.convertEscapeCharacters(outText);
       expect(_actual).to.equal(_expect);
     });
 
     //日本語を指定したときのデータをロード
-    window.DataManager.loadGameWithoutRescue(1);
+    window.DataManager.loadGame(1);
 
     //言語設定はセーブデータに影響を受けないので、英語になっていることが正しい。
     
@@ -544,7 +630,7 @@ describe('Langscore for Map', function()
     testMap001.map(text => {
       var inText   = text.ja;
       var outText  = text.en;
-      var dymmy_window = new window.Window_Base(0,0,0,0);
+      var dymmy_window = new window.Window_Base(new window.Rectangle(0,0,0,0));
       const _actual = dymmy_window.convertEscapeCharacters(inText);
       const _expect = dymmy_window.convertEscapeCharacters(outText);
       expect(_actual).to.equal(_expect);
@@ -565,7 +651,7 @@ describe('Langscore for Map', function()
     testMap001.map(text => {
       var inText   = text.ja;
       var outText  = text.ja;
-      var dymmy_window = new window.Window_Base(0,0,0,0);
+      var dymmy_window = new window.Window_Base(new window.Rectangle(0,0,0,0));
       const _actual = dymmy_window.convertEscapeCharacters(inText);
       const _expect = dymmy_window.convertEscapeCharacters(outText);
       expect(_actual).to.equal(_expect);
@@ -574,7 +660,7 @@ describe('Langscore for Map', function()
     //英語に変更
     window._langscore.changeLanguage("en", true);
     //日本語を指定した状態でセーブ
-    window.DataManager.saveGameWithoutRescue(1);
+    window.DataManager.saveGame(1);
 
     //不具合が発生する場合、一部が日本語になるためtext.enと一致しない。
     {
@@ -584,7 +670,7 @@ describe('Langscore for Map', function()
     testMap001.map(text => {
       var inText   = text.ja;
       var outText  = text.en;
-      var dymmy_window = new window.Window_Base(0,0,0,0);
+      var dymmy_window = new window.Window_Base(new window.Rectangle(0,0,0,0));
       const _actual = dymmy_window.convertEscapeCharacters(inText);
       const _expect = dymmy_window.convertEscapeCharacters(outText);
       expect(_actual).to.equal(_expect);
