@@ -558,7 +558,6 @@ void langscore::divisi_mvmz::writeFixedScript()
         writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, scriptReader, mergeTextMode, false);
     }
 
-
     //Langscore.jsの出力
     auto gameProjDir = fs::path(config.gameProjectPath());
     auto outputScriptFilePath = gameProjDir / u8"js/plugins/Langscore.js"s;
@@ -567,6 +566,7 @@ void langscore::divisi_mvmz::writeFixedScript()
         replaceLs = config.overwriteLangscore();
     }
     if(replaceLs) {
+        std::cout << "output langscore.js" << std::endl;
         auto resourceFolder = this->appPath.parent_path() / "resource";
         const auto langscoreScriptFilePath = resourceFolder / u8"Langscore.js"s;
         std::cout << "Copy langscore : From " << langscoreScriptFilePath << " To : " << outputScriptFilePath << std::endl;
@@ -595,14 +595,19 @@ void langscore::divisi_mvmz::writeFixedScript()
 
 void divisi_mvmz::updatePluginInfo()
 {
+    std::cout << "update plugin info" << std::endl;
     config config;
-
+    
     //plugin.jsに対してLangscoreを追加
-    auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js\\plugins.js"s;
+    auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js"s / u8"plugins.js"s;
     std::ifstream input_file(pluginsPath.generic_string());
-
     std::string content((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
     input_file.close();
+
+    if(content.empty()){
+        std::cout << "plugins.js was empty" << std::endl;
+        return;
+    }
 
     std::size_t startPos = content.find('[');
     std::size_t endPos = content.rfind(']');

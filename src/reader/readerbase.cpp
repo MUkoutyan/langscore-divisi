@@ -1,5 +1,6 @@
 ﻿#include "readerbase.h"
 #include "scripttextparser.hpp"
+#include <algorithm>
 
 using namespace langscore;
 

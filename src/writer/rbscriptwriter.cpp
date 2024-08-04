@@ -3,16 +3,19 @@
 #include "utility.hpp"
 #include "scripttextparser.hpp"
 #include <fstream>
-#include <format>
 #include <mutex>
+
+#ifdef __cpp_lib_format
+#include <format>
+#endif
 
 #include "csvwriter.h"
 #include "../reader/csvreader.h"
 #include "../reader/rubyreader.hpp"
 
-static std::mutex _mutex;
-static bool processing = false;
-static std::condition_variable cond;
+// static std::mutex _mutex;
+// static bool processing = false;
+// static std::condition_variable cond;
 
 
 using namespace langscore;
@@ -49,7 +52,7 @@ ErrorStatus rbscriptwriter::write(std::filesystem::path filePath, MergeTextMode 
         using Str  = decltype(str);
         using Char = Str::value_type;
         str = utility::removeExtension(str);
-        for(auto i = str.find(Char(" ")); i != decltype(str)::npos; i = str.find(Char(" "))){
+        for(auto i = str.find(Char(' ')); i != decltype(str)::npos; i = str.find(Char(' '))){
             str.replace(i, 1, (Char*)"_");
         }
         return Str(std::add_pointer_t<Char>("Langscore.translate_") + str);
@@ -110,8 +113,10 @@ ErrorStatus rbscriptwriter::write(std::filesystem::path filePath, MergeTextMode 
                 auto arg1 = utility::toString(parsed[0]);
                 auto arg2 = utility::toString(parsed[1]);
                 auto arg3 = utility::toString(parsed[2]);
+#ifdef __cpp_lib_format
                 auto filepath = std::vformat(funcComment, std::make_format_args(arg1, arg2, arg3));
                 outFile << tab << "#" + filepath << nl;
+#endif
                 outFile << tab << "#original : " << utility::toString(line.original) << nl;
                 outFile << tab << "#Langscore.translate_for_script(\"" << utility::toString(line.scriptLineInfo) << "\")" << nl;
                 outFile << nl;

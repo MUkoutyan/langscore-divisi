@@ -39,7 +39,7 @@ namespace langscore
 
 	protected:
 		std::filesystem::path appPath;
-		invoker invoker;
+		langscore::invoker invoker;
 		utility::u8stringlist supportLangs;
 		std::u8string defaultLanguage;
 

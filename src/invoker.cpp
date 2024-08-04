@@ -2,7 +2,6 @@
 #include "config.h"
 #include "utility.hpp"
 
-#include <process.h>
 #include <iostream>
 #include <fstream>
 #include <array>
@@ -20,6 +19,7 @@ static std::string convertPath(std::filesystem::path path) {
 }
 
 #ifdef WIN32
+#include <process.h>
 #include <Windows.h>
 static int execProcess(const char* cmd) 
 {
@@ -83,16 +83,18 @@ static int execProcess(const char* cmd)
 
 #else
 
+#include <unistd.h>
+#include <sys/wait.h>
 static int execProcess(const char* cmd) {
     std::array<char, 128> buffer;
-    std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(cmd, "r"), _pclose);
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
     if(!pipe) {
-        throw std::runtime_error("_popen() failed!");
+        throw std::runtime_error("popen() failed!");
     }
     while(fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
         std::cout << buffer.data();
     }
-    return _pclose(pipe.get());
+    return pclose(pipe.get());
 }
 #endif
 

@@ -182,7 +182,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		{
 			//ソース側で見つかった場合、先にソース側の検出行までの内容を挿入。
 			//次のループでターゲット行とソース行が一致するはず。
-			auto count = std::max(0ull, size_t(std::distance(source_i, find_result)));
+			auto count = std::max(size_t(0ull), size_t(std::distance(source_i, find_result)));
 			for(auto i = 0; i < count; ++i){
 				AddForSource();
 			}

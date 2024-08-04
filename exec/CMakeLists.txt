@@ -18,9 +18,15 @@ configure_file(
 
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
-add_executable (divisi "main.cpp" ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
-set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
-set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+if(MSVC)
+  add_executable (divisi "main.cpp" ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+	set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
+	set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+else()
+  add_executable (divisi "main.cpp")
+  add_compile_options(-stdlib=libc++)
+	target_link_libraries(divisi_lib)
+endif()
 
 target_include_directories(divisi PUBLIC 
 	${PROJECT_SOURCE_DIR}/include

@@ -1,18 +1,21 @@
-#include "jsscriptwriter.h"
+ï»¿#include "jsscriptwriter.h"
 #include "config.h"
 #include "utility.hpp"
 #include "scripttextparser.hpp"
 #include <fstream>
-#include <format>
 #include <mutex>
+
+#ifdef __cpp_lib_format
+#include <format>
+#endif
 
 #include "csvwriter.h"
 #include "../reader/javascriptreader.hpp"
 #include "../reader/csvreader.h"
 
-static std::mutex _mutex;
-static bool processing = false;
-static std::condition_variable cond;
+// static std::mutex _mutex;
+// static bool processing = false;
+// static std::condition_variable cond;
 
 
 using namespace langscore;
@@ -46,7 +49,7 @@ bool langscore::jsscriptwriter::merge(std::filesystem::path filePath)
 
 ErrorStatus langscore::jsscriptwriter::write(std::filesystem::path filePath, MergeTextMode overwriteMode)
 {
-    //langscore_custom‚Ì‘‚«o‚µ
+    //langscore_customã®æ›¸ãå‡ºã—
     using namespace std::literals::string_literals;
 
     //======================================
@@ -54,7 +57,7 @@ ErrorStatus langscore::jsscriptwriter::write(std::filesystem::path filePath, Mer
     {
         using Str = decltype(str);
         using Char = Str::value_type;
-        for(auto i = str.find(Char(" ")); i != decltype(str)::npos; i = str.find(Char(" "))){
+        for(auto i = str.find(Char(' ')); i != decltype(str)::npos; i = str.find(Char(' '))){
             str.replace(i, 1, (Char*)"_");
         }
         return Str(std::add_pointer_t<Char>("Langscore.translate_") + str);
@@ -115,8 +118,10 @@ ErrorStatus langscore::jsscriptwriter::write(std::filesystem::path filePath, Mer
             auto arg1 = utility::toString(parsed[0]);
             auto arg2 = utility::toString(parsed[1]);
             auto arg3 = utility::toString(parsed[2]);
+#ifdef __cpp_lib_format
             auto filepath = std::vformat(funcComment, std::make_format_args(arg1, arg2, arg3));
             outFile << tab << "//" + filepath << nl;
+#endif
             outFile << tab << "//original : " << utility::toString(line.scriptLineInfo) << nl;
             outFile << tab << "//Langscore.translate_for_script(\"" << utility::toString(line.original) << "\")" << nl;
             outFile << nl;
@@ -132,54 +137,54 @@ ErrorStatus langscore::jsscriptwriter::write(std::filesystem::path filePath, Mer
 void langscore::jsscriptwriter::WriteVocab(std::ofstream& file, std::vector<TranslateText> texts)
 {
     std::vector<std::tuple<std::u8string, std::u8string, bool>> translates = {
-        { u8"%s ‚ÌŒoŒ±’l‚ğŠl“¾I", u8"ObtainExp", false },
-        { u8"%s‚ª%s‚ğ‚©‚Î‚Á‚½I", u8"Substitute", false },
-        { u8"%s‚ªoŒ»I", u8"Emerge", false },
-        { u8"%s‚½‚¿", u8"PartyName", false },
-        { u8"%s‚É %s ‚Ìƒ_ƒ[ƒW‚ğ—^‚¦‚½I", u8"EnemyDamage", false },
-        { u8"%s‚É‚ÍŒø‚©‚È‚©‚Á‚½I", u8"ActionFailure", false },
-        { u8"%s‚Éƒ_ƒ[ƒW‚ğ—^‚¦‚ç‚ê‚È‚¢I", u8"EnemyNoDamage", false },
-        { u8"%s‚Ì%s‚ª %s ‰ñ•œ‚µ‚½I", u8"ActorRecovery", false },
-        { u8"%s‚Ì%s‚ª %s ‰ñ•œ‚µ‚½I", u8"EnemyRecovery", false },
-        { u8"%s‚Ì%s‚ª %s ‘‚¦‚½I", u8"ActorGain", false },
-        { u8"%s‚Ì%s‚ª %s ‘‚¦‚½I", u8"EnemyGain", false },
-        { u8"%s‚Ì%s‚ª %s Œ¸‚Á‚½I", u8"ActorLoss", false },
-        { u8"%s‚Ì%s‚ª %s Œ¸‚Á‚½I", u8"EnemyLoss", false },
-        { u8"%s‚Ì%s‚ªã‚ª‚Á‚½I", u8"BuffAdd", false },
-        { u8"%s‚Ì%s‚ª‰º‚ª‚Á‚½I", u8"DebuffAdd", false },
-        { u8"%s‚Ì%s‚ªŒ³‚É–ß‚Á‚½I", u8"BuffRemove", false },
-        { u8"%s‚Ì%s‚ğ %s ’D‚Á‚½I", u8"EnemyDrain", false },
-        { u8"%s‚ÌŸ—˜I", u8"Victory", false },
-        { u8"%s‚Ì”½Œ‚I", u8"CounterAttack", false },
-        { u8"%s‚Í %s ‚Ìƒ_ƒ[ƒW‚ğó‚¯‚½I", u8"ActorDamage", false },
-        { u8"%s‚Í%s %s ‚Éã‚ª‚Á‚½I", u8"LevelUp", false },
-        { u8"%s‚Í%s‚ğ %s ’D‚í‚ê‚½I", u8"ActorDrain", false },
-        { u8"%s‚Í%s‚ğg‚Á‚½I", u8"UseItem", false },
-        { u8"%s‚Íƒ_ƒ[ƒW‚ğó‚¯‚Ä‚¢‚È‚¢I", u8"ActorNoDamage", false },
-        { u8"%s‚Í•sˆÓ‚ğ‚Â‚©‚ê‚½I", u8"Surprise", false },
-        { u8"%s‚Íæè‚ğæ‚Á‚½I", u8"Preemptive", false },
-        { u8"%s‚Íí‚¢‚É”s‚ê‚½B", u8"Defeat", false },
-        { u8"%s‚ÍUŒ‚‚ğ‚©‚í‚µ‚½I", u8"Evasion", false },
-        { u8"%s‚Í“¦‚°o‚µ‚½I", u8"EscapeStart", false },
-        { u8"%s‚Í–‚–@‚ğ‘Å‚¿Á‚µ‚½I", u8"MagicEvasion", false },
-        { u8"%s‚Í–‚–@‚ğ’µ‚Ë•Ô‚µ‚½I", u8"MagicReflection", false },
-        { u8"%s‚ğè‚É“ü‚ê‚½I", u8"ObtainItem", false },
-        { u8"%s‚ğŠo‚¦‚½I", u8"ObtainSkill", false },
-        { u8"‚¨‹à‚ğ %s\\\\G è‚É“ü‚ê‚½I", u8"ObtainGold", false },
-        { u8"‚µ‚©‚µ“¦‚°‚é‚±‚Æ‚Í‚Å‚«‚È‚©‚Á‚½I", u8"EscapeFailure", false },
-        { u8"‚Ç‚Ìƒtƒ@ƒCƒ‹‚ÉƒZ[ƒu‚µ‚Ü‚·‚©H", u8"SaveMessage", false },
-        { u8"‚Ç‚Ìƒtƒ@ƒCƒ‹‚ğƒ[ƒh‚µ‚Ü‚·‚©H", u8"LoadMessage", false },
-        { u8"‚â‚ß‚é", u8"ShopCancel", false },
-        { u8"ƒtƒ@ƒCƒ‹", u8"File", false },
-        { u8"ƒ~ƒXI@%s‚Éƒ_ƒ[ƒW‚ğ—^‚¦‚ç‚ê‚È‚¢I", u8"EnemyNoHit", false },
-        { u8"ƒ~ƒXI@%s‚Íƒ_ƒ[ƒW‚ğó‚¯‚Ä‚¢‚È‚¢I", u8"ActorNoHit", false },
-        { u8"‰ïS‚ÌˆêŒ‚II", u8"CriticalToEnemy", false },
-        { u8"”„‹p‚·‚é", u8"ShopSell", false },
-        { u8"‚Á‚Ä‚¢‚é”", u8"Possession", false },
-        { u8"Ÿ‚Ì%s‚Ü‚Å", u8"ExpNext", false },
-        { u8"Œ»İ‚ÌŒoŒ±’l", u8"ExpTotal", false },
-        { u8"’É¦‚ÌˆêŒ‚II", u8"CriticalToActor", false },
-        { u8"w“ü‚·‚é", u8"ShopBuy", false },
+        { u8"%s ã®çµŒé¨“å€¤ã‚’ç²å¾—ï¼", u8"ObtainExp", false },
+        { u8"%sãŒ%sã‚’ã‹ã°ã£ãŸï¼", u8"Substitute", false },
+        { u8"%sãŒå‡ºç¾ï¼", u8"Emerge", false },
+        { u8"%sãŸã¡", u8"PartyName", false },
+        { u8"%sã« %s ã®ãƒ€ãƒ¡ãƒ¼ã‚¸ã‚’ä¸ãˆãŸï¼", u8"EnemyDamage", false },
+        { u8"%sã«ã¯åŠ¹ã‹ãªã‹ã£ãŸï¼", u8"ActionFailure", false },
+        { u8"%sã«ãƒ€ãƒ¡ãƒ¼ã‚¸ã‚’ä¸ãˆã‚‰ã‚Œãªã„ï¼", u8"EnemyNoDamage", false },
+        { u8"%sã®%sãŒ %s å›å¾©ã—ãŸï¼", u8"ActorRecovery", false },
+        { u8"%sã®%sãŒ %s å›å¾©ã—ãŸï¼", u8"EnemyRecovery", false },
+        { u8"%sã®%sãŒ %s å¢—ãˆãŸï¼", u8"ActorGain", false },
+        { u8"%sã®%sãŒ %s å¢—ãˆãŸï¼", u8"EnemyGain", false },
+        { u8"%sã®%sãŒ %s æ¸›ã£ãŸï¼", u8"ActorLoss", false },
+        { u8"%sã®%sãŒ %s æ¸›ã£ãŸï¼", u8"EnemyLoss", false },
+        { u8"%sã®%sãŒä¸ŠãŒã£ãŸï¼", u8"BuffAdd", false },
+        { u8"%sã®%sãŒä¸‹ãŒã£ãŸï¼", u8"DebuffAdd", false },
+        { u8"%sã®%sãŒå…ƒã«æˆ»ã£ãŸï¼", u8"BuffRemove", false },
+        { u8"%sã®%sã‚’ %s å¥ªã£ãŸï¼", u8"EnemyDrain", false },
+        { u8"%sã®å‹åˆ©ï¼", u8"Victory", false },
+        { u8"%sã®åæ’ƒï¼", u8"CounterAttack", false },
+        { u8"%sã¯ %s ã®ãƒ€ãƒ¡ãƒ¼ã‚¸ã‚’å—ã‘ãŸï¼", u8"ActorDamage", false },
+        { u8"%sã¯%s %s ã«ä¸ŠãŒã£ãŸï¼", u8"LevelUp", false },
+        { u8"%sã¯%sã‚’ %s å¥ªã‚ã‚ŒãŸï¼", u8"ActorDrain", false },
+        { u8"%sã¯%sã‚’ä½¿ã£ãŸï¼", u8"UseItem", false },
+        { u8"%sã¯ãƒ€ãƒ¡ãƒ¼ã‚¸ã‚’å—ã‘ã¦ã„ãªã„ï¼", u8"ActorNoDamage", false },
+        { u8"%sã¯ä¸æ„ã‚’ã¤ã‹ã‚ŒãŸï¼", u8"Surprise", false },
+        { u8"%sã¯å…ˆæ‰‹ã‚’å–ã£ãŸï¼", u8"Preemptive", false },
+        { u8"%sã¯æˆ¦ã„ã«æ•—ã‚ŒãŸã€‚", u8"Defeat", false },
+        { u8"%sã¯æ”»æ’ƒã‚’ã‹ã‚ã—ãŸï¼", u8"Evasion", false },
+        { u8"%sã¯é€ƒã’å‡ºã—ãŸï¼", u8"EscapeStart", false },
+        { u8"%sã¯é­”æ³•ã‚’æ‰“ã¡æ¶ˆã—ãŸï¼", u8"MagicEvasion", false },
+        { u8"%sã¯é­”æ³•ã‚’è·³ã­è¿”ã—ãŸï¼", u8"MagicReflection", false },
+        { u8"%sã‚’æ‰‹ã«å…¥ã‚ŒãŸï¼", u8"ObtainItem", false },
+        { u8"%sã‚’è¦šãˆãŸï¼", u8"ObtainSkill", false },
+        { u8"ãŠé‡‘ã‚’ %s\\\\G æ‰‹ã«å…¥ã‚ŒãŸï¼", u8"ObtainGold", false },
+        { u8"ã—ã‹ã—é€ƒã’ã‚‹ã“ã¨ã¯ã§ããªã‹ã£ãŸï¼", u8"EscapeFailure", false },
+        { u8"ã©ã®ãƒ•ã‚¡ã‚¤ãƒ«ã«ã‚»ãƒ¼ãƒ–ã—ã¾ã™ã‹ï¼Ÿ", u8"SaveMessage", false },
+        { u8"ã©ã®ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ãƒ­ãƒ¼ãƒ‰ã—ã¾ã™ã‹ï¼Ÿ", u8"LoadMessage", false },
+        { u8"ã‚„ã‚ã‚‹", u8"ShopCancel", false },
+        { u8"ãƒ•ã‚¡ã‚¤ãƒ«", u8"File", false },
+        { u8"ãƒŸã‚¹ï¼ã€€%sã«ãƒ€ãƒ¡ãƒ¼ã‚¸ã‚’ä¸ãˆã‚‰ã‚Œãªã„ï¼", u8"EnemyNoHit", false },
+        { u8"ãƒŸã‚¹ï¼ã€€%sã¯ãƒ€ãƒ¡ãƒ¼ã‚¸ã‚’å—ã‘ã¦ã„ãªã„ï¼", u8"ActorNoHit", false },
+        { u8"ä¼šå¿ƒã®ä¸€æ’ƒï¼ï¼", u8"CriticalToEnemy", false },
+        { u8"å£²å´ã™ã‚‹", u8"ShopSell", false },
+        { u8"æŒã£ã¦ã„ã‚‹æ•°", u8"Possession", false },
+        { u8"æ¬¡ã®%sã¾ã§", u8"ExpNext", false },
+        { u8"ç¾åœ¨ã®çµŒé¨“å€¤", u8"ExpTotal", false },
+        { u8"ç—›æ¨ã®ä¸€æ’ƒï¼ï¼", u8"CriticalToActor", false },
+        { u8"è³¼å…¥ã™ã‚‹", u8"ShopBuy", false },
     };
     size_t maxVarLength = 0;
     for(const auto& t : translates){ maxVarLength = std::max(maxVarLength, (u8"Vocab::" + std::get<1>(t) + u8".replace").length()); }

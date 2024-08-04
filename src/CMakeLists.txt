@@ -2,8 +2,15 @@
 # プロジェクト専用ロジックはこちらです。
 #
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
-set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(MSVC)
+	set(CMAKE_CXX_STANDARD 23)
+elseif()
+	set(CMAKE_CXX_STANDARD 23)
+	set(CMAKE_CXX_COMPILER clang++)
+	set(CMAKE_C_COMPILER clang)
+endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "Test" OR CMAKE_BUILD_TYPE MATCHES "Test_Debug")
 add_definitions(-DENABLE_TEST)
@@ -52,8 +59,13 @@ set(lib_files
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
 add_library (divisi_lib STATIC ${lib_files})
-set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
-set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+if(MSVC)
+	set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
+	set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+else()
+    add_compile_options(-stdlib=libc++)
+	target_link_libraries(divisi_lib)
+endif()
 
 target_include_directories(divisi_lib PUBLIC 
 	./
@@ -63,15 +75,27 @@ target_include_directories(divisi_lib PUBLIC
 	${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/include
 )
 
+if(MSVC)
 target_link_libraries(divisi_lib
 	debug ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/tree-sitterD.lib
     optimized ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/tree-sitter.lib
 )
-
 install(TARGETS divisi_lib
         LIBRARY DESTINATION ${PROJECT_SOURCE_DIR}/lib)
 
 install(FILES ${PROJECT_BINARY_DIR}/divisi_lib.lib
         DESTINATION ${PROJECT_SOURCE_DIR}/libs)
+else()
+target_link_libraries(divisi_lib
+	debug ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/libtree-sitterD.a
+    optimized ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/libtree-sitter.a
+)
+install(TARGETS divisi_lib
+        LIBRARY DESTINATION ${PROJECT_SOURCE_DIR}/lib)
+
+install(FILES ${PROJECT_BINARY_DIR}/divisi
+        DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+endif()
+
 
 # TODO: テストを追加し、必要な場合は、ターゲットをインストールします。

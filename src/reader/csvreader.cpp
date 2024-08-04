@@ -1,11 +1,7 @@
 ﻿#include "csvreader.h"
-#include "csvreader.h"
-#include "csvreader.h"
-#include "csvreader.h"
-#include "csvreader.h"
-#include "csvreader.h"
 #include <fstream>
 #include <ranges>
+#include <algorithm>
 
 using namespace langscore;
 

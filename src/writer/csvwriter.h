@@ -34,14 +34,15 @@ namespace langscore
         template<typename str_type>
         static str_type withoutQuote(str_type str)
         {
+            using char_type = str_type::value_type;
             //CSV用なので、改行かカンマがあれば何もしない
-            if(str.find(str_type::value_type('\n')) != str_type::npos ||
-               str.find(str_type::value_type(',')) != str_type::npos){
+            if(str.find(char_type('\n')) != str_type::npos ||
+               str.find(char_type(',')) != str_type::npos){
                 return str;
             }
             if(str.empty()){ return str; }
 
-            const auto CheckQuote = [](str_type::value_type c){ return c == str_type::value_type('\"') || c == str_type::value_type('\''); };
+            const auto CheckQuote = [](char_type c){ return c == char_type('\"') || c == char_type('\''); };
             if(CheckQuote(str[0])){
                 str.erase(str.begin());
             }

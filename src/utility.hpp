@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <string>
 #include <vector>
 #include <fstream>
@@ -36,7 +36,7 @@ namespace utility
 
         std::vector<basetype> result;
         result.reserve(result_size);
-        auto offset = basetype::size_type(0);
+        auto offset = 0;
         while(true){
             auto pos = str.find(deci, offset);
             if(pos != basetype::npos){
@@ -157,7 +157,7 @@ namespace utility
         return length;
     }
 
-    //•¶š—ñ‚©‚çŠg’£q‚ğœ‹‚·‚éƒeƒ“ƒvƒŒ[ƒgŠÖ”
+    //æ–‡å­—åˆ—ã‹ã‚‰æ‹¡å¼µå­ã‚’é™¤å»ã™ã‚‹ãƒ†ãƒ³ãƒ—ãƒ¬ãƒ¼ãƒˆé–¢æ•°
     template<typename str_type>
     str_type removeExtension(str_type str)
     {
