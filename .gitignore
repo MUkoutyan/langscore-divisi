@@ -360,3 +360,5 @@ rvcnv/rvcnv_hash.cpp
 rvcnv/zlib.so
 rvcnv/fiber.so
 rvcnv/icon.ico
+test/plugin/*_test_langscore
+test/plugin/rvcnv_test/test_compress

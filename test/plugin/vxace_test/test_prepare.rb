@@ -1,5 +1,10 @@
-# main.rb
+
+Encoding.default_external = Encoding::UTF_8
+Encoding.default_internal = Encoding::UTF_8
 require 'csv'
+require 'rbconfig'
+require 'rspec'
+require 'Win32API'
 
 module RPG
 end
@@ -123,15 +128,36 @@ class Font
   def size=(s)
     @size = s
   end
+  
+  def bold
+  end
+  def bold=(s)
+  end
 
-  def default_bold
+  def italic
+  end
+  def italic=(s)
+  end
+
+  def self.default_bold
     @default_bold = 1
   end
-  def default_italic
+  def self.default_bold=(v)
+  end
+  def self.default_italic
     @default_italic = 1
   end
-  def default_size
+  def self.default_italic=(v)
+  end
+  def self.default_size
     @default_size = 1
+  end
+  def self.default_size=(v)
+  end
+  def self.default_name
+    "VL Gothic"
+  end
+  def self.default_name=(f)
   end
 
   def color
@@ -200,6 +226,9 @@ class Object
   def draw_text(*args)
   end
   def text_size(str)
+  end
+
+  def blt(*args)
   end
 end
 
@@ -274,6 +303,9 @@ class Sprite
   def bush_depth=(v)
   end
   def visible=(v)
+  end
+  def color
+    Color.new
   end
 end
 
@@ -361,8 +393,12 @@ end
 
 class Window < Sprite
 
+  attr_accessor :x
+  attr_accessor :y
 
   def initialize(x, y, width, height)
+    @x = 0
+    @y = 0
     @height = 1
     @width = 1
     @padding = 1
@@ -399,6 +435,20 @@ class Window < Sprite
   def padding=(s)
   end
   def contents=(s)
+  end
+
+  def x=(_x)
+    @x = _x
+  end
+  def x
+    @x
+  end
+
+  def y=(_y)
+    @y = _y
+  end
+  def y
+    @y
   end
 
   def height=(h)
@@ -442,12 +492,22 @@ class Window < Sprite
   def open?
     true
   end
+
+  def disposed?
+    true
+  end
   
   def close
   end
   
   def close?
     true
+  end
+
+  def viewport=(v)
+  end
+  def viewport
+    Viewport.new
   end
 end
 
@@ -529,6 +589,10 @@ class RPG::CommonEvent
 
   def parallel?
     false
+  end
+
+  def autorun?
+    true
   end
 end
 
@@ -946,7 +1010,7 @@ end
   
 
 def load_data(filename)
-    File.open(filename, "rb") do |file|
+    File.open(Dir.pwd + "/" + filename, "rb") do |file|
         return Marshal.load(file)
     end
 end
@@ -957,7 +1021,6 @@ def rgss_main
     retry
 end
 
-
 # CSVファイルのパス
 csv_file_path = './Scripts/_list.csv'
 
@@ -965,21 +1028,21 @@ csv_file_path = './Scripts/_list.csv'
 script_files = []
 CSV.foreach(csv_file_path, headers: false) do |row|
   if row[1].strip != "Main"
-    script_files << ("./Scripts/" + row[1].strip + ".rb")
+    path = ("./Scripts/" + row[1].strip + ".rb")
+    script_files << path
   end
 end
 
 # スクリプトファイルを順番に読み込み
-script_files.each do |file|
-    require_relative file
+script_files.each do |file_path|
+  begin
+    # ファイルを読み込みUTF-8として評価する
+    file_content = File.read(file_path, encoding: 'UTF-8')
+    eval(file_content, binding, file_path)
+  rescue => e
+    # エラーが発生した場合の処理
+    puts "Error in file: #{file_path}"
+    puts "Error: #{e.message}"
+    puts e.backtrace
+  end
 end
-
-DataManager.init
-SceneManager.goto(Scene_Title)
-SceneManager.scene.start
-SceneManager.scene.command_new_game
-SceneManager.scene.start
-
-dummy_window = Window_Message.new
-text = dummy_window.convert_escape_characters("Hoge")
-p text

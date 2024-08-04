@@ -36,6 +36,42 @@ def run_wsl_script(script_path):
         print(f"Failed to run WSL script: {e}")
         return str(e), False
 
+def run_python_script(script_path):
+    try:
+        result = subprocess.run(
+            ['python', script_path, "-v"],
+            capture_output=True, text=True,
+            encoding='utf-8'
+        )
+        return result.stdout, result.returncode == 0
+    except Exception as e:
+        print(f"Failed to run `Python` script: {e}")
+        return str(e), False
+
+def analyze_python_test_result(output):
+    success_tests = []
+    failed_tests = []
+    error_tests = []
+
+    lines = output.splitlines()
+    for line in lines:
+        # テストケースの成功を示す行
+        success_match = re.match(r'test_\w+ \(__main__\.(\w+\.\w+)\) \.\.\. ok', line)
+        if success_match:
+            success_tests.append(success_match.group(1))
+        
+        # テストケースの失敗を示す行
+        failed_match = re.match(r'test_\w+ \(__main__\.(\w+\.\w+)\) \.\.\. FAIL', line)
+        if failed_match:
+            failed_tests.append(failed_match.group(1))
+        
+        # テストケースのエラーを示す行
+        error_match = re.match(r'test_\w+ \(__main__\.(\w+\.\w+)\) \.\.\. ERROR', line)
+        if error_match:
+            error_tests.append(error_match.group(1))
+
+    return success_tests, failed_tests, error_tests
+
 def analyze_ruby_test_result(output):
     # Rubyのテスト結果を解析
     match = re.search(r'(\d+) tests, (\d+) assertions, (\d+) failures, (\d+) errors, (\d+) skips', output)
@@ -123,6 +159,7 @@ def main():
     current_path = os.getcwd()
     
     # 各スクリプトのパスを生成
+    rvcnv_script_path = f'{current_path}/run_rvcnv_test.py'
     vxace_script_path = f'{current_path}/run_vxace_test.ps1'
     mv_test_script_path = f'{current_path}/run_mv_test.sh'
     mz_test_script_path = f'{current_path}/run_mz_test.sh'
@@ -133,15 +170,38 @@ def main():
     details = []
     
     with open(log_file_path, 'w', encoding='utf-8') as log_file:
+        rvcnv_test_result = []
         vxace_test_result = []
         mv_test_result = []
         mz_test_result = []
         
+        all_tests_passed = True
+        if 'all' in test_selection or 'rvcnv' in test_selection:
+            rvcnv_output, rvcnv_result = run_python_script(rvcnv_script_path)
+            rvcnv_success, rvcnv_failures, rvcnv_error = analyze_python_test_result(rvcnv_output)
+            rvcnv_test_result = (len(rvcnv_failures) == 0)
+            all_tests_passed &= rvcnv_test_result
+            
+            if not rvcnv_failures:
+                results.append("| rvcnv | Passed | None |")
+            else:
+                for failure in rvcnv_failures:
+                    results.append(f"| rvcnv | Failed | {failure} |")
+
+            print(f"rvcnv test {'succeeded' if rvcnv_test_result else 'failed'}")
+            if rvcnv_failures:
+                details.append("### Failures in rvcnv Test\n\n")
+                for failure in rvcnv_failures:
+                    details.append(f"- {failure}\n")
+            details.append("## rvcnv Test Output\n\n")
+            details.append("```\n" + rvcnv_output.rstrip() + "\n```\n\n")
+
         if 'all' in test_selection or 'vxace' in test_selection:
             # VXAce test using PowerShell on Windows
             vxace_output, vxace_result = run_powershell_script(vxace_script_path)
             vxace_failures = analyze_ruby_test_result(vxace_output)
             vxace_test_result = len(vxace_failures) == 0
+            all_tests_passed &= vxace_test_result
             
             if not vxace_failures:
                 results.append("| VXAce | Passed | None |")
@@ -155,13 +215,14 @@ def main():
                 for failure in vxace_failures:
                     details.append(f"- {failure}\n")
             details.append("## VXAce Test Output\n\n")
-            details.append("```\n" + vxace_output + "\n```\n\n")
+            details.append("```\n" + vxace_output.rstrip() + "\n```\n\n")
 
         if 'all' in test_selection or 'mv' in test_selection:
             # MV test using WSL script
             mv_output, mv_result = run_wsl_script(mv_test_script_path)
             mv_failures = process_logs(mv_output)
             mv_test_result = len(mv_failures) == 0
+            all_tests_passed &= mv_test_result
             
             if not mv_failures:
                 results.append("| MV | Passed | None |")
@@ -169,7 +230,7 @@ def main():
                 for failure in mv_failures:
                     is_nwjs = failure[1]
                     test_case = failure[0]
-                    prefix = "MZ (NWJs)" if is_nwjs else "MZ (Browser)"
+                    prefix = "MV (NWJs)" if is_nwjs else "MV (Browser)"
                     results.append(f"| {prefix} | Failed | {test_case} |")
 
             print(f"MV test {'succeeded' if mv_test_result else 'failed'}")
@@ -179,13 +240,14 @@ def main():
                     # print(f"- {failure}")
                     details.append(f"- **{ 'NWjs' if failure[1] else 'Browser' }** {failure}\n")
             details.append("## MV Test Output\n\n")
-            details.append("```\n" + mv_output + "\n```\n\n")
+            details.append("```\n" + mv_output.rstrip() + "\n```\n\n")
 
         if 'all' in test_selection or 'mz' in test_selection:
             # MZ test using WSL script
             mz_output, mz_result = run_wsl_script(mz_test_script_path)
             mz_failures = process_logs(mz_output)
             mz_test_result = len(mz_failures) == 0
+            all_tests_passed &= mz_test_result
             
             if not mz_failures:
                 results.append("| MZ | Passed | None |")
@@ -202,10 +264,9 @@ def main():
                 for failure in mz_failures:
                     details.append(f"- **{ 'NWjs' if failure[1] else 'Browser' }** {failure[0]}\n")
             details.append("## MZ Test Output\n\n")
-            details.append("```\n" + mz_output + "\n```\n\n")
+            details.append("```\n" + mz_output.rstrip() + "\n```\n\n")
 
         # Overall result
-        all_tests_passed = vxace_test_result and mv_test_result and mz_test_result
         print(f"All tests {'passed' if all_tests_passed else 'failed'}")
         log_file.write(f"\n## Overall Result: {'Passed' if all_tests_passed else 'Failed'}\n")
 
