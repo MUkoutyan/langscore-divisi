@@ -14,7 +14,9 @@ def run_powershell_script(script_path):
             'powershell.exe',
             '-ExecutionPolicy', 'Bypass',  # 一時的に実行ポリシーをバイパス
             '-File', script_path
-        ], capture_output=True, text=True, encoding='utf-8')
+            ], capture_output=True, text=True, 
+            encoding='utf-8', timeout=180
+        )
         # print(f"PowerShell Output: {result.stdout}")
         return result.stdout, result.returncode == 0
     except Exception as e:
@@ -26,9 +28,8 @@ def run_wsl_script(script_path):
         wsl_path = convert_path_for_wsl(script_path)
         result = subprocess.run(
             ['wsl', wsl_path],  # WSL上でスクリプトを直接実行
-            capture_output=True, 
-            text=True, 
-            encoding='utf-8'  # ここでエンコーディングを指定
+            capture_output=True, text=True, 
+            encoding='utf-8', timeout=180
         )
         # print(f"WSL Bash Output: {result.stdout}")
         return result.stdout, result.returncode == 0
@@ -41,7 +42,7 @@ def run_python_script(script_path):
         result = subprocess.run(
             ['python', script_path, "-v"],
             capture_output=True, text=True,
-            encoding='utf-8'
+            encoding='utf-8', timeout=180
         )
         return result.stdout, result.returncode == 0
     except Exception as e:
