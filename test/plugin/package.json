@@ -4,10 +4,10 @@
     "description": "Langscore Test",
     "main": "Langscore.test.mjs",
     "scripts": {
-        "test-mv-nwjs": "IS_NWJS=true PROJ_NAME=\"mv_test\" mocha ./mv_test/Langscore.test.js",
-        "test-mv-browser": "IS_NWJS=false PROJ_NAME=\"mv_test\" mocha ./mv_test/Langscore.test.js",
-        "test-mz-nwjs": "IS_NWJS=true PROJ_NAME=\"mz_test\" mocha ./mz_test/Langscore.test.js",
-        "test-mz-browser": "IS_NWJS=false PROJ_NAME=\"mz_test\" mocha ./mz_test/Langscore.test.js"
+        "test-mv-nwjs": "IS_MV=true IS_NWJS=true PROJ_NAME=\"mv_test\" mocha ./Langscore_mvmz.test.js",
+        "test-mv-browser": "IS_MV=true IS_NWJS=false PROJ_NAME=\"mv_test\" mocha ./Langscore_mvmz.test.js",
+        "test-mz-nwjs": "IS_MZ=true IS_NWJS=true PROJ_NAME=\"mz_test\" mocha ./Langscore_mvmz.test.js",
+        "test-mz-browser": "IS_MZ=true IS_NWJS=false PROJ_NAME=\"mz_test\" mocha ./Langscore_mvmz.test.js"
     },
     "author": "",
     "license": "ISC",

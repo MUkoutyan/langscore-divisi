@@ -50,6 +50,18 @@ class LangscoreTestEvent {
 Scene_Boot.prototype.isGameFontLoaded = function() {
     return true;
 };
+Scene_Boot.prototype.loadSystemImages = function() {
+}
+
+Window_Base.prototype.loadWindowskin = function() {
+  this.windowskin = ImageManager._emptyBitmap;
+};
+Window_Base.prototype.resetTextColor = function(){
+}
+
+ImageManager.isReady = function(){
+  return true;
+}
 
 intervalTicker.add(() => {
     SceneManager.update(16);

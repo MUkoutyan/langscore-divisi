@@ -3,7 +3,6 @@ Encoding.default_external = Encoding::UTF_8
 Encoding.default_internal = Encoding::UTF_8
 require 'csv'
 require 'rbconfig'
-require 'rspec'
 require 'Win32API'
 
 module RPG
@@ -1010,7 +1009,7 @@ end
   
 
 def load_data(filename)
-    File.open(Dir.pwd + "/" + filename, "rb") do |file|
+    File.open(Dir.pwd + "/vxace_test/" + filename, "rb") do |file|
         return Marshal.load(file)
     end
 end
@@ -1022,13 +1021,13 @@ def rgss_main
 end
 
 # CSVファイルのパス
-csv_file_path = './Scripts/_list.csv'
+csv_file_path = './vxace_test/Scripts/_list.csv'
 
 # CSVファイルを読み込み、1列目のスクリプトファイル名を取得
 script_files = []
 CSV.foreach(csv_file_path, headers: false) do |row|
   if row[1].strip != "Main"
-    path = ("./Scripts/" + row[1].strip + ".rb")
+    path = ("./vxace_test/Scripts/" + row[1].strip + ".rb")
     script_files << path
   end
 end
