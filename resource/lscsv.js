@@ -8,15 +8,12 @@ class LSCSV
 
   to_map(file, file_name = '') 
   {
-    // var file = open(Langscore.TRANSLATE_FOLDER + "/" + file_name)
-    // if (file === null) { return {} }
-
     //CRLFをLFに統一
     var replaced = file.replace(/\r\n/g, '\n');
     var header = this.fetch_header(replaced);
 
     var rows = this.parse_col(header, this.parse_row(replaced));
-    this. varidate(file_name, header, rows);
+    this.varidate(file_name, header, rows);
 
     var row_index = Langscore.Support_Language.map(lang => header.indexOf(lang)).filter(i => 0<=i);
 
@@ -160,5 +157,7 @@ class LSCSV
     return result;
   }
 }
+
+module.exports = LSCSV;
 
 //==========LSCSV==========

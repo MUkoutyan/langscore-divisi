@@ -2,7 +2,7 @@
     "name": "langscore_test",
     "version": "1.0.0",
     "description": "Langscore Test",
-    "main": "Langscore.test.mjs",
+    "main": "Langscore.test.js",
     "scripts": {
         "test-mv-nwjs": "IS_MV=true IS_NWJS=true PROJ_NAME=\"mv_test\" mocha ./Langscore_mvmz.test.js",
         "test-mv-browser": "IS_MV=true IS_NWJS=false PROJ_NAME=\"mv_test\" mocha ./Langscore_mvmz.test.js",

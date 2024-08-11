@@ -76,46 +76,6 @@ test_weapons = [{'ja' => '剣', 'en' => 'Sword'}, {'ja' => '斧', 'en' => 'Axe'}
 
 # 既存のテスト用データとメソッドは省略
 
-class LSCSVTest < Test::Unit::TestCase
-  def test_fetch_header
-    csv_text = "origin,ja,en\nvalue1,こんにちは,Hello"
-    header = LSCSV.fetch_header(csv_text)
-    assert_equal ["origin", "ja", "en"], header
-  end
-
-  def test_parse
-    csv_text = "origin,ja,en\nvalue1,こんにちは,Hello\nvalue2,さようなら,Goodbye"
-    header = LSCSV.fetch_header(csv_text)
-    result = LSCSV.parse_col(header, LSCSV.parse_row(csv_text))
-  
-    # 期待される結果を設定
-    expected = [
-      ["origin", "ja", "en"],
-      ["value1", "こんにちは", "Hello"],
-      ["value2", "さようなら", "Goodbye"]
-    ]
-  
-    # 結果と期待される値を比較
-    assert_equal expected, result
-  end
-
-  def test_to_hash
-    actors = LSCSV.to_hash("Actors")
-    assert_equal actors.length, 6
-
-    actor1 = actors["ケスティニアスの雑用係。\r\nそんなに仕事は無い。"]
-    assert_not_nil actor1
-
-    assert_not_nil actor1["ja"]
-    assert_not_nil actor1["en"]
-
-    assert_equal actor1["ja"], "ケスティニアスの雑用係。\r\nそんなに仕事は無い。"
-    assert_equal actor1["en"], "Kestinius' scullery maid.\r\nNot that much work."
-
-  end
-
-end
-
 class LangscoreTest < Test::Unit::TestCase
   def setup
     Langscore.changeLanguage("en")

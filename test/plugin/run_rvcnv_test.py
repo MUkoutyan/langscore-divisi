@@ -6,44 +6,57 @@ import sys
 import io
 import unittest
 
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# rootディレクトリのパスを取得してsys.pathに追加
+test_root_dir = os.path.abspath(os.path.join(current_dir, '../'))
+sys.path.append(test_root_dir)
+from internal import test_core as core
+
+def copy_folder(src, dest):
+    ret = shutil.copytree(src, dest)
+    core.remove_read_only(dest)
+    return ret
+
+
 is_delete_files = True
 def run_command(args):
     RVCNV_PATH = r"..\\..\\rvcnv\\rvcnv.exe"
-    command = [RVCNV_PATH] + args
-    result = subprocess.run(command, capture_output=True, text=True, shell=True, encoding='utf-8')
-    if result.returncode != 0:
-        print(f"Error executing command: {command}")
-        print(f"Standard Output:\n{result.stdout}")
-        print(f"Standard Error:\n{result.stderr}")
+    out, err, code = core.run_command(RVCNV_PATH, args)
+    if code != 0:
+        print(f"Error executing command: {RVCNV_PATH}, {args}")
+        print(f"Standard Output:\n{out}")
+        print(f"Standard Error:\n{err}")
         is_delete_files = False
         sys.exit(1)
-    return result
+    return out, err, code
 
 
 def convert_rvdata2_to_csv(rvdata2_path, csv_path):
     ruby_script = r".\\rvcnv_test\\extract_rvdata2.rb"
-    command = ["ruby", ruby_script, rvdata2_path, csv_path]
-    result = subprocess.run(command, capture_output=True, text=True, shell=True, encoding='utf-8')
-    if result.returncode != 0:
+    args = [ruby_script, rvdata2_path, csv_path]
+    out, err, code = core.run_command("ruby", args)
+    if code != 0:
         print(f"Error executing command: {command}")
-        print(f"Standard Output:\n{result.stdout}")
-        print(f"Standard Error:\n{result.stderr}")
+        print(f"Standard Output:\n{out}")
+        print(f"Standard Error:\n{err}")
         is_delete_files = False
         sys.exit(1)
-    return result
+    return out, err, code
 
     
 def extract_script_data(project_path, output_path):
     ruby_script = r".\\rvcnv_test\\extract_script.rb"
-    command = ["ruby", ruby_script, project_path, output_path]
-    result = subprocess.run(command, capture_output=True, text=True, shell=True, encoding='utf-8')
-    if result.returncode != 0:
+    args = [ruby_script, project_path, output_path]
+    out, err, code = core.run_command("ruby", args)
+    if code != 0:
         print(f"Error executing command: {command}")
-        print(f"Standard Output:\n{result.stdout}")
-        print(f"Standard Error:\n{result.stderr}")
+        print(f"Standard Output:\n{out}")
+        print(f"Standard Error:\n{err}")
         is_delete_files = False
         sys.exit(1)
-    return result
+    return out, err, code
 
 def normalize_newlines(text, newline_type):
     return text.replace("\n", "").replace("\r", "")
@@ -129,8 +142,8 @@ class TestAnalyzeAndPack(unittest.TestCase):
         if is_delete_files:
             if os.path.exists(r".\\rvcnv_test\\test_analyze"):
                 shutil.rmtree(r".\\rvcnv_test\\test_analyze")
-            # if os.path.exists(r".\\rvcnv_test\\test_compress"):
-            #     shutil.rmtree(r".\\rvcnv_test\\test_compress")
+            if os.path.exists(r".\\rvcnv_test\\test_compress"):
+                shutil.rmtree(r".\\rvcnv_test\\test_compress")
             if os.path.exists(r".\\rvcnv_test\\test_packing"):
                 shutil.rmtree(r".\\rvcnv_test\\test_packing")
         pass
@@ -143,7 +156,7 @@ class TestAnalyzeAndPack(unittest.TestCase):
         pass
 
     def test_analyze(self):
-        analyze_args = ['-i', '.\\data\\vxace\\ソポァゼゾタダＡボマミ', '-o', '.\\rvcnv_test\\test_analyze']
+        analyze_args = ['-i', '..\\data\\vxace\\ソポァゼゾタダＡボマミ', '-o', '.\\rvcnv_test\\test_analyze']
         run_command(analyze_args)
         
         self.assertTrue(os.path.exists(r".\\rvcnv_test\\test_analyze"), "test_analyze folder does not exist.")
@@ -170,8 +183,8 @@ class TestAnalyzeAndPack(unittest.TestCase):
                 self.assertTrue(os.path.exists(file_path), f"{file_path} does not exist.")
     
     def test_compress(self):
-        shutil.copytree('.\\data\\vxace\\ソポァゼゾタダＡボマミ', '.\\rvcnv_test\\test_compress\\ソポァゼゾタダＡボマミ')
-        ret = shutil.copytree('.\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore', '.\\rvcnv_test\\test_compress\\ソポァゼゾタダＡボマミ_langscore')
+        copy_folder('..\\data\\vxace\\ソポァゼゾタダＡボマミ', '.\\rvcnv_test\\test_compress\\ソポァゼゾタダＡボマミ')
+        ret = copy_folder('..\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore', '.\\rvcnv_test\\test_compress\\ソポァゼゾタダＡボマミ_langscore')
 
         compress_args = ['-c', '-i', '.\\rvcnv_test\\test_compress\\ソポァゼゾタダＡボマミ', '-o', '.\\rvcnv_test\\test_compress\\dest']
         run_command(compress_args)
@@ -181,13 +194,13 @@ class TestAnalyzeAndPack(unittest.TestCase):
         self.assertTrue(check_files_in_directory('.\\rvcnv_test\\test_compress\\dest', "langscore"), "langscore script is not written.")
         self.assertTrue(check_files_in_directory('.\\rvcnv_test\\test_compress\\dest', "langscore_custom"), "langscore_custom script is not written.")
 
-        before_script_data = os.path.getsize(".\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2")
+        before_script_data = os.path.getsize("..\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2")
         after_script_data = os.path.getsize(".\\rvcnv_test\\test_compress\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2")
         self.assertLess(before_script_data, after_script_data, "書き出し後のファイルサイズが書き出し前を下回っています。")
 
 
     def test_packing(self):
-        base_csv_folder = ".\\data\\Translate"
+        base_csv_folder = "..\\data\\Translate"
         packing_args = ['-p', '-i', base_csv_folder, '-o', '.\\rvcnv_test\\test_packing']
         run_command(packing_args)
         
@@ -213,11 +226,11 @@ class TestAnalyzeAndPack(unittest.TestCase):
             # 変換されたCSVファイルの内容を元のCSVファイルと比較
             self.assertTrue(compare_csv_files(original_csv_path, extracted_csv_path), "The content of the packed CSV does not match the original CSV.")
 
-def run_unittest():
-    # 標準出力をキャプチャするためのStringIOオブジェクトを作成
-    captured_output = io.StringIO()
-    sys.stdout = captured_output
 
+# 標準出力をキャプチャするためのStringIOオブジェクトを作成
+captured_output = io.StringIO()
+
+def run_unittest():
     try:
         # テストスイートを作成
         suite = unittest.TestLoader().loadTestsFromTestCase(TestAnalyzeAndPack)
@@ -228,13 +241,14 @@ def run_unittest():
         
         # 標準出力の内容を取得
         output = captured_output.getvalue()
-    finally:
-        # 標準出力を元に戻す
-        sys.stdout = sys.__stdout__
+    except Exception as e:
+        print(f"Failed to run command: {e}")
 
     return output, result.wasSuccessful()
 
 # 実行例
 if __name__ == '__main__':
+    sys.stdout = captured_output
     output, success = run_unittest()
     print(output)
+    sys.stdout = sys.__stdout__

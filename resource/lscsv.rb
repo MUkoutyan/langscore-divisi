@@ -9,11 +9,15 @@ class LSCSV
     $lscsv_resource_locker.lock
     file = open(Langscore::TRANSLATE_FOLDER + "/" + file_name)
     $lscsv_resource_locker.unlock
-    return {} if file == nil
 
-    header = fetch_header(file)
+    return from_content(file, file_name)
+  end
 
-    rows = parse_col(header, parse_row(file))
+  def self.from_content(content, file_name = '')
+    return {} if content == nil
+
+    header = fetch_header(content)
+    rows = parse_col(header, parse_row(content))
     varidate(file_name, header, rows)
 
     row_index = [*1..header.size].select! do |i|
