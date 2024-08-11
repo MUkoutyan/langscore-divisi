@@ -22,7 +22,6 @@ def convert_path_for_wsl(windows_path):
 def run_command(command_path, args):
     try:
         system_encoding = locale.getpreferredencoding()
-        print(f"system_encoding {system_encoding}")
         command = [command_path] + args
         result = subprocess.run(command, 
             capture_output=True, text=True, shell=True, 
