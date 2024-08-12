@@ -47,6 +47,7 @@ namespace
 
     std::vector<config::BasicData> fetchBasicDataInfo(fs::path analyzeDir)
     {
+        if(fs::exists(analyzeDir) == false) { return {}; }
         std::vector<config::BasicData> result;
         for(auto& file : fs::directory_iterator{analyzeDir}) 
         {
@@ -67,6 +68,8 @@ namespace
     }
     std::vector<config::ScriptData> fetchScriptDataInfo(fs::path analyzeDir)
     {
+        if(fs::exists(analyzeDir) == false) { return {}; }
+
         auto scriptDir = analyzeDir / "Scripts";
         auto csv = scriptDir / "_list.csv";
         plaincsvreader reader(csv);
@@ -161,11 +164,17 @@ bool langscore::config_writer::write()
 
     this->langscoreProjectPath = u8"./../" + folderPath.filename().u8string();
     fs::path langscoreWorkFolder = folderPath.u8string() + u8"_langscore"s;
+    if(fs::exists(langscoreWorkFolder) == false) 
+    {
+        fs::create_directory(langscoreWorkFolder);
+    }
+
     this->langscoreAnalyzeDirectorty = "./analyze";
     this->langscoreUpdateDirectorty = langscoreWorkFolder / "update";
     this->vxaceBasicData = ::fetchBasicDataInfo(langscoreWorkFolder / this->langscoreAnalyzeDirectorty);
     this->rpgMakerScripts = ::fetchScriptDataInfo(langscoreWorkFolder / this->langscoreAnalyzeDirectorty);
 
+    std::cout << "output folder " << langscoreWorkFolder << std::endl;
     std::vector<std::string> languages = {
         "ja","en","zh-cn","zh-tw","ko","es","de","fr","it","ru"
     };
@@ -192,10 +201,6 @@ bool langscore::config_writer::write()
         }
     }
 
-
-    if(fs::exists(langscoreWorkFolder) == false) {
-        fs::create_directory(langscoreWorkFolder);
-    }
     std::ofstream configJsonFile(langscoreWorkFolder / "config.json", std::ios_base::trunc);
 
     configJsonFile << createJson();

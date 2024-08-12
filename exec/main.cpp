@@ -83,37 +83,11 @@ ARGS analyzeOption(int argc, const char* argv[])
 		else if(str.find("--packing") != std::string_view::npos){
 			args.packing = true;
 		}
-        else if(str.find("--outputTestScript") != std::string_view::npos) {
-            args.outputTestScript = true;
-            ++i;	//次の要素を読み込む
-            args.configFile = getFilePathFromArgs(i, argc, argv);
-            std::string type = argv[i];
-            std::transform(type.cbegin(), type.cend(), type.begin(), [](unsigned char c) { return std::toupper(c); });
-            if(type == "MV") {
-                args.projectType = langscore::config::MV;
-            }
-            else if(type == "MZ") {
-                args.projectType = langscore::config::MZ;
-            }
-            else if(type == "VXACE") {
-                args.projectType = langscore::config::VXAce;
-            }
-        }
         else if(str.find("--createConfigFile") != std::string_view::npos) {
             args.createConfigFile = true;
             ++i;	//次の要素を読み込む
             args.configFile = getFilePathFromArgs(i, argc, argv);
-            //std::string type = argv[i];
-            //std::transform(type.begin(), type.end(), type.begin(), [](unsigned char c) { return std::toupper(c); });
-            //if(type == "MV") {
-            //    args.projectType = langscore::config::MV;
-            //}
-            //else if(type == "MZ") {
-            //    args.projectType = langscore::config::MZ;
-            //}
-            //else if(type == "VXACE") {
-            //    args.projectType = langscore::config::VXAce;
-            //}
+			std::cout << args.configFile << " ";
         }
         
 	}

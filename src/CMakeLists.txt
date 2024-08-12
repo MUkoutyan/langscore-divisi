@@ -76,26 +76,21 @@ target_include_directories(divisi_lib PUBLIC
 )
 
 if(MSVC)
+
 target_link_libraries(divisi_lib
 	debug ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/tree-sitterD.lib
     optimized ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/tree-sitter.lib
 )
-install(TARGETS divisi_lib
-        LIBRARY DESTINATION ${PROJECT_SOURCE_DIR}/lib)
 
-install(FILES ${PROJECT_BINARY_DIR}/divisi_lib.lib
-        DESTINATION ${PROJECT_SOURCE_DIR}/libs)
 else()
+
 target_link_libraries(divisi_lib
 	debug ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/libtree-sitterD.a
     optimized ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/libtree-sitter.a
 )
-install(TARGETS divisi_lib
-        LIBRARY DESTINATION ${PROJECT_SOURCE_DIR}/lib)
 
-install(FILES ${PROJECT_BINARY_DIR}/divisi
-        DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-endif()
+endif(MSVC)
+		
 
 
 # TODO: テストを追加し、必要な場合は、ターゲットをインストールします。

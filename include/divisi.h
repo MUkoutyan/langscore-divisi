@@ -25,8 +25,6 @@ public:
 
     ErrorStatus createConfig();
 
-    ErrorStatus outputTestScript(config::ProjectType projType);
-
 private:
     class Impl;
     std::unique_ptr<Impl> pImpl;

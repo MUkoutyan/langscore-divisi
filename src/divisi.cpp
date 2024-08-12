@@ -120,11 +120,6 @@ ErrorStatus langscore::divisi::createConfig()
 {
     config_writer writer(pImpl->configPath);
 
+    std::cout << "create config" << std::endl;
     return writer.write() ? ErrorStatus::Module::None : ErrorStatus::Module::None;
 }
-
-ErrorStatus divisi::outputTestScript(config::ProjectType projType)
-{
-    return ErrorStatus::Module::None;
-}
-
