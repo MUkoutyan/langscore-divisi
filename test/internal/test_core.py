@@ -19,41 +19,49 @@ def convert_path_for_wsl(windows_path):
     return f'/mnt/{drive.lower()}{path}'
 
     
-def run_command(command_path, args):
+def run_command(command_path, args=None, **option):
     try:
         system_encoding = locale.getpreferredencoding()
-        command = [command_path] + args
+        command = []
+        command.append(command_path)
+        if args: command += args
         result = subprocess.run(command, 
             capture_output=True, text=True, shell=True, 
-            encoding='utf-8', timeout=180
+            encoding='utf-8', timeout=180, **option
         )
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run command: {e}")
         return str(), str(e), False
 
-def run_powershell_script(script_path):
+def run_powershell_script(script_path, args=None, **option):
     try:
         system_encoding = locale.getpreferredencoding()
-        result = subprocess.run([
+        command = [
             'powershell.exe',
             '-ExecutionPolicy', 'Bypass',  # 一時的に実行ポリシーをバイパス
             '-File', script_path
-            ], capture_output=True, text=True, 
-            encoding='utf-8', timeout=180
+        ]
+
+        if args: 
+            command += [
+                '-Args', args
+            ]
+        result = subprocess.run(command, capture_output=True, text=True, 
+            encoding='utf-8', timeout=180, **option
         )
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run PowerShell script: {e}")
         return str(), str(e), False
 
-def run_wsl_script(script_path):
+def run_wsl_script(script_path, args=None, **option):
     try:
         wsl_path = convert_path_for_wsl(script_path)
         result = subprocess.run(
             ['wsl', wsl_path],  # WSL上でスクリプトを直接実行
             capture_output=True, text=True, 
-            encoding='utf-8', timeout=180
+            encoding='utf-8', timeout=180, **option
         )
         # print(f"WSL Bash Output: {result.stdout}")
         return result.stdout, result.stderr, result.returncode == 0

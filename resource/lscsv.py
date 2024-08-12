@@ -6,9 +6,10 @@ class LSCSV:
     def __init__(self):
         pass
 
-    def to_map(self, file, file_name=''):
+    @classmethod
+    def to_map(self, contents, file_name=''):
         # CRLFをLFに統一
-        replaced = file.replace('\r\n', '\n')
+        replaced = contents.replace('\r\n', '\n')
         header = self.fetch_header(replaced)
 
         rows = self.parse_col(header, self.parse_row(replaced))
@@ -27,10 +28,12 @@ class LSCSV:
 
         return result
 
+    @classmethod
     def to_array_without_origin(self, file_name):
         hash_map = self.to_map(file_name)
         return list(hash_map.values())
 
+    @classmethod
     def validate(self, file_name, header, rows):
         if header is None:
             raise ValueError("Invalid CSV Data")
@@ -42,6 +45,7 @@ class LSCSV:
             print(f"File : {file_name}, Header size : {size}, Languages : {rows[0]}")
             raise ValueError(f"Error! : Mismatch Num Cells : {mismatch_cells[0]}")
 
+    @classmethod
     def fetch_header(self, csv_text):
         if csv_text and len(csv_text) > 0:
             splited = csv_text.split('\n')
@@ -54,11 +58,13 @@ class LSCSV:
 
         return None
 
+    @classmethod
     def parse_row(self, csv_text):
         if not csv_text:
             return None
         return csv_text
 
+    @classmethod
     def parse_col(self, header, rows):
         if rows is None:
             return None
