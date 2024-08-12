@@ -721,7 +721,7 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
     utility::u8stringlist result;
     config config;
 
-    const auto findStr = [](const std::u8string& _line, std::u8string_view str) {
+    const auto findStr = [](const auto& _line, auto str) {
         return _line.find(str) != std::u8string::npos;
     };
 
@@ -784,7 +784,17 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
             std::cout << "Include LSCSV : " << resourceFolder / "lscsv.js" << std::endl;
             std::ifstream lscsv(resourceFolder / "lscsv.js");
             assert(lscsv.good());
-            ss << lscsv.rdbuf();
+            std::vector<std::string> lscsvTexts;
+            std::string lscsvTmp;
+            while(std::getline(lscsv, lscsvTmp)) 
+            {
+                //module.exports~はLSCSVのテスト用の記述なので削除する。
+                //あるとツクールの結合テスト時に動作しない。
+                if(findStr(lscsvTmp, "module.exports = LSCSV;") == false) {
+                    lscsvTexts.emplace_back(lscsvTmp);
+                }
+            }
+            ss << utility::join(lscsvTexts, "\n"s);
             lscsv.close();
             _line = utility::cnvStr<std::u8string>(ss.str());
         }
