@@ -152,7 +152,7 @@ class Langscore
     }
   }
 
-  isLoaded()
+  isLoadedTranslateFiles()
   {
     for (var i = 0; i < this._databaseFiles.length; i++) {
       if (!this[this._databaseFiles[i].name]) {
@@ -276,7 +276,13 @@ class Langscore
     this.ls_graphic_cache = {};
     this.ls_graphic_cache.clear
     
-    ConfigManager.save();
+    if(Langscore.isFirstLoaded === false){
+      //changeLanguageの初回呼び出しはConfigManagerのロード後の、保存されていたlangscore_current_languageを
+      //使用して呼び出されるため、ConfigManager.save()は呼び出さない。
+      Langscore.isFirstLoaded = true;
+    }else{
+      ConfigManager.save();
+    }
   }
 
   updateFont(lang) {
@@ -328,7 +334,7 @@ class Langscore
     }
     data_list.forEach(function(obj,i){
       if(data_list[i] === null){ return; }
-      data_list[i].name         = elm_trans(_langscore.fetch_original_text(obj.name, tr_list));
+      data_list[i].name        = elm_trans(_langscore.fetch_original_text(obj.name, tr_list));
       data_list[i].description = elm_trans(_langscore.fetch_original_text(obj.description, tr_list));
     });
   };
@@ -346,14 +352,25 @@ class Langscore
 
   updateActor()
   {
-    //大元のデータベースを更新。Game_Actor作成時に使用されるため必要。
-    this.updateForNameAndDesc($dataActors, this.ls_actors_tr);
-    
     const elm_trans =(el) => {
       return this.translate(el, this.ls_actors_tr);
     }
 
-    if($dataActors === null || $gameActors === null){
+    if($dataActors === null){
+      return;
+    }
+    //大元のデータベースを更新。Game_Actor作成時に使用されるため必要。
+    var _this = this;
+    $dataActors.forEach(function(obj,i)
+    {
+      if($dataActors[i] === null){ return; }
+      $dataActors[i].name        = elm_trans(_langscore.fetch_original_text(obj.name, _this.ls_actors_tr));
+      $dataActors[i].nickname    = elm_trans(_langscore.fetch_original_text(obj.nickname, _this.ls_actors_tr));
+      $dataActors[i].profile     = elm_trans(_langscore.fetch_original_text(obj.profile, _this.ls_actors_tr));
+    });
+    
+    //起動時の初回コールの場合はgameActorsがnullになっている。
+    if($gameActors === null){
       return;
     }
     //既にGame_Actorが作成されている場合、インスタンス側も更新。
@@ -606,6 +623,8 @@ class Langscore
 
 _lscsv = new LSCSV();
 
+Langscore.isFirstLoaded = false;
+
 //MV向けのクラス変数定義
 Langscore.Langscore_Parameters = PluginManager.parameters('Langscore');
 %{SUPPORT_LANGUAGE}%;
@@ -806,43 +825,18 @@ var DataManager_isDatabaseLoaded = DataManager.isDatabaseLoaded;
 DataManager.isDatabaseLoaded = function(){
   var result = DataManager_isDatabaseLoaded.call(this);
   if(result){
-    if(_langscore.isLoaded() === false){
+    if(_langscore.isLoadedTranslateFiles() === false){
       return false;
     }
-    _langscore.changeLanguage(Langscore.langscore_current_language, true);
   }
   return result;
 }
 
-function deepCloneWithPrototype(obj) 
-{
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
-
-  // 新しいオブジェクトを元のオブジェクトのプロトタイプを用いて作成
-  const copy = Object.create(Object.getPrototypeOf(obj));
-
-  // プロパティを再帰的にコピー
-  for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-          copy[key] = deepCloneWithPrototype(obj[key]);
-      }
-  }
-
-  return copy;
-}
 //セーブを行う際は原文で保存
 //プラグインを外した際に変に翻訳文が残ることを避ける。
 var DataManager_makeSaveContents = DataManager.makeSaveContents;
 DataManager.makeSaveContents = function()
 {
-
-  //=代入はシャローコピーになるため、Tempにも変更が反映される。
-  //また、JSONを使用するディープコピーもprotoがコピーされず、
-  //.actor()等へのアクセスが行えなくなるため注意。
-  var gameActorsTemp = deepCloneWithPrototype($gameActors);
-  var classesTemp = deepCloneWithPrototype($dataClasses);
 
   for (var i = 0; i < $dataActors.length; ++i) {
     var actor = $gameActors.actor(i);
@@ -873,11 +867,17 @@ DataManager.makeSaveContents = function()
     }
   }
 
-  //セーブ本処理
+  //=================== セーブ本処理 ===================== 
   var result = DataManager_makeSaveContents.call(this);
+  //===================================================== 
 
-  $gameActors = gameActorsTemp
-  $dataClasses = classesTemp
+  //$gameActors等をコピーして再代入する方法を試していたが、コピー前の[]の配列がコピー後にArray{}に変わるなど、
+  //元のオブジェクトと完全に一致するディープコピーが上手くいかない。
+  //.forEachを行っている箇所が多いため、Array{}には変更したくない。
+  //また、$gameActors内プロパティの型自体が変化してしてしまうため、これも論外。
+  //さらに、コピー対象のオブジェクト数が多すぎるため、正直updateActor等で部分的に更新した方が速そう。
+  _langscore.updateActor();
+  _langscore.updateClasses();
 
   return result;
 };
@@ -931,6 +931,23 @@ SceneManager.initialize = function() {
   _langscore.updatePluginParameters();
 };
 
+var Scene_Boot_isReady = Scene_Boot.prototype.isReady;
+Scene_Boot.prototype.isReady = function() {
+  var result = Scene_Boot_isReady.call(this);
+  return result && Langscore.isFirstLoaded;
+};
+
+var Scene_Boot_onDatabaseLoaded = Scene_Boot.prototype.onDatabaseLoaded;
+Scene_Boot.prototype.onDatabaseLoaded = function(){
+  Scene_Boot_onDatabaseLoaded.call(this);
+  //Langscoreの読み込みに必要な基本ファイルが読み込まれた後に、初回更新を行う。
+  const checkConfigLoadFlag = setInterval(() => {
+    if (ImageManager.isReady() && FontManager.isReady() && ConfigManager.isLoaded()) {
+      clearInterval(checkConfigLoadFlag);
+      _langscore.changeLanguage(Langscore.langscore_current_language, true);
+    }
+  }, 16);
+}
 
 var ConfigManager_makeData = ConfigManager.makeData;
 ConfigManager.makeData = function() {
