@@ -39,7 +39,7 @@ def convert_rvdata2_to_csv(rvdata2_path, csv_path):
     args = [ruby_script, rvdata2_path, csv_path]
     out, err, code = core.run_command("ruby", args)
     if code == False:
-        print(f"Error executing command: {command}")
+        print(f"Error executing command: ruby {args}")
         print(f"Standard Output:\n{out}")
         print(f"Standard Error:\n{err}")
         is_delete_files = False
@@ -52,7 +52,7 @@ def extract_script_data(project_path, output_path):
     args = [ruby_script, project_path, output_path]
     out, err, code = core.run_command("ruby", args)
     if code == False:
-        print(f"Error executing command: {command}")
+        print(f"Error executing command: ruby {args}")
         print(f"Standard Output:\n{out}")
         print(f"Standard Error:\n{err}")
         is_delete_files = False

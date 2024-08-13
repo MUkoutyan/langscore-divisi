@@ -1,4 +1,4 @@
-
+# encoding: utf-8
 require 'zlib'
 require 'csv'
 
@@ -14,8 +14,11 @@ script_filename_list = []
 File.open("./Data/Scripts.rvdata2", 'rb') do |file|
   Marshal.load(file.read).each do |id, name, script|
     d = Zlib::Inflate.inflate(script)
+    next if d.length == 0
     
     name = EMPTY_SCRIPT_NAME if name.empty?
+
+    next if name == "( ここに追加 )"
 
     script_filename_list.push(name)
     script_path = script_folder+'/'+name+'.rb'

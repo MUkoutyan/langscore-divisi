@@ -487,7 +487,7 @@ describe('Langscore', function()
     {
       window._langscore.changeLanguage("ja");
       
-      saveContents(1);
+      await saveContents(1);
 
       var contents = await loadContents(1);
       actors = contents.actors;
@@ -513,7 +513,7 @@ describe('Langscore', function()
       window._langscore.changeLanguage("en");
 
       // セーブデータの作成
-      saveContents(1);
+      await saveContents(1);
 
       var contents = await loadContents(1);
       actors = contents.actors;
@@ -848,7 +848,7 @@ describe('Langscore for Map', function()
       expect(_actual).to.equal(_expect);
     });
     //日本語を指定した状態でセーブ
-    saveContents(1);
+    await saveContents(1);
 
     //英語に変更
     window._langscore.changeLanguage("en", true);
@@ -885,7 +885,7 @@ describe('Langscore for Map', function()
   });
 
   
-  it('2024/06報告不具合', function() 
+  it('2024/06報告不具合', async function() 
   {
     //ex.)ja -> enへの言語変更後にセーブを行うと、一部の制御文字を使用した
     //    文章が日本語で表示される。期待する言語は英語。
@@ -907,7 +907,7 @@ describe('Langscore for Map', function()
     //英語に変更
     window._langscore.changeLanguage("en", true);
     //日本語を指定した状態でセーブ
-    saveContents(2);
+    await saveContents(2);
 
     //不具合が発生する場合、一部が日本語になるためtext.enと一致しない。
     {
