@@ -78,6 +78,7 @@ def main():
         
         all_tests_passed = True
         if 'all' in test_selection or 'rvcnv' in test_selection:
+            print("run rvcnv test")
             rvcnv_output, rvcnv_err, rvcnv_result = core.run_python_script(rvcnv_script_path)
             rvcnv_success, rvcnv_failures, rvcnv_error = core.analyze_python_test_result(rvcnv_output)
             rvcnv_test_result = (len(rvcnv_failures) == 0) and (len(rvcnv_error) == 0)
@@ -98,6 +99,7 @@ def main():
             details.append("```\n" + rvcnv_output.rstrip() + "\n```\n\n")
 
         if 'all' in test_selection or 'vxace' in test_selection:
+            print("run vxace test")
             # VXAce test using PowerShell on Windows
             vxace_output, vxace_err, vxace_result = core.run_powershell_script(vxace_script_path)
             vxace_failures = core.analyze_ruby_test_result(vxace_output)
@@ -119,6 +121,7 @@ def main():
             details.append("```\n" + vxace_output.rstrip() + "\n```\n\n")
 
         if 'all' in test_selection or 'mv' in test_selection:
+            print("run mv test")
             # MV test using WSL script
             mv_output, mv_err, mv_result = core.run_wsl_script(mv_test_script_path)
             mv_failures = process_logs(mv_output)
@@ -144,6 +147,7 @@ def main():
             details.append("```\n" + mv_output.rstrip() + "\n```\n\n")
 
         if 'all' in test_selection or 'mz' in test_selection:
+            print("run mz test")
             # MZ test using WSL script
             mz_output, mz_err,  mz_result = core.run_wsl_script(mz_test_script_path)
             mz_failures = process_logs(mz_output)

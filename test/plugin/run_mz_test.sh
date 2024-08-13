@@ -1,5 +1,7 @@
 #!/bin/bash
 
+rm -f ./mz_test/save/*
+
 ./start-http-server.sh mz_test
 
 # 別のスクリプトを実行

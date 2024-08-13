@@ -56,7 +56,7 @@ def build_divisi_with_vs():
 
         win_stdout, win_stderr, win_result = test_core.run_command("cmake", win_cmake_args, cwd=win_build_dir, check=True, env=env)
         if win_result == False:
-            print(f"Error Windows CMak {win_stderr}e")
+            print(f"Error Windows CMake {win_stderr}")
             exit(1)
         win_stdout, win_stderr, win_result = test_core.run_command(win_build_command, cwd=win_build_dir, check=True, env=env)
         if win_result == False:

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+rm -f ./mv_test/save/*
+
 ./start-http-server.sh mv_test
 
 # 別のスクリプトを実行

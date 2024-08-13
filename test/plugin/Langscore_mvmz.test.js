@@ -90,7 +90,7 @@ getNodeWorkerClass = function()
 }
 
 // START OF GENERATED CONTENT
-const testActors = [{'ja': 'エルーシェ', 'en': 'eluche'}, {'ja': '雑用係', 'en': 'Compassionate'}, {'ja': 'ラフィーナ', 'en': 'Rafina'}, {'ja': '傲慢ちき', 'en': 'arrogant'}, {'ja': 'ケスティニアスの雑用係。\nそんなに仕事は無い。', 'en': "Kestinius' scullery maid.\nThere is not that much work."}, {'ja': 'チビのツンデレウーマン。\n魔法が得意。', 'en': 'Tiny tsundere woman.\nHe is good at magic.'}];
+const testActors = [{'ja': 'エルーシェ', 'en': 'eluche'}, {'ja': '雑用係', 'en': 'Compassionate'}, {'ja': 'ラフィーナ', 'en': 'Rafina'}, {'ja': '傲慢ちき', 'en': 'arrogant'}, {'ja': 'ケスティニアスの雑用係。\nそんなに仕事は無い。', 'en': "Kestinius' scullery maid.\nNot that much work."}, {'ja': 'チビのツンデレウーマン。\n魔法が得意。', 'en': 'Tiny tsundere woman.\nHe is good at magic.'}];
 const testArmors = [{'ja': '盾', 'en': 'Shield'}, {'ja': '帽子', 'en': 'Had'}, {'ja': '服', 'en': 'Wear'}, {'ja': '指輪', 'en': 'Ring'}];
 const testClasses = [{'ja': '勇者', 'en': 'brave'}, {'ja': '戦士', 'en': 'warrior'}, {'ja': '魔術師', 'en': 'magician'}, {'ja': '僧侶', 'en': 'monk'}];
 const testCommonevents = [{'ja': '顧問です', 'en': 'Advisor.'}, {'ja': ' ', 'en': ''}];
@@ -386,6 +386,31 @@ describe('Langscore', function()
   afterEach(function() {
   });
 
+  saveContents = async(saveFileId)=>
+  {
+    if(process.env.IS_MV){
+      window.DataManager.saveGame(saveFileId);
+    }
+    else if(process.env.IS_MZ){
+      await window.DataManager.saveGame(saveFileId);
+    }
+  }
+
+  loadContents = async(saveFileId)=>{
+    var contents;
+    if(process.env.IS_MV){
+      var json = window.StorageManager.load(saveFileId);
+      contents = window.JsonEx.parse(json);
+    }
+    else if(process.env.IS_MZ){
+      const saveName = window.DataManager.makeSavename(saveFileId);
+      await window.StorageManager.loadObject(saveName).then(_contents => {
+        contents = _contents;
+      });
+    }
+    return contents;
+  }
+
   it('テキストを正しく翻訳すること', function() 
   {
     const testMap = new Map();
@@ -457,35 +482,64 @@ describe('Langscore', function()
     expect(window.Langscore.langscore_current_language).to.equal("en");
   });
 
-  it('セーブデータが正しく保存されること', function() 
+  it('セーブデータが正しく保存されること', async function() 
   {    
     {
       window._langscore.changeLanguage("ja");
       
-      const saveContents = window.DataManager.makeSaveContents();
+      saveContents(1);
 
+      var contents = await loadContents(1);
+      actors = contents.actors;
       // セーブデータが正しく保存されているかの確認
-      expect(saveContents.actors.actor(1).name()).to.equal('エルーシェ');
-      expect(saveContents.actors.actor(1).nickname()).to.equal('雑用係');
-      expect(saveContents.actors.actor(1).profile()).to.equal('ケスティニアスの雑用係。\nそんなに仕事は無い。');
-      expect(saveContents.actors.actor(2).name()).to.equal('ラフィーナ');
-      expect(saveContents.actors.actor(2).nickname()).to.equal('傲慢ちき');
-      expect(saveContents.actors.actor(2).profile()).to.equal('チビのツンデレウーマン。\n魔法が得意。');
+      expect(actors.actor(1).name()).to.equal('エルーシェ');
+      expect(actors.actor(1).nickname()).to.equal('雑用係');
+      expect(actors.actor(1).profile()).to.equal('ケスティニアスの雑用係。\nそんなに仕事は無い。');
+      expect(actors.actor(2).name()).to.equal('ラフィーナ');
+      expect(actors.actor(2).nickname()).to.equal('傲慢ちき');
+      expect(actors.actor(2).profile()).to.equal('チビのツンデレウーマン。\n魔法が得意。');
+      
+      expect(window.$gameActors.actor(1).name()).to.equal('エルーシェ');
+      expect(window.$gameActors.actor(1).currentClass().name).to.equal('戦士');
+      expect(window.$gameActors.actor(1).nickname()).to.equal('雑用係');
+      expect(window.$gameActors.actor(1).profile()).to.equal('ケスティニアスの雑用係。\nそんなに仕事は無い。');
+      expect(window.$gameActors.actor(2).name()).to.equal('ラフィーナ');
+      expect(window.$gameActors.actor(2).currentClass().name).to.equal('魔術師');
+      expect(window.$gameActors.actor(2).nickname()).to.equal('傲慢ちき');
+      expect(window.$gameActors.actor(2).profile()).to.equal('チビのツンデレウーマン。\n魔法が得意。');
     }
     
     {
       window._langscore.changeLanguage("en");
 
       // セーブデータの作成
-      const saveContents = window.DataManager.makeSaveContents();
+      saveContents(1);
+
+      var contents = await loadContents(1);
+      actors = contents.actors;
       
       // セーブデータが正しく保存されているかの確認
-      expect(saveContents.actors.actor(1).name()).to.equal('エルーシェ');
-      expect(saveContents.actors.actor(1).nickname()).to.equal('雑用係');
-      expect(saveContents.actors.actor(1).profile()).to.equal('ケスティニアスの雑用係。\nそんなに仕事は無い。');
-      expect(saveContents.actors.actor(2).name()).to.equal('ラフィーナ');
-      expect(saveContents.actors.actor(2).nickname()).to.equal('傲慢ちき');
-      expect(saveContents.actors.actor(2).profile()).to.equal('チビのツンデレウーマン。\n魔法が得意。');
+      expect(actors.actor(1).name()).to.equal('エルーシェ');
+      expect(actors.actor(1).nickname()).to.equal('雑用係');
+      expect(actors.actor(1).profile()).to.equal('ケスティニアスの雑用係。\nそんなに仕事は無い。');
+      expect(actors.actor(2).name()).to.equal('ラフィーナ');
+      expect(actors.actor(2).nickname()).to.equal('傲慢ちき');
+      expect(actors.actor(2).profile()).to.equal('チビのツンデレウーマン。\n魔法が得意。');
+
+      expect(window.$gameActors.actor(1).name()).to.equal('eluche');
+      expect(window.$gameActors.actor(1).currentClass().name).to.equal('warrior');
+      expect(window.$gameActors.actor(1).nickname()).to.equal('Compassionate');
+      expect(window.$gameActors.actor(1).profile()).to.equal('Kestinius\' scullery maid.\nNot that much work.');
+      expect(window.$gameActors.actor(2).name()).to.equal('Rafina');
+      expect(window.$gameActors.actor(2).currentClass().name).to.equal('magician');
+      expect(window.$gameActors.actor(2).nickname()).to.equal('arrogant');
+      expect(window.$gameActors.actor(2).profile()).to.equal('Tiny tsundere woman.\nShe is good at magic.');
+      
+      expect(window.$dataClasses[1].name).to.equal('brave');
+      expect(window.$dataClasses[2].name).to.equal('warrior');
+      expect(window.$dataClasses[3].name).to.equal('magician');
+      expect(window.$dataClasses[4].name).to.equal('monk');
+
     }
   });
   
@@ -500,7 +554,7 @@ describe('Langscore', function()
     window._langscore.changeLanguage("en", true);
     expect(actor.name()).to.equal("eluche");
     expect(actor.nickname()).to.equal("Compassionate");
-    expect(actor.profile()).to.equal(`Kestinius' scullery maid.\nThere is not that much work.`);
+    expect(actor.profile()).to.equal(`Kestinius' scullery maid.\nNot that much work.`);
 
     window._langscore.changeLanguage("ja", true);
     expect(actor.name()).to.equal("エルーシェ");
@@ -528,7 +582,6 @@ describe('Langscore', function()
       expect(testSkills.includes(item => item.en === skill.message1)).to.exist;
       expect(testSkills.includes(item => item.en === skill.message2)).to.exist;
     });
-
   });
 
 });
@@ -575,16 +628,210 @@ describe('Langscore for Map', function()
     });
   });
 
+  //メモ
+  //名前変更: 320
+  //クラス変更: 321
+  //二つ名変更: 324
+  //プロフィール変更: 325
+  it('アクター名の変更イベントが正しく反映されているか', function() 
+  {
+    window._langscore.changeLanguage("en", true);
+
+    //Game_Interpreter.update()内部で_nextSceneのチェックをしているため必須。
+    window.SceneManager._nextScene = null;
+    var eventId = 2;
+    var evList = window.$gameMap.events();
+    var ev = evList.filter((event) => { return event.eventId() == eventId; })[0];
+    {
+      //ダミーのインタプリタを作成。
+      var interpreter = new window.Game_Interpreter();
+      interpreter.setup(ev.list(), eventId);
+      ev.start();
+      while(interpreter.isRunning())
+      {
+        interpreter.update();
+
+        //コマンド実行前の場合は配列アクセスインデックス。
+        //ただし、選択処理はコマンド実行後のインデックス値なので、+1する。
+        if(interpreter._index == 3){
+          //["ラフィーナ","エルーシェ","やめる"]
+          window.$gameMessage.onChoice(0);
+          window.$gameMessage.clear();
+        }
+      }
+    }
+    {
+      const actor = window.$gameActors.actor(1);
+      expect(actor.name()).to.equal("Rafina");
+      window._langscore.changeLanguage("ja", true);
+      expect(actor.name()).to.equal("ラフィーナ");
+    }
+
+    window._langscore.changeLanguage("en", true);
+    {
+      //ダミーのインタプリタを作成。
+      var interpreter = new window.Game_Interpreter();
+      interpreter.setup(ev.list(), eventId);
+      ev.start();
+      while(interpreter.isRunning())
+      {
+        interpreter.update();
+
+        //コマンド実行前の場合は配列アクセスインデックス。
+        //ただし、選択処理はコマンド実行後のインデックス値なので、+1する。
+        if(interpreter._index == 3){
+          //["ラフィーナ","エルーシェ","やめる"]
+          window.$gameMessage.onChoice(1);
+          window.$gameMessage.clear();
+        }
+      }
+    }
+    
+    {
+      const actor = window.$gameActors.actor(1);
+      expect(actor.name()).to.equal("eluche");
+      window._langscore.changeLanguage("ja", true);
+      expect(actor.name()).to.equal("エルーシェ");
+    }
+
+  });
+
+  it('二つ名の変更イベントが正しく反映されているか', function() 
+  {
+    window._langscore.changeLanguage("en", true);
+
+    //Game_Interpreter.update()内部で_nextSceneのチェックをしているため必須。
+    window.SceneManager._nextScene = null;
+    var eventId = 3;
+    var evList = window.$gameMap.events();
+    var ev = evList.filter((event) => { return event.eventId() == eventId; })[0];
+    {
+      //ダミーのインタプリタを作成。
+      var interpreter = new window.Game_Interpreter();
+      interpreter.setup(ev.list(), eventId);
+      ev.start();
+      while(interpreter.isRunning())
+      {
+        interpreter.update();
+
+        //コマンド実行前の場合は配列アクセスインデックス。
+        //ただし、選択処理はコマンド実行後のインデックス値なので、+1する。
+        if(interpreter._index == 3){
+          //["雑用係","傲慢ちき","無くす","やめる"]
+          window.$gameMessage.onChoice(1);
+          window.$gameMessage.clear();
+        }
+      }
+    }
+    {
+      const actor = window.$gameActors.actor(1);
+      expect(actor.nickname()).to.equal("arrogant");
+      window._langscore.changeLanguage("ja", true);
+      expect(actor.nickname()).to.equal("傲慢ちき");
+    }
+
+    window._langscore.changeLanguage("en", true);
+    {
+      //ダミーのインタプリタを作成。
+      var interpreter = new window.Game_Interpreter();
+      interpreter.setup(ev.list(), eventId);
+      ev.start();
+      while(interpreter.isRunning())
+      {
+        interpreter.update();
+
+        //コマンド実行前の場合は配列アクセスインデックス。
+        //ただし、選択処理はコマンド実行後のインデックス値なので、+1する。
+        if(interpreter._index == 3){
+          //["雑用係","傲慢ちき","無くす","やめる"]
+          window.$gameMessage.onChoice(0);
+          window.$gameMessage.clear();
+        }
+      }
+    }
+    
+    {
+      const actor = window.$gameActors.actor(1);
+      expect(actor.nickname()).to.equal("Compassionate");
+      window._langscore.changeLanguage("ja", true);
+      expect(actor.nickname()).to.equal("雑用係");
+    }
+
+  });
   
+  it('プロフィールの変更イベントが正しく反映されているか', function() 
+  {
+    window._langscore.changeLanguage("en", true);
+
+    //Game_Interpreter.update()内部で_nextSceneのチェックをしているため必須。
+    window.SceneManager._nextScene = null;
+    var eventId = 4;
+    var evList = window.$gameMap.events();
+    var ev = evList.filter((event) => { return event.eventId() == eventId; })[0];
+    {
+      //ダミーのインタプリタを作成。
+      var interpreter = new window.Game_Interpreter();
+      interpreter.setup(ev.list(), eventId);
+      ev.start();
+      while(interpreter.isRunning())
+      {
+        interpreter.update();
+
+        //コマンド実行前の場合は配列アクセスインデックス。
+        //ただし、選択処理はコマンド実行後のインデックス値なので、+1する。
+        if(interpreter._index == 3){
+          //["ラフィーナ","エルーシェ","やめる"]
+          window.$gameMessage.onChoice(0);
+          window.$gameMessage.clear();
+        }
+      }
+    }
+    {
+      const actor = window.$gameActors.actor(1);
+      expect(actor.profile()).to.equal("Tiny tsundere woman.\nShe is good at magic.");
+      window._langscore.changeLanguage("ja", true);
+      expect(actor.profile()).to.equal("チビのツンデレウーマン。\n魔法が得意。");
+    }
+
+    window._langscore.changeLanguage("en", true);
+    {
+      //ダミーのインタプリタを作成。
+      var interpreter = new window.Game_Interpreter();
+      interpreter.setup(ev.list(), eventId);
+      ev.start();
+      while(interpreter.isRunning())
+      {
+        interpreter.update();
+
+        //コマンド実行前の場合は配列アクセスインデックス。
+        //ただし、選択処理はコマンド実行後のインデックス値なので、+1する。
+        if(interpreter._index == 3){
+          //["ラフィーナ","エルーシェ","やめる"]
+          window.$gameMessage.onChoice(1);
+          window.$gameMessage.clear();
+        }
+      }
+    }
+    
+    {
+      const actor = window.$gameActors.actor(1);
+      expect(actor.profile()).to.equal("Kestinius' scullery maid.\nNot that much work.");
+      window._langscore.changeLanguage("ja", true);
+      expect(actor.profile()).to.equal("ケスティニアスの雑用係。\nそんなに仕事は無い。");
+    }
+
+  });
+
   it('ショップが翻訳されているか', function() 
   {
     var evList = window.$gameMap.events();
     var ev = evList.filter((event) => { return event.eventId() == 6; })[0];
     ev.start();
     expect(window.$gameMap.setupStartingMapEvent()).to.true;
+    //未完
   });
 
-  it('セーブファイルの書き込みとロード', function() 
+  it('セーブファイルの書き込みとロード', async function() 
   {
     window._langscore.changeLanguage("ja", true);
     {
@@ -601,7 +848,7 @@ describe('Langscore for Map', function()
       expect(_actual).to.equal(_expect);
     });
     //日本語を指定した状態でセーブ
-    window.DataManager.saveGame(1);
+    saveContents(1);
 
     //英語に変更
     window._langscore.changeLanguage("en", true);
@@ -619,7 +866,7 @@ describe('Langscore for Map', function()
     });
 
     //日本語を指定したときのデータをロード
-    window.DataManager.loadGame(1);
+    await loadContents(1);
 
     //言語設定はセーブデータに影響を受けないので、英語になっていることが正しい。
     
@@ -660,7 +907,7 @@ describe('Langscore for Map', function()
     //英語に変更
     window._langscore.changeLanguage("en", true);
     //日本語を指定した状態でセーブ
-    window.DataManager.saveGame(1);
+    saveContents(2);
 
     //不具合が発生する場合、一部が日本語になるためtext.enと一致しない。
     {

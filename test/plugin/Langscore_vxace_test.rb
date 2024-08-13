@@ -7,7 +7,7 @@ require 'test/unit'
 require 'json'
 
 # テスト用データを準備
-test_actors = [{'ja' => 'エルーシェ', 'en' => 'eluche'}, {'ja' => '雑用係', 'en' => 'Compassionate'}, {'ja' => 'ラフィーナ', 'en' => 'Rafina'}, {'ja' => '傲慢ちき', 'en' => 'arrogant'}, {'ja' => 'ケスティニアスの雑用係。\nそんなに仕事は無い。', 'en' => "Kestinius' scullery maid.\nThere is not that much work."}, {'ja' => 'チビのツンデレウーマン。\n魔法が得意。', 'en' => 'Tiny tsundere woman.\nHe is good at magic.'}]
+test_actors = [{'ja' => 'エルーシェ', 'en' => 'eluche'}, {'ja' => '雑用係', 'en' => 'Compassionate'}, {'ja' => 'ラフィーナ', 'en' => 'Rafina'}, {'ja' => '傲慢ちき', 'en' => 'arrogant'}, {'ja' => 'ケスティニアスの雑用係。\nそんなに仕事は無い。', 'en' => "Kestinius' scullery maid.\nNot that much work."}, {'ja' => 'チビのツンデレウーマン。\n魔法が得意。', 'en' => 'Tiny tsundere woman.\nHe is good at magic.'}]
 test_armors = [{'ja' => '盾', 'en' => 'Shield'}, {'ja' => '帽子', 'en' => 'Hat'}, {'ja' => '服', 'en' => 'Wear'}, {'ja' => '指輪', 'en' => 'Ring'}]
 test_classes = [{'ja' => '勇者', 'en' => 'brave'}, {'ja' => '戦士', 'en' => 'warrior'}, {'ja' => '魔術師', 'en' => 'magician'}, {'ja' => '僧侶', 'en' => 'monk'}]
 test_commonevents = [{'ja' => '顧問です', 'en' => 'Advisor.'}, {'ja' => ' ', 'en' => ''}]
@@ -169,10 +169,10 @@ class LangscoreTest < Test::Unit::TestCase
     Langscore.changeLanguage("en")
     actor[:name] = "eluche"
     actor[:nickname] = "Compassionate"
-    actor[:profile] = "Kestinius' scullery maid.\nThere is not that much work."
+    actor[:profile] = "Kestinius' scullery maid.\nNot that much work."
     assert_equal "eluche", actor[:name]
     assert_equal "Compassionate", actor[:nickname]
-    assert_equal "Kestinius' scullery maid.\nThere is not that much work.", actor[:profile]
+    assert_equal "Kestinius' scullery maid.\nNot that much work.", actor[:profile]
 
     Langscore.changeLanguage("ja")
     actor[:name] = "エルーシェ"
