@@ -51,6 +51,11 @@ def build_divisi_with_vs():
     linux_build_command = f"{divisi_root}/build_linux.sh"
 
     try:
+        rv_stdout, rv_stderr, rv_result = test_core.run_powershell_script("build.ps1", cwd=f"{divisi_root}/rvcnv")
+        if rv_result == False:
+            print(f"Error RVCNV Build {rv_stderr}")
+            exit(1)
+
         # VS環境を設定
         env = setup_vs_environment()
 
