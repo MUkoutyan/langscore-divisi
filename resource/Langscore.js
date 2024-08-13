@@ -90,7 +90,7 @@
  
 %{UNISON_LSCSV}%
 
-class Langscore 
+var Langscore = class
 {
 
 
@@ -640,26 +640,58 @@ _langscore = new Langscore();
 (function() {
   'use strict';
 
-//MV向けの対応
-const Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
-Game_Interpreter.prototype.pluginCommand = function( command, args ) {
-  Game_Interpreter_pluginCommand.call( this, command, args );
 
-    switch(command.toUpperCase())
-    {
-      case 'LANGSCORE':
-        if(args[0].toUpperCase() === 'CHANGELANGUAGE'){
-          _langscore.changeLanguage(args[1]);
-        }
-        break;
+//MV向けの対応
+if(Langscore.isMV())
+{
+  //モジュールの上書き
+  //シーン遷移に関わらない翻訳ファイルは初期化時に読み込み
+  //戦闘テスト用は未対応
+  var DataManager_isDatabaseLoaded = DataManager.isDatabaseLoaded;
+  DataManager.isDatabaseLoaded = function(){
+    var result = DataManager_isDatabaseLoaded.call(this);
+    if(result){
+      if(_langscore.isLoadedTranslateFiles() === false){
+        return false;
+      }
+      _langscore.changeLanguage(Langscore.langscore_current_language, true);
     }
-};
+    return result;
+  }
+
+  const Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
+  Game_Interpreter.prototype.pluginCommand = function( command, args ) {
+    Game_Interpreter_pluginCommand.call( this, command, args );
+
+      switch(command.toUpperCase())
+      {
+        case 'LANGSCORE':
+          if(args[0].toUpperCase() === 'CHANGELANGUAGE'){
+            _langscore.changeLanguage(args[1]);
+          }
+          break;
+      }
+  };
+}
 
 //MZ向けの対応
-if(Langscore.isMZ()){
+if(Langscore.isMZ())
+{
   PluginManager.registerCommand('Langscore', "changeLanguage", args => {
     _langscore.changeLanguage(args['language']);
   });
+  
+  var Scene_Boot_onDatabaseLoaded = Scene_Boot.prototype.onDatabaseLoaded;
+  Scene_Boot.prototype.onDatabaseLoaded = function(){
+    Scene_Boot_onDatabaseLoaded.call(this);
+    //Langscoreの読み込みに必要な基本ファイルが読み込まれた後に、初回更新を行う。
+    const checkLoadFlag = setInterval(() => {
+      if (ImageManager.isReady() && FontManager.isReady() && ConfigManager.isLoaded()) {
+        clearInterval(checkLoadFlag);
+        _langscore.changeLanguage(Langscore.langscore_current_language, true);
+      }
+    }, 16);
+  }
 }
 
 
@@ -817,70 +849,109 @@ Window_Base.prototype.convertEscapeCharacters = function(text)
   return Window_Base_convertEscapeCharacters.call(this, text);
 }
 
-
-//モジュールの上書き
-//シーン遷移に関わらない翻訳ファイルは初期化時に読み込み
-//戦闘テスト用は未対応
-var DataManager_isDatabaseLoaded = DataManager.isDatabaseLoaded;
-DataManager.isDatabaseLoaded = function(){
-  var result = DataManager_isDatabaseLoaded.call(this);
-  if(result){
-    if(_langscore.isLoadedTranslateFiles() === false){
-      return false;
-    }
-  }
-  return result;
-}
-
 //セーブを行う際は原文で保存
 //プラグインを外した際に変に翻訳文が残ることを避ける。
-var DataManager_makeSaveContents = DataManager.makeSaveContents;
-DataManager.makeSaveContents = function()
+
+if(Langscore.isMV())
 {
+  var DataManager_saveGameWithoutRescue = DataManager.saveGameWithoutRescue;
+  DataManager.saveGameWithoutRescue = function(savefileId)
+  {
 
-  for (var i = 0; i < $dataActors.length; ++i) {
-    var actor = $gameActors.actor(i);
-    if (!actor){ continue; }
+    for (var i = 0; i < $dataActors.length; ++i) {
+      var actor = $gameActors.actor(i);
+      if (!actor){ continue; }
 
-    let name = _langscore.fetch_original_text(actor._name, _langscore.ls_actors_tr);
-    if(name){
-      $gameActors.actor(i).setName(name);
-    }
-    var nickname = _langscore.fetch_original_text(actor._nickname, _langscore.ls_actors_tr);
-    if(nickname){
-      $gameActors.actor(i).setNickname(nickname);
-    }
-    var profile = _langscore.fetch_original_text(actor._profile, _langscore.ls_actors_tr);
-    if(profile){
-      $gameActors.actor(i).setProfile(profile);
-    }
-  }
-
-  for (var i = 0; i < $dataClasses.length; ++i) {
-    
-    var classData = $dataClasses[i];
-    if(classData){
-      var className = _langscore.fetch_original_text(classData.name, _langscore.ls_actors_tr);
-      if(className){
-        $dataClasses[i].name = className;
+      let name = _langscore.fetch_original_text(actor._name, _langscore.ls_actors_tr);
+      if(name){
+        $gameActors.actor(i).setName(name);
+      }
+      var nickname = _langscore.fetch_original_text(actor._nickname, _langscore.ls_actors_tr);
+      if(nickname){
+        $gameActors.actor(i).setNickname(nickname);
+      }
+      var profile = _langscore.fetch_original_text(actor._profile, _langscore.ls_actors_tr);
+      if(profile){
+        $gameActors.actor(i).setProfile(profile);
       }
     }
-  }
 
-  //=================== セーブ本処理 ===================== 
-  var result = DataManager_makeSaveContents.call(this);
-  //===================================================== 
+    for (var i = 0; i < $dataClasses.length; ++i) {
+      
+      var classData = $dataClasses[i];
+      if(classData){
+        var className = _langscore.fetch_original_text(classData.name, _langscore.ls_classes_tr);
+        if(className){
+          $dataClasses[i].name = className;
+        }
+      }
+    }
 
-  //$gameActors等をコピーして再代入する方法を試していたが、コピー前の[]の配列がコピー後にArray{}に変わるなど、
-  //元のオブジェクトと完全に一致するディープコピーが上手くいかない。
-  //.forEachを行っている箇所が多いため、Array{}には変更したくない。
-  //また、$gameActors内プロパティの型自体が変化してしてしまうため、これも論外。
-  //さらに、コピー対象のオブジェクト数が多すぎるため、正直updateActor等で部分的に更新した方が速そう。
-  _langscore.updateActor();
-  _langscore.updateClasses();
+    //=================== セーブ本処理 ===================== 
+    var result = DataManager_saveGameWithoutRescue.apply(this, arguments);
+    //===================================================== 
 
-  return result;
-};
+    //$gameActors等をコピーして再代入する方法を試していたが、コピー前の[]の配列がコピー後にArray{}に変わるなど、
+    //元のオブジェクトと完全に一致するディープコピーが上手くいかない。
+    //.forEachを行っている箇所が多いため、Array{}には変更したくない。
+    //また、$gameActors内プロパティの型自体が変化してしてしまうため、これも論外。
+    //さらに、コピー対象のオブジェクト数が多すぎるため、正直updateActor等で部分的に更新した方が速そう。
+    _langscore.updateActor();
+    _langscore.updateClasses();
+
+    return result;
+  };
+}
+else if(Langscore.isMZ())
+{
+  var DataManager_saveGame = DataManager.saveGame;
+  DataManager.saveGame = function(savefileId)
+  {
+
+    for (var i = 0; i < $dataActors.length; ++i) {
+      var actor = $gameActors.actor(i);
+      if (!actor){ continue; }
+
+      let name = _langscore.fetch_original_text(actor._name, _langscore.ls_actors_tr);
+      if(name){
+        $gameActors.actor(i).setName(name);
+      }
+      var nickname = _langscore.fetch_original_text(actor._nickname, _langscore.ls_actors_tr);
+      if(nickname){
+        $gameActors.actor(i).setNickname(nickname);
+      }
+      var profile = _langscore.fetch_original_text(actor._profile, _langscore.ls_actors_tr);
+      if(profile){
+        $gameActors.actor(i).setProfile(profile);
+      }
+    }
+
+    for (var i = 0; i < $dataClasses.length; ++i) {
+      
+      var classData = $dataClasses[i];
+      if(classData){
+        var className = _langscore.fetch_original_text(classData.name, _langscore.ls_classes_tr);
+        if(className){
+          $dataClasses[i].name = className;
+        }
+      }
+    }
+
+    //=================== セーブ本処理 ===================== 
+    var result = DataManager_saveGame.apply(this, arguments);
+    //===================================================== 
+
+    //$gameActors等をコピーして再代入する方法を試していたが、コピー前の[]の配列がコピー後にArray{}に変わるなど、
+    //元のオブジェクトと完全に一致するディープコピーが上手くいかない。
+    //.forEachを行っている箇所が多いため、Array{}には変更したくない。
+    //また、$gameActors内プロパティの型自体が変化してしてしまうため、これも論外。
+    //さらに、コピー対象のオブジェクト数が多すぎるため、正直updateActor等で部分的に更新した方が速そう。
+    _langscore.updateActor();
+    _langscore.updateClasses();
+
+    return result;
+  };
+}
 
 //セーブデータは原文で保存されているため、起動時の言語設定で置き換える。
 //これを省くと中国語で起動した際に、再度翻訳を適用するまで日本語のまま……といった事が起きる。
@@ -937,17 +1008,6 @@ Scene_Boot.prototype.isReady = function() {
   return result && Langscore.isFirstLoaded;
 };
 
-var Scene_Boot_onDatabaseLoaded = Scene_Boot.prototype.onDatabaseLoaded;
-Scene_Boot.prototype.onDatabaseLoaded = function(){
-  Scene_Boot_onDatabaseLoaded.call(this);
-  //Langscoreの読み込みに必要な基本ファイルが読み込まれた後に、初回更新を行う。
-  const checkConfigLoadFlag = setInterval(() => {
-    if (ImageManager.isReady() && FontManager.isReady() && ConfigManager.isLoaded()) {
-      clearInterval(checkConfigLoadFlag);
-      _langscore.changeLanguage(Langscore.langscore_current_language, true);
-    }
-  }, 16);
-}
 
 var ConfigManager_makeData = ConfigManager.makeData;
 ConfigManager.makeData = function() {
