@@ -1,4 +1,5 @@
-#==========LSCSV==========
+#==========LSCSV Ver 1.0.0 ==========
+
 class LsDumpData
   attr_accessor :data
 end

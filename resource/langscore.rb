@@ -1,7 +1,7 @@
 #---------------------------------------------------------------
 # 
 # Langscore CoreScript "Unison" 
-# Version 1.0.1
+# Version 1.0.2
 # Written by BreezeSinfonia 來奈津
 # 
 # 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -21,6 +21,7 @@ module Langscore
   $ls_current_map = {}
   $ls_graphic_cache = {}
  
+  Langscore::FILTER_OUTPUT_LOG_LEVEL = 1
 end
 
 #-----------------------------------------------------
@@ -30,6 +31,15 @@ String.class_eval <<-eval
     return sprintf(text, *args)
   end
 eval
+
+def ls_output_log(message, level = 0)
+  return if Langscore::FILTER_OUTPUT_LOG_LEVEL == 5
+  p message if Langscore::FILTER_OUTPUT_LOG_LEVEL == 0
+
+  if Langscore::FILTER_OUTPUT_LOG_LEVEL < level
+    p message
+  end
+end
 
 %{UNISON_LSCSV}%
 
@@ -82,15 +92,15 @@ module Langscore
   
   def self.translate_list_reset
     return if $TEST == false
-    $ls_actor_tr.clear
-    $ls_system_tr.clear
-    $ls_classes_tr.clear
-    $ls_skill_tr.clear
-    $ls_states_tr.clear
-    $ls_weapons_tr.clear
-    $ls_armors_tr.clear
-    $ls_item_tr.clear
-    $ls_enemies_tr.clear
+    $ls_actor_tr = nil
+    $ls_system_tr = nil
+    $ls_classes_tr = nil
+    $ls_skill_tr = nil
+    $ls_states_tr = nil
+    $ls_weapons_tr = nil
+    $ls_armors_tr = nil
+    $ls_item_tr = nil
+    $ls_enemies_tr = nil
     $ls_graphics_tr = LSCSV.to_hash("Graphics")
     $ls_scripts_tr = LSCSV.to_hash("Scripts")
     $ls_troop_tr ||= LSCSV.to_hash("Troops")
