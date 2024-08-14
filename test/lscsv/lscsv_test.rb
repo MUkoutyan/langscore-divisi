@@ -1,9 +1,21 @@
 
 require "test/unit"
+
+def ls_output_log(message, level = 0)
+  return if Langscore::FILTER_OUTPUT_LOG_LEVEL == 5
+  p message if Langscore::FILTER_OUTPUT_LOG_LEVEL == 0
+
+  if Langscore::FILTER_OUTPUT_LOG_LEVEL < level
+    p message
+  end
+end
+
+
 require_relative "../../resource/lscsv.rb"
 
 module Langscore
   SUPPORT_LANGUAGE = ["ja", "en"]
+  Langscore::FILTER_OUTPUT_LOG_LEVEL = 0
 end
 
 class TestLSCSV < Test::Unit::TestCase
@@ -50,6 +62,13 @@ class TestLSCSV < Test::Unit::TestCase
     result = LSCSV.from_content(csv_text)
     assert_equal("改行を含む\nテキストです", result["改行を含む\nテキストです"]["ja"])
     assert_equal("Includes line breaks\nText.", result["改行を含む\nテキストです"]["en"])
+  end
+
+  def test_to_hash_with_line_rn_breaks
+    csv_text = "origin,ja,en\r\n\"RN改行を含む\r\nテキストです\",\"RN改行を含む\r\nテキストです\",\"Includes line breaks\r\nRN Text.\""
+    result = LSCSV.from_content(csv_text)
+    assert_equal("RN改行を含む\r\nテキストです", result["RN改行を含む\r\nテキストです"]["ja"])
+    assert_equal("Includes line breaks\r\nRN Text.", result["RN改行を含む\r\nテキストです"]["en"])
   end
 
   def test_to_hash_with_commas

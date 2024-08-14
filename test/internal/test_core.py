@@ -81,6 +81,19 @@ def run_python_script(script_path):
         print(f"Failed to run `Python` script: {e}")
         return str(), str(e), False
 
+
+def run_ruby_script(script_path, args=None, **option):
+    try:
+        result = subprocess.run(
+            ['ruby', script_path],
+            capture_output=True, text=True,
+            encoding='utf-8', timeout=180
+        )
+        return result.stdout, result.stderr, result.returncode == 0
+    except Exception as e:
+        print(f"Failed to run `Ruby` script: {e}")
+        return str(), str(e), False
+
 def analyze_python_test_result(output):
     success_tests = []
     failed_tests = []
