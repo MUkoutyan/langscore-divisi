@@ -96,11 +96,15 @@ module Langscore
     $ls_troop_tr ||= LSCSV.to_hash("Troops")
     $ls_common_event ||= LSCSV.to_hash("CommonEvents")
 
-    changeLanguage($langscore_current_language)
+    changeLanguage($langscore_current_language, true)
   end
 
-  def self.changeLanguage(lang)
+  def self.changeLanguage(lang, force_update = false)
 
+    if force_update == false && $langscore_current_language == lang
+      return
+    end
+    
     $langscore_current_language = lang
     Langscore.Translate_Script_Text
     Langscore.updateFont(lang)

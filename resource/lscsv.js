@@ -8,7 +8,9 @@ class LSCSV
 
   to_map(file, file_name = '') 
   {
-    //CRLFをLFに統一
+    if(!file){ return new Map(); }
+
+    //CRLFをLFに統一。 MV/MZではツクール内に\r\nは出てこない。
     var replaced = file.replace(/\r\n/g, '\n');
     var header = this.fetch_header(replaced);
 
@@ -17,7 +19,7 @@ class LSCSV
 
     var row_index = Langscore.Support_Language.map(lang => header.indexOf(lang)).filter(i => 0<=i);
 
-    //To Hash
+    //To Map
     var result = new Map();
     //※ヘッダーと列数が一致しない行は除外
     rows.slice(1, rows.size).filter(row => header.length === row.length).forEach(function (r) 

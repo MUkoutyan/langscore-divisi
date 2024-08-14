@@ -3,7 +3,7 @@ class LsDumpData
   attr_accessor :data
 end
 class LSCSV
-  
+
   $lscsv_resource_locker = Mutex::new
   def self.to_hash(file_name)
     $lscsv_resource_locker.lock
@@ -14,7 +14,10 @@ class LSCSV
   end
 
   def self.from_content(content, file_name = '')
+
     return {} if content == nil
+
+    # VXAceでは\r\nと\nが混在するため、改行コードは統一しない。
 
     header = fetch_header(content)
     rows = parse_col(header, parse_row(content))
@@ -27,9 +30,8 @@ class LSCSV
     #To Hash
     result = {}
     rows[1...rows.size].each do |r|
-      origin = r[0].chomp("\n")
-      trans  = r[1...header.size]
-
+      # origin = r[0].chomp("\n")
+      origin = r[0]
       transhash = {}
       row_index.each do |i|
         transhash[header[i]] = r[i]
@@ -49,8 +51,8 @@ class LSCSV
     size = rows[0].size
     mismatch_cells = rows.select{ |r| r.size != size }
     if mismatch_cells.empty? == false
-      p "Error! : Missmatch Num Cells : #{mismatch_cells.first}" 
-      p "File : #{file_name}, Header size : #{size}, Languages : #{rows[0]}"
+      ls_output_log "Error! : Missmatch Num Cells : #{mismatch_cells.first}" 
+      ls_output_log "File : #{file_name}, Header size : #{size}, Languages : #{rows[0]}"
       raise "Error! : Missmatch Num Cells : #{mismatch_cells.first}" 
     end
   end
@@ -61,7 +63,7 @@ class LSCSV
       file_name = name+".rvdata2"
       trans_file = load_data(file_name)
       if trans_file.class == LsDumpData
-        p "load_data #{file_name}"
+        ls_output_log "load_data #{file_name}"
         result = trans_file.data
       end
     rescue => e
@@ -69,10 +71,10 @@ class LSCSV
 
         file_name = name+".csv"
         trans_file = File.open(file_name, "rb:utf-8:utf-8")
-        p "open #{file_name}"
+        ls_output_log "open #{file_name}"
         result = trans_file.read
       rescue
-        p "Warning : Not Found Transcript File #{file_name}"
+        ls_output_log "Warning : Not Found Transcript File #{file_name}"
       end
     end
 
@@ -102,41 +104,61 @@ class LSCSV
     return if rows == nil
     result = []
     cols = []
-    find_quote = false
+    bracketed_dq = false
 
     add_col = lambda do |col|
-      col.chomp! #末尾に改行があれば削除
-      #セルに分けた時点で先頭・末尾の"が不要になるため、削除する
-      if col.start_with?("\"") && col.end_with?("\"")
-        col = col.slice!(1..col.length-2)
-      end
-
-      #"を表すための""はCSVでのみ必須のため、読み込み時点で""は"と解釈。
-      col.gsub!("\"\"", "\"")
+      col.chomp!  #末尾に改行があれば削除
       cols.push(col)
     end
 
-    col = ""
-    rows.each_char do |c|
+    read_and_poeek_next_char = lambda do |i|
+      return "" if rows.length <= (i+1)
+      return rows[i+1];
+    end
 
-      if c=="\""
-        find_quote = !find_quote
+    col = ""
+    str_length = rows.length
+    str_index = 0
+    while str_index < str_length
+
+      c = rows[str_index]
+
+      if c == "\""
+        next_char = read_and_poeek_next_char.call(str_index)
+        break if next_char == ""
+
+        if bracketed_dq == false && col.length == 0
+          bracketed_dq = true;
+          str_index += 1
+          next;
+        elsif next_char == "\""
+          str_index += 1;
+          col += next_char;
+        end
+
+        if bracketed_dq && (next_char == "," || next_char == "\r" || next_char == "\n")
+          bracketed_dq = false;
+        end
+
+        str_index += 1
+        next
       end
 
-      if find_quote
+      if bracketed_dq
         #""内なら無条件で追加
         col += c
+        str_index += 1
         next
       end
 
       #以下は""で括られていない場合に通る
       if c==","
-        find_quote = false
+        bracketed_dq = false
         add_col.call(col)
         col = ""
       elsif c=="\n"
+        bracketed_dq = false
         col += c #一旦改行を追加。add_col内のchompが適用できるようにする。
-        find_quote = false
         add_col.call(col)
         col = ""
 
@@ -151,6 +173,8 @@ class LSCSV
       else
         col += c
       end
+
+      str_index += 1
 
     end
 
