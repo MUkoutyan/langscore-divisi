@@ -204,8 +204,8 @@ void rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<TranslateText> 
             auto varName = std::get<1>(*result);
             auto lvalue = "Vocab::" + utility::toString(varName) + ".replace";
             std::string space(maxVarLength - lvalue.length(), ' ');
-            file << tab << "# " << utility::toString(t.scriptLineInfo) << nl;
-            file << tab << lvalue << space << " Langscore.translate_for_script(\"" << utility::toString(t.original) << "\")";
+            file << tab << "# " << utility::toString(t.scriptLineInfo) << "(" << utility::toString(t.original) << ")" << nl;
+            file << tab << lvalue << space << " Langscore.translate_for_script(\"" << utility::toString(t.scriptLineInfo) << "\")";
             file << nl;
             std::get<2>(*result) = true;
         }
