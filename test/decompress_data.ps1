@@ -1,0 +1,1 @@
+Expand-Archive -Path .\test_data.zip -DestinationPath .\
