@@ -1,6 +1,6 @@
 require 'csv'
 require 'zlib'
-require_relative '../../../resource/lscsv.rb'
+require_relative '../../resource/lscsv.rb'
 
 class LsDumpData
   attr_accessor :data
@@ -24,7 +24,7 @@ end
 
 if ARGV.length != 2
   puts "Usage: ruby extract_rvdata2.rb <input.rvdata2> <output.csv>"
-  exit
+  exit 1
 end
 
 input_file = ARGV[0]

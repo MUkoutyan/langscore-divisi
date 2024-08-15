@@ -10,11 +10,69 @@ def ls_output_log(message, level = 0)
   end
 end
 
+def load_data(filename)
+  File.open(filename, "rb") do |file|
+    return Marshal.load(file)
+  end
+end
 
 require_relative "../../resource/lscsv.rb"
+#rvcnvのテストで単体テストしづらかったため、rvcnv.rb内の処理を手動コピー。
+#変更した場合、rvcnv.rb側にも内容を追従させること。
+def fix_newlines_in_csv(input_texts)
+  #Map以外のデータの改行コードを修正する処理。
+  #\nだけの場合は\r\nに変換する。
+
+  nl_unique_token = "___LaNgScOrE_NEW_LINE___"
+  header = LSCSV.fetch_header(input_texts)
+  rows = LSCSV.parse_col(header, LSCSV.parse_row(input_texts))
+
+  #""括りを行うかどうかの判定。
+  rows[1...rows.size].each do |row|
+    row.map! do |field|
+      is_add_dq = false
+      
+      protected_text = field
+      if protected_text.include?("\n")
+        #\r\nを変換すると\r\r\nになるため、一時的に一意なトークンに変更。
+        protected_text  = field.gsub("\r\n", nl_unique_token)
+        #改行は含んでいるので""括りにする。
+        is_add_dq = true
+      end
+
+      if protected_text.include?("\n")
+        #文章中の改行コードが\nだけだった場合、\r\nに変換。
+        protected_text.gsub!("\n", "\r\n")
+        is_add_dq = true
+      elsif protected_text.include?("\"")
+        protected_text.gsub!("\"", "\"\"")
+        is_add_dq = true
+      elsif protected_text.include?(",")
+        is_add_dq = true
+      end
+
+      field = protected_text.gsub(nl_unique_token, "\r\n")
+
+      if is_add_dq
+        field = "\"" + field + "\""
+      else
+        field
+      end
+    end
+  end
+
+  result = ""
+  result += header.join(",") + "\n"
+  rows[1...rows.size].each do |r|
+    result += r.join(",") + "\n"
+  end
+  return result.chomp("\n")
+end
+
 
 module Langscore
   SUPPORT_LANGUAGE = ["ja", "en"]
+  Langscore::TRANSLATE_FOLDER = "."
   Langscore::FILTER_OUTPUT_LOG_LEVEL = 0
 end
 
@@ -210,5 +268,13 @@ class TestLSCSV < Test::Unit::TestCase
     result = LSCSV.from_content(csv_text)
     assert_equal("複合させます\n\\{\\C[2]\\N[2]\\I[22]", result["複合させます\n\\{\\C[2]\\N[2]\\I[22]"]["ja"])
     assert_equal("Compounding\n\\{\\C[2]\\N[2]\\I[22]", result["複合させます\n\\{\\C[2]\\N[2]\\I[22]"]["en"])
+  end
+
+  def test_rvcnv_exported_file
+    file = File.open("Skills.csv", "rb:utf-8:utf-8")
+    origin_texts = file.readlines().join()
+
+    converter_texts = fix_newlines_in_csv(origin_texts)
+    assert_equal(converter_texts.include?("\r\r\n"), false)
   end
 end

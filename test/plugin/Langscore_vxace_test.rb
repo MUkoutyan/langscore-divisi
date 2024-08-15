@@ -7,7 +7,7 @@ require 'test/unit'
 require 'json'
 
 # テスト用データを準備
-test_actors = [{'ja' => 'エルーシェ', 'en' => 'eluche'}, {'ja' => '雑用係', 'en' => 'Compassionate'}, {'ja' => 'ラフィーナ', 'en' => 'Rafina'}, {'ja' => '傲慢ちき', 'en' => 'arrogant'}, {'ja' => 'ケスティニアスの雑用係。\nそんなに仕事は無い。', 'en' => "Kestinius' scullery maid.\nNot that much work."}, {'ja' => 'チビのツンデレウーマン。\n魔法が得意。', 'en' => 'Tiny tsundere woman.\nHe is good at magic.'}]
+test_actors = [{'ja' => 'エルーシェ', 'en' => 'eluche'}, {'ja' => '雑用係', 'en' => 'Compassionate'}, {'ja' => 'ラフィーナ', 'en' => 'Rafina.'}, {'ja' => '傲慢ちき', 'en' => 'arrogant'}, {'ja' => 'ケスティニアスの雑用係。\nそんなに仕事は無い。', 'en' => "Kestinius' scullery maid.\nNot that much work."}, {'ja' => 'チビのツンデレウーマン。\n魔法が得意。', 'en' => 'Tiny tsundere woman.\nHe is good at magic.'}]
 test_armors = [{'ja' => '盾', 'en' => 'Shield'}, {'ja' => '帽子', 'en' => 'Hat'}, {'ja' => '服', 'en' => 'Wear'}, {'ja' => '指輪', 'en' => 'Ring'}]
 test_classes = [{'ja' => '勇者', 'en' => 'brave'}, {'ja' => '戦士', 'en' => 'warrior'}, {'ja' => '魔術師', 'en' => 'magician'}, {'ja' => '僧侶', 'en' => 'monk'}]
 test_commonevents = [{'ja' => '顧問です', 'en' => 'Advisor.'}, {'ja' => ' ', 'en' => ''}]
@@ -63,11 +63,12 @@ test_map001 = [
   {'ja' => '更に移動した際のメッセージです', 'en' => "Here's the message when we move further"}
 ]
 
-test_skills = [{'ja' => 'の攻撃！', 'en' => 'attack!'}, {'ja' => '攻撃', 'en' => 'Attack'}, {'ja' => 'は身を守っている。', 'en' => 'is protecting itself.'}, {'ja' => '防御', 'en' => 'Guard'}, {'ja' => '連続攻撃', 'en' => 'Continuous attack'}]
-test_states = [{'ja' => 'は倒れた！', 'en' => 'fell down!'}, {'ja' => 'を倒した！', 'en' => 'defeated!'}, {'ja' => 'は立ち上がった！', 'en' => 'stood up!'}, {'ja' => '戦闘不能', 'en' => 'inability to fight'}]
-test_system = [{'ja' => '一般防具', 'en' => 'General Defense'}, {'ja' => '魔法防具', 'en' => 'Magic Defense'}, {'ja' => '軽装防具', 'en' => 'Lightweight Defense'}, {'ja' => '重装防具', 'en' => 'Heavy Duty Defense'}]
-test_troops = [{'ja' => 'おおおおおおいおいおぃおぉいぃぉぃぉぃぉぉぉぃぃ', 'en' => 'oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh.'}]
-test_weapons = [{'ja' => '剣', 'en' => 'Sword'}, {'ja' => '斧', 'en' => 'Axe'}, {'ja' => '杖', 'en' => 'Staff'}, {'ja' => '弓', 'en' => 'Bow'}]
+$test_skills = [{'ja' => 'の攻撃！', 'en' => 'attack!'}, {'ja' => '攻撃', 'en' => 'Attack'}, {'ja' => 'は身を守っている。', 'en' => 'is protecting itself.'}, {'ja' => '防御', 'en' => 'Guard'}, {'ja' => '連続攻撃', 'en' => 'Continuous attack'}]
+$test_states = [{'ja' => 'は倒れた！', 'en' => 'fell down!'}, {'ja' => 'を倒した！', 'en' => 'defeated!'}, {'ja' => 'は立ち上がった！', 'en' => 'stood up!'}, {'ja' => '戦闘不能', 'en' => 'inability to fight'}]
+$test_system = [{'ja' => '一般防具', 'en' => 'General Defense'}, {'ja' => '魔法防具', 'en' => 'Magic Defense'}, {'ja' => '軽装防具', 'en' => 'Lightweight Defense'}, {'ja' => '重装防具', 'en' => 'Heavy Duty Defense'}]
+$test_troops = [{'ja' => 'おおおおおおいおいおぃおぉいぃぉぃぉぃぉぉぉぃぃ', 'en' => 'oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh oh.'}]
+$test_weapons = [{'ja' => '剣', 'en' => 'Sword'}, {'ja' => '斧', 'en' => 'Axe'}, {'ja' => '杖', 'en' => 'Staff'}, {'ja' => '弓', 'en' => 'Bow'}]
+
 
 # rvdata2内の改行コードメモ
 # ・通常会話：無し
@@ -78,137 +79,230 @@ test_weapons = [{'ja' => '剣', 'en' => 'Sword'}, {'ja' => '斧', 'en' => 'Axe'}
 
 class LangscoreTest < Test::Unit::TestCase
   def setup
-    Langscore.changeLanguage("en")
-    @translate_map = {
-      "こんにちは" => "Hello",
-      "さようなら" => "Goodbye",
-      "ありがとう" => "Thank you",
-      "おはよう" => "Good morning"
-    }
+    Langscore.translate_list_reset
+    DataManager.load_normal_database
+    DataManager.create_game_objects
   end
 
-  def test_translation
-    assert_equal "Hello", @translate_map["こんにちは"]
-    assert_equal "Goodbye", @translate_map["さようなら"]
+  def test_change_language
+    Langscore.changeLanguage("en", true)
+    assert_equal('en', $langscore_current_language)
+
+    Langscore.changeLanguage("ja", true)
+    assert_equal('ja', $langscore_current_language)
   end
 
-  def test_unknown_translation
-    assert_nil @translate_map["未知のテキスト"]
-  end
+  def test_translate_text_correctly
+    test_map001 = {}
+    create_translate_map = lambda do |ja_text, en_text|
+      translates = {"ja" => ja_text, "en" => en_text}
+      test_map001[ja_text] = translates
+    end
 
-  def test_missing_translation
-    original_text = "こんばんは"
-    translated_text = @translate_map.fetch(original_text, original_text)
-    assert_equal original_text, translated_text
-  end
+    create_translate_map.call("通常のテキストです", "Normal text.")
+    create_translate_map.call("改行を含む\nテキストです", "Includes line breaks\nText.")
+    create_translate_map.call("\"\"タ\"\"フ\"\"ルクォーテーションを含むテキストです\"\"", "The text contains a t\"\"ouh\"\"le quotation.")
 
-  def test_multiple_translations
-    texts = ["こんにちは", "ありがとう", "おはよう"]
-    translations = texts.map { |text| @translate_map[text] }
-    assert_equal ["Hello", "Thank you", "Good morning"], translations
-  end
-
-  def test_translation_fallback
-    assert_equal "Goodbye", @translate_map.fetch("Goodbye", "Goodbye")
-  end
-
-  def test_reverse_translation
-    reverse_map = @translate_map.invert
-    assert_equal "こんにちは", reverse_map["Hello"]
-    assert_equal "さようなら", reverse_map["Goodbye"]
-  end
-
-  def test_language_change
-    assert_equal "en", $langscore_current_language
-    Langscore.changeLanguage("ja")
-    assert_equal "ja", $langscore_current_language
-  end
-
-  def test_image_loading
-    if ENV["LOCAL_MODE"] == "true"
-      path = "img/pictures/nantoka8_en.png"
-      assert_equal "img/pictures/nantoka8_en.png", path
-    else
-      path = "img/pictures/nantoka8.png"
-      assert_equal "img/pictures/nantoka8.png", path
+    test_map001.each do |ja_text, translates|
+      in_text = translates["ja"]
+      out_text = translates["en"]
+      result = Langscore.translate(in_text, test_map001, "en")
+      assert_equal(out_text, result)
     end
   end
 
-  def test_language_switch
-    Langscore.changeLanguage("en")
-    assert_equal "en", $langscore_current_language
+  def test_load_image_file_correctly
+    Cache.load_bitmap('img/pictures/', 'nantoka8')
+    assert_equal($ls_graphic_cache['nantoka8'], true)
   end
 
-  
-  def test_to_hash_csv
-    actors = LSCSV.to_hash("Actors")
-    assert_not_nil actors["ケスティニアスの雑用係。\r\nそんなに仕事は無い。"]
-  end
+  def test_save_data_correctly
+    setup()
+    Langscore.changeLanguage("ja")
+    DataManager.save_game(1)
+    DataManager.load_game(1)
 
-  def test_save_data
-    save_data = {
-      actors:  [
-        { name:  "エルーシェ", nickname:  "雑用係", profile:  "ケスティニアスの雑用係。\nそんなに仕事は無い。" },
-        { name:  "ラフィーナ", nickname:  "傲慢ちき", profile:  "チビのツンデレウーマン。\n魔法が得意。" }
-      ]
-    }
-    assert_equal "エルーシェ", save_data[:actors][0][:name]
-    assert_equal "雑用係", save_data[:actors][0][:nickname]
-    assert_equal "ケスティニアスの雑用係。\nそんなに仕事は無い。", save_data[:actors][0][:profile]
-    assert_equal "ラフィーナ", save_data[:actors][1][:name]
-    assert_equal "傲慢ちき", save_data[:actors][1][:nickname]
-    assert_equal "チビのツンデレウーマン。\n魔法が得意。", save_data[:actors][1][:profile]
-  end
-
-  def test_actor_update
-    actor = { name:  "エルーシェ", nickname:  "雑用係", profile:  "ケスティニアスの雑用係。\nそんなに仕事は無い。" }
-    assert_equal "エルーシェ", actor[:name]
-    assert_equal "雑用係", actor[:nickname]
-    assert_equal "ケスティニアスの雑用係。\nそんなに仕事は無い。", actor[:profile]
+    assert_equal('エルーシェ', $game_actors[1].name)
+    assert_equal('雑用係', $game_actors[1].nickname)
+    assert_equal('ラフィーナ', $game_actors[2].name)
+    assert_equal('傲慢ちき', $game_actors[2].nickname)
 
     Langscore.changeLanguage("en")
-    actor[:name] = "eluche"
-    actor[:nickname] = "Compassionate"
-    actor[:profile] = "Kestinius' scullery maid.\nNot that much work."
-    assert_equal "eluche", actor[:name]
-    assert_equal "Compassionate", actor[:nickname]
-    assert_equal "Kestinius' scullery maid.\nNot that much work.", actor[:profile]
+    DataManager.save_game(1)
+    DataManager.load_game(1)
 
-    Langscore.changeLanguage("ja")
-    actor[:name] = "エルーシェ"
-    actor[:nickname] = "雑用係"
-    actor[:profile] = "ケスティニアスの雑用係。\nそんなに仕事は無い。"
-    assert_equal "エルーシェ", actor[:name]
-    assert_equal "雑用係", actor[:nickname]
-    assert_equal "ケスティニアスの雑用係。\nそんなに仕事は無い。", actor[:profile]
+    assert_equal('eluche', $game_actors[1].name)
+    assert_equal('warrior', $game_actors[1].class.name)
+    assert_equal('Compassionate', $game_actors[1].nickname)
+    assert_equal('Rafina.', $game_actors[2].name)
+    assert_equal('magician', $game_actors[2].class.name)
+    assert_equal('arrogant', $game_actors[2].nickname)
   end
 
-  def test_skill_update
-    # 日本語のスキルの一部テキスト
-    skills_ja = ["の攻撃！", "攻撃"]
-  
-    # 英語のスキルの一部テキスト
-    skills_en = ["Attack"]
-  
-    # 日本語のテスト
-    Langscore.changeLanguage("ja")
-    skills_ja.each do |text|
-      assert $data_skills.any? do |skill| 
-        next if skill.nil?
-        return skill.name.include?(text) || skill.description.include?(text)
-      end
+  def test_actor_name_updated_correctly
+    setup()
+    Langscore.changeLanguage("ja", true)
+    actor = $game_actors[1]
+    assert_equal("エルーシェ", actor.name)
+    assert_equal("雑用係", actor.nickname)
+
+    Langscore.changeLanguage("en", true)
+    assert_equal("eluche", actor.name)
+    assert_equal("Compassionate", actor.nickname)
+
+    Langscore.changeLanguage("ja", true)
+    assert_equal("エルーシェ", actor.name)
+    assert_equal("雑用係", actor.nickname)
+  end
+
+  def test_skills_updated_correctly
+    setup()
+
+    Langscore.changeLanguage("ja", true)
+    # p $ls_skill_tr
+    index = 0
+    # p $data_skills
+    $data_skills.each do |skill|
+      next if skill.nil?
+      index += 1
+      assert($ls_skill_tr.any? { |k, hash| hash["ja"] == skill.name }, "failed skill name#{index} #{skill.name}") unless skill.name.empty?
+      assert($ls_skill_tr.any? { |k, hash| hash["ja"] == skill.description }, "failed skill description#{index} #{skill.description}") unless skill.description.empty?
+      assert($ls_skill_tr.any? { |k, hash| hash["ja"] == skill.message1 }, "failed skill mes1#{index} #{skill.message1}") unless skill.message1.empty?
+      assert($ls_skill_tr.any? { |k, hash| hash["ja"] == skill.message2 }, "failed skill mes2#{index} #{skill.message2}") unless skill.message2.empty?
     end
-  
-    # 英語のテスト
-    Langscore.changeLanguage("en")
-    skills_ja.each do |text|
-      assert $data_skills.any? do |skill| 
-        next if skill.nil?
-        return skill.name.include?(text) || skill.description.include?(text)
-      end
+
+    Langscore.changeLanguage("en", true)
+    $data_skills.each do |skill|
+      next if skill.nil?      
+      assert($ls_skill_tr.any? { |k, hash| hash["en"] == skill.name }, "failed skill name#{index} #{skill.name}") unless skill.name.empty?
+      assert($ls_skill_tr.any? { |k, hash| hash["en"] == skill.description }, "failed skill description#{index} #{skill.description}") unless skill.description.empty?
+      assert($ls_skill_tr.any? { |k, hash| hash["en"] == skill.message1 }, "failed skill mes1#{index} #{skill.message1}") unless skill.message1.empty?
+      assert($ls_skill_tr.any? { |k, hash| hash["en"] == skill.message2 }, "failed skill mes2#{index} #{skill.message2}") unless skill.message2.empty?
     end
   end
-end
+
+  # def test_translation
+  #   assert_equal "Hello", @translate_map["こんにちは"]
+  #   assert_equal "Goodbye", @translate_map["さようなら"]
+  # end
+
+  # def test_unknown_translation
+  #   assert_nil @translate_map["未知のテキスト"]
+  # end
+
+  # def test_missing_translation
+  #   original_text = "こんばんは"
+  #   translated_text = @translate_map.fetch(original_text, original_text)
+  #   assert_equal original_text, translated_text
+  # end
+
+  # def test_multiple_translations
+  #   texts = ["こんにちは", "ありがとう", "おはよう"]
+  #   translations = texts.map { |text| @translate_map[text] }
+  #   assert_equal ["Hello", "Thank you", "Good morning"], translations
+  # end
+
+  # def test_translation_fallback
+  #   assert_equal "Goodbye", @translate_map.fetch("Goodbye", "Goodbye")
+  # end
+
+  # def test_reverse_translation
+  #   reverse_map = @translate_map.invert
+  #   assert_equal "こんにちは", reverse_map["Hello"]
+  #   assert_equal "さようなら", reverse_map["Goodbye"]
+  # end
+
+  # def test_language_change
+  #   assert_equal "en", $langscore_current_language
+  #   Langscore.changeLanguage("ja")
+  #   assert_equal "ja", $langscore_current_language
+  # end
+
+  # def test_image_loading
+  #   if ENV["LOCAL_MODE"] == "true"
+  #     path = "img/pictures/nantoka8_en.png"
+  #     assert_equal "img/pictures/nantoka8_en.png", path
+  #   else
+  #     path = "img/pictures/nantoka8.png"
+  #     assert_equal "img/pictures/nantoka8.png", path
+  #   end
+  # end
+
+  # def test_language_switch
+  #   Langscore.changeLanguage("en")
+  #   assert_equal "en", $langscore_current_language
+  # end
+
+  
+  # def test_to_hash_csv
+  #   actors = LSCSV.to_hash("Actors")
+  #   assert_not_nil actors["ケスティニアスの雑用係。\r\nそんなに仕事は無い。"]
+  # end
+
+  # def test_save_data
+  #   save_data = {
+  #     actors:  [
+  #       { name:  "エルーシェ", nickname:  "雑用係", profile:  "ケスティニアスの雑用係。\nそんなに仕事は無い。" },
+  #       { name:  "ラフィーナ", nickname:  "傲慢ちき", profile:  "チビのツンデレウーマン。\n魔法が得意。" }
+  #     ]
+  #   }
+  #   assert_equal "エルーシェ", save_data[:actors][0][:name]
+  #   assert_equal "雑用係", save_data[:actors][0][:nickname]
+  #   assert_equal "ケスティニアスの雑用係。\nそんなに仕事は無い。", save_data[:actors][0][:profile]
+  #   assert_equal "ラフィーナ", save_data[:actors][1][:name]
+  #   assert_equal "傲慢ちき", save_data[:actors][1][:nickname]
+  #   assert_equal "チビのツンデレウーマン。\n魔法が得意。", save_data[:actors][1][:profile]
+  # end
+
+  # def test_actor_update
+  #   actor = { name:  "エルーシェ", nickname:  "雑用係", profile:  "ケスティニアスの雑用係。\nそんなに仕事は無い。" }
+  #   assert_equal "エルーシェ", actor[:name]
+  #   assert_equal "雑用係", actor[:nickname]
+  #   assert_equal "ケスティニアスの雑用係。\nそんなに仕事は無い。", actor[:profile]
+
+  #   Langscore.changeLanguage("en")
+  #   actor[:name] = "eluche"
+  #   actor[:nickname] = "Compassionate"
+  #   actor[:profile] = "Kestinius' scullery maid.\nNot that much work."
+  #   assert_equal "eluche", actor[:name]
+  #   assert_equal "Compassionate", actor[:nickname]
+  #   assert_equal "Kestinius' scullery maid.\nNot that much work.", actor[:profile]
+
+  #   Langscore.changeLanguage("ja")
+  #   actor[:name] = "エルーシェ"
+  #   actor[:nickname] = "雑用係"
+  #   actor[:profile] = "ケスティニアスの雑用係。\nそんなに仕事は無い。"
+  #   assert_equal "エルーシェ", actor[:name]
+  #   assert_equal "雑用係", actor[:nickname]
+  #   assert_equal "ケスティニアスの雑用係。\nそんなに仕事は無い。", actor[:profile]
+  # end
+
+  # def test_skill_update
+  #   # 日本語のスキルの一部テキスト
+  #   skills_ja = ["の攻撃！", "攻撃"]
+  
+  #   # 英語のスキルの一部テキスト
+  #   skills_en = ["Attack"]
+  
+  #   # 日本語のテスト
+  #   Langscore.changeLanguage("ja")
+  #   skills_ja.each do |text|
+  #     assert $data_skills.any? do |skill| 
+  #       next if skill.nil?
+  #       return skill.name.include?(text) || skill.description.include?(text)
+  #     end
+  #   end
+  
+  #   # 英語のテスト
+  #   Langscore.changeLanguage("en")
+  #   skills_ja.each do |text|
+  #     assert $data_skills.any? do |skill| 
+  #       next if skill.nil?
+  #       return skill.name.include?(text) || skill.description.include?(text)
+  #     end
+  #   end
+  # end
+end #class LangscoreTest < Test::Unit::TestCase
 
 class LangscoreForMapTest < Test::Unit::TestCase
 
@@ -222,6 +316,7 @@ class LangscoreForMapTest < Test::Unit::TestCase
 
   def test_translation_retrieval
     
+    Langscore.changeLanguage("ja")
     $game_map.setup(1)
     #イベント1（会話前処理）を取得
     interpreter = Game_Interpreter.new
@@ -265,7 +360,7 @@ class LangscoreForMapTest < Test::Unit::TestCase
       $game_map.update(true)
       if $game_message.has_text?
         text = window.convert_escape_characters($game_message.all_text)
-        if map_texts_ja.include?(text)
+        if map_texts_en.include?(text)
           find = true
         else
           notfind_texts.push(text)
@@ -286,8 +381,21 @@ class LangscoreForMapTest < Test::Unit::TestCase
   def test_shop_translation
     
     $game_map.setup(1)
+
+    Langscore.changeLanguage("ja")
+    
+    assert_equal(Vocab::ShopBuy, "購入する")
+    assert_equal(Vocab::ShopSell, "売却する")
+    assert_equal(Vocab::ShopCancel, "やめる")
     
     Langscore.changeLanguage("en")
+
+    p $ls_scripts_tr
+
+    assert_equal(Vocab::ShopBuy, "Buy")
+    assert_equal(Vocab::ShopSell, "Sell")
+    assert_equal(Vocab::ShopCancel, "Cancel")
+
     #イベント1（会話前処理）を取得
     interpreter = Game_Interpreter.new
     interpreter.setup($game_map.events[8].list)

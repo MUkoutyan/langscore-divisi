@@ -3,6 +3,7 @@ import re
 import os
 import stat
 import locale
+import json
 
 def remove_read_only(folder_path):
     try:
@@ -14,10 +15,22 @@ def remove_read_only(folder_path):
         print(f"Failed to run command: {e}")
 
 def convert_path_for_wsl(windows_path):
-    drive, path = windows_path.split(':', 1)
-    path = path.replace('\\', '/')
-    return f'/mnt/{drive.lower()}{path}'
+    try:
+        drive, path = windows_path.split(':', 1)
+        path = path.replace('\\', '/')
+        return f'/mnt/{drive.lower()}{path}'
+    except Exception as e:
+        return windows_path
 
+def edit_ls_config(config_path, edit_function):
+
+    with open(config_path, 'r') as file:
+        data = json.load(file)
+
+    edit_function(data)
+
+    with open(config_path, 'w') as file:
+        json.dump(data, file, indent=4)  
     
 def run_command(command_path, args=None, **option):
     try:
@@ -58,8 +71,11 @@ def run_powershell_script(script_path, args=None, **option):
 def run_wsl_script(script_path, args=None, **option):
     try:
         wsl_path = convert_path_for_wsl(script_path)
+        command = ['wsl']
+        command.append(wsl_path)
+        if args: command += args
         result = subprocess.run(
-            ['wsl', wsl_path],  # WSL上でスクリプトを直接実行
+            command,  # WSL上でスクリプトを直接実行
             capture_output=True, text=True, 
             encoding='utf-8', timeout=180, **option
         )
@@ -69,12 +85,16 @@ def run_wsl_script(script_path, args=None, **option):
         print(f"Failed to run WSL script: {e}")
         return str(), str(e), False
 
-def run_python_script(script_path):
+def run_python_script(script_path, args=None, **option):
     try:
+        command = ['python']
+        command.append(script_path)
+        if args: command += args
+        command.append('-v')
         result = subprocess.run(
-            ['python', script_path, "-v"],
+            command,
             capture_output=True, text=True,
-            encoding='utf-8', timeout=180
+            encoding='utf-8', timeout=180, **option
         )
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
@@ -84,10 +104,13 @@ def run_python_script(script_path):
 
 def run_ruby_script(script_path, args=None, **option):
     try:
+        command = ['ruby']
+        command.append(script_path)
+        if args: command += args
         result = subprocess.run(
-            ['ruby', script_path],
+            command,
             capture_output=True, text=True,
-            encoding='utf-8', timeout=180
+            encoding='utf-8', timeout=180, **option
         )
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
@@ -118,8 +141,8 @@ def analyze_python_test_result(output):
 
     return success_tests, failed_tests, error_tests
 
-def analyze_ruby_test_result(output):
-    # Rubyのテスト結果を解析
+def analyze_ruby19_test_result(output):
+    # Ruby1.9.2でのテスト結果を解析
     match = re.search(r'(\d+) tests, (\d+) assertions, (\d+) failures, (\d+) errors, (\d+) skips', output)
     failures = []
     if match:
@@ -132,6 +155,41 @@ def analyze_ruby_test_result(output):
                 failures.append(f"{index}) {test_case.strip()} [{location.strip()}]")
     return failures
 
+def analyze_ruby_test_result(output):
+    # Rubyのテスト結果を解析
+    lines = output.splitlines()
+    tests, assertions, failures, errors, skips = 0, 0, 0, 0, 0
+    pendings, omissions, notifications = 0, 0, 0
+    failure_cases = []
+
+    for line in lines:
+        # 各行でテスト結果を検出
+        if re.search(r'\d+ tests', line):
+            tests = int(re.search(r'(\d+) tests', line).group(1))
+        if re.search(r'\d+ assertions', line):
+            assertions = int(re.search(r'(\d+) assertions', line).group(1))
+        if re.search(r'\d+ failures', line):
+            failures = int(re.search(r'(\d+) failures', line).group(1))
+        if re.search(r'\d+ errors', line):
+            errors = int(re.search(r'(\d+) errors', line).group(1))
+        if re.search(r'\d+ skips', line):
+            skips = int(re.search(r'(\d+) skips', line).group(1))
+        if re.search(r'\d+ pendings', line):
+            pendings = int(re.search(r'(\d+) pendings', line).group(1))
+        if re.search(r'\d+ omissions', line):
+            omissions = int(re.search(r'(\d+) omissions', line).group(1))
+        if re.search(r'\d+ notifications', line):
+            notifications = int(re.search(r'(\d+) notifications', line).group(1))
+
+    if failures > 0 or errors > 0:
+        # 失敗したテストケースを抽出
+        failure_matches = re.findall(r'Failure: (.*)\'', output, re.DOTALL)
+        for lines in failure_matches:
+            failure_cases += lines.splitlines()
+
+    return (tests, assertions, failures, errors, skips, pendings, omissions, notifications), failure_cases, []
+
+
 def analyze_jest_test_result(output, is_nwjs):
     # Jestのテスト結果を解析
     failures = []
@@ -139,7 +197,7 @@ def analyze_jest_test_result(output, is_nwjs):
     failing_tests = re.findall(r'^\s*\d+\) (.+)\n', output, re.MULTILINE)
     for test_case in failing_tests:
         failures.append((test_case.strip(), is_nwjs))
-    return failures
+    return [], failures, []
 
 def escape_ansi(line):
     ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F][ -/]*[@-~])')
