@@ -109,6 +109,8 @@ class LSCSV
 
     add_col = lambda do |col|
       col.chomp!  #末尾に改行があれば削除
+      # 改行や,等を含んでいて""で括られている文字列の場合、
+      # この時点で""括りは外れている。
       cols.push(col)
     end
 

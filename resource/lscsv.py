@@ -75,6 +75,8 @@ class LSCSV:
 
         def add_col(col):
             col = re.sub(r'(\r\n|\n|\r)$', "", col)  # 末尾に改行があれば削除
+            # 改行や,等を含んでいて""で括られている文字列の場合、
+            # この時点で""括りは外れている。
             cols.append(col)
 
         def read_and_peek_next_char(i):

@@ -67,7 +67,8 @@ class LSCSV
     return csv_text;
   }
 
-  parse_col(header, rows) {
+  parse_col(header, rows) 
+  {
     if (rows === null) { return; }
     var result = [];
     var cols = [];
@@ -75,6 +76,8 @@ class LSCSV
 
     const add_col = function (col) {
       col = col.replace(/(\r\n|\n|\r)$/, "");  //末尾に改行があれば削除
+      //改行や,等を含んでいて""で括られている文字列の場合、
+      //この時点で""括りは外れている。
       cols.push(col);
     }
 

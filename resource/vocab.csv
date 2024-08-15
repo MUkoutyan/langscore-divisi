@@ -4,7 +4,7 @@ original,en,es,de,fr,it,ko,ru,zh-cn,zh-tw
 やめる,Cancel,Cancelar,Absagen,Annuler,Annulla,멈추다,останавливаться,取消,取消
 持っている数,Haves,numero que tienes,"Nummer, die Sie haben",Numéro que vous avez,Numero che hai,가지고 있는 수,Номер у вас есть,你有的号码,你有的號碼
 現在の経験値,Exp.,Exp. actual,Aktuelle Erfa.,Exp. actuelle,Esp. attuale,현재 경험치,Текущий опыт,目前的经验,目前的經驗
-次の%sまで,Next to A,Hasta el proximo %s,Bis zum nächsten %s,Jusqu'au prochain%s,Fino al prossimo%s,다음 %s까지,До следующего %s,直到下一个 %s,直到下一個 %s
+次の%sまで,Next to %s,Hasta el proximo %s,Bis zum nächsten %s,Jusqu'au prochain%s,Fino al prossimo%s,다음 %s까지,До следующего %s,直到下一个 %s,直到下一個 %s
 どのファイルにセーブしますか？,Which file do you want to save to?,¿En qué archivo desea guardar?,In welche Datei möchten Sie speichern?,Dans quel fichier souhaitez-vous enregistrer ?,In quale file vuoi salvare?,어떤 파일에 저장하시겠습니까?,В какой файл вы хотите сохранить?,您要保存到哪个文件？,您要保存到哪個文件？
 どのファイルをロードしますか？,Which files do you want to load?,¿Qué archivo quieres cargar?,Welche Datei möchten Sie laden?,Quel fichier voulez-vous charger ?,Quale file vuoi caricare?,어떤 파일을 로드하시겠습니까?,Какой файл вы хотите загрузить?,您要加载哪个文件？,您要加載哪個文件？
 ファイル,File,Archivo,Datei,Dossier,File,파일,Файл,文件,文件
