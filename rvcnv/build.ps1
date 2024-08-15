@@ -69,9 +69,13 @@ Write-Output "ocra rvcnv.rb --windows"
 Write-Output "make rvcnv..."
 # --windowは不可。--consoleにすること。
 # デバッグする場合は--debug-extractを追加。
-Remove-Item rvcnv.exe
-Remove-Item rvcnv_hash.cpp
-& $RUBY_DIR\bin\ocra.bat rvcnv.rb --console --gem-all --add-all-core --icon "./icon.ico" --dll ruby_builtin_dlls\libssp-0.dll --dll ruby_builtin_dlls\libwinpthread-1.dll --dll ruby_builtin_dlls\libgmp-10.dll --dll ruby_builtin_dlls\zlib1.dll 
+if (Test-Path -Path rvcnv.exe){
+    Remove-Item rvcnv.exe
+}
+if (Test-Path -Path rvcnv_hash.cpp){
+    Remove-Item rvcnv_hash.cpp
+}
+& $RUBY_DIR\bin\ocra.bat rvcnv.rb --console --gem-all --add-all-core --dll ruby_builtin_dlls\libssp-0.dll --dll ruby_builtin_dlls\libwinpthread-1.dll --dll ruby_builtin_dlls\libgmp-10.dll --dll ruby_builtin_dlls\zlib1.dll 
 
 if ($LASTEXITCODE -eq 0) {
     & $RUBY_EXE generate_hash.rb

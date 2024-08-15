@@ -390,8 +390,6 @@ class LangscoreForMapTest < Test::Unit::TestCase
     
     Langscore.changeLanguage("en")
 
-    p $ls_scripts_tr
-
     assert_equal(Vocab::ShopBuy, "Buy")
     assert_equal(Vocab::ShopSell, "Sell")
     assert_equal(Vocab::ShopCancel, "Cancel")
