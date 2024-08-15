@@ -416,7 +416,7 @@ DataManager::module_eval <<-eval
 
     updateThreads.each { |t| t.join }
 
-    Langscore.changeLanguage($langscore_current_language)
+    Langscore.changeLanguage($langscore_current_language, true)
   end
 
   #セーブを行う際は原文で保存
@@ -446,7 +446,7 @@ DataManager::module_eval <<-eval
   def self.extract_save_contents(contents)
     ls_extract_save_contents(contents)
 
-    Langscore.changeLanguage($langscore_current_language)
+    Langscore.changeLanguage($langscore_current_language, true)
   end
 
   #セーブデータロード時のマップ更新はversion_idに依存しているが、
