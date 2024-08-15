@@ -498,23 +498,38 @@ ObjectSpace.each_object(Class) do |c|
   end
 end
 
+#処理を変更した場合、lscsv_test.rb側の内容も追従させること。
 def fix_newlines_in_csv(input_texts)
+  #Map以外のデータの改行コードを修正する処理。
+  #\nだけの場合は\r\nに変換する。
+
+  nl_unique_token = "___LaNgScOrE_NEW_LINE___"
   header = LSCSV.fetch_header(input_texts)
   rows = LSCSV.parse_col(header, LSCSV.parse_row(input_texts))
 
-  # 改行文字の修正
+  #""括りを行うかどうかの判定。
   rows[1...rows.size].each do |row|
     row.map! do |field|
       is_add_dq = false
-      if field.include?("\n") && !field.include?("\r\n")
-        field.gsub!("\n", "\r\n")
-        is_add_dq = true
-      elsif field.include?("\"")
-        field.gsub!("\"", "\"\"")
-        is_add_dq = true
-      elsif field.include?(",")
+      
+      protected_text = field
+      if protected_text.include?("\n")
+        protected_text  = field.gsub("\r\n", nl_unique_token)
         is_add_dq = true
       end
+
+      if protected_text.include?("\n")
+        #文章中の改行コードが\nだけだった場合、\r\nに変換。
+        protected_text.gsub!("\n", "\r\n")
+        is_add_dq = true
+      elsif protected_text.include?("\"")
+        protected_text.gsub!("\"", "\"\"")
+        is_add_dq = true
+      elsif protected_text.include?(",")
+        is_add_dq = true
+      end
+
+      field = protected_text.gsub(nl_unique_token, "\r\n")
 
       if is_add_dq
         field = "\"" + field + "\""
@@ -536,6 +551,8 @@ end
 #================================================
 opt = OptionParser.new
 Version = "1.0.2"
+
+p "RVCNV Version #{Version}"
 
 input_folder_path = ""
 opt.on_head('-i PROJPATH', '--input PROJPATH'){ |v| 
@@ -585,9 +602,9 @@ if packing
     origin = LsDumpData.new
     File.open(input_folder_path + "/" + fileName, 'rb:utf-8:utf-8') do |file|
       texts = file.readlines().join()
-      if fileName.match?(/Map\d+/)
+      if fileName.match?(/Map[0-9]{3}/)
         #Map系に\r\nが含まれていたら\nに変換
-        texts = texts.gsub(/\r\n/, '\n')
+        texts = texts.gsub(/\r\n/, "\n")
       elsif fileName.include?("Scripts")
         #スクリプト系は一旦無加工にする。
       else
@@ -634,6 +651,7 @@ if compress
     Marshal.dump(compressData, file)
   end
 
+  p "Compress Complete."
   exit
 end
 
@@ -706,7 +724,7 @@ if File.exist?(data_folder)
   Dir.foreach(data_folder) do |filename|
     next if filename == '.' || filename == '..'
     
-    if filename =~ /\A(Actors|Animations|Armors|Classes|CommonEvents|Enemies|Items|Map[0-9]{3}|Skills|States|System|Troops|Weapons)\.rvdata2\z/
+    if filename =~ /\A(Actors|Armors|Classes|CommonEvents|Enemies|Items|Map[0-9]{3}|Skills|States|System|Troops|Weapons)\.rvdata2\z/
       p filename
       rvdata_list << filename
     end
