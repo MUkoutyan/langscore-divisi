@@ -199,11 +199,17 @@ module Langscore
   def self.updateActor
     $ls_actor_tr ||= LSCSV.to_hash("Actors")
 
-    #大元のデータベースを更新。Game_Actor作成時に使用されるため必要。
-    updateForNameAndDesc($data_actors, $ls_actor_tr)
-    
     elm_trans = lambda do |el|
         el = Langscore.translate(el, $ls_actor_tr)
+    end
+
+    #大元のデータベースを更新。Game_Actor作成時に使用されるため必要。
+    $data_actors.each.with_index do |obj,i|
+      next if $data_actors[i].nil?
+      #※nicknameがあるためupdateForNameAndDescではだめ。
+      $data_actors[i].name        = elm_trans.call(obj.name)
+      $data_actors[i].nickname    = elm_trans.call(obj.nickname)
+      $data_actors[i].description = elm_trans.call(obj.description)
     end
 
     #既にGame_Actorが作成されている場合、インスタンス側も更新。

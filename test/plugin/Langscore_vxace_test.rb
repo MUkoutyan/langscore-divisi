@@ -142,17 +142,22 @@ class LangscoreTest < Test::Unit::TestCase
   def test_actor_name_updated_correctly
     setup()
     Langscore.changeLanguage("ja", true)
-    actor = $game_actors[1]
-    assert_equal("エルーシェ", actor.name)
-    assert_equal("雑用係", actor.nickname)
+    assert_equal("エルーシェ", $game_actors[1].name)
+    assert_equal("雑用係", $game_actors[1].nickname)
+    assert_equal("エルーシェ", $data_actors[1].name)
+    assert_equal("雑用係", $data_actors[1].nickname)
 
     Langscore.changeLanguage("en", true)
-    assert_equal("eluche", actor.name)
-    assert_equal("Compassionate", actor.nickname)
+    assert_equal("eluche", $game_actors[1].name)
+    assert_equal("Compassionate", $game_actors[1].nickname)
+    assert_equal("eluche", $data_actors[1].name)
+    assert_equal("Compassionate", $data_actors[1].nickname)
 
     Langscore.changeLanguage("ja", true)
-    assert_equal("エルーシェ", actor.name)
-    assert_equal("雑用係", actor.nickname)
+    assert_equal("エルーシェ", $game_actors[1].name)
+    assert_equal("雑用係", $game_actors[1].nickname)
+    assert_equal("エルーシェ", $data_actors[1].name)
+    assert_equal("雑用係", $data_actors[1].nickname)
   end
 
   def test_skills_updated_correctly
