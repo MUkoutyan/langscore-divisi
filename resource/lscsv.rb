@@ -52,9 +52,9 @@ class LSCSV
     size = rows[0].size
     mismatch_cells = rows.select{ |r| r.size != size }
     if mismatch_cells.empty? == false
-      ls_output_log "Error! : Missmatch Num Cells : #{mismatch_cells.first}" 
-      ls_output_log "File : #{file_name}, Header size : #{size}, Languages : #{rows[0]}"
-      raise "Error! : Missmatch Num Cells : #{mismatch_cells.first}" 
+      ls_output_log "Error! : 翻訳文の中に列数が一致しない箇所があります！ : #{mismatch_cells.first}", 5
+      ls_output_log "File : #{file_name}, Header size : #{size}, Languages : #{rows[0]}", 5
+      raise "Error! : 翻訳文の中に列数が一致しない箇所があります！ : #{mismatch_cells.first}" 
     end
   end
 
@@ -75,7 +75,7 @@ class LSCSV
         ls_output_log "open #{file_name}"
         result = trans_file.read
       rescue
-        ls_output_log "Warning : Not Found Transcript File #{file_name}"
+        ls_output_log "Warning : 翻訳ファイルが見つかりません。 #{file_name}", 3
       end
     end
 
