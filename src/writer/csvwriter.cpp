@@ -287,6 +287,8 @@ ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
 		//デフォルト言語の列を埋める場合の処理
 		for(const auto& text : this->texts)
 		{
+            if(text.original.empty()) { continue; }
+
 			outputCSVFile << "\n";
 			utility::u8stringlist rowtext = {convertCsvText(text.original)};
 			//ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
@@ -307,6 +309,8 @@ ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
 
 		for(const auto& text : this->texts)
 		{
+            if(text.original.empty()) { continue; }
+
 			outputCSVFile << "\n";
 			utility::u8stringlist rowtext = {convertCsvText(text.original)};
 			//ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
