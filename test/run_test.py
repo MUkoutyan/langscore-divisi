@@ -182,8 +182,8 @@ def run_divisi_test(divisi_script_path, details_md_text, results_md_texts):
 
     start_date = datetime.now()
     output, error, result = core.run_python_script(divisi_script_path, cwd=os.path.join(test_root_dir, "divisi_ct"))
-    success, failures, error = core.analyze_python_test_result(output)
-    test_result = result and (len(failures) == 0) and (len(error) == 0)
+    success, failures, errors = core.analyze_python_test_result(output)
+    test_result = result and (len(failures) == 0) and (len(errors) == 0)
     end_date = datetime.now()
 
     if test_result:
@@ -198,9 +198,9 @@ def run_divisi_test(divisi_script_path, details_md_text, results_md_texts):
         details_md_text.append(f"### Failures in {TEST_NAME} Test\n\n")
         for failure in failures:
             details_md_text.append(f"- {failure}\n")
-        if 0 < len(error):
+        if 0 < len(errors):
             details_md_text.append(f"```\n")
-            details_md_text.append(f"- {error}\n")
+            details_md_text.append(f"- {errors}\n")
             details_md_text.append(f"```\n")
 
         if 0 < len(output):
