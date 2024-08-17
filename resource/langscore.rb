@@ -373,8 +373,8 @@ class Window_Base < Window
 
     updateThreads.each { |t| t.join }
 
-    result = result_text.select do |t| 
-      t != text
+    result = result_text.select do |t|
+      t != key
     end
 
     if result.empty? 
