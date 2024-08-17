@@ -69,18 +69,18 @@ namespace langscore
 			}
 			else 
             {
-				if(text.empty()){
-					//ただの空文は無視する。
-					return;
-				}
-
                 if(code == 401) {
-                    if(*(text.rbegin()) == u8'\n') {
+                    if(0 < text.size() && *(text.rbegin()) == u8'\n') {
                         text.erase((text.rbegin().base()) - 1);
                     }
-                    if(*(text.rbegin()) == u8'\r') {
+                    if(0 < text.size() && *(text.rbegin()) == u8'\r') {
                         text.erase((text.rbegin().base()) - 1);
                     }
+                }
+
+                if(text.empty()) {
+                    //ただの空文は無視する。
+                    return;
                 }
 			}
 

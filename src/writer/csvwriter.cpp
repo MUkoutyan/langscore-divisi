@@ -68,6 +68,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
     for(auto begin = this->texts.begin(); begin != this->texts.end(); ++begin)
     {
         auto target = AdjustText(begin->original);
+        if(target.empty()) { continue; }
         auto r = std::find_if(sourceTranslates.begin(), sourceTranslates.end(), [&](const auto& t) {
             auto source_origin = AdjustText(t.original);
             return CompareText(source_origin, target);
@@ -196,9 +197,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		//ソース側に見つからない場合(新規追加)はそのまま追加
 		if(find_result == sourceTranslates.end()){
 			if(AddForTarget() == false){
-				if(AddForSource() == false){
-					break;
-				}
+                break;
 			}
 		}
 		//同じ行だった場合はソース側から追加(source_origin == target_originと等価なのであり得なそう？)
