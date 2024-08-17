@@ -565,11 +565,10 @@ void langscore::divisi_vxace::writeFixedRvScript()
 
     //スクリプトの翻訳を書き込むCSVの書き出し
     rubyreader reader(this->supportLangs, scriptList);
-    rbscriptwriter scriptWriter(reader);
-    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     reader.applyIgnoreScripts(scriptInfoList);
 
     std::u8string root;
+    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     const auto translateFolderList = config.exportDirectory(root);
     for(auto& translateFolder : translateFolderList){
         std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
@@ -745,9 +744,27 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript)
     if(replaceLsCustom == false){
         replaceLsCustom = config.overwriteLangscoreCustom();
     }
-    if(replaceLsCustom){
+    if(replaceLsCustom)
+    {
         std::cout << "Write langscore_custom : " << outputPath / scriptFileNameList[1] << std::endl;
-        writeFixedTranslateText<rbscriptwriter>(rbscriptwriter{rubyreader{this->supportLangs, scriptFileList}}, lsCustomScriptPath, langscore::MergeTextMode::AcceptTarget, true);
+        auto scriptInfoList = config.rpgMakerScripts();
+        auto scriptList = scriptFileList;
+        {
+            auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&scriptInfoList](const auto& path) {
+                auto osPath = path.stem();
+                auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&osPath](const auto& script) {
+                    return script.filename == osPath && script.ignore;
+                    });
+                return result != scriptInfoList.cend();
+                });
+            scriptList.erase(rm_result, scriptList.end());
+        }
+
+        //スクリプトの翻訳を書き込むCSVの書き出し
+        rubyreader reader(this->supportLangs, scriptList);
+        reader.applyIgnoreScripts(scriptInfoList);
+
+        writeFixedTranslateText<rbscriptwriter>(reader, lsCustomScriptPath, langscore::MergeTextMode::AcceptTarget, true);
     }
 
     //langscore.rbの出力

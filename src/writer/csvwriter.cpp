@@ -30,9 +30,8 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		return true;
 	}
 
-    auto textTobeAdded = this->texts;
 	std::vector<TranslateText> result;
-	result.reserve(std::max(sourceTranslates.size(), textTobeAdded.size()));
+	result.reserve(std::max(sourceTranslates.size(), this->texts.size()));
 
 	utility::u8stringlist languages;
 	{
@@ -40,8 +39,8 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		for (auto& pair : sourceTranslates[0].translates) {
 			languages.emplace_back(pair.first);
 		}
-		if (textTobeAdded.empty() == false) {
-			for (auto& pair : textTobeAdded[0].translates)
+		if (this->texts.empty() == false) {
+			for (auto& pair : this->texts[0].translates)
 			{
 				if (std::ranges::find(languages, pair.first) == languages.end()) {
 					languages.emplace_back(pair.first);
@@ -65,7 +64,8 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
     };
 
     //追加済のテキストは弾く。
-    for(auto begin = textTobeAdded.begin(); begin != textTobeAdded.end();)
+    std::vector<TranslateText> textTobeAdded;
+    for(auto begin = this->texts.begin(); begin != this->texts.end(); ++begin)
     {
         auto target = AdjustText(begin->original);
         auto r = std::find_if(sourceTranslates.begin(), sourceTranslates.end(), [&](const auto& t) {
@@ -73,10 +73,10 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
             return CompareText(source_origin, target);
             });
         if(r != sourceTranslates.end()) {
-            begin = textTobeAdded.erase(begin);
+            *begin = *r;
         }
         else {
-            ++begin;
+            textTobeAdded.emplace_back(*begin);
         }
     }
 
@@ -262,7 +262,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		std::cout << std::endl;
 	}
 
-    this->texts = std::move(textTobeAdded);
+    std::move(textTobeAdded.begin(), textTobeAdded.end(), std::back_inserter(this->texts));
 
 	return true;
 }

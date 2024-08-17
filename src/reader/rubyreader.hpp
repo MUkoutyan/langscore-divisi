@@ -72,28 +72,47 @@ namespace langscore
 			//無視する行の判定
 			rubyreader reader({def_lang}, {});
 			utility::u8stringlist ignoreRowName;
-			for(auto& scriptInfo : scriptInfoList)
+			for(auto& scriptInfo : pluginInfoList)
 			{
 				auto fileName = fs::path(scriptInfo.filename).filename().u8string();
-				auto scriptName = reader.GetScriptName(fileName);
-				if(scriptName.empty()){ continue; }
+                auto scriptName = scriptInfo.name;
 
-				if(scriptInfo.ignore == false){
-					for(const auto& textInfo : scriptInfo.texts)
+                if(scriptName == u8"langscore" || scriptName == u8"langscore_custom") {
+                    std::erase_if(this->texts, [fileName = utility::removeExtension(fileName)](const auto& x) {
+                        return x.original.find(fileName) != std::remove_const_t<std::remove_reference_t<decltype(x.original)>>::npos;
+                    });
+                    continue;
+                }
+
+                auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&](const auto& x) {
+                    return x.filename == fileName;
+                });
+
+                if(result == scriptInfoList.end()) {
+                    continue;
+                }
+
+				if(result->ignore == false){
+					for(const auto& textInfo : result->texts)
 					{
 						if(textInfo.disable){ continue; }
 						if(textInfo.ignore){ continue; }
+                        //スクリプト内の行を無視する。
 						auto name = fileName + utility::cnvStr<std::u8string>(":" + std::to_string(textInfo.row) + ":" + std::to_string(textInfo.col));
 						ignoreRowName.emplace_back(std::move(name));
 					}
 				}
 				else{
+                    //スクリプト自体を無視する。
 					std::erase_if(this->texts, [&fileName](const auto& x){
 						return x.original.find(fileName) != std::remove_const_t<std::remove_reference_t<decltype(x.original)>>::npos;
 					});
 				}
 			}
+
+            if(ignoreRowName.empty() == false)
 			{
+                //無視する行の削除。
 				std::erase_if(this->texts, [&ignoreRowName](const auto& t){
 					return std::find(ignoreRowName.cbegin(), ignoreRowName.cend(), t.original) != ignoreRowName.cend();
 				});
