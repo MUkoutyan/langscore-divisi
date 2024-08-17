@@ -10,7 +10,7 @@ using namespace langscore;
 namespace fs = std::filesystem;
 using namespace std::string_literals;
 
-//原文はマージフラグに関わらず、全て残すようにする。但し重複はしない。
+//ソースはマージフラグに関わらず、全て残すようにする。但し重複はしない。
 //(現状の処理では、行数判定箇所が先1行しか見ないので、複数追加されると差分が全部含まれるかも？)
 //翻訳文はマージフラグに沿って、どちらで埋めるか決定する。
 bool csvwriter::merge(std::filesystem::path sourceFilePath)
@@ -30,8 +30,9 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		return true;
 	}
 
+    auto textTobeAdded = this->texts;
 	std::vector<TranslateText> result;
-	result.reserve(std::max(sourceTranslates.size(), this->texts.size()));
+	result.reserve(std::max(sourceTranslates.size(), textTobeAdded.size()));
 
 	utility::u8stringlist languages;
 	{
@@ -39,8 +40,8 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		for (auto& pair : sourceTranslates[0].translates) {
 			languages.emplace_back(pair.first);
 		}
-		if (this->texts.empty() == false) {
-			for (auto& pair : this->texts[0].translates) 
+		if (textTobeAdded.empty() == false) {
+			for (auto& pair : textTobeAdded[0].translates)
 			{
 				if (std::ranges::find(languages, pair.first) == languages.end()) {
 					languages.emplace_back(pair.first);
@@ -50,8 +51,44 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		std::ranges::sort(languages);
 	}
 
+    const auto AdjustText = [](auto text) {
+        auto t = withoutQuote(std::move(text));
+        auto replaced = utility::replace(t, u8"\r\n"s, u8"\n"s);
+        return replaced;
+    };
+
+    const auto CompareText = [](const auto& x, const auto& y) 
+    {
+        auto x1 = utility::split(x, u8"\n"s);
+        auto y1 = utility::split(y, u8"\n"s);
+        return x1 == y1;
+    };
+
+    //追加済のテキストは弾く。
+    for(auto begin = textTobeAdded.begin(); begin != textTobeAdded.end();)
+    {
+        auto target = AdjustText(begin->original);
+        auto r = std::find_if(sourceTranslates.begin(), sourceTranslates.end(), [&](const auto& t) {
+            auto source_origin = AdjustText(t.original);
+            return CompareText(source_origin, target);
+            });
+        if(r != sourceTranslates.end()) {
+            begin = textTobeAdded.erase(begin);
+        }
+        else {
+            ++begin;
+        }
+    }
+
+    if(textTobeAdded.empty()) {
+        std::cout << "No merge required" << std::endl;
+        return true;
+    }
+
+    //source : ファイル側
+    //target : 新規追加側
 	auto source_i = sourceTranslates.begin();
-	auto target_i = this->texts.begin();
+	auto target_i = textTobeAdded.begin();
 	std::u8string source_origin;
 	std::u8string target_origin;
 
@@ -74,7 +111,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 	};
 	const auto AddForTarget = [&]()
 	{
-		if(target_i == this->texts.end()){ return false; }
+		if(target_i == textTobeAdded.end()){ return false; }
 		if(target_i->translates.size() != languages.size()) {
 			for (const auto& lang : languages) {
 				if (target_i->translates.find(lang) == target_i->translates.end()) {
@@ -88,26 +125,20 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		return true;
 	};
 
-	const auto AdjustText = [](auto text){
-		auto result = withoutQuote(std::move(text));
-		result = utility::replace(std::move(result), u8"\r"s, u8""s);
-		result = utility::replace(std::move(result), u8"\n"s, u8""s);
-		return result;
-	};
-
-	while(source_i != sourceTranslates.end() || target_i != this->texts.end())
+	while(target_i != textTobeAdded.end() || source_i != sourceTranslates.end())
 	{
+        const bool validTarget = target_i != textTobeAdded.end();
 		const bool validSource = source_i != sourceTranslates.end();
-		const bool validTarget = target_i != this->texts.end();
+
+        if(validTarget) {
+            target_origin = AdjustText(target_i->original);
+        }
 		if(validSource){
 			source_origin = AdjustText(source_i->original);
 		}
-		if(validTarget){
-			target_origin = AdjustText(target_i->original);
-		}
 
 		//原文が一致した場合した場合、翻訳文が競合しているかで適宜マージを行う。
-		if(validSource && validTarget && source_origin == target_origin)
+		if(validSource && validTarget && CompareText(source_origin, target_origin))
 		{
 			if(source_origin.empty()){
 				++source_i;
@@ -158,8 +189,8 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		}
 
 		//原文が競合している場合、現在のターゲット側の内容がソース側のどの行数と一致するかを検索。
-		auto find_result = std::find_if(source_i, sourceTranslates.end(), [&AdjustText, &target_origin](const auto& x){
-			return AdjustText(x.original) == target_origin;
+		auto find_result = std::find_if(source_i, sourceTranslates.end(), [&AdjustText, &target_origin, &CompareText](const auto& x){
+			return CompareText(AdjustText(x.original), target_origin);
 		});
 
 		//ソース側に見つからない場合(新規追加)はそのまま追加
@@ -189,19 +220,19 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		}
 	}
 
-	this->texts = std::move(result);
+    textTobeAdded = std::move(result);
 
 #if defined(_DEBUG)
 	//全ての列が検出した言語を含んでいるかをチェック(強制エラーなのでデバッグ時のみ使用)
-	if (std::ranges::all_of(this->texts, [this](const auto& t) {
-		return t.translates.size() == this->texts[0].translates.size();
+	if (std::ranges::all_of(textTobeAdded, [this, &textTobeAdded](const auto& t) {
+		return t.translates.size() == textTobeAdded[0].translates.size();
 		}) == false) 
 	{
-		auto invalidCell = std::ranges::find_if(this->texts, [this](const auto& t) {
-			return t.translates.size() != this->texts[0].translates.size();
+		auto invalidCell = std::ranges::find_if(textTobeAdded, [this, &textTobeAdded](const auto& t) {
+			return t.translates.size() != textTobeAdded[0].translates.size();
 		});
 		//ここに引っかかった場合、result.emplaceした要素に何らかの原因で新規追加した言語が含まれなかった。
-		std::cout << "Error! : The overall number of columns does not match. (line : " << std::distance(this->texts.begin(), invalidCell);
+		std::cout << "Error! : The overall number of columns does not match. (line : " << std::distance(textTobeAdded.begin(), invalidCell);
 		return false;
 	}
 #endif
@@ -230,6 +261,8 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		});
 		std::cout << std::endl;
 	}
+
+    this->texts = std::move(textTobeAdded);
 
 	return true;
 }

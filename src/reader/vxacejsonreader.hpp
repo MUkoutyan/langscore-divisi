@@ -67,14 +67,22 @@ namespace langscore
 				stackTextStr += text + u8'\n';
 				return;
 			}
-			else {
+			else 
+            {
 				if(text.empty()){
 					//ただの空文は無視する。
 					return;
 				}
-			}
 
-            text = utility::right_trim(text, u8"\n"s);
+                if(code == 401) {
+                    if(*(text.rbegin()) == u8'\n') {
+                        text.erase((text.rbegin().base()) - 1);
+                    }
+                    if(*(text.rbegin()) == u8'\r') {
+                        text.erase((text.rbegin().base()) - 1);
+                    }
+                }
+			}
 
 			//※リード処理はCSV用のテキストに変換しない。
 

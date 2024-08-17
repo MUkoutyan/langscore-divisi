@@ -187,7 +187,9 @@ std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path p
 			else if(next == u8"n"){ next = u8"\n"; }
 			else if(next == u8"r"){ next = u8"\r"; }
 			else if(next == u8"\""){ next = u8"\"\""; }
-			else if(next == u8"\\" ){ next = u8"\\"; }
+            // \\\\を意図している場合、nextだけを埋め込むと\\と
+            // なってしまうため、ここでは無視する。
+			//else if(next == u8"\\" ){ next = u8"\\"; }
 			else if(next == u8"\'"){ next = u8"\''"; }
 			else{
 				find = false;
