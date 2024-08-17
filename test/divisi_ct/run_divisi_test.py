@@ -23,6 +23,11 @@ def copy_folder(src, dest):
     core.remove_read_only(dest)
     return ret
 
+def force_remove_readonly(func, path, _):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
 def run_divisi(project_path, option):
     DIVISI_PATH = '..\\..\\bin\\divisi.exe'
     if option == "create":
@@ -70,13 +75,13 @@ write_expected_files = [
 
 def setup_projects():
     if os.path.exists(mv_work_path):
-        shutil.rmtree(mv_work_path)
+        shutil.rmtree(mv_work_path, onerror=force_remove_readonly)
     if os.path.exists(mz_work_path):
-        shutil.rmtree(mz_work_path)
+        shutil.rmtree(mz_work_path, onerror=force_remove_readonly)
     if os.path.exists(vxace_work_path):
-        shutil.rmtree(vxace_work_path)
+        shutil.rmtree(vxace_work_path, onerror=force_remove_readonly)
     if os.path.exists(include_empty_work_path):
-        shutil.rmtree(include_empty_work_path)
+        shutil.rmtree(include_empty_work_path, onerror=force_remove_readonly)
 
     copy_folder(source_mv_work_path, mv_work_path)
     copy_folder(source_mz_work_path, mz_work_path)
@@ -86,21 +91,21 @@ def setup_projects():
 
 def remove_projects():
     if os.path.exists(mv_work_path):
-        shutil.rmtree(mv_work_path)
+        shutil.rmtree(mv_work_path, onerror=force_remove_readonly)
     if os.path.exists(mz_work_path):
-        shutil.rmtree(mz_work_path)
+        shutil.rmtree(mz_work_path, onerror=force_remove_readonly)
     if os.path.exists(vxace_work_path):
-        shutil.rmtree(vxace_work_path)
+        shutil.rmtree(vxace_work_path, onerror=force_remove_readonly)
     if os.path.exists(include_empty_work_path):
-        shutil.rmtree(include_empty_work_path)
+        shutil.rmtree(include_empty_work_path, onerror=force_remove_readonly)
     if os.path.exists(mv_work_ls_path):
-        shutil.rmtree(mv_work_ls_path)
+        shutil.rmtree(mv_work_ls_path, onerror=force_remove_readonly)
     if os.path.exists(mz_work_ls_path):
-        shutil.rmtree(mz_work_ls_path)
+        shutil.rmtree(mz_work_ls_path, onerror=force_remove_readonly)
     if os.path.exists(vxace_work_ls_path):
-        shutil.rmtree(vxace_work_ls_path)
+        shutil.rmtree(vxace_work_ls_path, onerror=force_remove_readonly)
     if os.path.exists(include_empty_work_ls_path):
-        shutil.rmtree(include_empty_work_ls_path)
+        shutil.rmtree(include_empty_work_ls_path, onerror=force_remove_readonly)
     print("remove projects")
 
 def edit_config_file(data):
@@ -161,29 +166,68 @@ class TestWrite(unittest.TestCase):
 
         
     def test_write(self):
+        # MV =====================================
         run_divisi(mv_work_ls_path + "\\config.json", "write")
         self.assertTrue(os.path.exists(mv_work_ls_path + "\\data\\translate"))
+        begin_exported_file_size = []
         for file in write_expected_files:
             file_path = os.path.join(mv_work_ls_path + "\\data\\translate", file)
+            begin_exported_file_size.append(os.path.getsize(file_path))
             self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {mv_work_ls_path}")
+            
+        run_divisi(mv_work_ls_path + "\\config.json", "write")
+        for i in range(len(write_expected_files)):
+            file_path = os.path.join(mv_work_ls_path + "\\data\\translate", write_expected_files[i])
+            after_filesize = os.path.getsize(file_path)
+            self.assertTrue(begin_exported_file_size[i] == after_filesize, f"{file} does not exist in {mv_work_ls_path}")
 
+
+        # MZ =====================================
         run_divisi(mz_work_ls_path + "\\config.json", "write")
         self.assertTrue(os.path.exists(mz_work_ls_path + "\\data\\translate"))
+        begin_exported_file_size = []
         for file in write_expected_files:
             file_path = os.path.join(mz_work_ls_path + "\\data\\translate", file)
+            begin_exported_file_size.append(os.path.getsize(file_path))
             self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {mz_work_ls_path}")
+            
+        run_divisi(mz_work_ls_path + "\\config.json", "write")
+        for i in range(len(write_expected_files)):
+            file_path = os.path.join(mz_work_ls_path + "\\data\\translate", write_expected_files[i])
+            after_filesize = os.path.getsize(file_path)
+            self.assertTrue(begin_exported_file_size[i] == after_filesize, f"{file} does not exist in {mz_work_ls_path}")
 
+        
+        # Vxace =====================================
         run_divisi(vxace_work_ls_path + "\\config.json", "write")
         actual_files = os.listdir(os.path.join(vxace_work_ls_path, "Data", "Translate"))
         self.assertTrue(os.path.exists(vxace_work_ls_path + "\\Data\\Translate"))
+        begin_exported_file_size = []
         for file in write_expected_files:
-            self.assertIn(file, actual_files, f"{file} does not exist in {vxace_work_ls_path}")
+            file_path = os.path.join(vxace_work_ls_path + "\\data\\translate", file)
+            self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {vxace_work_ls_path}")
+            begin_exported_file_size.append(os.path.getsize(file_path))
+            
+        run_divisi(vxace_work_ls_path + "\\config.json", "write")
+        for i in range(len(write_expected_files)):
+            file_path = os.path.join(vxace_work_ls_path + "\\data\\translate", write_expected_files[i])
+            after_filesize = os.path.getsize(file_path)
+            self.assertTrue(begin_exported_file_size[i] == after_filesize, f"{file} does not exist in {vxace_work_ls_path}")
 
+        # Include Empty =====================================
         run_divisi(include_empty_work_ls_path + "\\config.json", "write")
         self.assertTrue(os.path.exists(include_empty_work_ls_path + "\\data\\translate"))
+        begin_exported_file_size = []
         for file in write_expected_files:
             file_path = os.path.join(include_empty_work_ls_path + "\\data\\translate", file)
+            begin_exported_file_size.append(os.path.getsize(file_path))
             self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {include_empty_work_ls_path}")
+            
+        run_divisi(include_empty_work_ls_path + "\\config.json", "write")
+        for i in range(len(write_expected_files)):
+            file_path = os.path.join(include_empty_work_ls_path + "\\data\\translate", write_expected_files[i])
+            after_filesize = os.path.getsize(file_path)
+            self.assertTrue(begin_exported_file_size[i] == after_filesize, f"{file} does not exist in {include_empty_work_ls_path}")
 
 
     
@@ -222,7 +266,7 @@ class TestUpdate(unittest.TestCase):
 
         def check_mvmz_function(work_path, work_ls_path, source_path):
             if os.path.exists(work_path):
-                shutil.rmtree(work_path)
+                shutil.rmtree(work_path, onerror=force_remove_readonly)
             copy_folder(source_path, work_path)
             run_divisi(work_ls_path + "\\config.json", "update")
             self.assertTrue(os.path.exists(work_ls_path + "\\update"))
@@ -240,7 +284,7 @@ class TestUpdate(unittest.TestCase):
         
         def check_vxace_function(work_path, work_ls_path, source_path):
             if os.path.exists(work_path):
-                shutil.rmtree(work_path)
+                shutil.rmtree(work_path, onerror=force_remove_readonly)
             copy_folder(source_path, work_path)
             actual_files = os.listdir(os.path.join(work_ls_path, "Data", "Translate"))
             run_divisi(work_ls_path + "\\config.json", "update")
