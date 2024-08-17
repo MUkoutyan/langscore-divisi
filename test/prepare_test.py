@@ -86,6 +86,13 @@ def build_divisi_with_vs():
             f"{win_build_dir}/divisi.exe",
             f"{linux_build_dir}/divisi"
         ]
+
+        if not os.path.exists(f"{divisi_root}/bin"):
+            os.mkdir(f"{divisi_root}/bin")
+            
+        if not os.path.exists(f"{divisi_root}/bin/resource"):
+            os.mkdir(f"{divisi_root}/bin/resource")
+
         for f in copy_files:
             file_name, ext = os.path.splitext(f)
             if ext == ".exe" or ext == "":
