@@ -229,7 +229,7 @@ bool platform_base::validateTranslateFileList(utility::filelist csvPathList) con
             continue;
         }
         auto csvReader = csvreader{this->supportLangs, {_path}};
-        auto texts = csvReader.curerntTexts();
+        auto texts = csvReader.currentTexts();
 
         auto csvUseLangs = csvReader.curerntUseLangList();
         if(this->supportLangs.size() != csvUseLangs.size()) {

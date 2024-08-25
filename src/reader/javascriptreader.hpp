@@ -10,13 +10,6 @@
 
 #include <iostream>
 
-#ifdef ENABLE_TEST
-#define NOMINMAX
-#include "iutest.hpp"
-
-class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, CheckJavaScriptCommentLine);
-#endif
-
 // tree-sitter-javascriptの言語関数を提供する。
 extern "C" TSLanguage * tree_sitter_javascript();
 
@@ -25,9 +18,6 @@ namespace langscore {
 
 class javascriptreader: public readerbase
 {
-#ifdef ENABLE_TEST
-    IUTEST_FRIEND_TEST(Langscore_Writer, CheckJavaScriptCommentLine);
-#endif
 public:
 	javascriptreader(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)
         : readerbase(std::move(langs), std::move(scriptFileList))

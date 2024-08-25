@@ -2,10 +2,6 @@
 
 #include "platform_base.h"
 
-#ifdef ENABLE_TEST
-#include "iutest.hpp"
-#endif
-
 namespace langscore
 {
 	class divisi_mvmz: public platform_base

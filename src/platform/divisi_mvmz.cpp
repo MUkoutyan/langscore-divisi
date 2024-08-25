@@ -248,7 +248,7 @@ void langscore::divisi_mvmz::fetchActorTextFromMap(const utility::u8stringlist& 
 
         if(jsonreader_map.find(filename) == jsonreader_map.end()) { continue; }
         const auto& json_reader = jsonreader_map.at(filename);
-        auto texts = json_reader->curerntTexts();
+        auto texts = json_reader->currentTexts();
         for(auto& text : texts){
             if(std::find(targetCode.cbegin(), targetCode.cend(), text.code) == targetCode.cend()){
                 continue;
@@ -548,7 +548,7 @@ void langscore::divisi_mvmz::writeFixedScript()
     //スクリプトの翻訳を書き込むCSVの書き出し
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     javascriptreader scriptReader(this->supportLangs, scriptList);
-    auto transTexts = scriptReader.curerntTexts();
+    auto transTexts = scriptReader.currentTexts();
     scriptReader.applyIgnoreScripts(scriptInfoList);
 
     std::u8string root;
@@ -826,7 +826,7 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
     config config;
     //Javascriptを予め解析してテキストを生成しておく。
     javascriptreader scriptWriter(this->supportLangs, this->scriptFileList);
-    auto& transTexts = scriptWriter.curerntTexts();
+    auto& transTexts = scriptWriter.currentTexts();
 
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     for(auto& t : transTexts){

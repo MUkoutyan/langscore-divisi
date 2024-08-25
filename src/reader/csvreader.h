@@ -3,14 +3,6 @@
 #include "readerbase.h"
 #include "utility.hpp"
 
-#ifdef ENABLE_TEST
-#define NOMINMAX
-#include "iutest.hpp"
-
-class IUTEST_TEST_CLASS_NAME_(Langscore_Csv, parsePlain);
-
-#endif
-
 namespace langscore
 {
 	class csvreader: public readerbase
@@ -28,9 +20,6 @@ namespace langscore
 
 	class plaincsvreader: public readerbase
 	{
-#ifdef ENABLE_TEST
-		IUTEST_FRIEND_TEST(Langscore_Csv, parsePlain);
-#endif
 	public:
 		plaincsvreader(utility::filelist csvList);
 		plaincsvreader(std::filesystem::path path);

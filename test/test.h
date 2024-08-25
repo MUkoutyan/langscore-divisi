@@ -1,6 +1,6 @@
 #pragma once
 
-#include <iutest.hpp>
+#include <gtest/gtest.h>
 #include "config.h"
 #include "invoker.h"
 #include "divisi.h"

@@ -13,7 +13,6 @@ elseif()
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "Test" OR CMAKE_BUILD_TYPE MATCHES "Test_Debug")
-add_definitions(-DENABLE_TEST)
 include_directories(
 	"../3rdparty/iutest/include"
 )
@@ -55,7 +54,8 @@ set(lib_files
 	${PROJECT_SOURCE_DIR}/3rdparty/hash-library/md5.cpp
 	${PROJECT_SOURCE_DIR}/3rdparty/hash-library/crc32.cpp
     "writer/jsscriptwriter.h"
-	"writer/jsscriptwriter.cpp" "config_writer.cpp")
+	"writer/jsscriptwriter.cpp" "config_writer.cpp" 
+    "writer/marshal_replacer.h" "writer/marshal_replacer.cpp")
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
 add_library (divisi_lib STATIC ${lib_files})

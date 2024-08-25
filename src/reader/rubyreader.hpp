@@ -7,23 +7,11 @@
 #include <filesystem>
 #include <ranges>
 
-#ifdef ENABLE_TEST
-#include "iutest.hpp"
-
-class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, DetectRubyString);
-#endif
-
 namespace langscore
 {
 
 	class rubyreader: public readerbase
 	{
-#ifdef ENABLE_TEST
-		IUTEST_FRIEND_TEST(Langscore_Writer, CheckRubyCommentLine);
-		IUTEST_FRIEND_TEST(Langscore_Writer, DetectRubyString);
-		IUTEST_FRIEND_TEST(Langscore_Writer, DetectStringPositionFromFile);
-		IUTEST_FRIEND_TEST(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV);
-#endif
 	public:
 		rubyreader(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)
 			: readerbase(std::move(langs), std::move(scriptFileList))

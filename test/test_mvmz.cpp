@@ -1,11 +1,11 @@
 ﻿
-IUTEST(Langscore_MV_Divisi, IUTEST_JAPANESE_NAME(空白を含むパスの解釈チェック))
+TEST(Langscore_MV_Divisi, CheckIncludeEmptyPath)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
 	langscore::divisi divisi("./", ".\\data\\mv\\Include WhiteSpacePath Project_langscore\\config.json");
 
-	IUTEST_ASSERT(divisi.analyze().valid());
+	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
@@ -39,25 +39,25 @@ IUTEST(Langscore_MV_Divisi, IUTEST_JAPANESE_NAME(空白を含むパスの解釈�
 			return x == t;
 			});
 		if(result == includeTexts.cend()) {
-			IUTEST_LOG_(FATAL) << "Not Found File! " << file.path().filename().string() << std::endl;
+			GTEST_LOG_(FATAL) << "Not Found File! " << file.path().filename().string() << std::endl;
 		}
 	}
 
 	if(fail) {
-		IUTEST_FAIL();
+		GTEST_FAIL();
 	}
 
 
-	IUTEST_SUCCEED();
+	GTEST_SUCCEED();
 }
 
-IUTEST(Langscore_MV_Divisi_Analyze, ValidateFiles)
+TEST(Langscore_MV_Divisi_Analyze, ValidateFiles)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
 	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_langscore\\config.json");
 
-	IUTEST_ASSERT(divisi.analyze().valid());
+	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 	
@@ -91,32 +91,32 @@ IUTEST(Langscore_MV_Divisi_Analyze, ValidateFiles)
 			return x == t;
 		});
 		if(result == includeTexts.cend()) {
-			IUTEST_LOG_(FATAL) << "Not Found File! " << file.path().filename().string() << std::endl;
+			GTEST_LOG_(FATAL) << "Not Found File! " << file.path().filename().string() << std::endl;
 		}
 	}
 
 	if(fail) {
-		IUTEST_FAIL();
+		GTEST_FAIL();
 	}
 
 
-	IUTEST_SUCCEED();
+	GTEST_SUCCEED();
 }
 
-IUTEST(Langscore_MV_Divisi_Analyze, ValidateTexts)
+TEST(Langscore_MV_Divisi_Analyze, ValidateTexts)
 {
 	ClearGenerateFiles();
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
 	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_langscore\\config.json");
 
-	IUTEST_ASSERT(divisi.analyze().valid());
+	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
-	IUTEST_ASSERT(fs::exists(outputPath / "Map001.csv"));
+	ASSERT_TRUE(fs::exists(outputPath / "Map001.csv"));
 	auto scriptCsv = plaincsvreader{outputPath / "Map001.csv"}.getPlainCsvTexts();
-	IUTEST_ASSERT(scriptCsv.empty() == false);
+	ASSERT_TRUE(scriptCsv.empty() == false);
 
 	std::vector<std::u8string> includeTexts = {
 		u8"original",
@@ -181,25 +181,25 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ)"
 				return x == t;
 				});
 			if(result == includeTexts.cend()) {
-				IUTEST_LOG_(FATAL) << "Not Found!" << std::string(t.begin(), t.end()) << std::endl;
-				IUTEST_FAIL();
+				GTEST_LOG_(FATAL) << "Not Found!" << std::string(t.begin(), t.end()) << std::endl;
+				GTEST_FAIL();
 			}
 		}
 	}
-	IUTEST_SUCCEED();
+	GTEST_SUCCEED();
 }
 
 
-IUTEST(Langscore_MV_Divisi_Write, ValidateFiles)
+TEST(Langscore_MV_Divisi_Write, ValidateFiles)
 {
 	ClearGenerateFiles();
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
 	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_langscore\\config.json");
 
-	IUTEST_ASSERT(divisi.analyze().valid());
+	ASSERT_TRUE(divisi.analyze().valid());
 	
-	IUTEST_ASSERT(divisi.write().valid());
+	ASSERT_TRUE(divisi.write().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreProjectPath()) / "data" / "translate";
 
@@ -234,34 +234,34 @@ IUTEST(Langscore_MV_Divisi_Write, ValidateFiles)
 			return x == t;
 			});
 		if(result == includeTexts.cend()) {
-			IUTEST_LOG_(FATAL) << "Not Found File! " << file.path().filename().string() << std::endl;
+			GTEST_LOG_(FATAL) << "Not Found File! " << file.path().filename().string() << std::endl;
 		}
 	}
 
 	if(fail) {
-		IUTEST_FAIL();
+		GTEST_FAIL();
 	}
 
 
-	IUTEST_SUCCEED();
+	GTEST_SUCCEED();
 }
 
 
-IUTEST(Langscore_MV_Divisi_Write, WritePluginJS)
+TEST(Langscore_MV_Divisi_Write, WritePluginJS)
 {
 	ClearGenerateFiles();
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
 	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_langscore\\config.json");
 
-	IUTEST_ASSERT(divisi.analyze().valid());
+	ASSERT_TRUE(divisi.analyze().valid());
 
-	IUTEST_ASSERT(divisi.write().valid());
+	ASSERT_TRUE(divisi.write().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.gameProjectPath());
 
 	auto pluginJs = outputPath / "js" / "plugins.js";
-	IUTEST_ASSERT(fs::exists(pluginJs));
+	ASSERT_TRUE(fs::exists(pluginJs));
 
 	std::ifstream loadFile(pluginJs);
 	std::string content((std::istreambuf_iterator<char>(loadFile)), std::istreambuf_iterator<char>());
@@ -271,7 +271,7 @@ IUTEST(Langscore_MV_Divisi_Write, WritePluginJS)
 	std::size_t endPos = content.rfind(']');
 
 	if(startPos == std::string::npos || endPos == std::string::npos) {
-		IUTEST_LOG_(FATAL) << "Not Found Backet" << std::endl;
+		GTEST_LOG_(FATAL) << "Not Found Backet" << std::endl;
 	}
 
 	auto jsonStr = utility::cnvStr<std::u8string>(content.substr(startPos, endPos - startPos + 1));
@@ -279,33 +279,33 @@ IUTEST(Langscore_MV_Divisi_Write, WritePluginJS)
 	nlohmann::json jsonStruct = nlohmann::json::parse(jsonStr, nullptr);
 	//plugins.jsの読み込み失敗
 	if(jsonStruct.is_discarded()) {
-		IUTEST_LOG_(FATAL) << "Failure to load plugins.js" << std::endl;
-		IUTEST_FAIL();
+		GTEST_LOG_(FATAL) << "Failure to load plugins.js" << std::endl;
+		GTEST_FAIL();
 	}
 	
 	auto item = jsonStruct.begin();
 	auto firstScriptName = (*item)["name"].get<std::string>();
-	IUTEST_ASSERT_STREQ(firstScriptName, "Langscore");
+	ASSERT_STREQ(firstScriptName.c_str(), "Langscore");
 
-	IUTEST_SUCCEED();
+	GTEST_SUCCEED();
 }
 
 
-IUTEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
+TEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
 {
 	ClearGenerateFiles();
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
 	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_NoPlugins_langscore\\config.json");
 
-	IUTEST_ASSERT(divisi.analyze().valid());
+	ASSERT_TRUE(divisi.analyze().valid());
 
-	IUTEST_ASSERT(divisi.write().valid());
+	ASSERT_TRUE(divisi.write().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.gameProjectPath());
 
 	auto pluginJs = outputPath / "js" / "plugins.js";
-	IUTEST_ASSERT(fs::exists(pluginJs));
+	ASSERT_TRUE(fs::exists(pluginJs));
 
 	std::ifstream loadFile(pluginJs);
 	std::string content((std::istreambuf_iterator<char>(loadFile)), std::istreambuf_iterator<char>());
@@ -315,7 +315,7 @@ IUTEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
 	std::size_t endPos = content.rfind(']');
 
 	if(startPos == std::string::npos || endPos == std::string::npos) {
-		IUTEST_LOG_(FATAL) << "Not Found Backet" << std::endl;
+		GTEST_LOG_(FATAL) << "Not Found Backet" << std::endl;
 	}
 
 	auto jsonStr = utility::cnvStr<std::u8string>(content.substr(startPos, endPos - startPos + 1));
@@ -323,15 +323,15 @@ IUTEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
 	nlohmann::json jsonStruct = nlohmann::json::parse(jsonStr, nullptr);
 	//plugins.jsの読み込み失敗
 	if(jsonStruct.is_discarded()) {
-		IUTEST_LOG_(FATAL) << "Failure to load plugins.js" << std::endl;
-		IUTEST_FAIL();
+		GTEST_LOG_(FATAL) << "Failure to load plugins.js" << std::endl;
+		GTEST_FAIL();
 	}
 
 	auto item = jsonStruct.begin();
 	auto firstScriptName = (*item)["name"].get<std::string>();
-	IUTEST_ASSERT_STREQ(firstScriptName, "Langscore");
+	ASSERT_STREQ(firstScriptName.c_str(), "Langscore");
 
-	IUTEST_SUCCEED();
+	GTEST_SUCCEED();
 }
 
 

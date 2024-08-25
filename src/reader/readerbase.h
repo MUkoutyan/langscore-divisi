@@ -17,8 +17,8 @@ namespace langscore
 		readerbase(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList);
 		virtual ~readerbase();
 
-		std::vector<TranslateText>&  curerntTexts() & { return texts; }
-		std::vector<TranslateText>&& curerntTexts() && { return std::move(texts); }
+		std::vector<TranslateText>&  currentTexts() & { return texts; }
+		std::vector<TranslateText>&& currentTexts() && { return std::move(texts); }
 		ScriptPackage&  curerntScriptTransMap() & { return scriptTranslatesMap; }
 		ScriptPackage&& curerntScriptTransMap() && { return std::move(scriptTranslatesMap); }
 		const std::vector<std::u8string>& curerntUseLangList() & { return useLangList; }

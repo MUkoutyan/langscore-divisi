@@ -413,7 +413,7 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
     config config;
     //Rubyスクリプトを予め解析してテキストを生成しておく。
     rubyreader reader(this->supportLangs, this->scriptFileList);
-    auto& transTexts = reader.curerntTexts();
+    auto& transTexts = reader.currentTexts();
 
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     for(auto& t : transTexts){
@@ -423,7 +423,7 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 
     //デフォルトスクリプトのVocab.rb内の文字列は予めScriptsの中に翻訳済みの内容を入れておく
     auto resourceFolder = this->appPath.parent_path() / "resource";
-    auto vocabs = csvreader{this->supportLangs, {resourceFolder / "vocab.csv"}}.curerntTexts();
+    auto vocabs = csvreader{this->supportLangs, {resourceFolder / "vocab.csv"}}.currentTexts();
     
     auto scriptFileNameMap = plaincsvreader{baseDirectory + u8"/Scripts/_list.csv"s}.getPlainCsvTexts();
     const auto GetScriptName = [&scriptFileNameMap](std::u8string scriptName)
@@ -814,7 +814,7 @@ void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSV
 
         if(jsonreader_map.find(filename) == jsonreader_map.end()) { continue; }
         const auto& json_reader = jsonreader_map.at(filename);
-        auto texts = json_reader->curerntTexts();
+        auto texts = json_reader->currentTexts();
         for(auto& text : texts){
             if(std::find(targetCode.cbegin(), targetCode.cend(), text.code) == targetCode.cend()){
                 continue;

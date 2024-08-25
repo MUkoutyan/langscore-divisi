@@ -24,13 +24,9 @@ if(CMAKE_BUILD_TYPE MATCHES "Test" OR CMAKE_BUILD_TYPE MATCHES "Test_Debug")
     set(CMAKE_CXX_FLAGS_TEST_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     set(CMAKE_EXE_LINKER_FLAGS_TEST_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
     set(CMAKE_SHARED_LINKER_FLAGS_TEST_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG}")
+    
 	message("Enable Test")
-	add_subdirectory(3rdparty/googletest)
 	add_subdirectory(test)
-endif()
-
-if(DIVISI_BUILD_EXAMPLE)
-add_subdirectory(example)
 endif()
 
 

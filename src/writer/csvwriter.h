@@ -4,23 +4,11 @@
 #include "writerbase.h"
 #include "utility.hpp"
 
-#ifdef ENABLE_TEST
-#define NOMINMAX
-#include "iutest.hpp"
-
-class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, ConvertCsvText_ASCII);
-class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, ConvertCsvText_Multibyte);
-
-#endif
 
 namespace langscore
 {
     class csvwriter: public writerbase
     {
-#ifdef ENABLE_TEST
-        IUTEST_FRIEND_TEST(Langscore_Writer, ConvertCsvText_ASCII);
-        IUTEST_FRIEND_TEST(Langscore_Writer, ConvertCsvText_Multibyte);
-#endif
     public:
         using writerbase::writerbase;
         constexpr static const char* extension = "csv";

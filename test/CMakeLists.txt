@@ -2,15 +2,21 @@
 # プロジェクト専用ロジックはこちらです。
 #
 cmake_minimum_required (VERSION 3.22)
+project (divisi_test VERSION 1)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
-project (divisi_test VERSION 1)
-add_definitions(-DENABLE_TEST)
-include(CTest)
 
 # TODO: テストを追加し、必要な場合は、ターゲットをインストールします。
+# FetchContentを利用してGoogle Testを取得
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/releases/download/v1.15.2/googletest-1.15.2.tar.gz
+)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
 
 if(MSVC)
@@ -31,8 +37,6 @@ set(Test_Includes
 	"../"
 	"../include"
 	"../src"
-    "../3rdparty/iutest/include"
-    "../3rdparty/googletest/googletest/include"
 	"../3rdparty/json/single_include"
 	"../3rdparty/hash-library"
 	"../3rdparty/tree-sitter/include"
@@ -49,52 +53,27 @@ set(test_sources
     ${DIVISI_SOURCES}
 )
 
-set(TestProjectName ${PROJECT_NAME}-test)
+add_executable(divisi_test ${test_sources})
 
-set(DIVISI_TEST_RESOURCE plugin/data/)
-foreach(dir ${DIVISI_TEST_RESOURCE})
-    file(COPY ./${dir} DESTINATION ${PROJECT_BINARY_DIR}/../${dir})
-endforeach()
+target_include_directories(divisi_test PUBLIC ${Test_Includes})
 
-
-# Now simply link against gtest or gtest_main as needed. Eg
-add_executable(${TestProjectName} ${test_sources})
-
-target_include_directories(${TestProjectName} PUBLIC ${Test_Includes})
-
-target_link_libraries(${TestProjectName}
+target_link_libraries(divisi_test
+    gtest
+    gtest_main
 	debug ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
     optimized ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitter.lib
 )
 
-add_test(NAME test COMMAND ${TestProjectName})
+file(GLOB GTEST_DLL_FILES "${CMAKE_BINARY_DIR}/bin/*.dll")
 
-configure_file( ${CMAKE_SOURCE_DIR}/test/test_config.h.in ${CMAKE_SOURCE_DIR}/test/test_config.h )
+foreach(DLL_FILE ${GTEST_DLL_FILES})
+    add_custom_command(TARGET divisi_test POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${DLL_FILE}"
+        "${CMAKE_BINARY_DIR}"
+    )
+endforeach()
 
-# テストデータをコピーするディレクトリを定義
-#set(TEST_DATA_OUTPUT_DIR "./data")
+add_test(NAME test COMMAND divisi_test)
 
-# テストデータのコピー先ディレクトリを作成
-#file(MAKE_DIRECTORY ${TEST_DATA_OUTPUT_DIR})
-
-# テストデータをコピーするカスタムターゲットを作成
-#add_custom_target(copy_test_data ALL)
-
-
-# テストデータファイルを一つずつコピー
-#file(GLOB TEST_DATA_FILES "./data/*")
-#foreach(TEST_DATA_FILE ${TEST_DATA_FILES})
-#    get_filename_component(FILE_NAME ${TEST_DATA_FILE} NAME)
-#    set(OUTPUT_FILE "${TEST_DATA_OUTPUT_DIR}/${FILE_NAME}")
-#    
-#    # 依存関係を削除して、コピー元ファイルを常に新しいものとみなす
-#    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${TEST_DATA_FILE})
-#
-#    add_custom_command(
-#        TARGET copy_test_data
-#        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-#                ${TEST_DATA_FILE}
-#                ${OUTPUT_FILE}
-#        DEPENDS ${TEST_DATA_FILE}
-#    )
-#endforeach()
+configure_file(${CMAKE_SOURCE_DIR}/test/test_config.h.in ${CMAKE_SOURCE_DIR}/test/test_config.h )

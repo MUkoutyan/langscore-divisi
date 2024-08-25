@@ -7,28 +7,15 @@
 #include <tuple>
 #include <filesystem>
 
-#ifdef ENABLE_TEST
-#define NOMINMAX
-#include "iutest.hpp"
-
-class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, CheckRubyCommentLine);
-class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, DetectStringPositionFromFile);
-
-#endif
-
 namespace langscore
 {
     class writerbase
     {
-#ifdef ENABLE_TEST
-        IUTEST_FRIEND_TEST(Langscore_Writer, CheckRubyCommentLine);
-        IUTEST_FRIEND_TEST(Langscore_Writer, DetectStringPositionFromFile);
-#endif
     public:
         //Determine if Reader type is unique_ptr type
         template<typename Reader, typename = std::enable_if_t<!std::is_same_v<std::unique_ptr<readerbase>, std::decay_t<Reader>>>>
         writerbase(Reader&& reader)
-            : useLangs(reader.curerntUseLangList()), texts(reader.curerntTexts())
+            : useLangs(reader.curerntUseLangList()), texts(reader.currentTexts())
             , scriptTranslatesMap(reader.curerntScriptTransMap())
             , overwriteMode(MergeTextMode::AcceptSource), fillDefLangCol(false){
         }
@@ -44,7 +31,7 @@ namespace langscore
         void setFillDefLangCol(bool is){
             this->fillDefLangCol = is;
         }
-        std::vector<TranslateText>& curerntTexts() { return texts; }
+        std::vector<TranslateText>& currentTexts() { return texts; }
         const ScriptPackage& getScriptTexts() const { return scriptTranslatesMap; }
 
         bool isDebug = false;

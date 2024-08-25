@@ -3,25 +3,11 @@
 #include "platform_base.h"
 #include "reader/jsonreader.hpp"
 
-#ifdef ENABLE_TEST
-#include "iutest.hpp"
-class IUTEST_TEST_CLASS_NAME_(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV);
-class IUTEST_TEST_CLASS_NAME_(Langscore_VXAce_Divisi, ValidateLangscoreCustom);
-class IUTEST_TEST_CLASS_NAME_(Langscore_VXAce_Divisi, VXAce_Validate);
-class IUTEST_TEST_CLASS_NAME_(Langscore_VXAce_Divisi, VXAce_FindEscChar);
-#endif
 
 namespace langscore
 {
 	class divisi_vxace: public platform_base
 	{
-
-#ifdef ENABLE_TEST
-		IUTEST_FRIEND_TEST(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV);
-		IUTEST_FRIEND_TEST(Langscore_VXAce_Divisi, ValidateLangscoreCustom);
-		IUTEST_FRIEND_TEST(Langscore_VXAce_Divisi, VXAce_Validate);
-		IUTEST_FRIEND_TEST(Langscore_VXAce_Divisi, VXAce_FindEscChar);
-#endif
 	public:
 		divisi_vxace();
 		~divisi_vxace() override;

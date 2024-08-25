@@ -4,11 +4,6 @@
 #include "writerbase.h"
 #include "config.h"
 
-#ifdef ENABLE_TEST
-class IUTEST_TEST_CLASS_NAME_(Langscore_Writer, CheckRubyCommentLine);
-class IUTEST_TEST_CLASS_NAME_(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV);
-#endif
-
 namespace langscore
 {
     class jsscriptwriter: public writerbase

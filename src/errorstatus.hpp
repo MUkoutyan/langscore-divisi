@@ -29,6 +29,8 @@ public:
     bool valid() const noexcept { return _moduleCode == Module::None && _code == NoError; }
     bool invalid() const noexcept { return !valid(); }
 
+    auto operator<=>(const ErrorStatus&) const = default;
+
     void setSpecMsg(std::string m) { specMsg = std::move(m); }
     std::string toStr()
     {
