@@ -56,6 +56,14 @@ namespace langscore
             }
             return result;
         }
+
+        bool operator==(const TranslateText& obj) const {
+            return this->original == obj.original
+                && this->translates == obj.translates
+                && this->scriptLineInfo == obj.scriptLineInfo
+                && this->scriptParamType == obj.scriptParamType;
+        }
+
     };
 
     using ScriptPackage = std::vector<std::tuple<std::u8string, std::vector<TranslateText>>>;
