@@ -2,8 +2,9 @@
 TEST(Langscore_MV_Divisi, CheckIncludeEmptyPath)
 {
 	ClearGenerateFiles();
+    checkAndCreateConfigFile("data/mv/Include WhiteSpacePath Project_langscore/config.json", "Game.rpgproject");
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\mv\\Include WhiteSpacePath Project_langscore\\config.json");
+	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/Include WhiteSpacePath Project_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
@@ -54,8 +55,9 @@ TEST(Langscore_MV_Divisi, CheckIncludeEmptyPath)
 TEST(Langscore_MV_Divisi_Analyze, ValidateFiles)
 {
 	ClearGenerateFiles();
+    checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_langscore\\config.json");
+	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
@@ -106,9 +108,10 @@ TEST(Langscore_MV_Divisi_Analyze, ValidateFiles)
 TEST(Langscore_MV_Divisi_Analyze, ValidateTexts)
 {
 	ClearGenerateFiles();
+    checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_langscore\\config.json");
+	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
@@ -118,39 +121,24 @@ TEST(Langscore_MV_Divisi_Analyze, ValidateTexts)
 	auto scriptCsv = plaincsvreader{outputPath / "Map001.csv"}.getPlainCsvTexts();
 	ASSERT_TRUE(scriptCsv.empty() == false);
 
-	std::vector<std::u8string> includeTexts = {
-		u8"original",
-		u8"通常のテキストです"s,
-		u8"改行を含む\nテキストです"s,
-		u8"カンマを含む,テキストです"s,
-		u8"\"タ\"フ\"ルクォーテーションを含むテキストです\""s,
-		u8"\"\"\"Hello, World\"\",\nそれはプログラムを書く際の\",\"\"\"謎の呪文\"\"(Mystery spell)―――\"",
-		u8"名前変えるよ"s,
-		u8"\\{言語\\}変える\\}よ"s,
-		u8"日本語"s,
-		u8"英語"s,
-		u8"中国語"s,
-		u8"勝ち"s,
-		u8"逃げ犬"s,
-		u8"負け犬"s,
-		u8"プロフィール変えるよ"s,
-		u8"ラフィーナ"s,
-		u8"エルーシェ"s,
-		u8"やめる"s,
-		u8"二つ名変えるよ"s,
-		u8"雑用係"s,
-		u8"傲慢ちき"s,
-		u8"無くす"s,
-		u8"フィールドを移動します"s,
-		u8"行って帰る"s,
-		u8"行ったきり"s,
-		u8"やめる"s,
-		u8"やっぱやめる"s,
-		u8"移動後のメッセージです。"s,
-		u8"更に移動した際のメッセージです"s,
-		u8"チビのツンデレウーマン。\n魔法が得意。"s,
-		u8"ケスティニアスの雑用係。\nそんなに仕事は無い。"s,
-		u8R"(何があったのかよく思い出せない。
+    std::vector<std::u8string> includeTexts = {
+        u8"original",u8"通常のテキストです",u8"改行を含む\nテキストです",u8"カンマを含む,テキストです",
+        u8"\"タ\"フ\"ルクォーテーションを含むテキストです\"",
+        u8"\"\"\"Hello, World\"\",\nそれはプログラムを書く際の\",\"\"\"謎の呪文\"\"(Mystery spell)―――\"",
+        u8"1番の変数の値は \\V[1] です。",u8"1番のアクターの名前は \\N[1] です。",
+        u8"1番のパーティーメンバーの名前は \\P[1] です。",u8"現在の所持金は \\G です。",
+        u8"この文字は \\C[2] 赤色 \\C[0] 通常色 です。",u8"これはアイコン \\I[64] の表示です。",
+        u8"文字サイズを \\{ 大きく \\} 小さくします。",u8"\\$ 所持金ウィンドウを表示します。",
+        u8"文章の途中で 1/4 秒間のウェイトを \\. します。",u8"文章の途中で 1 秒間のウェイトを \\| します。",
+        u8"文章の途中でボタンの入力待ちを \\! します。",u8"\\>この行の文字を一瞬で表示します。\\<",
+        u8"\\^文章表示後の入力待ちを行いません。",u8"バックスラッシュの表示は \\\\ です。",
+        u8"複合させます\n\\{\\C[2]\\N[2]\\I[22]",u8"勝ち",u8"逃げ犬",u8"負け犬",u8"\\{言語\\}変える\\}よ",
+        u8"日本語",u8"英語",u8"中国語",u8"やっぱやめる",u8"フィールドを移動します",u8"行って帰る",
+        u8"行ったきり",u8"やめる",u8"移動後のメッセージです。",u8"更に移動した際のメッセージです",
+        u8"名前変えるよ",u8"ラフィーナ",u8"エルーシェ",u8"二つ名変えるよ",u8"雑用係",u8"傲慢ちき",u8"無くす",
+        u8"プロフィール変えるよ", u8"チビのツンデレウーマン。\n魔法が得意。", u8"ケスティニアスの雑用係。\nそんなに仕事は無い。",
+        u8"０１２３４５６７８９０１２３４５６７８９０１２３４５６７８９\n012345678901234567890123456789012345678901234567890123456789\nＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺＡＢＣＤＥＦＧ\nABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        u8R"(何があったのかよく思い出せない。
 
 辺りを包む木々。天を覆う新緑の葉。
 
@@ -166,36 +154,30 @@ TEST(Langscore_MV_Divisi_Analyze, ValidateTexts)
 "アタシ"は後ろを振り向いた。
 
 肩まで行かない赤髪を垂らし、
-見開く緑目は"私"を見つめ———)"s,
-		u8R"(０１２３４５６７８９０１２３４５６７８９０１２３４５６７８９
-012345678901234567890123456789012345678901234567890123456789
-ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺＡＢＣＤＥＦＧ
-ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ)",
-	};
+見開く緑目は"私"を見つめ———)",
+    };
 
-
-	for(auto& row : scriptCsv)
-	{
-		for(auto& t : row) {
-			auto result = std::find_if(includeTexts.cbegin(), includeTexts.cend(), [&t](const auto& x) {
-				return x == t;
-				});
-			if(result == includeTexts.cend()) {
-				GTEST_LOG_(FATAL) << "Not Found!" << std::string(t.begin(), t.end()) << std::endl;
-				GTEST_FAIL();
-			}
-		}
-	}
-	GTEST_SUCCEED();
+    for(auto& row : scriptCsv)
+    {
+        for(auto& t : row) {
+            auto result = std::find_if(includeTexts.cbegin(), includeTexts.cend(), [&t](const auto& x) {
+                return x == t;
+                });
+            if(result == includeTexts.cend()) {
+                GTEST_FAIL() << "Not Found!" << std::string(t.begin(), t.end());
+            }
+        }
+    }
 }
 
 
 TEST(Langscore_MV_Divisi_Write, ValidateFiles)
 {
 	ClearGenerateFiles();
+    checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_langscore\\config.json");
+	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	
@@ -252,7 +234,8 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS)
 	ClearGenerateFiles();
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_langscore\\config.json");
+    checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
+	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 
@@ -279,8 +262,7 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS)
 	nlohmann::json jsonStruct = nlohmann::json::parse(jsonStr, nullptr);
 	//plugins.jsの読み込み失敗
 	if(jsonStruct.is_discarded()) {
-		GTEST_LOG_(FATAL) << "Failure to load plugins.js" << std::endl;
-		GTEST_FAIL();
+        GTEST_FAIL() << "Failure to load plugins.js" << std::endl;
 	}
 	
 	auto item = jsonStruct.begin();
@@ -294,9 +276,10 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS)
 TEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
 {
 	ClearGenerateFiles();
+    checkAndCreateConfigFile("data/mv/LangscoreTest_NoPlugins_langscore/config.json", "Game.rpgproject");
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\mv\\LangscoreTest_NoPlugins_langscore\\config.json");
+	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_NoPlugins_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 
@@ -315,7 +298,7 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
 	std::size_t endPos = content.rfind(']');
 
 	if(startPos == std::string::npos || endPos == std::string::npos) {
-		GTEST_LOG_(FATAL) << "Not Found Backet" << std::endl;
+        GTEST_FAIL() << "Not Found Backet" << std::endl;
 	}
 
 	auto jsonStr = utility::cnvStr<std::u8string>(content.substr(startPos, endPos - startPos + 1));
@@ -323,8 +306,7 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
 	nlohmann::json jsonStruct = nlohmann::json::parse(jsonStr, nullptr);
 	//plugins.jsの読み込み失敗
 	if(jsonStruct.is_discarded()) {
-		GTEST_LOG_(FATAL) << "Failure to load plugins.js" << std::endl;
-		GTEST_FAIL();
+        GTEST_FAIL() << "Failure to load plugins.js" << std::endl;
 	}
 
 	auto item = jsonStruct.begin();

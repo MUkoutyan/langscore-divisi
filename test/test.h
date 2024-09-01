@@ -96,3 +96,37 @@ void ClearGenerateFiles(langscore::config& config)
 	Delete(config.langscoreAnalyzeDirectorty());
 	Delete(config.langscoreUpdateDirectorty());
 }
+
+static void checkAndCreateConfigFile(fs::path config_path, std::filesystem::path gameProjectFilename = "Game.rvproj2")
+{
+    if(fs::exists(fs::path(BINARYT_DIRECTORY) / config_path) == false)
+    {
+        std::string suffix = "_langscore";
+
+        // パスを分割
+        std::filesystem::path parentPath = config_path.parent_path();
+
+        // フォルダ名からサフィックスを削除
+        std::filesystem::path gamePath;
+        for(auto& part : parentPath) {
+            std::string partStr = part.string();
+            if(partStr.size() >= suffix.size() && partStr.compare(partStr.size() - suffix.size(), suffix.size(), suffix) == 0) {
+                partStr = partStr.substr(0, partStr.size() - suffix.size());
+            }
+            gamePath /= partStr;
+        }
+
+        gamePath /= gameProjectFilename;
+
+        langscore::divisi divisi("", "");
+        divisi.createConfig(fs::path(BINARYT_DIRECTORY) / gamePath);
+    }
+}
+
+static void attachConfigFile(fs::path config_path)
+{
+    checkAndCreateConfigFile(config_path);
+
+    langscore::config::detachConfigFile();
+    langscore::config::attachConfigFile(fs::path(BINARYT_DIRECTORY) / config_path);
+}

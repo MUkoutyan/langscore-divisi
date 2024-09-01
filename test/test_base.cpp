@@ -1,4 +1,9 @@
-﻿TEST(Langscore_Utility_Join, HandlesEmptyList) {
+﻿
+#include <gmock/gmock.h> 
+#include <gmock/gmock-matchers.h>
+using ::testing::Contains;
+
+TEST(Langscore_Utility_Join, HandlesEmptyList) {
 	std::vector<std::string> list;
 	std::string separator = ", ";
 	std::string expected = "";
@@ -26,32 +31,48 @@ TEST(Langscore_Utility_Join, HandlesMixedEmptyAndNonEmptyElements) {
 	ASSERT_TRUE(expected == utility::join(list, separator));
 }
 
+class Langscore_Config : public ::testing::Test
+{
+public:
+    std::u8string build_folder = utility::cnvStr<std::u8string>(std::string{BINARYT_DIRECTORY});
+protected:
+    void SetUp() override {
+        //langscore::config::attachConfigFile(this->build_folder + u8".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+    }
 
-TEST(Langscore_Config, TmpDir)
+    void TearDown() override {
+        // テスト用の一時ディレクトリを削除
+        langscore::config::detachConfigFile();
+    }
+};
+
+TEST_F(Langscore_Config, TmpDir)
 {
 	langscore::config config;
 
-	auto expected = config.langscoreAnalyzeDirectorty();
-	auto build_folder = utility::cnvStr<std::u8string>(std::string{CMAKE_BUILD_TYPE_STRING});
-	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\"s + build_folder + u8"\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\analyze"s);
-	ASSERT_TRUE(expected == actual.u8string());
+	auto expected = fs::path(config.langscoreAnalyzeDirectorty()).generic_string();
+	auto actual = fs::path(this->build_folder + u8"\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\analyze"s).generic_string();
+	ASSERT_TRUE(expected == actual);
 }
 
-TEST(Langscore_Config, LoadLanguages)
+TEST_F(Langscore_Config, LoadLanguages)
 {
-	langscore::config config(".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+	langscore::config config(fs::path(this->build_folder) / u8"data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	auto expected = config.languages();
 	utility::stringlist actual = {"en", "ja"};
 	ASSERT_TRUE(actual.size() == expected.size());
-	for(int i = 0; i < actual.size(); ++i) {
-		ASSERT_TRUE(expected[i].name == actual[i]);
+	for(auto& elem : actual) {
+        auto result = std::find_if(expected.begin(), expected.end(), [&](auto& x) {
+            return x.name == elem;
+        });
+        ASSERT_TRUE(result != expected.end());
 	}
 }
 
-TEST(Langscore_Config, CheckFontName)
+TEST_F(Langscore_Config, CheckFontName)
 {
-	langscore::config config(".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+	langscore::config config(fs::path(this->build_folder) / u8"data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
 	auto expected = config.languages();
 	for(int i = 0; i < expected.size(); ++i)
@@ -65,21 +86,20 @@ TEST(Langscore_Config, CheckFontName)
 	}
 }
 
-TEST(Langscore_Config, CheckProjectPath)
+TEST_F(Langscore_Config, CheckProjectPath)
 {
-	langscore::config config(".\\data\\vxace\\ソソポァゼゾタダＡボマミ_langscore\\config.json");
+	langscore::config config(fs::path(this->build_folder) / u8"data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
-	auto expected = config.gameProjectPath();
-
-	auto build_folder = utility::cnvStr<std::u8string>(std::string{CMAKE_BUILD_TYPE_STRING});
-	auto actual = fs::path(u8"D:\\Programming\\Github\\langscore-divisi\\out\\build\\"s + build_folder + u8"\\data\\vxace\\ソポァゼゾタダＡボマミ"s);
-    ASSERT_TRUE(expected == actual.u8string());
+    auto expected = fs::path(config.gameProjectPath()).generic_string();
+    auto build_folder = utility::cnvStr<std::u8string>(std::string{BINARYT_DIRECTORY});
+    auto actual = fs::path(build_folder + u8"\\data\\vxace\\ソポァゼゾタダＡボマミ"s).generic_string();
+    ASSERT_TRUE(expected == actual);
 }
 
 TEST(Langscore_Csv, parsePlain)
 {
 	{
-		auto targetCsvList = plaincsvreader{".\\data\\csv\\parsePlain.csv"}.getPlainCsvTexts();
+		auto targetCsvList = plaincsvreader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\parsePlain.csv"}.getPlainCsvTexts();
 		ASSERT_TRUE(targetCsvList.empty() == false);
 
 		// 期待される解析結果を定義
@@ -106,7 +126,7 @@ TEST(Langscore_Csv, parsePlain)
 		}
 	}
 	{
-		auto targetCsvList = plaincsvreader{".\\data\\csv\\plaincsvreader.csv"}.getPlainCsvTexts();
+		auto targetCsvList = plaincsvreader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\plaincsvreader.csv"}.getPlainCsvTexts();
 		ASSERT_TRUE(targetCsvList.empty() == false);
         EXPECT_EQ(6, targetCsvList.size());
 
@@ -130,14 +150,14 @@ TEST(Langscore_Csv, parsePlain)
 TEST(Langscore_Csv, merge)
 {
 	{
-		langscore::csvreader reader{{}, ".\\data\\csv\\after.csv"};
+		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::AcceptSource;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(".\\data\\csv\\before.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\before.csv"));
 
 		auto& merged = writer.currentTexts();
 
@@ -148,14 +168,14 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[1].translates[u8"ja"] == u8"");
 	}
 	{
-		langscore::csvreader reader{{}, ".\\data\\csv\\after.csv"};
+		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::AcceptTarget;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(".\\data\\csv\\before.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\before.csv"));
 
 		auto& merged = writer.currentTexts();
 
@@ -168,14 +188,14 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"さしすせそ");
 	}
 	{
-		langscore::csvreader reader{{}, ".\\data\\csv\\after.csv"};
+		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepTarget;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(".\\data\\csv\\before.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\before.csv"));
 
 		auto& merged = writer.currentTexts();
 
@@ -188,14 +208,58 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"さしすせそ");
 	}
 	{
-		langscore::csvreader reader{{}, ".\\data\\csv\\before.csv"};
+		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\before.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepTarget;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(".\\data\\csv\\after.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\after.csv"));
+
+		auto& merged = writer.currentTexts();
+
+        std::vector<TranslateText> actuals;
+        {
+            TranslateText a;
+            a.original = u8"あいうえお";
+            a.translates[u8"ja"] = u8"あいうえお";
+            actuals.emplace_back(std::move(a));
+
+            TranslateText b;
+            b.original = u8"かきくけこ";
+            b.translates[u8"ja"] = u8"かきくけこ";
+            actuals.emplace_back(std::move(b));
+
+            TranslateText c;
+            c.original = u8"さしすせそ";
+            c.translates[u8"ja"] = u8"";
+            actuals.emplace_back(std::move(c));
+        }
+
+		ASSERT_EQ(merged.size(), 3);
+
+        for(auto& actual : actuals) {
+            auto r = std::find(merged.begin(), merged.end(), actual);
+            ASSERT_TRUE(r != merged.end());
+        }
+
+		//ASSERT_TRUE(merged[0].original == u8"あいうえお");
+		//ASSERT_TRUE(merged[0].translates[u8"ja"] == u8"あいうえお");
+		//ASSERT_TRUE(merged[1].original == u8"かきくけこ");
+		//ASSERT_TRUE(merged[1].translates[u8"ja"] == u8"かきくけこ");
+		//ASSERT_TRUE(merged[2].original == u8"さしすせそ");
+		//ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"");
+	}
+	{
+		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
+		auto& targetCsv = reader.currentTexts();
+		ASSERT_TRUE(targetCsv.empty() == false);
+
+		auto mode = langscore::MergeTextMode::MergeKeepSource;
+		langscore::csvwriter writer(reader);
+		writer.setOverwriteMode(mode);
+		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\before.csv"));
 
 		auto& merged = writer.currentTexts();
 
@@ -208,44 +272,40 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"");
 	}
 	{
-		langscore::csvreader reader{{}, ".\\data\\csv\\after.csv"};
+		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\before.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepSource;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(".\\data\\csv\\before.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\after.csv"));
+
+        std::vector<TranslateText> actuals;
+        {
+            TranslateText a;
+            a.original = u8"あいうえお";
+            a.translates[u8"ja"] = u8"たちつてと";
+            actuals.emplace_back(std::move(a));
+
+            TranslateText b;
+            b.original = u8"かきくけこ";
+            b.translates[u8"ja"] = u8"かきくけこ";
+            actuals.emplace_back(std::move(b));
+
+            TranslateText c;
+            c.original = u8"さしすせそ";
+            c.translates[u8"ja"] = u8"さしすせそ";
+            actuals.emplace_back(std::move(c));
+        }
 
 		auto& merged = writer.currentTexts();
 
 		ASSERT_TRUE(merged.size() == 3);
-		ASSERT_TRUE(merged[0].original == u8"あいうえお");
-		ASSERT_TRUE(merged[0].translates[u8"ja"] == u8"あいうえお");
-		ASSERT_TRUE(merged[1].original == u8"かきくけこ");
-		ASSERT_TRUE(merged[1].translates[u8"ja"] == u8"かきくけこ");
-		ASSERT_TRUE(merged[2].original == u8"さしすせそ");
-		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"");
-	}
-	{
-		langscore::csvreader reader{{}, ".\\data\\csv\\before.csv"};
-		auto& targetCsv = reader.currentTexts();
-		ASSERT_TRUE(targetCsv.empty() == false);
-
-		auto mode = langscore::MergeTextMode::MergeKeepSource;
-		langscore::csvwriter writer(reader);
-		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(".\\data\\csv\\after.csv"));
-
-		auto& merged = writer.currentTexts();
-
-		ASSERT_TRUE(merged.size() == 3);
-		ASSERT_TRUE(merged[0].original == u8"あいうえお");
-		ASSERT_TRUE(merged[0].translates[u8"ja"] == u8"たちつてと");
-		ASSERT_TRUE(merged[1].original == u8"かきくけこ");
-		ASSERT_TRUE(merged[1].translates[u8"ja"] == u8"かきくけこ");
-		ASSERT_TRUE(merged[2].original == u8"さしすせそ");
-		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"さしすせそ");
+        for(auto& actual : actuals) {
+            auto r = std::find(merged.begin(), merged.end(), actual);
+            ASSERT_TRUE(r != merged.end());
+        }
 	}
 	{
 		std::vector<std::u8string> langs{u8"en"s, u8"ja"s, u8"zh-cn"s};
@@ -267,7 +327,7 @@ TEST(Langscore_Csv, merge)
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
 
-		ASSERT_TRUE(writer.merge(".\\data\\csv\\add_lang.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\add_lang.csv"));
 
 		auto& merged = writer.currentTexts();
 

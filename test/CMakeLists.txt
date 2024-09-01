@@ -60,19 +60,24 @@ target_include_directories(divisi_test PUBLIC ${Test_Includes})
 target_link_libraries(divisi_test
     gtest
     gtest_main
-	debug ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
-    optimized ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitter.lib
+    gmock
+    gmock_main
+    ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
 )
+
+#debug ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
+#optimized ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitter.lib
 
 file(GLOB GTEST_DLL_FILES "${CMAKE_BINARY_DIR}/bin/*.dll")
 
 foreach(DLL_FILE ${GTEST_DLL_FILES})
     add_custom_command(TARGET divisi_test POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        COMMAND ${CMAKE_COMMAND} -E copy
         "${DLL_FILE}"
         "${CMAKE_BINARY_DIR}"
     )
 endforeach()
+
 
 add_test(NAME test COMMAND divisi_test)
 

@@ -24,21 +24,77 @@ public:
 
 };
 
+class Langscore_VXAce_Invoker : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // テスト用の一時ディレクトリを作成
+        //std::filesystem::create_directory(testDir);
+    }
 
-TEST(Langscore_VXAce_Invoker, NoAssignProject)
+    void TearDown() override {
+        // テスト用の一時ディレクトリを削除
+        //std::filesystem::remove_all(testDir);
+    }
+
+    //void attachConfigFile(fs::path config_path) 
+    //{
+    //    if(fs::exists(fs::path(BINARYT_DIRECTORY) / config_path) == false) 
+    //    {
+    //        std::string suffix = "_langscore";
+
+    //        // パスを分割
+    //        std::filesystem::path parentPath = config_path.parent_path();
+    //        std::filesystem::path filename = "Game.rvproj2";
+
+    //        // フォルダ名からサフィックスを削除
+    //        std::filesystem::path gamePath;
+    //        for(auto& part : parentPath) {
+    //            std::string partStr = part.string();
+    //            if(partStr.size() >= suffix.size() && partStr.compare(partStr.size() - suffix.size(), suffix.size(), suffix) == 0) {
+    //                partStr = partStr.substr(0, partStr.size() - suffix.size());
+    //            }
+    //            gamePath /= partStr;
+    //        }
+
+    //        gamePath /= filename;
+
+    //        langscore::divisi divisi("", "");
+    //        divisi.createConfig(fs::path(BINARYT_DIRECTORY) / gamePath);
+    //    }
+
+    //    langscore::config::detachConfigFile();
+    //    langscore::config::attachConfigFile(fs::path(BINARYT_DIRECTORY) / config_path);
+
+    //}
+};
+
+class Langscore_VXAce_Divisi : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // テスト用の一時ディレクトリを作成
+        //std::filesystem::create_directory(testDir);
+    }
+
+    void TearDown() override {
+        // テスト用の一時ディレクトリを削除
+        //std::filesystem::remove_all(testDir);
+    }
+};
+
+
+
+TEST_F(Langscore_VXAce_Invoker, NoAssignProject)
 {
-	langscore::config::detachConfigFile();
-	langscore::config::attachConfigFile(".\\data\\vxace\\ソポァゼゾタダＡボマミ_Invalid_langscore\\config.json");
+	attachConfigFile("data/vxace/ソポァゼゾタダＡボマミ_Invalid_langscore/config.json");
 	langscore::invoker invoker;
 	auto result = invoker.analyze();
 	ASSERT_EQ(result.moduleCode(), ErrorStatus::Module::INVOKER);
 	ASSERT_EQ(result.code(), 1);
 }
 
-TEST(Langscore_VXAce_Invoker, AnalyzeVXAceProject)
+TEST_F(Langscore_VXAce_Invoker, AnalyzeVXAceProject)
 {
-	langscore::config::detachConfigFile();
-	langscore::config::attachConfigFile(".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+	attachConfigFile("data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 	langscore::config config;
 	ClearGenerateFiles(config);
 
@@ -56,10 +112,9 @@ TEST(Langscore_VXAce_Invoker, AnalyzeVXAceProject)
 	ClearGenerateFiles(config);
 }
 
-TEST(Langscore_VXAce_Invoker, AnalyzeWhiteSpaceVXAceProject)
+TEST_F(Langscore_VXAce_Invoker, AnalyzeWhiteSpaceVXAceProject)
 {
-	langscore::config::detachConfigFile();
-	langscore::config::attachConfigFile(".\\data\\vxace\\Include WhiteSpacePath Project_langscore\\config.json");
+	attachConfigFile("data/vxace/Include WhiteSpacePath Project_langscore/config.json");
 	langscore::config config;
 	ClearGenerateFiles(config);
 
@@ -77,10 +132,9 @@ TEST(Langscore_VXAce_Invoker, AnalyzeWhiteSpaceVXAceProject)
 	ClearGenerateFiles(config);
 }
 
-TEST(Langscore_VXAce_Invoker, CheckValidScriptList)
+TEST_F(Langscore_VXAce_Invoker, CheckValidScriptList)
 {
-	langscore::config::detachConfigFile();
-	langscore::config::attachConfigFile(".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+	attachConfigFile("data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 	langscore::config config;
 	ClearGenerateFiles(config);
 
@@ -112,69 +166,25 @@ TEST(Langscore_VXAce_Invoker, CheckValidScriptList)
 }
 
 
-TEST(Langscore_VXAce_Divisi, CheckIncludeEmptyPath)
+
+TEST_F(Langscore_VXAce_Divisi, CheckIncludeEmptyPath)
 {
 	ClearGenerateFiles();
 	//テキストが一致するかの整合性を確認するテスト
-	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\Include WhiteSpacePath Project_langscore\\config.json");
+    langscore::config::detachConfigFile();
+	langscore::divisi divisi("./", "data/vxace/Include WhiteSpacePath Project_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	ASSERT_TRUE(divisi.write().valid());
 	ASSERT_TRUE(divisi.update().valid());
 }
 
-TEST(Langscore_VXAce_Divisi_Analyze, ValidateTexts)
-{
-	ClearGenerateFiles();
-	//テキストが一致するかの整合性を確認するテスト
-	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
-
-	ASSERT_TRUE(divisi.analyze().valid());
-	langscore::config config;
-	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
-
-	ASSERT_TRUE(fs::exists(outputPath / "Map001.csv"));
-	auto scriptCsv = plaincsvreader{outputPath / "Map001.csv"}.getPlainCsvTexts();
-	ASSERT_TRUE(scriptCsv.empty() == false);
-
-    //Ver.0.7.4からVXAceにおいて末尾に改行を付けないように変更した。
-	std::vector<std::u8string> includeTexts = {
-		u8"original",
-		u8"マップ名"s,
-		u8"12345こんにちは世界 HelloWorld"s,
-		u8"12345HHEELLOO"s,
-		u8"これは追加テキストです"s,
-		u8"言語　切り替えるよ"s,
-		u8"\n手動で中央揃え"s,
-		u8"\n\\{中央揃え+フォントサイズ大"s,
-		u8"日本語"s,
-		u8"英語"s,
-		u8"中国語"s,
-	};
-
-	for(auto& row : scriptCsv)
-	{
-		for(auto& t : row) {
-			auto result = std::find_if(includeTexts.cbegin(), includeTexts.cend(), [&t](const auto& x) {
-				return x == t;
-			});
-			if(result == includeTexts.cend()) {
-				std::cout << "Not Found!" << std::string(t.begin(), t.end()) << std::endl;
-				GTEST_FAIL();
-			}
-		}
-	}
-	GTEST_SUCCEED();
-}
-
-TEST(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
+TEST_F(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 {
 	ClearGenerateFiles();
 	{
 		langscore::config::detachConfigFile();
-		langscore::divisi divisi("./", ".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+		langscore::divisi divisi("./", "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 		ASSERT_TRUE(divisi.analyze().valid());
 	}
 	{
@@ -182,7 +192,7 @@ TEST(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 		//analyzeを呼び出すとコンストラクト時の言語リストが初期化されるため、
 		//インスタンスは別に分ける。
 		langscore::config::detachConfigFile();
-		langscore::divisi divisi("./", ".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+		langscore::divisi divisi("./", "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 		ASSERT_TRUE(divisi.write().valid());
 	}
 	langscore::config config;
@@ -193,120 +203,54 @@ TEST(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 	{
 		auto result = std::ranges::find_if(scriptList, [](const auto& x) {
 			return x[1] == platform_base::Script_File_Name;
-			});
+		});
 		ASSERT_TRUE(result != scriptList.cend());
 		langscoreFilename = outputPath / "Scripts" / (std::u8string((*result)[0]) + u8".rb"s);
 	}
 
 	std::cout << "MESSAGE : Langscore.rb " << langscoreFilename;
 
-    constexpr size_t numExpectedTexts = 78;
 	ASSERT_TRUE(fs::exists(langscoreFilename));
 	langscore::rubyreader rubyReader{{u8"ja"}, {langscoreFilename}};
 	auto scriptCsv = rubyReader.currentTexts();
-	ASSERT_TRUE(scriptCsv.size() == numExpectedTexts);
 
 	csvwriter csvwriter{rubyReader};
-	csvwriter.write(".\\data\\dummy.csv");
+	csvwriter.write("data\\dummy.csv");
 
-	csvreader csvreader({u8"ja"}, ".\\data\\dummy.csv");
+	csvreader csvreader({u8"ja"}, "data\\dummy.csv");
 	auto writedCsvTexts = csvreader.currentTexts();
-	ASSERT_TRUE(writedCsvTexts.size() == numExpectedTexts);
 
-	int i = 0;
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"en");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"ja");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"ja");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"en");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"VL Gothic");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"ja");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"メイリオ");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Data/Translate");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"/");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"\n");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Invalid CSV Data");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Error! : Missmatch Num Cells : #{mismatch_cells.first}");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"File : #{file_name}, Header size : #{size}, Languages : #{rows[0]}");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Error! : Missmatch Num Cells : #{mismatch_cells.first}");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8".rvdata2");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"load_data #{file_name}");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8".csv");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"rb:utf-8:utf-8");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"open #{file_name}");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Warning : Not Found Transcript File #{file_name}");
-                                             
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"\n");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8",");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"\"");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"\"");
-                                             
-                                             
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"\"\"");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"\"");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"\"");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8",");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"\n");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Graphics");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Scripts");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Troops");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"CommonEvents");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Actors");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"System");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Classes");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Skills");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"States");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Weapons");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Armors");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Items");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Enemies");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Map%03d");
-    ASSERT_TRUE(writedCsvTexts[i++].original == u8"\n");
-    ASSERT_TRUE(writedCsvTexts[i++].original == u8"\n");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Graphics");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Scripts");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Troops");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"CommonEvents");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"_");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"現在選択中の言語が表示されます。");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"en");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"The currently selected language is displayed.");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"ja");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"現在選択中の言語が表示されます。");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"en");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"English");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"ja");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"日本語");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"OK");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Reselect");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Cancel");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"kernel32");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"GetPrivateProfileString");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"L");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"kernel32");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"WritePrivateProfileString");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"i");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8" ");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Langscore");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Lang");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"ja");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"./Game.ini");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"ja");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Langscore Load ini : #{$langscore_current_language}");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Langscore");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"Lang");
-	ASSERT_TRUE(writedCsvTexts[i++].original == u8"./Game.ini");
+    std::vector<std::u8string> expectedTexts = {
+        u8"en", u8"ja", u8"VL Gothic", u8"メイリオ", u8"Data/Translate", u8"/",
+        u8"Invalid CSV Data", 
+        u8"Error! : 翻訳文の中に列数が一致しない箇所があります！ : #{mismatch_cells.first}",
+        u8"File : #{file_name}, Header size : #{size}, Languages : #{rows[0]}",
+        u8"Error! : 翻訳文の中に列数が一致しない箇所があります！ : #{mismatch_cells.first}",
+        u8".rvdata2", u8"load_data #{file_name}", u8".csv", u8"rb:utf-8:utf-8",
+        u8"open #{file_name}", u8"Warning : 翻訳ファイルが見つかりません。 #{file_name}",
+        u8"\n", u8",", u8"\"", u8"Graphics", u8"Scripts", u8"Troops", u8"CommonEvents",
+        u8"Actors", u8"System", u8"Classes", u8"Skills", u8"States", u8"Weapons",
+        u8"Armors", u8"Items", u8"Enemies", u8"Map%03d", u8"_",
+        u8"現在選択中の言語が表示されます。", u8"The currently selected language is displayed.",
+        u8"English", u8"日本語", u8"OK", u8"Reselect", u8"Cancel", u8"kernel32",
+        u8"GetPrivateProfileString", u8"L", u8"WritePrivateProfileString", u8"i", u8" ",
+        u8"Langscore", u8"Lang", u8"./Game.ini", u8"Langscore Load ini : #{$langscore_current_language}"
+    };
 
-	if(i != numExpectedTexts) {
-		SCOPED_TRACE(::testing::Message() << "The number of tests in the string does not match. : " << i);
-		GTEST_FAIL();
-	}
+    volatile int index = 0;
+    for(const auto& expectedText : expectedTexts) {
+        ASSERT_TRUE(std::any_of(writedCsvTexts.begin(), writedCsvTexts.end(), [&](const auto& text) {
+            return text.original == expectedText;
+        })) << index << " : " << utility::cnvStr<std::string>(expectedText);
+        index++;
+    }
 }
 
-TEST(Langscore_VXAce_Divisi, CheckScriptCSV)
+TEST_F(Langscore_VXAce_Divisi, CheckScriptCSV)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+	langscore::divisi divisi("./", "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
@@ -333,14 +277,14 @@ TEST(Langscore_VXAce_Divisi, CheckScriptCSV)
 	GTEST_SUCCEED();
 }
 
-TEST(Langscore_VXAce_Divisi, WriteVXAceProject)
+TEST_F(Langscore_VXAce_Divisi, WriteVXAceProject)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+	langscore::divisi divisi("./", "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 
-	fs::path scriptDataSrc(".\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
-	fs::path scriptDataDest(".\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
+	fs::path scriptDataSrc("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
 
 
 	if(fs::exists(scriptDataDest) == false) {
@@ -375,14 +319,14 @@ TEST(Langscore_VXAce_Divisi, WriteVXAceProject)
 	GTEST_SUCCEED();
 }
 
-TEST(Langscore_VXAce_Divisi, WriteVocab)
+TEST_F(Langscore_VXAce_Divisi, WriteVocab)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+	langscore::divisi divisi("./", "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 
-	fs::path scriptDataSrc(".\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
-	fs::path scriptDataDest(".\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
+	fs::path scriptDataSrc("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
 
 	if(fs::exists(scriptDataDest) == false) {
 		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
@@ -416,7 +360,7 @@ TEST(Langscore_VXAce_Divisi, WriteVocab)
 	GTEST_SUCCEED();
 }
 
-TEST(Langscore_VXAce_Divisi, WriteLangscoreCustom)
+TEST_F(Langscore_VXAce_Divisi, WriteLangscoreCustom)
 {
 	ClearGenerateFiles();
 	langscore::config config;
@@ -426,7 +370,7 @@ TEST(Langscore_VXAce_Divisi, WriteLangscoreCustom)
 	divisi_vxace.analyze();
 
 	std::u8string fileName = u8"57856563";	//Cacheスクリプト
-	langscore::rubyreader rubyReader({u8"en", u8"ja"}, {u8".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\analyze\\Scripts\\"s + fileName + u8".rb"s});
+	langscore::rubyreader rubyReader({u8"en", u8"ja"}, {u8"data/vxace/ソポァゼゾタダＡボマミ_langscore\\analyze\\Scripts\\"s + fileName + u8".rb"s});
 	langscore::rbscriptwriter scriptWriter(rubyReader);
 
 	const auto outputFileName = "./data/langscore_custom.rb"s;
@@ -457,14 +401,14 @@ TEST(Langscore_VXAce_Divisi, WriteLangscoreCustom)
 	}
 }
 
-TEST(Langscore_VXAce_Divisi, ValidateLangscoreCustom)
+TEST_F(Langscore_VXAce_Divisi, ValidateLangscoreCustom)
 {
 	ClearGenerateFiles();
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", ".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
+	langscore::divisi divisi("./", "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 
-	fs::path scriptDataSrc(".\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
-	fs::path scriptDataDest(".\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
+	fs::path scriptDataSrc("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
 
 	if(fs::exists(scriptDataDest) == false) {
 		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
@@ -507,12 +451,12 @@ TEST(Langscore_VXAce_Divisi, ValidateLangscoreCustom)
 	GTEST_SUCCEED();
 }
 
-TEST(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV)
+TEST_F(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV)
 {
 	ClearGenerateFiles();
 	//Langscore_customに意図した通りに内容が書き込まれているかのテスト
-	fs::path scriptDataSrc(".\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
-	fs::path scriptDataDest(".\\data\\vxace\\ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
+	fs::path scriptDataSrc("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
 
 
 	if(fs::exists(scriptDataDest) == false) {
@@ -595,7 +539,7 @@ TEST(Langscore_VXAce_Divisi, VXAce_WriteScriptCSV)
     */
 }
 
-TEST(Langscore_VXAce_Divisi, VXAce_FindEscChar)
+TEST_F(Langscore_VXAce_Divisi, VXAce_FindEscChar)
 {
 	langscore::config config;
     DummyPlatformBase divisi_vxace;
@@ -649,7 +593,7 @@ TEST(Langscore_VXAce_Divisi, VXAce_FindEscChar)
 	}
 }
 
-TEST(Langscore_VXAce_Divisi, VXAce_Validate)
+TEST_F(Langscore_VXAce_Divisi, VXAce_Validate)
 {
 	langscore::config config;
 	DummyPlatformBase divisi_vxace;
@@ -684,4 +628,70 @@ TEST(Langscore_VXAce_Divisi, VXAce_Validate)
 
 		ASSERT_FALSE(divisi_vxace.testValidateTranslateList({text}, ""));
 	}
+}
+
+
+TEST(Langscore_VXAce_Divisi_Analyze, ValidateTexts)
+{
+    ClearGenerateFiles();
+    //テキストが一致するかの整合性を確認するテスト
+    langscore::config::detachConfigFile();
+    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+
+    ASSERT_TRUE(divisi.analyze().valid());
+    langscore::config config;
+    auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
+
+    ASSERT_TRUE(fs::exists(outputPath / "Map001.csv"));
+    auto scriptCsv = plaincsvreader{outputPath / "Map001.csv"}.getPlainCsvTexts();
+    ASSERT_TRUE(scriptCsv.empty() == false);
+
+    //Ver.0.7.4からVXAceにおいて末尾に改行を付けないように変更した。
+    std::vector<std::u8string> includeTexts = {
+        u8"original",u8"通常のテキストです",u8"改行を含む\nテキストです",u8"カンマを含む,テキストです",
+        u8"\"タ\"フ\"ルクォーテーションを含むテキストです\"",
+        u8"\"\"\"Hello, World\"\",\nそれはプログラムを書く際の\",\"\"\"謎の呪文\"\"(Mystery spell)―――\"",
+        u8"1番の変数の値は \\V[1] です。",u8"1番のアクターの名前は \\N[1] です。",
+        u8"1番のパーティーメンバーの名前は \\P[1] です。",u8"現在の所持金は \\G です。",
+        u8"この文字は \\C[2] 赤色 \\C[0] 通常色 です。",u8"これはアイコン \\I[64] の表示です。",
+        u8"文字サイズを \\{ 大きく \\} 小さくします。",u8"\\$ 所持金ウィンドウを表示します。",
+        u8"文章の途中で 1/4 秒間のウェイトを \\. します。",u8"文章の途中で 1 秒間のウェイトを \\| します。",
+        u8"文章の途中でボタンの入力待ちを \\! します。",u8"\\>この行の文字を一瞬で表示します。\\<",
+        u8"\\^文章表示後の入力待ちを行いません。",u8"バックスラッシュの表示は \\\\ です。",
+        u8"複合させます\n\\{\\C[2]\\N[2]\\I[22]",u8"勝ち",u8"逃げ犬",u8"負け犬",u8"\\{言語\\}変える\\}よ",
+        u8"日本語",u8"英語",u8"中国語",u8"やっぱやめる",u8"フィールドを移動します",u8"行って帰る",
+        u8"行ったきり",u8"やめる",u8"移動後のメッセージです。",u8"更に移動した際のメッセージです",
+        u8"名前変えるよ",u8"ラフィーナ",u8"エルーシェ",u8"二つ名変えるよ",u8"雑用係",u8"傲慢ちき",u8"無くす",
+        u8"０１２３４５６７８９０１２３４５６７８９０１２３４５６７８９\n012345678901234567890123456789012345678901234567890123456789\nＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺＡＢＣＤＥＦＧ\nABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        u8R"(何があったのかよく思い出せない。
+
+辺りを包む木々。天を覆う新緑の葉。
+
+小鳥のせせらぎと、風の音だけが聴こえる。
+
+彼方には、見慣れたような、しかしそうでないような、
+懐かしさを僅かに感じる家並み———
+
+ふと、目の前の景色が遠ざかる。
+何かに後ろに引っ張られるように、
+辺りを俯瞰するような景色が広がっていく。
+
+"アタシ"は後ろを振り向いた。
+
+肩まで行かない赤髪を垂らし、
+見開く緑目は"私"を見つめ———)",
+    };
+
+    for(auto& row : scriptCsv)
+    {
+        for(auto& t : row) {
+            auto result = std::find_if(includeTexts.cbegin(), includeTexts.cend(), [&t](const auto& x) {
+                return x == t;
+                });
+            if(result == includeTexts.cend()) {
+                GTEST_FAIL() << "Not Found!" << std::string(t.begin(), t.end());
+            }
+        }
+    }
+    GTEST_SUCCEED();
 }

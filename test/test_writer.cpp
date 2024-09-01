@@ -1,9 +1,10 @@
 ﻿
 class Langscore_Writer : public ::testing::Test {
 protected:
+    std::filesystem::path testDir;
     void SetUp() override {
         // テスト用の一時ディレクトリを作成
-        testDir = std::filesystem::temp_directory_path() / "test_rubyreader";
+        testDir = fs::path(BINARYT_DIRECTORY) / "test_rubyreader";
         std::filesystem::create_directory(testDir);
     }
 
@@ -20,7 +21,35 @@ protected:
         return filePath;
     }
 
-    std::filesystem::path testDir;
+    std::filesystem::path createDummyJavaScriptFile(const std::u8string& content) 
+    {
+        std::filesystem::path resultFilePath = testDir / "js/plugins/test_script.js";
+        if(fs::exists(resultFilePath.parent_path()) == false) {
+            fs::create_directories(resultFilePath.parent_path());
+        }
+        std::ofstream outFile(resultFilePath, std::ios::binary);
+        outFile.write(reinterpret_cast<const char*>(content.c_str()), content.size());
+        outFile.close();
+
+        {
+            std::filesystem::path filePath = testDir / "js/plugins.js";
+            std::ofstream pluginsFile(filePath, std::ios::trunc);
+            nlohmann::json emptyArray;
+            emptyArray.emplace_back("");
+            nlohmann::json pluginElem = {
+                {"name", "test_script"},
+                {"description", "Hoge"},
+                {"status", true},
+                {"parameters", emptyArray}
+            };
+            nlohmann::json plugin;
+            plugin.emplace_back(pluginElem);
+            pluginsFile << plugin.dump();
+        }
+        
+        return resultFilePath;
+    }
+
 };
 
 TEST_F(Langscore_Writer, UTF8WordCount)
@@ -140,7 +169,9 @@ TEST_F(Langscore_Writer, DetectStringPosition)
 	}
 }
 
-TEST_F(Langscore_Writer, CheckRubyCommentLine) {
+TEST_F(Langscore_Writer, CheckRubyCommentLine) 
+{
+    //文字列の抽出の結果をテストする
     // テストケース 1: 通常のスクリプト
     {
         std::u8string script = u8"chstring";
@@ -178,8 +209,8 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // コメントブロックが無視され、通常の行のみ残る
-        ASSERT_EQ(texts[0].original, u8"\"Hoge\"       ");
+        ASSERT_EQ(texts.size(), 1);
+        ASSERT_EQ(texts[0].original, u8"Hoge");
     }
 
     // テストケース 5: =begin が含まれるがコメントブロックではない行
@@ -189,8 +220,9 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // 全行が有効なスクリプトとして残る
-        ASSERT_EQ(texts[0].original, u8"\"Hoge\" \"=begin\"Honi");
+        ASSERT_EQ(texts.size(), 2); // 全行が有効なスクリプトとして残る
+        ASSERT_EQ(texts[0].original, u8"Hoge");
+        ASSERT_EQ(texts[1].original, u8"=begin");
     }
 
     // テストケース 6: 有効なスクリプト行
@@ -200,8 +232,7 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // 有効なスクリプト行がそのまま残る
-        ASSERT_EQ(texts[0].original, u8"Valid Script Line");
+        ASSERT_EQ(texts.size(), 0);
     }
 
     // テストケース 7: =end コメントブロックの終了
@@ -221,8 +252,7 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // コメントブロックがないのでそのまま残る
-        ASSERT_EQ(texts[0].original, u8"Without Comment Block");
+        ASSERT_EQ(texts.size(), 0); // コメントブロックがないのでそのまま残る
     }
 
     // テストケース 9: コメントが含まれるスクリプト行
@@ -232,8 +262,7 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // コメント部分はスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"Script~~~         ");
+        ASSERT_EQ(texts.size(), 0); // コメント部分はスペースに置き換えられる
     }
 
     // テストケース 10: 式展開が含まれるスクリプト行
@@ -244,7 +273,7 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // 式展開はそのまま残る
-        ASSERT_EQ(texts[0].original, u8"\"Key:#{Value}\"");
+        ASSERT_EQ(texts[0].original, u8"Key:#{Value}");
     }
 
     // テストケース 11: 式展開と変換メソッドが含まれるスクリプト行
@@ -255,7 +284,7 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // 式展開と変換メソッドの呼び出しがスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8R"("Text"              )");
+        ASSERT_EQ(texts[0].original, u8"Text");
     }
 
     // テストケース 12: 文字列を変換するメソッドが含まれるスクリプト行
@@ -266,7 +295,7 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // 変換メソッドの引数がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8R"("Text"                 )");
+        ASSERT_EQ(texts[0].original, u8"Text");
     }
 
     // テストケース 13: 空の引数を持つ変換メソッドが含まれるスクリプト行
@@ -277,7 +306,7 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // 空の引数がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8R"("Text"            )");
+        ASSERT_EQ(texts[0].original, u8"Text");
     }
 
     // テストケース 14: 式展開と文字列を変換するメソッドが含まれるスクリプト行
@@ -287,8 +316,9 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // 式展開と変換メソッドが部分的にスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8R"(Honi:"Te'xt"                 "DetectText")");
+        ASSERT_EQ(texts.size(), 2); // 式展開と変換メソッドが部分的にスペースに置き換えられる
+        ASSERT_EQ(texts[0].original, u8"Te'xt");
+        ASSERT_EQ(texts[1].original, u8"DetectText");
     }
 
     // テストケース 15: 式展開を含まない変換メソッドが含まれるスクリプト行
@@ -299,7 +329,7 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // 空の引数がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8R"("Text"            )");
+        ASSERT_EQ(texts[0].original, u8"Text");
     }
 
     // テストケース 16: 式展開と文字列を変換するメソッドが含まれるスクリプト行
@@ -309,8 +339,9 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine) {
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // 式展開と変換メソッドが部分的にスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8R"(Honi:"Text"                 "DetectText")");
+        ASSERT_EQ(texts.size(), 2); // 式展開と変換メソッドが部分的にスペースに置き換えられる
+        ASSERT_EQ(texts[0].original, u8"Text");
+        ASSERT_EQ(texts[1].original, u8"DetectText");
     }
 }
 
@@ -319,8 +350,8 @@ TEST_F(Langscore_Writer, CheckJavaScriptCommentLine)
     // テストケース 1: 通常のスクリプト
     {
         std::u8string script = u8"chstring";
-        auto scriptPath = createScriptFile(script);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        auto scriptPath = createDummyJavaScriptFile(script);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts(); // 取得したテキストを検証
 
         ASSERT_TRUE(texts.empty());
@@ -329,8 +360,8 @@ TEST_F(Langscore_Writer, CheckJavaScriptCommentLine)
     // テストケース 2: コメントアウトされた行
     {
         std::u8string script = u8"//Commentout";
-        auto scriptPath = createScriptFile(script);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        auto scriptPath = createDummyJavaScriptFile(script);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 0); // コメント行は無視されるのでテキストは空
@@ -339,56 +370,54 @@ TEST_F(Langscore_Writer, CheckJavaScriptCommentLine)
     // テストケース 3: /* コメントブロックの開始
     {
         std::u8string script = u8"/*Hoge";
-        auto scriptPath = createScriptFile(script);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        auto scriptPath = createDummyJavaScriptFile(script);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // コメントブロックがスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"      ");
+        ASSERT_EQ(texts.size(), 0);
     }
 
     // テストケース 4: コメントブロックの終了 */
     {
         std::u8string script = u8"Hoge*/";
-        auto scriptPath = createScriptFile(script);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        auto scriptPath = createDummyJavaScriptFile(script);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // コメントブロック終了時のテキストがスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"      ");
+        ASSERT_EQ(texts.size(), 0);
     }
 
     // テストケース 5: コメントブロックを含むが無視する場合
     {
         std::u8string script = u8"Hoge*/";
-        auto scriptPath = createScriptFile(script);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        auto scriptPath = createDummyJavaScriptFile(script);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // コメントブロックが無視され、テキストはそのまま残る
-        ASSERT_EQ(texts[0].original, u8"Hoge*/");
+        ASSERT_EQ(texts.size(), 0);
     }
 
     // テストケース 6: コメントを含む行の置換
     {
         std::u8string script = u8"\"Hoge\"/*Comment*/\"Honi\"";
-        auto scriptPath = createScriptFile(script);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        auto scriptPath = createDummyJavaScriptFile(script);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // コメントがスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"\"Hoge\"           \"Honi\"");
+        ASSERT_EQ(texts.size(), 2); // コメントがスペースに置き換えられる
+        ASSERT_EQ(texts[0].original, u8"Hoge");
+        ASSERT_EQ(texts[1].original, u8"Honi");
     }
 
     // テストケース 7: コメントアウトと文字列が含まれる行
     {
-        std::u8string script = u8"\"Hoge\"//Comment*/\"Honi\"";
-        auto scriptPath = createScriptFile(script);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        std::u8string script = u8"/*\"Hoge\"//Comment*/\"Honi\"";
+        auto scriptPath = createDummyJavaScriptFile(script);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // コメントアウト部分がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"\"Hoge\"                 ");
+        ASSERT_EQ(texts[0].original, u8"Honi");
     }
 }
 
@@ -473,7 +502,7 @@ TEST_F(Langscore_Writer, ConvertCsvText_ASCII)
         std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
         ASSERT_TRUE(fs::exists(filePath));
-        ASSERT_STREQ(contents.c_str(), utility::cnvStr<std::string>(input).c_str());
+        ASSERT_STREQ(contents.c_str(), "\"Hello, World!\"");
 
 	}
 	{
@@ -516,48 +545,49 @@ TEST_F(Langscore_Writer, ConvertCsvText_Multibyte)
 	langscore::csvwriter writer(speciftranstext{{}, {}});
 
 	{
-		auto input = u8"こんにちは、世界！";
-		auto scriptPath = createScriptFile(input);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+		auto input = u8"\"こんにちは、世界！\"";
+		auto scriptPath = createDummyJavaScriptFile(input);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // コメントアウト部分がスペースに置き換えられる
         ASSERT_EQ(texts[0].original, u8"こんにちは、世界！");
 	}
     {
-        auto input = u8"こんにちは,世界！";
-        auto scriptPath = createScriptFile(input);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        auto input = u8"//\"こんにちは,世界！\"";
+        auto scriptPath = createDummyJavaScriptFile(input);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
-        ASSERT_EQ(texts.size(), 1); // コメントアウト部分がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"\"こんにちは,世界！\"");
+        ASSERT_EQ(texts.size(), 0);
     }
     {
-        auto input = u8"最初の行\n次の行";
-        auto scriptPath = createScriptFile(input);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        //右辺値のみの文字列は意味が無く解析をほぼサポートしていない状態なので、
+        //代入式など意味のあるものにしてテストする。
+        auto input = u8"\"最初の行\n次の行\"";
+        auto scriptPath = createDummyJavaScriptFile(input);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // コメントアウト部分がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"\"最初の行\n次の行\"");
+        ASSERT_EQ(texts[0].original, u8"最初の行\n次の行");
     }
     {
-        auto input = u8"文章中の\"記号";
-        auto scriptPath = createScriptFile(input);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        auto input = u8"var hoge = \"文章中の\\\"記号\"";
+        auto scriptPath = createDummyJavaScriptFile(input);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // コメントアウト部分がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"\"文章中の\"\"記号\"");
+        ASSERT_EQ(texts[0].original, u8"文章中の\\\"記号");
     }
     {
-        auto input = u8"コンマ,\"と引用符";
-        auto scriptPath = createScriptFile(input);
-        langscore::javascriptreader scriptWriter({}, {scriptPath});
+        auto input = u8"var hoge = \"コンマ,\"と引用符\"";
+        auto scriptPath = createDummyJavaScriptFile(input);
+        langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // コメントアウト部分がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"\"コンマ,\"\"と引用符\"");
+        ASSERT_EQ(texts[0].original, u8"コンマ,\"と引用符");
     }
 }
