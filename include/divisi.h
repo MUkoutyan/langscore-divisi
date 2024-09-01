@@ -23,7 +23,7 @@ public:
     ErrorStatus validate();
     ErrorStatus packing();
 
-    ErrorStatus createConfig();
+    ErrorStatus createConfig(std::filesystem::path gameProjectPath);
 
 private:
     class Impl;

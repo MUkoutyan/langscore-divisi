@@ -9,6 +9,7 @@ struct ARGS
 {
 	std::filesystem::path appPath;
 	std::filesystem::path configFile;
+	std::filesystem::path gameProjectPath;
     bool createConfigFile = false;
 	bool analyze = false;
 	bool update = false;
@@ -86,8 +87,8 @@ ARGS analyzeOption(int argc, const char* argv[])
         else if(str.find("--createConfigFile") != std::string_view::npos) {
             args.createConfigFile = true;
             ++i;	//次の要素を読み込む
-            args.configFile = getFilePathFromArgs(i, argc, argv);
-			std::cout << args.configFile << " ";
+            args.gameProjectPath = getFilePathFromArgs(i, argc, argv);
+			std::cout << args.gameProjectPath << " ";
         }
         
 	}
@@ -112,7 +113,7 @@ int main(int argc, const char* argv[])
 
 	ErrorStatus result;
     if(args.createConfigFile) {
-        result = divisi.createConfig();
+        result = divisi.createConfig(args.gameProjectPath);
     }
 
 	if(args.analyze){

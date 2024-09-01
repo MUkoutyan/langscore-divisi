@@ -20,6 +20,10 @@ namespace
     {
         if(fs::is_regular_file(filePath)) {
             auto extension = filePath.extension().u8string();
+            if(extension.empty()) { return config::None; }
+            if(extension[0] == u8'.') {
+                extension.erase(0, 1);
+            }
             if(projectExtensionAndType.find(extension) != projectExtensionAndType.end()) {
                 return projectExtensionAndType.at(extension);
             }
@@ -27,6 +31,10 @@ namespace
         else if(fs::is_directory(filePath)) {
             for(const auto& entry : fs::directory_iterator(filePath)) {
                 auto extension = entry.path().extension().u8string();
+                if(extension.empty()) { return config::None; }
+                if(extension[0] == u8'.') {
+                    extension.erase(0, 1);
+                }
                 if(projectExtensionAndType.find(extension) != projectExtensionAndType.end()) {
                     return projectExtensionAndType.at(extension);
                 }
@@ -92,9 +100,9 @@ namespace
 }
 
 
-config_writer::config_writer(std::filesystem::path path)
+config_writer::config_writer(std::filesystem::path gameProjpath)
     : projectType(config::None)
-    , gameProjectPath(path)
+    , gameProjectPath(gameProjpath)
     , exportByLanguage(false)
     , overwriteLangscore(false)
     , overwriteLangscoreCustom(false)
@@ -102,8 +110,7 @@ config_writer::config_writer(std::filesystem::path path)
 {
 
     auto projType = ::getProjectType(gameProjectPath);
-
-    if(this->projectType == config::None) { return; }
+    if(projType == config::None) { return; }
 
     this->projectType = projType;
 
@@ -118,7 +125,7 @@ config_writer::config_writer(std::filesystem::path path)
     auto lastSlashPos = gameProjectPath.u8string().find_last_of(u8"/\\"s);
     auto folderName = gameProjectPath.u8string().substr(lastSlashPos + 1);
 
-    fs::path langscoreProj = path.parent_path() / (folderName + u8"_langscore"s);
+    fs::path langscoreProj = gameProjpath.parent_path() / (folderName + u8"_langscore"s);
     auto u8Path = fs::absolute(langscoreProj).u8string();
     std::replace(u8Path.begin(), u8Path.end(), '\\', '/');
     this->langscoreProjectPath = u8Path;
@@ -131,50 +138,30 @@ config_writer::~config_writer()
 
 bool langscore::config_writer::write()
 {
-    std::array<std::u8string, 3> supportedExtention = {
-        u8".rpgproject",u8".rvproj2",u8".rmmzproject"
-    };
-    const static std::map<std::u8string, config::ProjectType> projectExtensionAndType = {
-        {u8"rvproj2",     config::ProjectType::VXAce},
-        {u8"rpgproject",  config::ProjectType::MV},
-        {u8"rmmzproject", config::ProjectType::MZ},
-    };
-
-
-    auto folderPath = this->gameProjectPath;
-    if(fs::is_regular_file(this->gameProjectPath)){
-        folderPath = this->gameProjectPath.parent_path();
-        auto ext = this->gameProjectPath.extension().u8string();
-        if(projectExtensionAndType.contains(ext.substr(1))) {
-            this->projectType = projectExtensionAndType.at(ext.substr(1));
-        }
-    }
-    else if(fs::is_directory(this->gameProjectPath)) 
-    {
-        for(const auto& entry : fs::directory_iterator{this->gameProjectPath})
-        {
-            auto ext = entry.path().extension().u8string();
-            if(ext.empty()) { continue; }
-            if(projectExtensionAndType.contains(ext.substr(1))) {
-                this->projectType = projectExtensionAndType.at(ext.substr(1));
-                break;
-            }
-        }
+    if(this->projectType == config::ProjectType::None) {
+        return false;
     }
 
-    this->langscoreProjectPath = u8"./../" + folderPath.filename().u8string();
-    fs::path langscoreWorkFolder = folderPath.u8string() + u8"_langscore"s;
-    if(fs::exists(langscoreWorkFolder) == false) 
+    fs::path gameFolderPath;
+    if(fs::is_regular_file(this->gameProjectPath)) {
+        gameFolderPath = this->gameProjectPath.parent_path();
+    }
+    else {
+        gameFolderPath = this->gameProjectPath;
+    }
+
+    this->langscoreProjectPath = gameFolderPath.u8string() + u8"_langscore"s;
+    if(fs::exists(this->langscoreProjectPath) == false)
     {
-        fs::create_directory(langscoreWorkFolder);
+        fs::create_directory(this->langscoreProjectPath);
     }
 
     this->langscoreAnalyzeDirectorty = "./analyze";
-    this->langscoreUpdateDirectorty = langscoreWorkFolder / "update";
-    this->vxaceBasicData = ::fetchBasicDataInfo(langscoreWorkFolder / this->langscoreAnalyzeDirectorty);
-    this->rpgMakerScripts = ::fetchScriptDataInfo(langscoreWorkFolder / this->langscoreAnalyzeDirectorty);
+    this->langscoreUpdateDirectorty = this->langscoreProjectPath / "update";
+    this->vxaceBasicData = ::fetchBasicDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
+    this->rpgMakerScripts = ::fetchScriptDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
 
-    std::cout << "output folder " << langscoreWorkFolder << std::endl;
+    std::cout << "output folder " << this->langscoreProjectPath << std::endl;
     std::vector<std::string> languages = {
         "ja","en","zh-cn","zh-tw","ko","es","de","fr","it","ru"
     };
@@ -201,7 +188,7 @@ bool langscore::config_writer::write()
         }
     }
 
-    std::ofstream configJsonFile(langscoreWorkFolder / "config.json", std::ios_base::trunc);
+    std::ofstream configJsonFile(this->langscoreProjectPath / "config.json", std::ios_base::trunc);
 
     configJsonFile << createJson();
 
@@ -228,7 +215,7 @@ std::string config_writer::createJson() const
     }
     root["Languages"] = langs;
     root["DefaultLanguage"] = this->defaultLanguage;
-    root["Project"] = utility::cnvStr<std::string>(this->langscoreProjectPath.generic_u8string());
+    root["Project"] = utility::cnvStr<std::string>(this->gameProjectPath.parent_path().generic_u8string());
 
     nlohmann::json analyze;
     analyze["TmpDir"] = utility::cnvStr<std::string>(this->langscoreAnalyzeDirectorty.generic_u8string());
@@ -243,7 +230,12 @@ std::string config_writer::createJson() const
     //    exportDirList.push_back(utility::cnvStr<std::string>(dir));
     //}
     //write["ExportDirectory"] = exportDirList;
-    write["ExportDirectory"] = utility::cnvStr<std::string>(this->exportDirectory[0]);
+    if(this->exportDirectory.empty() == false) {
+        write["ExportDirectory"] = utility::cnvStr<std::string>(this->exportDirectory[0]);
+    }
+    else {
+        write["ExportDirectory"] = "";
+    }
     write["ExportByLang"] = this->exportByLanguage;
     write["OverwriteLangscore"] = this->overwriteLangscore;
     write["OverwriteLangscoreCustom"] = this->overwriteLangscoreCustom;

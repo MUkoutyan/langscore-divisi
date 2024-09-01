@@ -29,11 +29,9 @@ public:
 
     std::unique_ptr<platform_base> converter;
 
-    void createConverter(fs::path gameProjectPath)
+    void createConverter()
     {
         this->converter = nullptr;
-
-        fs::directory_iterator it(gameProjectPath);
 
         config config;
         switch(config.projectType())
@@ -57,7 +55,7 @@ public:
         if(gameProjectPath.empty()){
             return ErrorStatus(ErrorStatus::Module::DIVISI, 1);
         }
-        this->createConverter(gameProjectPath);
+        this->createConverter();
 
         if(this->converter == nullptr){
             return ErrorStatus(ErrorStatus::Module::DIVISI, 2);
@@ -116,9 +114,9 @@ ErrorStatus divisi::packing()
     return pImpl->converter->packing();
 }
 
-ErrorStatus langscore::divisi::createConfig()
+ErrorStatus langscore::divisi::createConfig(std::filesystem::path gameProjectPath)
 {
-    config_writer writer(pImpl->configPath);
+    config_writer writer(gameProjectPath);
 
     std::cout << "create config" << std::endl;
     return writer.write() ? ErrorStatus::Module::None : ErrorStatus::Module::None;

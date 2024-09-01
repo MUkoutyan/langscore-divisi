@@ -7,7 +7,7 @@ namespace langscore
     class config_writer
     {
     public:
-        config_writer(std::filesystem::path path);
+        config_writer(std::filesystem::path gameProjpath);
         ~config_writer();
 
         bool write();
