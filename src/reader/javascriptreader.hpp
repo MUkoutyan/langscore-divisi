@@ -13,14 +13,24 @@
 // tree-sitter-javascriptの言語関数を提供する。
 extern "C" TSLanguage * tree_sitter_javascript();
 
+static void ts_logger_func(void* payload, TSLogType type, const char* mes)
+{
+    if(*((bool*)payload)) {
+        std::cout << mes << std::endl;
+    }
+}
 
 namespace langscore {
 
 class javascriptreader: public readerbase
 {
+    bool print_debug = false;
 public:
-	javascriptreader(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)
+	javascriptreader(std::u8string _defaultLanguage, std::vector<std::u8string> langs, std::filesystem::path pluginsPath, std::vector<std::filesystem::path> scriptFileList, bool print_debug = false)
         : readerbase(std::move(langs), std::move(scriptFileList))
+        , defaultLanguage(std::move(_defaultLanguage))
+        , pluginsPath(std::move(pluginsPath))
+        , print_debug(print_debug)
 	{
         this->setComment(u8"//", u8"/*", u8"*/");
         //使用しているプラグインの抽出
@@ -30,6 +40,12 @@ public:
         {
             //parseの結果をthis->textsに格納
 			auto scriptTexts = this->parse(path);
+            auto result = std::remove_if(scriptTexts.begin(), scriptTexts.end(), [](const auto& x) {
+                return x.original.empty();
+            });
+            scriptTexts.erase(result, scriptTexts.end());
+            if(scriptTexts.empty()) { continue; }
+            
 			this->texts.insert(this->texts.end(), scriptTexts.begin(), scriptTexts.end());
         }
 	}
@@ -42,12 +58,12 @@ public:
         using namespace std::string_literals;
         namespace fs = std::filesystem;
 
-        config config;
-        auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+        //config config;
+        //auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
 
         for(auto& t : this->texts){
-            if(t.translates.find(def_lang) == t.translates.end()){ continue; }
-            t.translates[def_lang] = t.original;
+            if(t.translates.find(this->defaultLanguage) == t.translates.end()){ continue; }
+            t.translates[this->defaultLanguage] = t.original;
             t.scriptLineInfo.swap(t.original);
         }
 
@@ -162,8 +178,8 @@ private:
     std::vector<PluginInfo> readPluginInfo()
     {
         using namespace std::string_literals;
-        config config;
-        auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js/plugins.js"s;
+        //config config;
+        //auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js/plugins.js"s;
         std::ifstream input_file(pluginsPath.generic_string());
         if(!input_file.is_open()) {
             return {};
@@ -248,6 +264,14 @@ private:
         return TSNode();
     }
 
+    struct ContentsView {
+        std::pair<uint32_t, uint32_t> row_col;
+        std::pair<uint32_t, uint32_t> start_end_byte;
+    };
+
+    std::u8string defaultLanguage;
+    std::filesystem::path pluginsPath;  //ツクールMV/MZのplugins.jsのパス
+
     // string_fragmentのノードを探して出力する関数
     TSLanguage* tree_sittrer_lang = tree_sitter_javascript();
     // string_fragmentのノードを探して出力する関数
@@ -270,29 +294,32 @@ private:
             return {text, row, column};
         }
     };
-    void extractStringFragments(ParseInfo parseInfo, std::vector<TSNode>& result, bool through_string = false) const
+    void extractStringFragments(ParseInfo parseInfo, std::vector<ContentsView>& result, bool through_string = false) const
     {
 
-        static const std::vector<std::string> ignore_type = {
+        static const std::vector<std::string_view> ignore_type = {
             "binary_expression", "subscript_expression",
             "regex", "throw_statement",
-            "identifier",
-            "(", ")", "[", "]", ";", "if" "\"", "||", "&&", ".", "{", "}", "="
+            "identifier", "ERROR",
+            "(", ")", "[", "]", ";", "if", "||", "&&", ".", "{", "}", "="
         };
-        static const std::vector<std::string> ignore_method = {
+        static const std::vector<std::string_view> ignore_method = {
             "console.log", "xhr.open"
         };
-        static const std::vector<std::string> ignore_function = {
+        static const std::vector<std::string_view> ignore_function = {
             "require"
         };
-        static const std::vector<std::string> ignore_identifier = {
+        static const std::vector<std::string_view> ignore_identifier = {
             "RegExp", "Error"
         };
 
-        std::string node_type = ts_node_type(parseInfo.node);
+        std::string_view node_type = ts_node_type(parseInfo.node);
         //それ以上探索する必要のないノード
         if(std::ranges::find(ignore_type, node_type) != ignore_type.cend()) {
             return;
+        }            
+        if(print_debug) {
+            std::cout << ts_node_type(parseInfo.node) << std::endl;
         }
 
         if(through_string) {
@@ -302,13 +329,51 @@ private:
             }
         }
 
+        if(node_type == "string")
+        {
+            //tree-sitterを更新したら文字列中の改行を区切りとして検出するようになった。("Hoge\nHuga"が"Hoge"だけと検出される。)
+            //これは意図していないため、""の範囲を無理やり文字列として検出する。
+            auto num_child = ts_node_child_count(parseInfo.node);
+            bool findContents = false;
+            bool beginDq = false;
+            ContentsView view;
+            for(unsigned i = 0; i < num_child; ++i) {
+                auto child_node = ts_node_child(parseInfo.node, i);
+                if(ts_node_type(child_node) != std::string_view{"\""}) {
+                    continue;
+                }
+
+                beginDq = !beginDq;
+                if(beginDq)
+                {
+                    auto [dummy, row, column] = parseInfo.substrWithLineInfo(child_node);
+                    auto [start, end] = GetNodeStartEndByte(child_node);
+                    view.row_col = {row, column + 1};
+                    view.start_end_byte.first = start + 1;
+                }
+                else {
+                    auto [start, end] = GetNodeStartEndByte(child_node);
+                    view.start_end_byte.second = end - 1;
+                    result.emplace_back(std::move(view));
+                    findContents = true;
+                }
+            }
+            if(findContents) {
+                return;
+            }
+        }
+
         if(through_string == false && node_type == "string_fragment") {
             auto text = parseInfo.substr(parseInfo.node);
             if(text == "use strict") {
                 return;
             }
-
-            result.emplace_back(parseInfo.node);
+            auto [dummy, row, column] = parseInfo.substrWithLineInfo(parseInfo.node);
+            auto [start, end] = GetNodeStartEndByte(parseInfo.node);
+            result.emplace_back(
+                std::make_pair(row, column),
+                std::make_pair(start, end)
+            );
         }
         //関数呼び出し
         else if(node_type == "function_declaration")
@@ -343,8 +408,12 @@ private:
                 if(str_args.empty() == false)
                 {
                     for(auto& arg : str_args) {
-                        result.emplace_back(arg);
-                        auto [text, row, column] = parseInfo.substrWithLineInfo(arg);
+                        auto [dummy, row, column] = parseInfo.substrWithLineInfo(arg);
+                        auto [start, end] = GetNodeStartEndByte(parseInfo.node);
+                        result.emplace_back(
+                            std::make_pair(row, column),
+                            std::make_pair(start, end)
+                        );
                     }
                 }
                 return;
@@ -497,7 +566,8 @@ private:
             auto child_node = ts_node_child(parseInfo.node, i);
             extractStringFragments({child_node, parseInfo.source_code}, result);
         }
-    }
+        return; //関数が長いのでメモ的な意味でreturn
+    }//void extractStringFragments()
 
     ScriptTextParser::DataType findStrings(std::u8string line) const override {
         ScriptTextParser scriptParser;
@@ -541,15 +611,17 @@ private:
         const bool ignore_not_include_alpha = true;
 
         // tree-sitterの初期化
+        TSLogger logger = {(void*)&this->print_debug, &ts_logger_func};
         TSParser* parser = ts_parser_new();
         ts_parser_set_language(parser, tree_sittrer_lang);
+        ts_parser_set_logger(parser, logger);
 
         // JavaScriptのソースコードを解析。
         TSTree* tree = ts_parser_parse_string(parser, nullptr, file_contents.c_str(), file_contents.length());
 
         // ルートから文字列の抽出
         TSNode root_node = ts_tree_root_node(tree);
-        std::vector<TSNode> parse_result;
+        std::vector<ContentsView> parse_result;
         extractStringFragments({root_node, file_contents}, parse_result);
 
         ScriptTextParser wordConverter;
@@ -557,8 +629,11 @@ private:
         auto filename = path.filename().stem().u8string();
         for(auto& node : parse_result)
         {
-            auto [row, column] = GetNodePoint(node);
-            auto [start_byte, end_byte] = GetNodeStartEndByte(node);
+            //parse_resultをstd::vector<TSNode>としていた場合の処理。
+            //auto [row, column] = GetNodePoint(node);
+            //auto [start_byte, end_byte] = GetNodeStartEndByte(node);
+            auto [row, column] = node.row_col;
+            auto [start_byte, end_byte] = node.start_end_byte;
             std::string text = file_contents.substr(start_byte, end_byte - start_byte);
 
             langscore::TranslateText t = {

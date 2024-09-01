@@ -547,7 +547,8 @@ void langscore::divisi_mvmz::writeFixedScript()
 
     //スクリプトの翻訳を書き込むCSVの書き出し
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-    javascriptreader scriptReader(this->supportLangs, scriptList);
+    auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js/plugins.js"s;
+    javascriptreader scriptReader(def_lang, this->supportLangs, pluginsPath, scriptList);
     auto transTexts = scriptReader.currentTexts();
     scriptReader.applyIgnoreScripts(scriptInfoList);
 
@@ -824,11 +825,12 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
     std::cout << "writeAnalyzedScript" << std::endl;
 
     config config;
+    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+    auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js/plugins.js"s;
     //Javascriptを予め解析してテキストを生成しておく。
-    javascriptreader scriptWriter(this->supportLangs, this->scriptFileList);
+    javascriptreader scriptWriter(def_lang, this->supportLangs, pluginsPath, this->scriptFileList);
     auto& transTexts = scriptWriter.currentTexts();
 
-    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     for(auto& t : transTexts){
         if(t.translates.find(def_lang) == t.translates.end()){ continue; }
         t.translates[def_lang] = t.original;
