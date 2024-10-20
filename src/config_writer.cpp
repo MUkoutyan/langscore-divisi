@@ -31,7 +31,7 @@ namespace
         else if(fs::is_directory(filePath)) {
             for(const auto& entry : fs::directory_iterator(filePath)) {
                 auto extension = entry.path().extension().u8string();
-                if(extension.empty()) { return config::None; }
+                if(extension.empty()) { continue; }
                 if(extension[0] == u8'.') {
                     extension.erase(0, 1);
                 }
