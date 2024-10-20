@@ -732,23 +732,23 @@ DataManager.loadMapData = function(mapId)
 //-----------------------------------------------------
 
 Game_System.prototype.isJapanese = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage === "ja" : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language === "ja" : false;
 };
 
 Game_System.prototype.isChinese = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage.match(/^zh/) : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language.match(/^zh/) : false;
 };
 
 Game_System.prototype.isKorean = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage === "ko" : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language === "ko" : false;
 };
 
 Game_System.prototype.isCJK = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage.match(/^(ja|zh|ko)/) : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language.match(/^(ja|zh|ko)/) : false;
 };
 
 Game_System.prototype.isRussian = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage === "ru" : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language === "ru" : false;
 };
 
 //アクター名の変更
