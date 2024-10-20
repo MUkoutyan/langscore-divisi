@@ -75,6 +75,12 @@ ErrorStatus divisi_mvmz::analyze()
 ErrorStatus divisi_mvmz::update()
 {
     config config;
+
+    const auto analyzeDirPath = config.langscoreAnalyzeDirectorty();
+    if(fs::exists(analyzeDirPath) == false) {
+        return {ErrorStatus::Module::DIVISI_MVMZ, 1};
+    }
+
     //変にマージしないように一旦全削除
     const auto updateDirPath = config.langscoreUpdateDirectorty();
     fs::remove_all(updateDirPath);
@@ -100,7 +106,6 @@ ErrorStatus divisi_mvmz::update()
     this->writeAnalyzedBasicData();
     this->writeAnalyzedScript(updateDirPath);
 
-    const auto analyzeDirPath = config.langscoreAnalyzeDirectorty();
     auto [analyzeScripts, analyzeDataList, analyzeGraphics] = fetchFilePathList(analyzeDirPath);
 
     //ファイルのリストアップ

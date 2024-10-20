@@ -14,6 +14,7 @@ public:
         INVOKER,
         PLATFORM_BASE,
         DIVISI_VXACE,
+        DIVISI_MVMZ,
         READERBASE = 10,
         CSVREADER,
         WRITERBASE = 20,
@@ -44,6 +45,8 @@ public:
             case Module::INVOKER:
                 return errorInvoker();
             case Module::DIVISI_VXACE:
+                return errorDivisiVxAce();
+            case Module::DIVISI_MVMZ:
                 return errorDivisiVxAce();
             case Module::READERBASE:
                 return errorReaderBase();
@@ -110,6 +113,15 @@ private:
     std::string errorDivisiVxAce()
     {
         switch (_code)
+        {
+        case NoError: return "";
+        case 1: return "error code 1 : \"analyze\" has not been executed";
+        }
+        return "";
+    }
+    std::string errorDivisiMVMZ()
+    {
+        switch(_code)
         {
         case NoError: return "";
         case 1: return "error code 1 : validate error. Not Found Packing Input Directory.";
