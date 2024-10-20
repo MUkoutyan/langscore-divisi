@@ -215,7 +215,7 @@ std::string config_writer::createJson() const
     }
     root["Languages"] = langs;
     root["DefaultLanguage"] = this->defaultLanguage;
-    root["Project"] = utility::cnvStr<std::string>(this->gameProjectPath.parent_path().generic_u8string());
+    root["Project"] = utility::cnvStr<std::string>(this->gameProjectPath.generic_u8string());
 
     nlohmann::json analyze;
     analyze["TmpDir"] = utility::cnvStr<std::string>(this->langscoreAnalyzeDirectorty.generic_u8string());
