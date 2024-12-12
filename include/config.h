@@ -84,6 +84,8 @@ namespace langscore
 			OverwriteLangscore,
 			OverwriteLangscoreCustom,
 			PackingInputDir,
+            PackingEnablePerLang,
+            PackingPerLangOutputDir,
 
 			ApplicationVersion,
 			ConfigVersion,
@@ -118,6 +120,8 @@ namespace langscore
 		bool overwriteLangscoreCustom();
 		std::u8string outputTranslateFilePathForRPGMaker();
 		std::u8string packingInputDirectory();
+        bool packingEnablePerLang();
+        std::u8string packingPerLangOutputDir();
 		std::vector<BasicData> vxaceBasicData();
 		std::vector<ScriptData> rpgMakerScripts();
 		utility::u8stringlist ignorePictures();

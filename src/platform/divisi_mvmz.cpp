@@ -6,6 +6,7 @@
 #include "reader/csvreader.h"
 #include "reader/mvmzjsonreader.hpp"
 #include "reader/javascriptreader.hpp"
+#include "reader/speciftranstext.hpp"
 #include <iostream>
 
 #include <crc32.h>
@@ -20,11 +21,35 @@ const static std::u8string tab = u8"\t"s;
 
 const static std::u8string pluginDescription = u8"翻訳アプリLangscoreのRPGツクールMV/MZ用プラグインです。";
 
+// JSONオブジェクトの中のテキストを再帰的に置換する関数
+static void replaceJsonValues(nlohmann::json& j, const std::vector<TranslateText>& replacementMap) 
+{
+    if(j.is_object()) {
+        for(auto& [key, value] : j.items()) {
+            replaceJsonValues(value, replacementMap); // 再帰的にオブジェクト内を置換
+        }
+    }
+    else if(j.is_array()) {
+        for(auto& item : j) {
+            replaceJsonValues(item, replacementMap); // 配列要素も再帰的に置換
+        }
+    }
+    else if(j.is_string()) {
+        auto strValue = utility::cnvStr<std::u8string>(j.get<std::string>());
+        auto result = std::ranges::find_if(replacementMap, [&](auto v) { return strValue == v.original; });
+        if(result != replacementMap.end() && result->translates.empty() == false) {
+            j = utility::cnvStr<std::string>((result->translates.begin())->second); // 置換マッピングに従って値を変更
+        }
+    }
+}
 
 divisi_mvmz::divisi_mvmz()
     : platform_base()
 {
     config config;
+
+    this->currentGameProjectPath = fs::path(config.gameProjectPath());
+    this->currentGameProjectPath.make_preferred();
 
     this->defaultLanguage = utility::cnvStr<std::u8string>(config.defaultLanguage());
 
@@ -43,7 +68,7 @@ ErrorStatus divisi_mvmz::analyze()
 {
     std::cout << "Analyze Project..." << std::endl;
     config config;
-    auto gameProjPath = config.gameProjectPath()+u8"\\data";
+    auto gameProjPath = this->currentGameProjectPath / u8"data";
     const auto baseDirectory = config.langscoreAnalyzeDirectorty();
     if(fs::exists(baseDirectory) == false) {
         std::cout << "Create Langscore Project Folder... : " << utility::cnvStr<std::string>(baseDirectory) << std::endl;
@@ -52,7 +77,7 @@ ErrorStatus divisi_mvmz::analyze()
 
     fs::copy(gameProjPath, baseDirectory, fs::copy_options::overwrite_existing);
 
-    auto scriptProjPath = config.gameProjectPath()+u8"\\js\\plugins";
+    auto scriptProjPath = this->currentGameProjectPath / u8"js" / u8"plugins";
     auto destScriptPath = baseDirectory+u8"\\Scripts";
     if(std::filesystem::exists(destScriptPath) == false){
         std::filesystem::create_directories(destScriptPath);
@@ -86,10 +111,10 @@ ErrorStatus divisi_mvmz::update()
     fs::remove_all(updateDirPath);
 
     //ベースデータのコピー
-    auto gameProjPath = config.gameProjectPath() + u8"\\data";
+    auto gameProjPath = this->currentGameProjectPath / u8"data";
     fs::copy(gameProjPath, updateDirPath, fs::copy_options::overwrite_existing);
     //スクリプトのコピー
-    auto scriptProjPath = config.gameProjectPath() + u8"\\js\\plugins";
+    auto scriptProjPath = this->currentGameProjectPath / u8"js\\plugins";
     auto destScriptPath = updateDirPath + u8"\\Scripts";
     if(std::filesystem::exists(destScriptPath) == false){
         std::filesystem::create_directories(destScriptPath);
@@ -228,7 +253,7 @@ ErrorStatus divisi_mvmz::write()
     writeFixedScript();
     writeFixedGraphFileNameData();
 
-    auto fontDestPath = fs::path(config.gameProjectPath()) / u8"fonts"s;
+    auto fontDestPath = this->currentGameProjectPath / u8"fonts"s;
     copyFonts(fontDestPath);
 
     std::cout << "Write Translate File Done." << std::endl;
@@ -375,13 +400,152 @@ ErrorStatus divisi_mvmz::validate()
 ErrorStatus divisi_mvmz::packing()
 {
     std::cout << "Packing." << std::endl;
-    //auto runResult = this->invoker.packingVXAce();
-    //if(runResult.val() != 0){
-    //    return runResult;
-    //}
+
+    config config;
+    if(config.packingEnablePerLang())
+    {
+        this->currentGameProjectPath.make_preferred();
+        auto srcPath = this->currentGameProjectPath;
+        srcPath.make_preferred();
+        auto gameProjectFolderName = srcPath.filename();
+
+        auto defLangTemp = this->defaultLanguage;
+        auto langList = this->supportLangs;
+
+        auto inputGameProjectFolder = this->currentGameProjectPath;
+        auto outputFolder = fs::path(config.packingPerLangOutputDir());
+        for(const auto& lang : langList)
+        {
+            this->supportLangs = {lang};
+            this->defaultLanguage = lang;
+            this->currentGameProjectPath = (outputFolder / lang / gameProjectFolderName).make_preferred();
+            if(fs::exists(this->currentGameProjectPath) == false) {
+                fs::create_directories(this->currentGameProjectPath);
+            }
+            std::error_code ec;
+            fs::copy(srcPath, this->currentGameProjectPath, std::filesystem::copy_options::recursive, ec);
+            if(ec) {
+                std::cout << "Packing Error: " << ec.message() << std::endl;
+            }
+
+            auto translateFolder = inputGameProjectFolder / "data" / "translate";
+            for(auto& csvPath : fs::recursive_directory_iterator{translateFolder})
+            {
+                auto csvReader = csvreader{{lang}, csvPath};
+                auto transMap = csvReader.currentTexts();
+                std::vector<TranslateText> replacedTexts;
+                for(auto trans : transMap)
+                {
+                    auto& translates = trans.translates;
+                    std::erase_if(translates, [&lang](auto& pair) {
+                        return pair.first != lang;
+                    });
+
+                    replacedTexts.emplace_back(std::move(trans));
+                }
+
+                auto fileName = csvPath.path().filename();
+                {
+                    fileName.replace_extension(".json");
+                    auto jsonPath = this->currentGameProjectPath / "data" / fileName;
+                    if(fs::exists(jsonPath))
+                    {
+                        nlohmann::json jsonData;
+                        {
+                            std::ifstream jsonFile(jsonPath);
+                            jsonFile >> jsonData;
+                            jsonFile.close();
+                        }
+                        replaceJsonValues(jsonData, replacedTexts);
+
+                        auto output = jsonData.dump(-1);
+                        size_t pos = 0;
+                        while((pos = output.find("\r\n", pos)) != std::string::npos) {
+                            output.replace(pos, 2, "\n");
+                            pos += 1;
+                        }
+                        std::ofstream outputFile(jsonPath, std::ios::trunc);
+                        outputFile << output;
+                    }
+                }
+            }
+        }
+
+        this->currentGameProjectPath = std::move(srcPath);
+        this->supportLangs = std::move(langList);
+        this->defaultLanguage = std::move(defLangTemp);
+    }
 
     return Status_Success;
 }
+
+/*
+//プラグイン使用版
+ErrorStatus divisi_mvmz::packing()
+{
+    std::cout << "Packing." << std::endl;
+
+    config config;
+    if(config.packingEnablePerLang())
+    {
+        this->currentGameProjectPath.make_preferred();
+        auto srcPath = this->currentGameProjectPath;
+        srcPath.make_preferred();
+        auto gameProjectFolderName = srcPath.filename();
+
+        auto defLangTemp = this->defaultLanguage;
+        auto langList = this->supportLangs;
+
+        auto inputGameProjectFolder = this->currentGameProjectPath;
+        auto outputFolder = fs::path(config.packingPerLangOutputDir());
+        for(const auto& lang : langList)
+        {
+            this->supportLangs = {lang};
+            this->defaultLanguage = lang;
+            this->currentGameProjectPath = (outputFolder / lang / gameProjectFolderName).make_preferred();
+            if(fs::exists(this->currentGameProjectPath) == false) {
+                fs::create_directories(this->currentGameProjectPath);
+            }
+            std::error_code ec;
+            fs::copy(srcPath, this->currentGameProjectPath, std::filesystem::copy_options::recursive, ec);
+            if(ec) {
+                std::cout << "Packing Error: " << ec.message() << std::endl;
+            }
+            this->writeLangscorePlugin(true);
+
+            auto csvOutputFolder = this->currentGameProjectPath / "data" / "translate";
+            if(fs::exists(csvOutputFolder) == false) {
+                fs::create_directories(csvOutputFolder);
+            }
+            auto translateFolder = inputGameProjectFolder/"data"/"translate";
+            for(auto& csvPath : fs::recursive_directory_iterator{translateFolder}) 
+            {
+                auto csvReader = csvreader{{lang}, csvPath};
+                auto transMap = csvReader.currentTexts();
+                std::vector<TranslateText> replacedTexts;
+                for(auto trans : transMap) 
+                {
+                    auto& translates = trans.translates;
+                    std::erase_if(translates, [&lang](auto& pair) {
+                        return pair.first != lang;
+                    });
+
+                    replacedTexts.emplace_back(std::move(trans));
+                }
+
+                auto fileName = csvPath.path().filename();
+                csvwriter{speciftranstext{{lang}, std::move(replacedTexts)}}.write(csvOutputFolder/fileName, MergeTextMode::AcceptTarget);
+            }
+        }
+
+        this->currentGameProjectPath = std::move(srcPath);
+        this->supportLangs = std::move(langList);
+        this->defaultLanguage = std::move(defLangTemp);
+    }
+
+    return Status_Success;
+}
+*/
 
 std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8string deserializeOutPath)
 {
@@ -432,8 +596,7 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
 
     filelist graphics;
     config config;
-    auto gameProjectPath = fs::path(config.gameProjectPath());
-    auto graphicsPath = gameProjectPath / "img";
+    auto graphicsPath = this->currentGameProjectPath / "img";
     fs::recursive_directory_iterator graphItr(graphicsPath);
     for(auto& f : graphItr)
     {
@@ -552,7 +715,7 @@ void langscore::divisi_mvmz::writeFixedScript()
 
     //スクリプトの翻訳を書き込むCSVの書き出し
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-    auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js/plugins.js"s;
+    auto pluginsPath = this->currentGameProjectPath / u8"js/plugins.js"s;
     javascriptreader scriptReader(def_lang, this->supportLangs, pluginsPath, scriptList);
     auto transTexts = scriptReader.currentTexts();
     scriptReader.applyIgnoreScripts(scriptInfoList);
@@ -564,13 +727,23 @@ void langscore::divisi_mvmz::writeFixedScript()
         writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, scriptReader, mergeTextMode, false);
     }
 
-    //Langscore.jsの出力
-    auto gameProjDir = fs::path(config.gameProjectPath());
-    auto outputScriptFilePath = gameProjDir / u8"js/plugins/Langscore.js"s;
+    auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore.js"s;
     bool replaceLs = fs::exists(outputScriptFilePath) == false;
     if(replaceLs == false) {
         replaceLs = config.overwriteLangscore();
     }
+    writeLangscorePlugin(replaceLs);
+
+    std::cout << "Finish." << std::endl;
+}
+
+
+void langscore::divisi_mvmz::writeLangscorePlugin(bool replaceLs)
+{
+    config config;
+    //Langscore.jsの出力
+    auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore.js"s;
+
     if(replaceLs) {
         std::cout << "output langscore.js" << std::endl;
         auto resourceFolder = this->appPath.parent_path() / "resource";
@@ -594,18 +767,14 @@ void langscore::divisi_mvmz::writeFixedScript()
 
     //plugin.jsの更新
     updatePluginInfo();
-
-    std::cout << "Finish." << std::endl;
 }
-
 
 void divisi_mvmz::updatePluginInfo()
 {
     std::cout << "update plugin info" << std::endl;
-    config config;
     
     //plugin.jsに対してLangscoreを追加
-    auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js"s / u8"plugins.js"s;
+    auto pluginsPath = this->currentGameProjectPath / u8"js"s / u8"plugins.js"s;
     std::ifstream input_file(pluginsPath.generic_string());
     std::string content((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
     input_file.close();
@@ -639,7 +808,7 @@ var $plugins =
     auto langs = cnvStr<std::string>(u8"["s + utility::join(list, u8","s) + u8"]");
 
     //MustBeIncludedImageに埋めるパラメータの作成
-    auto picturesPath = config.gameProjectPath() + u8"/img";
+    auto picturesPath = this->currentGameProjectPath / u8"img";
     utility::u8stringlist pictureFiles;
     for(const auto& f : fs::recursive_directory_iterator(picturesPath)) {
 
@@ -671,8 +840,7 @@ var $plugins =
             params[SupportLanguage] = langs;
 
             if(params[DefaultLanguage].empty() == false) {
-                auto defLanguage = config.defaultLanguage();
-                params[DefaultLanguage] = defLanguage;
+                params[DefaultLanguage] = utility::cnvStr<std::string>(this->defaultLanguage);
             }
             params[MustBeIncludedImage] = "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s;
         }
@@ -688,7 +856,7 @@ var $plugins =
             {"description", cnvStr<std::string>(pluginDescription)},
             {"parameters", {
                 {SupportLanguage,   langs},
-                {DefaultLanguage,   config.defaultLanguage()},
+                {DefaultLanguage,   utility::cnvStr<std::string>(this->defaultLanguage)},
                 {MustBeIncludedImage, "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s}
             }}
         };
@@ -714,7 +882,7 @@ var $plugins =
 
 
     // ファイルに書き戻す
-    std::ofstream outFile(std::filesystem::path(config.gameProjectPath()) / u8"js/plugins.js"s);
+    std::ofstream outFile(this->currentGameProjectPath / u8"js/plugins.js"s);
     outFile << formattedJson.str();
     outFile.close();
 }
@@ -773,10 +941,14 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {
             auto fonts = config.languages();
+            auto langList = this->supportLangs;
             _line = u8"Langscore.FontList = {" + nl;
             for(auto& pair : fonts)
             {
                 auto lang = utility::cnvStr<std::u8string>(pair.name);
+                if(std::find(langList.begin(), langList.end(), lang) == langList.end()) {
+                    continue;
+                }
                 auto sizeStr = utility::cnvStr<std::u8string>(std::to_string(pair.font.size));
                 _line += tab;
                 _line += u8"\"" + lang + u8"\": {name:\"" + pair.font.name + u8"\", size:" + sizeStr + u8", fileName: \"" + pair.font.file.filename().u8string() + u8"\", isLoaded : false }, " + nl;
@@ -831,7 +1003,7 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
 
     config config;
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-    auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js/plugins.js"s;
+    auto pluginsPath = this->currentGameProjectPath / u8"js/plugins.js"s;
     //Javascriptを予め解析してテキストを生成しておく。
     javascriptreader scriptWriter(def_lang, this->supportLangs, pluginsPath, this->scriptFileList);
     auto& transTexts = scriptWriter.currentTexts();

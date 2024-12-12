@@ -153,7 +153,6 @@ ErrorStatus langscore::invoker::packingVXAce(){
     config config;
     auto inputDir  = std::filesystem::path(config.packingInputDirectory());
     auto outputDir = std::filesystem::path(config.gameProjectPath()+u8"/Data/Translate");
-    //return exec({"-i", "\""+inputDir.string()+ "\"", "-o", "\""+outputDir.string()+ "\"", "-p"});
     return exec({"-i", convertPath(inputDir), "-o", convertPath(outputDir), "-p"});
 }
 

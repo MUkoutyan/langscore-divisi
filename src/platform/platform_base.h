@@ -47,6 +47,8 @@ namespace langscore
 		utility::filelist scriptFileList;
 		utility::filelist graphicFileList;
 
+        std::filesystem::path currentGameProjectPath;
+
 		std::filesystem::copy_options convertCopyOption(MergeTextMode mode);
 		std::vector<std::filesystem::path> exportFolderPath(std::filesystem::path fileName);
 

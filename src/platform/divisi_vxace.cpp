@@ -5,6 +5,7 @@
 #include "../writer/uniquerowcsvwriter.hpp"
 #include "../reader/vxacejsonreader.hpp"
 #include "../reader/rubyreader.hpp"
+#include "reader/speciftranstext.hpp"
 
 #include <nlohmann/json.hpp>
 #include <crc32.h>
@@ -42,6 +43,9 @@ divisi_vxace::divisi_vxace()
     : platform_base()
 {
     config config;
+
+    this->currentGameProjectPath = fs::path(config.gameProjectPath());
+    this->currentGameProjectPath.make_preferred();
 
     this->defaultLanguage = utility::cnvStr<std::u8string>(config.defaultLanguage());
    
@@ -304,6 +308,66 @@ ErrorStatus langscore::divisi_vxace::packing()
     if(runResult.val() != 0){
         return runResult;
     }
+
+    config config;
+    if(config.packingEnablePerLang())
+    {
+        this->currentGameProjectPath.make_preferred();
+        auto srcPath = this->currentGameProjectPath;
+        srcPath.make_preferred();
+        auto gameProjectFolderName = srcPath.filename();
+
+        auto defLangTemp = this->defaultLanguage;
+        auto langList = this->supportLangs;
+
+        auto inputGameProjectFolder = this->currentGameProjectPath;
+        auto outputFolder = fs::path(config.packingPerLangOutputDir());
+        for(const auto& lang : langList)
+        {
+            this->supportLangs = {lang};
+            this->defaultLanguage = lang;
+            this->currentGameProjectPath = (outputFolder / lang / gameProjectFolderName).make_preferred();
+            if(fs::exists(this->currentGameProjectPath) == false) {
+                fs::create_directories(this->currentGameProjectPath);
+            }
+            std::error_code ec;
+            fs::copy(srcPath, this->currentGameProjectPath, std::filesystem::copy_options::recursive, ec);
+            if(ec) {
+                std::cout << "Packing Error: " << ec.message() << std::endl;
+            }
+            bool dummy = false;
+            this->rewriteScriptList(dummy, true);
+
+            auto csvOutputFolder = this->currentGameProjectPath / "data" / "translate";
+            if(fs::exists(csvOutputFolder) == false) {
+                fs::create_directories(csvOutputFolder);
+            }
+            auto translateFolder = inputGameProjectFolder / "data" / "translate";
+            for(auto& csvPath : fs::recursive_directory_iterator{translateFolder})
+            {
+                auto csvReader = csvreader{{lang}, csvPath};
+                auto transMap = csvReader.currentTexts();
+                std::vector<TranslateText> replacedTexts;
+                for(auto trans : transMap)
+                {
+                    auto& translates = trans.translates;
+                    std::erase_if(translates, [&lang](auto& pair) {
+                        return pair.first != lang;
+                    });
+
+                    replacedTexts.emplace_back(std::move(trans));
+                }
+
+                auto fileName = csvPath.path().filename();
+                csvwriter{speciftranstext{{lang}, std::move(replacedTexts)}}.write(csvOutputFolder / fileName, MergeTextMode::AcceptTarget);
+            }
+        }
+
+        this->currentGameProjectPath = std::move(srcPath);
+        this->supportLangs = std::move(langList);
+        this->defaultLanguage = std::move(defLangTemp);
+    }
+
     std::cout << "Done." << std::endl;
 
     return Status_Success;
@@ -665,7 +729,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
 }
 
 
-void divisi_vxace::rewriteScriptList(bool& replaceScript)
+void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
 {
     config config;
     const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
@@ -744,7 +808,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript)
     if(replaceLsCustom == false){
         replaceLsCustom = config.overwriteLangscoreCustom();
     }
-    if(replaceLsCustom)
+    if(replaceLsCustom || forceUpdate)
     {
         std::cout << "Write langscore_custom : " << outputPath / scriptFileNameList[1] << std::endl;
         auto scriptInfoList = config.rpgMakerScripts();
@@ -773,7 +837,8 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript)
     if(replaceLs == false){
         replaceLs = config.overwriteLangscore();
     }
-    if(replaceLs){
+    if(replaceLs || forceUpdate)
+    {
         auto resourceFolder = this->appPath.parent_path() / "resource";
         const auto langscoreScriptFilePath = resourceFolder / (Script_File_Name + u8".rb"s);
         std::cout << "Copy langscore : From " << langscoreScriptFilePath << " To : " << outputScriptFilePath << std::endl;

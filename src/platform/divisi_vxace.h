@@ -27,7 +27,7 @@ namespace langscore
 
 		void writeFixedBasicData();
 		void writeFixedRvScript();
-		void rewriteScriptList(bool& replaceScript);
+		void rewriteScriptList(bool& replaceScript, bool forceUpdate = false);
 
 		void fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<readerbase>>&);
 		void adjustCSV(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list);

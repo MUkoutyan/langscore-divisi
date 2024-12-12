@@ -1,4 +1,6 @@
 #include "config.h"
+#include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -40,10 +42,12 @@ static std::map<config::JsonKey, const char*> jsonKeys = {
 	MAKE_KEYVALUE(OverwriteLangscore),
 	MAKE_KEYVALUE(OverwriteLangscoreCustom),
 	MAKE_KEYVALUE(PackingInputDir),
+    MAKE_KEYVALUE(PackingEnablePerLang),
+    MAKE_KEYVALUE(PackingPerLangOutputDir),
 	MAKE_KEYVALUE(ApplicationVersion),
 	MAKE_KEYVALUE(ConfigVersion),
 	MAKE_KEYVALUE(AttachLsTransType),
-	MAKE_KEYVALUE(ExportAllScriptStrings),
+	MAKE_KEYVALUE(ExportAllScriptStrings)
 };
 
 const char* config::key(JsonKey key)
@@ -292,6 +296,16 @@ std::u8string config::outputTranslateFilePathForRPGMaker()
 std::u8string langscore::config::packingInputDirectory()
 {
 	return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::PackingInputDir)], ""s));
+}
+
+bool langscore::config::packingEnablePerLang()
+{
+    return pImpl->get(pImpl->json[key(JsonKey::PackingEnablePerLang)], false);
+}
+
+std::u8string langscore::config::packingPerLangOutputDir()
+{
+    return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::PackingPerLangOutputDir)], ""s));
 }
 
 std::vector<config::BasicData> langscore::config::vxaceBasicData()
