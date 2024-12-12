@@ -8,13 +8,13 @@ class LSCSV
   $lscsv_resource_locker = Mutex::new
   def self.to_hash(file_name)
     $lscsv_resource_locker.lock
-    file = open(Langscore::TRANSLATE_FOLDER + "/" + file_name)
+    file = open(Langscore::get_translate_folder + "/" + file_name)
     $lscsv_resource_locker.unlock
 
-    return from_content(file, file_name)
+    return from_content(file, file_name, Langscore::SUPPORT_LANGUAGE)
   end
 
-  def self.from_content(content, file_name = '')
+  def self.from_content(content, file_name = '', support_language = [])
 
     return {} if content == nil
 
@@ -25,7 +25,7 @@ class LSCSV
     varidate(file_name, header, rows)
 
     row_index = [*1..header.size].select! do |i|
-      Langscore::SUPPORT_LANGUAGE.include?(header[i])
+      support_language.include?(header[i])
     end
 
     #To Hash

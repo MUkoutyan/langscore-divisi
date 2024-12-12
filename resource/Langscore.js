@@ -76,6 +76,12 @@
  * @desc ゲーム初回起動時に適用する言語です。ゲームを作成した際の言語を指定してください。
  * @default %{DEFAULT_LANGUAGE}%
  * 
+ * @param Enable Language Patch Mode
+ * @type boolean
+ * @on 言語パッチモードを有効にする
+ * @off 言語パッチモードを無効にする
+ * @default false
+ * 
  * @param Must Be Included Image
  * @desc デプロイメント時に「未使用ファイルを含まない」をチェックした際も、必ず含めるファイルを指定します。
  * @default
@@ -559,7 +565,12 @@ var Langscore = class
 
   loadSystemDataFile(varName, fileName) {
     var xhr = new XMLHttpRequest();
-    var url = 'data/translate/' + fileName;
+    var url = 'data/translate/'
+    if(Langscore.EnablePathMode){
+      url += Langscore.langscore_current_language + '/'
+    }
+    url += fileName;
+    
     var parent = this;
     xhr.open('GET', url);
     xhr.overrideMimeType('text/plain');
@@ -585,7 +596,13 @@ var Langscore = class
   
   loadMapDataFile(mapID) {
     var xhr = new XMLHttpRequest();
-    var url = 'data/translate/Map%1.csv'.format(mapID.padZero(3));
+    var url = 'data/translate/'
+    
+    if(Langscore.EnablePathMode){
+      url += Langscore.langscore_current_language + '/'
+    }
+    url += 'Map%1.csv'.format(mapID.padZero(3));
+
     var parent = this;
     xhr.open('GET', url);
     xhr.overrideMimeType('text/plain');
@@ -629,6 +646,7 @@ Langscore.isFirstLoaded = false;
 Langscore.Langscore_Parameters = PluginManager.parameters('Langscore');
 %{SUPPORT_LANGUAGE}%;
 Langscore.Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
+Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters['Enable Language Patch Mode']);
 
 %{SUPPORT_FONTS}%
 
@@ -749,6 +767,25 @@ Game_System.prototype.isCJK = function() {
 
 Game_System.prototype.isRussian = function() {
   return Langscore.langscore_current_language ? Langscore.langscore_current_language === "ru" : false;
+};
+
+//名前入力ウィンドウのキャラ名が崩れる不具合への対応
+var Window_NameEdit_prototype_charWidth = Window_NameEdit.prototype.charWidth;
+Window_NameEdit.prototype.charWidth = function()
+{
+  //入力中に名前が空になるとアンカーが消えるため、空なら既存処理を呼び出す。(※既存処理は$gameSystem.isJapanese()依存)
+  if(this._name == null || this._name == ''){
+    return Window_NameEdit_prototype_charWidth.call(this);
+  }
+  let maxWidth = 0;
+  for(let char of this._name)
+  {
+    let w = this.textWidth(char);
+    if(maxWidth < w){
+      maxWidth = w;
+    }
+  }
+  return maxWidth;
 };
 
 //アクター名の変更
@@ -1018,14 +1055,14 @@ ConfigManager.makeData = function() {
 
 
 var ConfigManager_applyData = ConfigManager.applyData;
-ConfigManager.applyData = function(config) {
+ConfigManager.applyData = function(config) 
+{
+  Langscore.langscore_current_language = Langscore.Default_Language;
+  
   ConfigManager_applyData.apply(this, arguments);
   var lang = config["currentLanguage"];
-  if(lang !== undefined){
+  if(lang !== undefined && Langscore.Support_Language.includes(lang)){
     Langscore.langscore_current_language = lang;
-  }
-  else{
-    Langscore.langscore_current_language = Langscore.Default_Language;
   }
 };
 

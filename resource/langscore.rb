@@ -12,6 +12,7 @@ module Langscore
   %{DEFAULT_LANGUAGE}%
 
   %{SUPPORT_FONTS}%
+  %{ENABLE_PATCH_MODE}%
 
   %{TRANSLATE_FOLDER}%
 
@@ -46,6 +47,15 @@ end
 #-----------------------------------------------------
 
 module Langscore
+
+  def self.get_translate_folder()
+    if Langscore::ENABLE_PATCH_MODE
+      return Langscore::TRANSLATE_FOLDER + "/" + $langscore_current_language
+    else
+      return Langscore::TRANSLATE_FOLDER
+    end
+  end
+
   def self.translate(text, langscore_hash, lang = $langscore_current_language)
 
     return text if langscore_hash == nil
@@ -103,10 +113,8 @@ module Langscore
     $ls_enemies_tr = nil
     $ls_graphics_tr = LSCSV.to_hash("Graphics")
     $ls_scripts_tr = LSCSV.to_hash("Scripts")
-    $ls_troop_tr ||= LSCSV.to_hash("Troops")
-    $ls_common_event ||= LSCSV.to_hash("CommonEvents")
-
-    changeLanguage($langscore_current_language, true)
+    $ls_troop_tr = LSCSV.to_hash("Troops")
+    $ls_common_event = LSCSV.to_hash("CommonEvents")
   end
 
   def self.changeLanguage(lang, force_update = false)
@@ -116,6 +124,11 @@ module Langscore
     end
     
     $langscore_current_language = lang
+    
+    if Langscore::ENABLE_PATCH_MODE
+      translate_list_reset()
+    end
+
     Langscore.Translate_Script_Text
     Langscore.updateFont(lang)
 
@@ -680,11 +693,10 @@ class LSSetting
   BufferSize = 16+1
 
   def self.load
+    $langscore_current_language = Langscore::DEFAULT_LANGUAGE
     result = ' ' * BufferSize
     r = GetPrivateProfileString.call("Langscore", "Lang", "ja", result, BufferSize, "./Game.ini")
-    if r == BufferSize-2
-      $langscore_current_language = "ja"
-    else
+    if r != BufferSize-2
       $langscore_current_language = result.slice(0...r)
       p "Langscore Load ini : #{$langscore_current_language}"
     end
