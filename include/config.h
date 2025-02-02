@@ -16,6 +16,12 @@ namespace langscore
 			MZ,
 		};
 
+        enum ValidateTextMode : char {
+            Ignore,
+            TextCount,
+            TextWidth,
+        };
+
 		struct FontData
 		{
 			std::u8string name = u8"";
@@ -33,7 +39,9 @@ namespace langscore
 		{
 			std::u8string filename = u8"";
 			bool ignore = false;
-			int writeMode = 0;
+			char writeMode = 0;
+            char textValidateMode = 0;
+            std::vector<std::uint16_t> textValidateSize = {};
 		};
 
 		struct ScriptData : public BasicData
@@ -44,7 +52,7 @@ namespace langscore
 				int col = 0;
 				bool disable = false;	//元スクリプト変更によって位置が噛み合わなくなった場合true
 				bool ignore = false;
-				int writeMode = 0;
+                char writeMode = 0;
 				int ignoreContext = 0;
 				std::u8string text;
 			};
@@ -91,6 +99,13 @@ namespace langscore
 			ConfigVersion,
 			AttachLsTransType,
 			ExportAllScriptStrings,
+            EnableLanguagePatch,
+            IsFirstExported,        
+
+            Validate,
+            ValidateTextMode,
+            ValidateSizeList, //文字幅検証用。(アイコン無し, アイコン有り, その他, ...)
+            ValidateCSVList,
 
 			NumKeys,
 		};
@@ -122,12 +137,19 @@ namespace langscore
 		std::u8string packingInputDirectory();
         bool packingEnablePerLang();
         std::u8string packingPerLangOutputDir();
-		std::vector<BasicData> vxaceBasicData();
+		std::vector<BasicData> rpgMakerBasicData();
 		std::vector<ScriptData> rpgMakerScripts();
 		utility::u8stringlist ignorePictures();
 		utility::u8stringlist globalFontList();
 		utility::u8stringlist localFontList();
-		int globalWriteMode();
+        char globalWriteMode();
+        bool enableLanguagePatch();
+
+        //int validateTextMode();
+        //std::vector<int> validateSizeList();
+
+        //言語, パスの組み合わせ
+        std::vector<std::pair<std::u8string, std::u8string>> exportDirectoryWithLang(std::u8string& root);
 
 	private:
 		class Impl;

@@ -13,15 +13,40 @@ namespace langscore
 		constexpr static char8_t Script_File_Name[] = u8"langscore";
 		constexpr static char8_t Custom_Script_File_Name[] = u8"langscore_custom";
 
-		enum ValidateSummary : int {
-			EmptyCol = 0,   //翻訳文が空
-			NotFoundEsc,    //原文にある制御文字が翻訳文に含まれていない
-			UnclosedEsc,    //[]で閉じる必要のある制御文字が閉じられていない
-			IncludeCR,      //翻訳文にCR改行が含まれている。(マップのみ検出)
-			NotEQLang,      //設定した言語とCSVを内の言語列に差異がある
+        enum ValidateErrorType { Error, Warning };
+
+
+        /*
+        * enum ErrorTextCol
+        * {
+        *     Type = 0,
+        *     Summary,
+        *     Language,
+        *     Details,
+        *     File,
+        *     Row,
+        * };
+        */
+
+		enum ValidateSummary : char {
+			EmptyCol = 0,       //翻訳文が空
+			NotFoundEsc,        //原文にある制御文字が翻訳文に含まれていない
+			UnclosedEsc,        //[]で閉じる必要のある制御文字が閉じられていない
+			IncludeCR,          //翻訳文にCR改行が含まれている。(マップのみ検出)
+			NotEQLang,          //設定した言語とCSVを内の言語列に差異がある
+            PartiallyClipped,   //テキストの最後の文字が少し見切れる
+            FullyClipped,       //完全に見えない文字がある
+            OverTextCount,      //テキストの文字数が多すぎる
+            InvalidCSV,         //CSVファイルが不正
 		};
 
-		platform_base() :appPath("") {}
+        struct ValidateFileInfo {
+            std::filesystem::path csvPath;
+            config::ValidateTextMode textMode;
+            std::vector<std::uint16_t> textValidateSize;
+        };
+
+        platform_base() :appPath(""), invoker(config{}.projectType()) {}
 		virtual ~platform_base() {}
 
 		void setAppPath(std::filesystem::path path){
@@ -30,8 +55,9 @@ namespace langscore
 		}
 		virtual void setProjectPath(std::filesystem::path path) = 0;
 		virtual ErrorStatus analyze() = 0;
-		virtual ErrorStatus update() = 0;
-		virtual ErrorStatus write() = 0;
+		virtual ErrorStatus reanalysis() = 0;
+		virtual ErrorStatus updatePlugin() = 0;
+		virtual ErrorStatus exportCSV() = 0;
 		virtual ErrorStatus validate() = 0;
 		virtual ErrorStatus packing() = 0;
 
@@ -60,18 +86,20 @@ namespace langscore
 
 		utility::u8stringlist GetScriptFileName(config& config, utility::u8stringlist scriptNameList);
 
+        virtual std::filesystem::path getGameProjectFontDirectory() const { return {}; }
+
 
 		template<class Writer, class Reader>
-		ErrorStatus writeFixedTranslateText(std::filesystem::path path, Reader&& reader, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool fillDefLangCol = true){
-			return writeFixedTranslateText(Writer{reader}, std::move(path), overwriteMode, fillDefLangCol);
+		ErrorStatus writeFixedTranslateText(std::filesystem::path path, Reader&& reader, std::u8string defaultLanguage, utility::u8stringlist supportLangs, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool fillDefaultLanguageColumn = true) {
+			return writeFixedTranslateText(Writer{reader}, std::move(path), std::move(defaultLanguage), std::move(supportLangs), overwriteMode, fillDefaultLanguageColumn);
 		}
 		template<class Writer>
-		ErrorStatus writeFixedTranslateText(std::filesystem::path path, const std::unique_ptr<readerbase>& json, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool fillDefLangCol = true){
-			return writeFixedTranslateText(Writer{json}, std::move(path), overwriteMode, fillDefLangCol);
+		ErrorStatus writeFixedTranslateText(std::filesystem::path path, const std::unique_ptr<readerbase>& json, std::u8string defaultLanguage, utility::u8stringlist supportLangs, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool fillDefaultLanguageColumn = true){
+			return writeFixedTranslateText(Writer{json}, std::move(path), std::move(defaultLanguage), std::move(supportLangs), overwriteMode, fillDefaultLanguageColumn);
 		}
 
 		template<class Writer>
-		ErrorStatus writeFixedTranslateText(Writer writer, std::filesystem::path path, MergeTextMode overwriteMode, bool fillDefLangCol){
+		ErrorStatus writeFixedTranslateText(Writer writer, std::filesystem::path path, std::u8string defaultLanguage, utility::u8stringlist supportLangs, MergeTextMode overwriteMode, bool fillDefaultLanguageColumn){
 
 			writer.setOverwriteMode(overwriteMode);
 			//既に編集済みのCSVがある場合はマージを行う。
@@ -81,14 +109,22 @@ namespace langscore
 				}
 			}
 
-			writer.setFillDefLangCol(fillDefLangCol);
+			writer.setFillDefLangCol(fillDefaultLanguageColumn);
+            writer.setSupportLanguage(std::move(supportLangs));
 
-			return writer.write(path, overwriteMode);
+			return writer.write(std::move(path), std::move(defaultLanguage), overwriteMode);
 		}
 
-		bool validateTranslateFileList(utility::filelist csvPathList) const;
+		bool validateTranslateFileList(std::vector<ValidateFileInfo> csvPathList) const;
 		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;
 		std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> findRPGMakerEscChars(std::u8string text) const;
+        std::u8string convertDisplayTexts(std::u8string text) const;
+        bool validateTextWidth(std::vector<TranslateText> texts, std::vector<std::uint16_t> validateSizeList, std::filesystem::path path) const;
+        bool validateTextCount(std::vector<TranslateText> texts, std::vector<std::uint16_t> validateSizeList, std::filesystem::path path) const;
+
+        //テキストの幅を計測する。戻り値:{textの1文字, {左座標, 右の座標}}
+        struct TextHorizontalLength { int left; int right; };
+        std::vector<std::pair<std::u8string, TextHorizontalLength>> measureTextWidth(std::u8string text, std::u8string fontPath, int fontSize) const;
 
 	};
 }

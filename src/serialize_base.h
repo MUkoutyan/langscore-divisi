@@ -5,7 +5,7 @@
 
 namespace langscore
 {
-    enum class MergeTextMode : int
+    enum class MergeTextMode : char
     {
         AcceptSource = 0,   //元のファイルを残す
         AcceptTarget = 1,   //先のファイルを残す
@@ -32,9 +32,18 @@ namespace langscore
     class TranslateText
     {
     public:
+
+        constexpr static const char8_t* nameType = u8"name";
+        constexpr static const char8_t* descriptionType = u8"description";
+        constexpr static const char8_t* messageWithGraphic = u8"messageWithIcon";
+        constexpr static const char8_t* battleMessage = u8"battleMessage";
+        constexpr static const char8_t* message = u8"message";
+        constexpr static const char8_t* other = u8"other";
+
         TranslateText():TranslateText(u8"", {}) {}
         TranslateText(std::u8string origin, std::vector<std::u8string> langs)
-            : original(std::move(origin)), translates(), scriptLineInfo(), scriptParamType(), code(0)
+            : original(std::move(origin)), translates(), scriptLineInfo(), scriptParamType()
+            , code(0) , textType(u8"")
         {
             for(auto& lang : langs){
                 this->translates[lang] = u8"";
@@ -45,15 +54,35 @@ namespace langscore
         std::u8string scriptLineInfo;   //スクリプトでのオリジナルの文章の行情報
         std::u8string scriptParamType;  //(MV,MZ)プラグインのパラメータの型
         int code;   //RPGツクールでコマンドを検出した際に使用
+        std::u8string textType; //ツクール内での種類(名前、説明、アイコン付きテキスト、テキスト等)
 
         //CSV用のヘッダーを作成
-        auto createHeader() const
+        auto createHeader(const std::vector<std::u8string>& useLanguageList = {}) const
         {
             std::vector<std::u8string> result;
             result.emplace_back(u8"original");
-            for(const auto& l : translates){
-                result.emplace_back(l.first);
+            if(useLanguageList.empty()) {
+                for(const auto& l : translates) {
+                    result.emplace_back(l.first);
+                }
             }
+            else {
+                for(const auto& l : translates) 
+                {
+                    if(std::ranges::find(useLanguageList, l.first) == useLanguageList.end()) {
+                        continue;
+                    }
+                    result.emplace_back(l.first);
+                }
+            }
+            return result;
+        }
+
+
+        auto createHeaderForAnalyze(const std::vector<std::u8string>& useLanguageList = {}) const
+        {
+            auto result = createHeader(useLanguageList);
+            result.emplace_back(u8"type");
             return result;
         }
 

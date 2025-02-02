@@ -41,7 +41,7 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
     return false;
 }
 
-ErrorStatus rbscriptwriter::write(std::filesystem::path filePath, MergeTextMode overwriteMode)
+ErrorStatus rbscriptwriter::write(std::filesystem::path filePath, std::u8string defaultLanguage, MergeTextMode overwriteMode)
 {
     //langscore_customの書き出し
     using namespace std::literals::string_literals;

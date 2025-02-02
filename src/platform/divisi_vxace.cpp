@@ -64,7 +64,9 @@ ErrorStatus divisi_vxace::analyze()
 {
     std::cout << "VXAce Analyze..." << std::endl;
 
-    auto runResult = this->invoker.analyze();
+    config config;
+    const auto baseDirecotry = config.langscoreAnalyzeDirectorty();
+    auto runResult = this->invoker.analyze(baseDirecotry);
     if(runResult.val() != 0){
         std::cerr << runResult.toStr() << std::endl;
         return runResult;
@@ -73,8 +75,6 @@ ErrorStatus divisi_vxace::analyze()
     //解析では言語を使用しない。 書き出されるCSVはオリジナル文のみを表示させる。
     this->supportLangs.clear();
 
-    config config;
-    const auto baseDirecotry = config.langscoreAnalyzeDirectorty();
     std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(baseDirecotry);
 
     this->writeAnalyzedBasicData();
@@ -84,9 +84,9 @@ ErrorStatus divisi_vxace::analyze()
     return Status_Success;
 }
 
-ErrorStatus langscore::divisi_vxace::update()
+ErrorStatus langscore::divisi_vxace::reanalysis()
 {
-    std::cout << "VXAce Update..." << std::endl;
+    std::cout << "VXAce Reanalysis..." << std::endl;
 
     config config;
     //変にマージしないように一旦全削除
@@ -94,7 +94,7 @@ ErrorStatus langscore::divisi_vxace::update()
     fs::remove_all(updateDirPath);
 
 
-    auto runResult = this->invoker.update();
+    auto runResult = this->invoker.reanalysis(updateDirPath);
     if(runResult.val() != 0){
         std::cerr << runResult.toStr() << std::endl;
         return runResult;
@@ -219,31 +219,30 @@ ErrorStatus langscore::divisi_vxace::update()
         fs::remove(f.path());
     }
 
-    std::cout << "UpdateProject Done." << std::endl;
+    std::cout << "Reanalysis Project Done." << std::endl;
     return Status_Success;
 }
 
-ErrorStatus langscore::divisi_vxace::write()
+ErrorStatus langscore::divisi_vxace::updatePlugin()
 {
-    std::cout << "VXAce Write..." << std::endl;
-    config config;
-    std::u8string rootPath;
-    auto exportFolderList = config.exportDirectory(rootPath);
-    for(auto& folder : exportFolderList)
-    {
-        if(fs::exists(folder)){ continue; }
-        fs::create_directories(folder);
+    std::cout << "Export langscore plugin files." << std::endl;
+    bool replaceScript = true;
+    rewriteScriptList(replaceScript);
+    std::cout << "Done." << std::endl;
+
+    if(replaceScript) {
+        std::cout << "Compress." << std::endl;
+        auto runResult = this->invoker.recompressVXAce();
+        if(runResult.val() != 0) {
+            return runResult;
+        }
+        std::cout << "Done." << std::endl;
     }
-    
-    std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(config.langscoreAnalyzeDirectorty()); 
 
-    writeFixedBasicData();
-    writeFixedRvScript();
-    writeFixedGraphFileNameData();
-
+    config config;
     std::cout << "Copy fonts" << std::endl;
     try {
-        auto fontDestPath = fs::path(config.gameProjectPath()) / u8"Fonts"s;
+        auto fontDestPath = this->getGameProjectFontDirectory();
         copyFonts(fontDestPath);
     }
     catch(const std::exception& e) {
@@ -251,19 +250,27 @@ ErrorStatus langscore::divisi_vxace::write()
     }
     std::cout << "Done." << std::endl;
 
-    std::cout << "Export script files." << std::endl;
-    bool replaceScript = false;
-    rewriteScriptList(replaceScript);
-    std::cout << "Done." << std::endl;
+    return Status_Success;
+}
 
-    if(replaceScript){
-        std::cout << "Compress." << std::endl;
-        auto runResult = this->invoker.recompressVXAce();
-        if(runResult.val() != 0){
-            return runResult;
-        }
-        std::cout << "Done." << std::endl;
+ErrorStatus langscore::divisi_vxace::exportCSV()
+{
+    std::cout << "VXAce Write..." << std::endl;
+    config config;
+    std::u8string rootPath;
+    auto exportFolderList = config.exportDirectory(rootPath);
+    for(auto& folder : exportFolderList)
+    {
+        if(fs::exists(folder)) { continue; }
+        fs::create_directories(folder);
     }
+
+    std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(config.langscoreAnalyzeDirectorty());
+
+    writeFixedBasicData();
+    writeFixedRvScript();
+    writeFixedGraphFileNameData();
+
 
     std::cout << "Write Translate File Done." << std::endl;
     return Status_Success;
@@ -275,27 +282,32 @@ ErrorStatus langscore::divisi_vxace::validate()
     config config;
     std::u8string root;
     fs::path packingDirectory = config.packingInputDirectory();
-    utility::filelist csvPathList;
+    std::vector<ValidateFileInfo> csvPathList;
 
     if (fs::exists(packingDirectory) == false) {
         return ErrorStatus(ErrorStatus::Module::DIVISI_VXACE, 1);
     }
 
+    auto basicData = config.rpgMakerBasicData();
+
     for(const auto& f : fs::recursive_directory_iterator{ packingDirectory }){
         auto extension = f.path().extension();
-        if(extension == ".csv"){
-            csvPathList.emplace_back(f.path());
-        }
+        auto fileName = f.path().filename().stem();
+        if(extension != ".csv") { continue; }
+
+        auto result = std::find_if(basicData.cbegin(), basicData.cend(), [&fileName](const auto& x) {
+            return fs::path(x.filename).filename().stem() == fileName;
+        });
+        if(result == basicData.cend()) { continue; }
+
+        csvPathList.emplace_back(ValidateFileInfo{
+            f.path(), 
+            static_cast<config::ValidateTextMode>(result->textValidateMode),
+            result->textValidateSize
+        });
     }
 
-    //整合性チェック
-    if(config.exportByLanguage())
-    {
-    }
-    else
-    {
-        this->validateTranslateFileList(std::move(csvPathList));
-    }
+    this->validateTranslateFileList(std::move(csvPathList));
 
     std::cout << "Done." << std::endl;
     return Status_Success;
@@ -304,14 +316,21 @@ ErrorStatus langscore::divisi_vxace::validate()
 ErrorStatus langscore::divisi_vxace::packing()
 {
     std::cout << "Packing." << std::endl;
-    auto runResult = this->invoker.packingVXAce();
-    if(runResult.val() != 0){
-        return runResult;
-    }
-
     config config;
-    if(config.packingEnablePerLang())
+    auto destPath = config.gameProjectPath() + u8"/Data/Translate";
+
+    if(config.packingEnablePerLang() == false)
     {
+        auto runResult = this->invoker.packingVXAce(destPath, config.packingInputDirectory());
+        if(runResult.val() != 0) {
+            return runResult;
+        }
+    }
+    else
+    {
+        //言語毎に書き出す機能。
+        //元のプロジェクトをコピーしてから、コピー先で書き換え作業を行う。
+        //コピー処理をthis->currentGameProjectPathを使用して行うため、適宜変数の保持を行っている。
         this->currentGameProjectPath.make_preferred();
         auto srcPath = this->currentGameProjectPath;
         srcPath.make_preferred();
@@ -338,11 +357,11 @@ ErrorStatus langscore::divisi_vxace::packing()
             bool dummy = false;
             this->rewriteScriptList(dummy, true);
 
-            auto csvOutputFolder = this->currentGameProjectPath / "data" / "translate";
+            auto csvOutputFolder = destPath;
             if(fs::exists(csvOutputFolder) == false) {
                 fs::create_directories(csvOutputFolder);
             }
-            auto translateFolder = inputGameProjectFolder / "data" / "translate";
+            auto translateFolder = inputGameProjectFolder / "Data" / "Translate";
             for(auto& csvPath : fs::recursive_directory_iterator{translateFolder})
             {
                 auto csvReader = csvreader{{lang}, csvPath};
@@ -359,7 +378,7 @@ ErrorStatus langscore::divisi_vxace::packing()
                 }
 
                 auto fileName = csvPath.path().filename();
-                csvwriter{speciftranstext{{lang}, std::move(replacedTexts)}}.write(csvOutputFolder / fileName, MergeTextMode::AcceptTarget);
+                csvwriter{speciftranstext{{lang}, std::move(replacedTexts)}}.write(csvOutputFolder / fileName, this->defaultLanguage, MergeTextMode::AcceptTarget);
             }
         }
 
@@ -454,7 +473,7 @@ void divisi_vxace::writeAnalyzedBasicData()
 
         std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, std::move(json));
         csvwriter writer(reader);
-        writer.write(csvFilePath, MergeTextMode::AcceptTarget);
+        writer.writeForAnalyze(csvFilePath, this->defaultLanguage, MergeTextMode::AcceptTarget);
         jsonreader_map[path.filename()] = std::move(reader);
     }
 
@@ -544,7 +563,7 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 
     std::cout << "Write CSV : " << outputPath << std::endl;
     csvwriter writer(reader);
-    writer.write(outputPath, MergeTextMode::AcceptTarget);
+    writer.write(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
 
     std::cout << "Finish." << std::endl;
 }
@@ -576,12 +595,12 @@ void langscore::divisi_vxace::writeFixedBasicData()
             auto outputPath = translateFolder / csvFilePath;
             std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
             std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, json);
-            writeFixedTranslateText<csvwriter>(outputPath, reader, mergeTextMode);
+            writeFixedTranslateText<csvwriter>(outputPath, reader, this->defaultLanguage, this->supportLangs, mergeTextMode);
             jsonreader_map[inputPath.filename()] = std::move(reader);
         }
     };
 
-    auto ignoreScripts = config.vxaceBasicData();
+    auto ignoreScripts = config.rpgMakerBasicData();
     auto list = this->basicDataFileList;
     auto rm_result = std::remove_if(list.begin(), list.end(), [&](const auto& path){
         auto result = std::find_if(ignoreScripts.cbegin(), ignoreScripts.cend(), [f = path.filename()](const auto& x){
@@ -636,7 +655,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
     const auto translateFolderList = config.exportDirectory(root);
     for(auto& translateFolder : translateFolderList){
         std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, reader, mergeTextMode);
+        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, reader, this->defaultLanguage, this->supportLangs, mergeTextMode);
     }
 
     std::cout << "Finish." << std::endl;
@@ -665,8 +684,11 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
             auto langs = utility::join(list, u8","s);
             _line = tab + u8"SUPPORT_LANGUAGE = [" + langs + u8"]";
         }
-        else if(findStr(_line, u8"%{DEFAULT_LANGUAGE}%")){
+        else if(findStr(_line, u8"%{DEFAULT_LANGUAGE}%")) {
             _line = tab + u8"DEFAULT_LANGUAGE = \"" + utility::cnvStr<std::u8string>(defLanguage) + u8"\"";
+        }
+        else if(findStr(_line, u8"%{ENABLE_PATCH_MODE}%")){
+            _line = tab + u8"ENABLE_PATCH_MODE = \""s + (config.enableLanguagePatch() ? u8"true"s : u8"false"s) + u8"\""s;
         }
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {
@@ -828,7 +850,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
         rubyreader reader(this->supportLangs, scriptList);
         reader.applyIgnoreScripts(scriptInfoList);
 
-        writeFixedTranslateText<rbscriptwriter>(reader, lsCustomScriptPath, langscore::MergeTextMode::AcceptTarget, true);
+        writeFixedTranslateText<rbscriptwriter>(reader, lsCustomScriptPath, this->defaultLanguage, this->supportLangs, langscore::MergeTextMode::AcceptTarget, true);
     }
 
     //langscore.rbの出力
@@ -978,4 +1000,9 @@ bool divisi_vxace::adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv, 
     }
 
     return isRewrite;
+}
+
+fs::path langscore::divisi_vxace::getGameProjectFontDirectory() const
+{
+    return this->currentGameProjectPath / u8"Fonts"s;
 }

@@ -1,5 +1,4 @@
 #include "invoker.h"
-#include "config.h"
 #include "utility.hpp"
 
 #include <iostream>
@@ -98,8 +97,9 @@ static int execProcess(const char* cmd) {
 }
 #endif
 
-invoker::invoker()
-    : appPath("")
+invoker::invoker(config::ProjectType projectType)
+    : projectType(projectType)
+    , appPath("")
     , _projectPath("")
 {
 }
@@ -118,9 +118,11 @@ void invoker::setProjectPath(std::filesystem::path path)
 }
 
 
-ErrorStatus invoker::analyze(){
-    config config;
-    auto tempPath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
+ErrorStatus invoker::analyze(std::filesystem::path analyzeDir)
+{
+    //config config;
+    //auto tempPath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
+    auto tempPath = analyzeDir;
     tempPath.make_preferred();
     if(std::filesystem::exists(tempPath) == false){
         if(std::filesystem::create_directories(tempPath) == false){
@@ -131,10 +133,11 @@ ErrorStatus invoker::analyze(){
     return exec({"-i", convertPath(_projectPath), "-o", convertPath(tempPath)});
 }
 
-ErrorStatus langscore::invoker::update()
+ErrorStatus langscore::invoker::reanalysis(std::filesystem::path updateDir)
 {
-    config config;
-    auto tempPath = std::filesystem::path(config.langscoreUpdateDirectorty());
+    //config config;
+    //auto tempPath = std::filesystem::path(config.langscoreUpdateDirectorty());
+    auto tempPath = updateDir;
     tempPath.make_preferred();
     if(std::filesystem::exists(tempPath) == false){
         if(std::filesystem::create_directories(tempPath) == false){
@@ -149,18 +152,17 @@ ErrorStatus langscore::invoker::recompressVXAce(){
     return exec({"-i", convertPath(_projectPath), "-c"});
 }
 
-ErrorStatus langscore::invoker::packingVXAce(){
-    config config;
-    auto inputDir  = std::filesystem::path(config.packingInputDirectory());
-    auto outputDir = std::filesystem::path(config.gameProjectPath()+u8"/Data/Translate");
-    return exec({"-i", convertPath(inputDir), "-o", convertPath(outputDir), "-p"});
+ErrorStatus langscore::invoker::packingVXAce(std::filesystem::path destGameTranslateFolder, std::filesystem::path packingDir){
+    //config config;
+    //auto inputDir  = std::filesystem::path(config.packingInputDirectory());
+    //auto outputDir = std::filesystem::path(config.gameProjectPath()+u8"/Data/Translate");
+    return exec({"-i", convertPath(packingDir), "-o", convertPath(destGameTranslateFolder), "-p"});
 }
 
 ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
 {
     auto basePath = appPath.empty() ? "./" : appPath;
-    config config;
-    if(config.projectType() == config::VXAce)
+    if(projectType == config::VXAce)
     {
         auto rvcnvPath = (basePath / "rvcnv.exe");
 

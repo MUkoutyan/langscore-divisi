@@ -158,7 +158,7 @@ bool langscore::config_writer::write()
 
     this->langscoreAnalyzeDirectorty = "./analyze";
     this->langscoreUpdateDirectorty = this->langscoreProjectPath / "update";
-    this->vxaceBasicData = ::fetchBasicDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
+    this->rpgMakerBasicData = ::fetchBasicDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
     this->rpgMakerScripts = ::fetchScriptDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
 
     std::cout << "output folder " << this->langscoreProjectPath << std::endl;
@@ -242,7 +242,7 @@ std::string config_writer::createJson() const
     write[config::key(config::JsonKey::WriteType)] = 0;
 
     nlohmann::json basicDataList = nlohmann::json::array();
-    for(const auto& info : vxaceBasicData) {
+    for(const auto& info : rpgMakerBasicData) {
         nlohmann::json script;
         script[config::key(config::JsonKey::Name)] = utility::cnvStr<std::string>(info.filename);
         script[config::key(config::JsonKey::Ignore)] = info.ignore;

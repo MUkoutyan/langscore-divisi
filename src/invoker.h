@@ -15,18 +15,19 @@ class invoker
 public:
 
 
-    invoker();
+    invoker(config::ProjectType projectType);
     ~invoker();
 
     void setApplicationFolder(std::filesystem::path path);
     void setProjectPath(std::filesystem::path path);
     
-    ErrorStatus analyze();
-    ErrorStatus update();
+    ErrorStatus analyze(std::filesystem::path analyzeDir);
+    ErrorStatus reanalysis(std::filesystem::path updateDir);
     ErrorStatus recompressVXAce();
-    ErrorStatus packingVXAce();
+    ErrorStatus packingVXAce(std::filesystem::path destGameTranslateFolder, std::filesystem::path packingDir);
 
 private:
+    config::ProjectType projectType;
     std::filesystem::path appPath;
     std::filesystem::path _projectPath;
     std::vector<std::u8string> langs;

@@ -1,4 +1,5 @@
 #include "divisi.h"
+#include "divisi.h"
 #include "utility.hpp"
 #include "invoker.h"
 #include "config_writer.h"
@@ -86,18 +87,25 @@ ErrorStatus divisi::analyze()
     return pImpl->converter->analyze();
 }
 
-ErrorStatus langscore::divisi::update()
+ErrorStatus langscore::divisi::reanalysis()
 {
     auto result = pImpl->setupConverter();
     if(result.invalid()){ return result; }
-    return pImpl->converter->update();
+    return pImpl->converter->reanalysis();
 }
 
-ErrorStatus divisi::write()
+ErrorStatus divisi::exportCSV()
 {
     auto result = pImpl->setupConverter();
     if(result.invalid()){ return result; }
-    return pImpl->converter->write();
+    return pImpl->converter->exportCSV();
+}
+
+ErrorStatus langscore::divisi::updatePlugin()
+{
+    auto result = pImpl->setupConverter();
+    if(result.invalid()) { return result; }
+    return pImpl->converter->updatePlugin();
 }
 
 ErrorStatus langscore::divisi::validate()

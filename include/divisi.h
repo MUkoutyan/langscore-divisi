@@ -9,7 +9,7 @@
 
 namespace langscore
 {
-enum class MergeTextMode : int;
+enum class MergeTextMode : char;
 
 class divisi
 {
@@ -18,8 +18,9 @@ public:
     ~divisi();
 
     ErrorStatus analyze();
-    ErrorStatus update();
-    ErrorStatus write();
+    ErrorStatus reanalysis();
+    ErrorStatus exportCSV();
+    ErrorStatus updatePlugin();
     ErrorStatus validate();
     ErrorStatus packing();
 

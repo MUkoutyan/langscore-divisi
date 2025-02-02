@@ -17,22 +17,25 @@ namespace langscore
         writerbase(Reader&& reader)
             : useLangs(reader.curerntUseLangList()), texts(reader.currentTexts())
             , scriptTranslatesMap(reader.curerntScriptTransMap())
-            , overwriteMode(MergeTextMode::AcceptSource), fillDefLangCol(false){
+            , overwriteMode(MergeTextMode::AcceptSource), fillDefaultLanguageColumn(false){
         }
         writerbase(const std::unique_ptr<readerbase>& reader): writerbase(*reader){}
         virtual ~writerbase();
 
-        virtual ErrorStatus write(std::filesystem::path writePath, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) = 0;
+        virtual ErrorStatus write(std::filesystem::path writePath, std::u8string defaultLanguage, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) = 0;
         virtual bool merge(std::filesystem::path srcPath) { return true; }
 
-        void setOverwriteMode(MergeTextMode overwriteMode){
+        void setOverwriteMode(MergeTextMode overwriteMode) noexcept {
             this->overwriteMode = overwriteMode;
         }
-        void setFillDefLangCol(bool is){
-            this->fillDefLangCol = is;
+        void setFillDefLangCol(bool is) noexcept {
+            this->fillDefaultLanguageColumn = is;
         }
-        std::vector<TranslateText>& currentTexts() { return texts; }
-        const ScriptPackage& getScriptTexts() const { return scriptTranslatesMap; }
+        void setSupportLanguage(std::vector<std::u8string> list) noexcept {
+            this->useLangs = std::move(list);
+        }
+        std::vector<TranslateText>& currentTexts() noexcept { return texts; }
+        const ScriptPackage& getScriptTexts() const noexcept { return scriptTranslatesMap; }
 
         bool isDebug = false;
 
@@ -46,7 +49,7 @@ namespace langscore
         std::vector<TranslateText> texts;
         ScriptPackage scriptTranslatesMap;
         MergeTextMode overwriteMode;
-        bool fillDefLangCol;
+        bool fillDefaultLanguageColumn;
 
         static void writeU8String(std::ofstream& out, std::u8string text);
     };

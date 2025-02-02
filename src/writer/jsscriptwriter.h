@@ -22,7 +22,7 @@ namespace langscore
         constexpr static const char* extension = "js";
 
         bool merge(std::filesystem::path filePath) override;
-        ErrorStatus write(std::filesystem::path path, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) override;
+        ErrorStatus write(std::filesystem::path path, std::u8string defaultLanguage, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) override;
 
         
     private:

@@ -24,7 +24,7 @@ namespace langscore
 			}
 			else if(json.is_object())
 			{
-				convertJObject(json, 0);
+				convertJsonObject(json, 0);
 			}
 		}
 	private:
@@ -37,6 +37,7 @@ namespace langscore
 		//特定のクラスに存在する、無視するキー
 		const std::map<std::u8string, std::vector<std::u8string>> ignoreForClassKeys = {
 			{u8"RPG::UsableItem::Damage", {u8"@formula"}},
+			{u8"RPG::Enemy",  {u8"@battler_name"}},
 			{u8"RPG::Event",  {u8"@name"}},
 			{u8"RPG::SE",     {u8"@name"}},
 			{u8"RPG::ME",     {u8"@name"}},
@@ -88,6 +89,8 @@ namespace langscore
 
 			TranslateText t(std::move(text), useLangList);
 			t.code = code;
+            t.textType = textTypeForMaker;
+            textTypeForMaker = TranslateText::other;
 			auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
 				return x.original == t.original;
 			});
@@ -125,6 +128,7 @@ namespace langscore
 			return false;
 		}
 
+        //jsonのobj内に"@code"キーが存在し、かつそのコード値が検出するものかどうかをチェックする。
 		std::tuple<bool, int> checkEventCommandCode(const nlohmann::json& obj)
 		{
 			bool result = false;
@@ -135,6 +139,7 @@ namespace langscore
 					//許可するコード
 					s->get_to(code);
 					switch(code){
+                        case 101: [[fallthrough]];	//メッセージウィンドウの情報
 						case 102: [[fallthrough]];	//選択肢
 						case 401: [[fallthrough]];	//文章の表示
 						case 405: [[fallthrough]];	//文章のスクロール表示
@@ -162,34 +167,85 @@ namespace langscore
 					continue;
 				}
 				else if(s->is_object()){
-					convertJObject(*s, code);
+					convertJsonObject(*s, code);
 				}
 				else if(s->is_string())
 				{
 					if(checkIgnoreKey(parentClass, arrayinKey, hasSpecIgnoreKeys)){ continue; }
+                    
+                    if(parentClass == u8"RPG::EventCommand")
+                    {
+                        if(code == 101)
+                        {
+                            //顔グラフィックが指定されているかのチェック。
+                            //@parameter(valueは配列)の第一要素が空でなければ顔グラ有り。
+                            std::string valStr;
+                            s->get_to(valStr);
+                            if(valStr.empty() == false) {
+                                //メッセージウィンドウに顔グラフィック指定がある。
+                                textTypeForMaker = TranslateText::messageWithGraphic;
+                            }
+                            else {
+                                textTypeForMaker = TranslateText::message;
+                            }
+                        }
+                        else {
+                            addText(*s, code);
+                        }
+                    }
+                    else if(parentClass == u8"RPG::State")
+                    {
+                        if(arrayinKey == u8"@message2") {
 
-					addText(*s, code);
+                        }
+                    }
 				}
 			}
 		}
-		void convertJObject(const nlohmann::json& root, int parent_code)
+		void convertJsonObject(const nlohmann::json& root, int parent_code)
 		{
 			if(root.empty()){ return; }
 
 			auto [currentClassName, hasSpecIgnoreKeys] = getObjectClass(root);
 
-			auto [result, code] = checkEventCommandCode(root);
+			auto [acceptCommand, code] = checkEventCommandCode(root);
 			if(code == 0){ code = parent_code; }
-			if(currentClassName == u8"RPG::EventCommand"){
+			if(currentClassName == u8"RPG::EventCommand")
+            {
+                if(code == 101) 
+                {
+                    //顔グラフィックが指定されているかのチェック。
+                    //@parameter(valueは配列)の第一要素が空でなければ顔グラ有り。
+                    for(auto s = root.begin(); s != root.end(); ++s)
+                    {
+                        if(s.key() != "@parameter") {
+                            continue;
+                        }
+                        nlohmann::json arrayData;
+                        s->get_to(arrayData);
+                        if(1 < arrayData.size()) {
+                            std::string faceGraphicName;
+                            arrayData[0].get_to(faceGraphicName);
+                            if(faceGraphicName.empty()) {
+                                textTypeForMaker = TranslateText::message;
+                            }
+                            else {
+                                textTypeForMaker = TranslateText::messageWithGraphic;
+                            }
+                            break;
+                        }
+                    }
+                }
 				if(stackText == false && (code == 401 || code == 405)){
 					stackText = true;
 				}
 				else if(stackText && (code != 401 && code != 405)){
 					stackText = false;
+                    if(textTypeForMaker.empty()) { textTypeForMaker = TranslateText::message; }
 					addText(stackTextStr, 401);
 					stackTextStr.clear();
 				}
-				if(result == false){ return; }
+				if(acceptCommand == false){ return; }
 			}
 
 			for(auto s = root.begin(); s != root.end(); ++s)
@@ -202,7 +258,7 @@ namespace langscore
 					continue;
 				}
 				else if(val.is_object()){
-					convertJObject(val, code);
+					convertJsonObject(val, code);
 					continue;
 				}
 				else if(val.is_string() == false){ continue; }
@@ -211,6 +267,26 @@ namespace langscore
 					continue;
 				}
 
+                if(currentClassName == u8"RPG::State" || currentClassName == u8"RPG::Skill") {
+                    if(key.find(u8"@message") != std::u8string::npos) {
+                        textTypeForMaker = TranslateText::battleMessage;
+                    }
+                    else if(key == u8"@name") {
+                        textTypeForMaker = TranslateText::nameType;
+                    }
+                    else if(key == u8"@description") {
+                        textTypeForMaker = TranslateText::descriptionType;
+                    }
+                }
+                else {
+                    if(key == u8"@name") {
+                        textTypeForMaker = TranslateText::nameType;
+                    }
+                    else if(key == u8"@description") {
+                        textTypeForMaker = TranslateText::descriptionType;
+                    }
+                }
+
 				addText(*s, code);
 			}
 
@@ -218,6 +294,7 @@ namespace langscore
 
 
 		bool stackText;
+        std::u8string textTypeForMaker = TranslateText::other;
 		std::u8string stackTextStr;
 
 	};

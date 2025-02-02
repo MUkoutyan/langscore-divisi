@@ -73,6 +73,8 @@ target_include_directories(divisi_lib PUBLIC
 	${PROJECT_SOURCE_DIR}/3rdparty/json
 	${PROJECT_SOURCE_DIR}/3rdparty/hash-library
 	${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/include
+	${PROJECT_SOURCE_DIR}/3rdparty/freetype/include
+	${PROJECT_SOURCE_DIR}/3rdparty/icu/include
 )
 
 if(MSVC)
@@ -80,6 +82,14 @@ if(MSVC)
 target_link_libraries(divisi_lib
 	debug ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/tree-sitterD.lib
     optimized ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/tree-sitter.lib
+	debug ${PROJECT_SOURCE_DIR}/3rdparty/freetype/freetypeD.lib
+    optimized ${PROJECT_SOURCE_DIR}/3rdparty/freetype/freetype.lib
+    ${PROJECT_SOURCE_DIR}/3rdparty/icu/lib64/icuin.lib
+    ${PROJECT_SOURCE_DIR}/3rdparty/icu/lib64/icuio.lib
+    ${PROJECT_SOURCE_DIR}/3rdparty/icu/lib64/icutest.lib
+    ${PROJECT_SOURCE_DIR}/3rdparty/icu/lib64/icutu.lib
+    ${PROJECT_SOURCE_DIR}/3rdparty/icu/lib64/icuuc.lib
+    ${PROJECT_SOURCE_DIR}/3rdparty/icu/lib64/icudt.lib
 )
 
 else()

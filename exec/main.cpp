@@ -11,11 +11,12 @@ struct ARGS
 	std::filesystem::path configFile;
 	std::filesystem::path gameProjectPath;
     bool createConfigFile = false;
-	bool analyze = false;
-	bool update = false;
-	bool write = false;
-	bool validate = false;
-	bool packing = false;
+	bool analyze          = false;
+	bool reanalysis       = false;
+    bool updatePlugin     = false;
+	bool exportCSV        = false;
+	bool validate         = false;
+	bool packing          = false;
     bool outputTestScript = false;
 	langscore::MergeTextMode overwriteMode = langscore::MergeTextMode::AcceptSource;
     langscore::config::ProjectType projectType = langscore::config::ProjectType::None;
@@ -72,11 +73,14 @@ ARGS analyzeOption(int argc, const char* argv[])
 		else if(str.find("--analyze") != std::string_view::npos){
 			args.analyze = true;
 		}
-		else if(str.find("--update") != std::string_view::npos){
-			args.update = true;
+		else if(str.find("--reanalysis") != std::string_view::npos){
+			args.reanalysis = true;
 		}
-		else if(str.find("--write") != std::string_view::npos){
-			args.write = true;
+        else if(str.find("--updatePlugin") != std::string_view::npos) {
+            args.updatePlugin = true;
+        }
+		else if(str.find("--exportCSV") != std::string_view::npos){
+			args.exportCSV = true;
 		}
 		else if(str.find("--validate") != std::string_view::npos){
 			args.validate = true;
@@ -107,6 +111,7 @@ int main(int argc, const char* argv[])
 		return -1;
 	}
 
+
 	const auto args = analyzeOption(argc, argv);
 
 	langscore::divisi divisi(args.appPath, args.configFile);
@@ -118,24 +123,46 @@ int main(int argc, const char* argv[])
 
 	if(args.analyze){
 		result = divisi.analyze();
+        if(result.invalid()) {
+            std::cerr << result.toStr() << std::endl;
+            return result.val();
+        }
 	}
-	if(args.update){
-		result = divisi.update();
+	if(args.reanalysis){
+		result = divisi.reanalysis();
+        if(result.invalid()) {
+            std::cerr << result.toStr() << std::endl;
+            return result.val();
+        }
 	}
-	if(args.write){
-		result = divisi.write();
+    if(args.updatePlugin) {
+        result = divisi.updatePlugin();
+        if(result.invalid()) {
+            std::cerr << result.toStr() << std::endl;
+            return result.val();
+        }
+    }
+	if(args.exportCSV){
+		result = divisi.exportCSV();
+        if(result.invalid()) {
+            std::cerr << result.toStr() << std::endl;
+            return result.val();
+        }
 	}
 	if(args.validate){
 		result = divisi.validate();
+        if(result.invalid()) {
+            std::cerr << result.toStr() << std::endl;
+            return result.val();
+        }
 	}
 	if(args.packing){
 		result = divisi.packing();
+        if(result.invalid()) {
+            std::cerr << result.toStr() << std::endl;
+            return result.val();
+        }
 	}
-	if(result.invalid()){
-		std::cerr << result.toStr() << std::endl;
-		return result.val();
-	}
-	
 
 	return 0;
 }

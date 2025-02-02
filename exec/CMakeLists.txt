@@ -42,3 +42,19 @@ install(FILES ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe DESTINATION ${PROJECT_SOURCE
 
 file(COPY ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe DESTINATION ${PROJECT_BINARY_DIR}/)
 file(COPY ${PROJECT_SOURCE_DIR}/resource/ DESTINATION ${PROJECT_BINARY_DIR}/resource/)
+
+
+
+if(MSVC)
+
+file(GLOB ICU_DLL_FILES "${PROJECT_SOURCE_DIR}/3rdparty/icu/bin/*.dll")
+
+foreach(DLL_FILE ${ICU_DLL_FILES})
+    add_custom_command(TARGET divisi POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${DLL_FILE}"
+        "${CMAKE_BINARY_DIR}"
+    )
+endforeach()
+
+endif()

@@ -27,7 +27,7 @@ namespace langscore
 			}
 			else if(json.is_object())
 			{
-				convertJObject(json, 0);
+				convertJsonObject(json, 0);
 			}
 		}
 
@@ -212,7 +212,7 @@ namespace langscore
 						convertJArray(*s, code, parentClass);
 					}
 					else if(s->is_object()){
-						convertJObject(*s, code);
+						convertJsonObject(*s, code);
 					}
 					else if(s->is_string())
 					{
@@ -222,7 +222,7 @@ namespace langscore
 			}
 		}
 
-		void convertJObject(const nlohmann::json& root, int code)
+		void convertJsonObject(const nlohmann::json& root, int code)
 		{
 			if(root.empty()){ return; }
 
@@ -284,7 +284,7 @@ namespace langscore
 						continue;
 					}
 					else if(val.is_object()){
-						convertJObject(val, code);
+						convertJsonObject(val, code);
 						continue;
 					}
 					else if(val.is_string() == false){ continue; }

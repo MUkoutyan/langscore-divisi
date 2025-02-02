@@ -310,7 +310,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 	return true;
 }
 
-ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
+ErrorStatus csvwriter::write(fs::path path, std::u8string defaultLanguage, MergeTextMode overwriteMode)
 {
 	if(this->texts.empty()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 0); }
 	path.replace_extension(csvwriter::extension);
@@ -319,14 +319,12 @@ ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
 	if(outputCSVFile.bad()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
 
 	const std::u8string delimiter(u8",");
-	auto headers = this->texts[0].createHeader();
+	auto headers = this->texts[0].createHeader(this->useLangs);
 
 
 	writeU8String(outputCSVFile, utility::join(headers, delimiter));
-	if(this->fillDefLangCol)
+	if(this->fillDefaultLanguageColumn)
 	{
-		config config;
-		auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
 		//デフォルト言語の列を埋める場合の処理
 		for(const auto& text : this->texts)
 		{
@@ -337,7 +335,10 @@ ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
 			//ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
 			for(const auto& lang : text.translates)
 			{
-				if(def_lang == lang.first && lang.second.empty()){
+                if(std::ranges::find(this->useLangs, lang.first) == this->useLangs.cend()) {
+                    continue;
+                }
+				if(defaultLanguage == lang.first && lang.second.empty()){
 					rowtext.emplace_back(convertCsvText(text.original));
 				}
 				else {
@@ -359,6 +360,9 @@ ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
 			//ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
 			for(const auto& lang : text.translates)
 			{
+                if(std::ranges::find(this->useLangs, lang.first) == this->useLangs.cend()) {
+                    continue;
+                }
 				rowtext.emplace_back(convertCsvText(lang.second));
 			}
 
@@ -367,6 +371,73 @@ ErrorStatus csvwriter::write(fs::path path, MergeTextMode overwriteMode)
 	}
 
 	return Status_Success;
+}
+
+ErrorStatus langscore::csvwriter::writeForAnalyze(std::filesystem::path path, std::u8string defaultLanguage, MergeTextMode overwriteMode)
+{
+    if(this->texts.empty()) { return ErrorStatus(ErrorStatus::Module::CSVWRITER, 0); }
+    path.replace_extension(csvwriter::extension);
+
+    std::ofstream outputCSVFile(path, std::ios::binary);
+    if(outputCSVFile.bad()) { return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
+
+    const std::u8string delimiter(u8",");
+    auto headers = this->texts[0].createHeaderForAnalyze(this->useLangs);
+
+
+    writeU8String(outputCSVFile, utility::join(headers, delimiter));
+    if(this->fillDefaultLanguageColumn)
+    {
+        //デフォルト言語の列を埋める場合の処理
+        for(const auto& text : this->texts)
+        {
+            if(text.original.empty()) { continue; }
+
+            outputCSVFile << "\n";
+            utility::u8stringlist rowtext = {convertCsvText(text.original)};
+            //ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
+            for(const auto& lang : text.translates)
+            {
+                if(std::ranges::find(this->useLangs, lang.first) == this->useLangs.cend()) {
+                    continue;
+                }
+                if(defaultLanguage == lang.first && lang.second.empty()) {
+                    rowtext.emplace_back(convertCsvText(text.original));
+                }
+                else {
+                    rowtext.emplace_back(convertCsvText(lang.second));
+                }
+            }
+
+            rowtext.emplace_back(text.textType);
+
+            writeU8String(outputCSVFile, utility::join(rowtext, delimiter));
+        }
+    }
+    else {
+
+        for(const auto& text : this->texts)
+        {
+            if(text.original.empty()) { continue; }
+
+            outputCSVFile << "\n";
+            utility::u8stringlist rowtext = {convertCsvText(text.original)};
+            //ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
+            for(const auto& lang : text.translates)
+            {
+                if(std::ranges::find(this->useLangs, lang.first) == this->useLangs.cend()) {
+                    continue;
+                }
+                rowtext.emplace_back(convertCsvText(lang.second));
+            }
+
+            rowtext.emplace_back(text.textType);
+
+            writeU8String(outputCSVFile, utility::join(rowtext, delimiter));
+        }
+    }
+
+    return Status_Success;
 }
 
 ErrorStatus csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, MergeTextMode overwriteMode)

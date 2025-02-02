@@ -26,7 +26,7 @@ namespace langscore
         bool overwriteLangscoreCustom;
         std::u8string outputTranslateFilePathForRPGMaker;
         std::u8string packingInputDirectory;
-        std::vector<config::BasicData> vxaceBasicData;
+        std::vector<config::BasicData> rpgMakerBasicData;
         std::vector<config::ScriptData> rpgMakerScripts;
         utility::u8stringlist ignorePictures;
         utility::u8stringlist globalFontList;
