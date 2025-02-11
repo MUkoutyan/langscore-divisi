@@ -199,84 +199,84 @@ std::string config_writer::createJson() const
 {
     nlohmann::json root;
 
-    root[config::key(config::JsonKey::ApplicationVersion)] = "";
-    root[config::key(config::JsonKey::ConfigVersion)] = "";
+    root[config::key(JsonKey::ApplicationVersion)] = "";
+    root[config::key(JsonKey::ConfigVersion)] = "";
 
     nlohmann::json langs = nlohmann::json::array();
     for(const auto& l : this->languages) {
         nlohmann::json langObj;
-        langObj[config::key(config::JsonKey::LanguageName)] = l.name;
-        langObj[config::key(config::JsonKey::FontName)] = utility::cnvStr<std::string>(l.font.name);
-        langObj[config::key(config::JsonKey::FontPath)] = utility::cnvStr<std::string>(l.font.file.u8string());
-        langObj[config::key(config::JsonKey::FontSize)] = l.font.size;
-        langObj[config::key(config::JsonKey::Enable)] = l.isEnable;
+        langObj[config::key(JsonKey::LanguageName)] = l.name;
+        langObj[config::key(JsonKey::FontName)] = utility::cnvStr<std::string>(l.font.name);
+        langObj[config::key(JsonKey::FontPath)] = utility::cnvStr<std::string>(l.font.file.u8string());
+        langObj[config::key(JsonKey::FontSize)] = l.font.size;
+        langObj[config::key(JsonKey::Enable)] = l.isEnable;
 
         langs.push_back(langObj);
     }
-    root[config::key(config::JsonKey::Languages)] = langs;
-    root[config::key(config::JsonKey::DefaultLanguage)] = this->defaultLanguage;
-    root[config::key(config::JsonKey::Project)] = utility::cnvStr<std::string>(this->gameProjectPath.generic_u8string());
+    root[config::key(JsonKey::Languages)] = langs;
+    root[config::key(JsonKey::DefaultLanguage)] = this->defaultLanguage;
+    root[config::key(JsonKey::Project)] = utility::cnvStr<std::string>(this->gameProjectPath.generic_u8string());
 
     nlohmann::json analyze;
-    analyze[config::key(config::JsonKey::TmpDir)] = utility::cnvStr<std::string>(this->langscoreAnalyzeDirectorty.generic_u8string());
+    analyze[config::key(JsonKey::TmpDir)] = utility::cnvStr<std::string>(this->langscoreAnalyzeDirectorty.generic_u8string());
 
-    root[config::key(config::JsonKey::Analyze)] = analyze;
+    root[config::key(JsonKey::Analyze)] = analyze;
 
     nlohmann::json write;
-    write[config::key(config::JsonKey::UsCustomFuncComment)] = "Scripts/{0}#{1},{2}";
+    write[config::key(JsonKey::UsCustomFuncComment)] = "Scripts/{0}#{1},{2}";
 
     //nlohmann::json exportDirList = nlohmann::json::array();
     //for(const auto& dir : this->exportDirectory) {
     //    exportDirList.push_back(utility::cnvStr<std::string>(dir));
     //}
-    //write[config::key(config::JsonKey::ExportDirectory)] = exportDirList;
+    //write[config::key(JsonKey::ExportDirectory)] = exportDirList;
     if(this->exportDirectory.empty() == false) {
-        write[config::key(config::JsonKey::ExportDirectory)] = utility::cnvStr<std::string>(this->exportDirectory[0]);
+        write[config::key(JsonKey::ExportDirectory)] = utility::cnvStr<std::string>(this->exportDirectory[0]);
     }
     else {
-        write[config::key(config::JsonKey::ExportDirectory)] = "";
+        write[config::key(JsonKey::ExportDirectory)] = "";
     }
-    write[config::key(config::JsonKey::ExportByLang)] = this->exportByLanguage;
-    write[config::key(config::JsonKey::OverwriteLangscore)] = this->overwriteLangscore;
-    write[config::key(config::JsonKey::OverwriteLangscoreCustom)] = this->overwriteLangscoreCustom;
-    write[config::key(config::JsonKey::WriteType)] = 0;
+    write[config::key(JsonKey::ExportByLang)] = this->exportByLanguage;
+    write[config::key(JsonKey::OverwriteLangscore)] = this->overwriteLangscore;
+    write[config::key(JsonKey::OverwriteLangscoreCustom)] = this->overwriteLangscoreCustom;
+    write[config::key(JsonKey::WriteType)] = 0;
 
     nlohmann::json basicDataList = nlohmann::json::array();
     for(const auto& info : rpgMakerBasicData) {
         nlohmann::json script;
-        script[config::key(config::JsonKey::Name)] = utility::cnvStr<std::string>(info.filename);
-        script[config::key(config::JsonKey::Ignore)] = info.ignore;
+        script[config::key(JsonKey::Name)] = utility::cnvStr<std::string>(info.filename);
+        script[config::key(JsonKey::Ignore)] = info.ignore;
         basicDataList.push_back(script);
     }
-    write[config::key(config::JsonKey::RPGMakerBasicData)] = basicDataList;
+    write[config::key(JsonKey::RPGMakerBasicData)] = basicDataList;
 
     nlohmann::json scripts = nlohmann::json::array();
     for(const auto& info : rpgMakerScripts) {
         nlohmann::json script;
-        script[config::key(config::JsonKey::Name)] = utility::cnvStr<std::string>(info.filename);
-        script[config::key(config::JsonKey::Ignore)] = info.ignore;
+        script[config::key(JsonKey::Name)] = utility::cnvStr<std::string>(info.filename);
+        script[config::key(JsonKey::Ignore)] = info.ignore;
         nlohmann::json ignorePointArray = nlohmann::json::array();
         for(const auto& point : info.texts) {
             nlohmann::json obj;
-            obj[config::key(config::JsonKey::Row)] = point.row;
-            obj[config::key(config::JsonKey::Col)] = point.col;
-            obj[config::key(config::JsonKey::Disable)] = false;
-            obj[config::key(config::JsonKey::Ignore)] = point.ignore;
+            obj[config::key(JsonKey::Row)] = point.row;
+            obj[config::key(JsonKey::Col)] = point.col;
+            obj[config::key(JsonKey::Disable)] = false;
+            obj[config::key(JsonKey::Ignore)] = point.ignore;
             ignorePointArray.push_back(obj);
         }
-        script[config::key(config::JsonKey::IgnorePoints)] = ignorePointArray;
+        script[config::key(JsonKey::IgnorePoints)] = ignorePointArray;
         scripts.push_back(script);
     }
-    write[config::key(config::JsonKey::RPGMakerScripts)] = scripts;
+    write[config::key(JsonKey::RPGMakerScripts)] = scripts;
 
     nlohmann::json ignorePictures = nlohmann::json::array();
-    write[config::key(config::JsonKey::IgnorePictures)] = ignorePictures;
+    write[config::key(JsonKey::IgnorePictures)] = ignorePictures;
 
-    root[config::key(config::JsonKey::Write)] = write;
+    root[config::key(JsonKey::Write)] = write;
 
-    root[config::key(config::JsonKey::PackingInputDir)] = "";
-    root[config::key(config::JsonKey::PackingEnablePerLang)] = false;
-    root[config::key(config::JsonKey::PackingPerLangOutputDir)] = "";
+    root[config::key(JsonKey::PackingInputDir)] = "";
+    root[config::key(JsonKey::PackingEnablePerLang)] = false;
+    root[config::key(JsonKey::PackingPerLangOutputDir)] = "";
 
     return root.dump(4);
 }

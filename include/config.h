@@ -2,6 +2,7 @@
 #include <filesystem>
 
 #include "utility.hpp"
+#include "config_keys.h"
 
 namespace langscore
 {
@@ -35,13 +36,59 @@ namespace langscore
 			FontData font;
 		};
 
+
+
+        struct ValidateTextInfo {
+            ValidateTextMode mode = ValidateTextMode::Ignore;
+            int width = 0;
+            int count = 0;
+
+            bool operator==(const ValidateTextInfo& infos) const noexcept {
+                return !(this->operator!=(infos));
+            }
+            bool operator!=(const ValidateTextInfo& infos) const noexcept
+            {
+                if(infos.mode != this->mode) { return true; }
+                switch(this->mode) {
+                case ValidateTextMode::Ignore:
+                    return false;
+                case ValidateTextMode::TextCount:
+                    return infos.count != this->count;
+                case ValidateTextMode::TextWidth:
+                    return infos.width != this->width;
+                }
+                return false;
+            }
+
+            int value() const noexcept {
+                if(this->mode == ValidateTextMode::TextCount) {
+                    return this->count;
+                }
+                else if(this->mode == ValidateTextMode::TextWidth) {
+                    return this->width;
+                }
+                return 0;
+            }
+            void setValue(int v) noexcept {
+                if(this->mode == ValidateTextMode::TextCount) {
+                    this->count = v;
+                }
+                else if(this->mode == ValidateTextMode::TextWidth) {
+                    this->width = v;
+                }
+            }
+        };
+
+        using TextValidationLangMap = std::map<std::u8string, ValidateTextInfo>;
+        using TextValidateTypeMap = std::map<std::u8string, TextValidationLangMap>;
+
+
 		struct BasicData
 		{
 			std::u8string filename = u8"";
 			bool ignore = false;
 			char writeMode = 0;
-            char textValidateMode = 0;
-            std::vector<std::uint16_t> textValidateSize = {};
+            TextValidateTypeMap textValidateInfos = {};
 		};
 
 		struct ScriptData : public BasicData
@@ -59,56 +106,6 @@ namespace langscore
 			std::vector<TextPoint> texts;
 		};
 
-		enum class JsonKey : size_t
-		{
-			Languages,
-			LanguageName,
-			Enable,
-			Disable,
-			FontName,
-			FontSize,
-			FontPath,
-			Global,
-			Local,
-			Project,
-			Analyze,
-			Write,
-			Name,
-			Ignore,
-			IgnorePoints,
-			Row,
-			Col,
-			WriteType,
-			Text,
-			IgnorePictures,
-			DefaultLanguage,
-			TmpDir,
-			UsCustomFuncComment,
-			ExportDirectory,
-			ExportByLang,
-			RPGMakerOutputPath,
-			RPGMakerBasicData,
-			RPGMakerScripts,
-			OverwriteLangscore,
-			OverwriteLangscoreCustom,
-			PackingInputDir,
-            PackingEnablePerLang,
-            PackingPerLangOutputDir,
-
-			ApplicationVersion,
-			ConfigVersion,
-			AttachLsTransType,
-			ExportAllScriptStrings,
-            EnableLanguagePatch,
-            IsFirstExported,        
-
-            Validate,
-            ValidateTextMode,
-            ValidateSizeList, //文字幅検証用。(アイコン無し, アイコン有り, その他, ...)
-            ValidateCSVList,
-
-			NumKeys,
-		};
 
 		static const char* key(JsonKey key);
 

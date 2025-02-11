@@ -6,6 +6,7 @@
 #include "config.h"
 #include "config.h"
 #include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -13,59 +14,6 @@
 using namespace langscore;
 using namespace std::literals::string_literals;
 
-#define MAKE_KEYVALUE(k) {config::JsonKey::k, #k}
-
-static std::map<config::JsonKey, const char*> jsonKeys = {
-	MAKE_KEYVALUE(Languages),
-	MAKE_KEYVALUE(LanguageName),
-	MAKE_KEYVALUE(Enable),
-	MAKE_KEYVALUE(Disable),
-	MAKE_KEYVALUE(FontName),
-	MAKE_KEYVALUE(FontSize),
-	MAKE_KEYVALUE(FontPath),
-	MAKE_KEYVALUE(Global),
-	MAKE_KEYVALUE(Local),
-	MAKE_KEYVALUE(Project),
-	MAKE_KEYVALUE(Analyze),
-	MAKE_KEYVALUE(Write),
-	MAKE_KEYVALUE(Name),
-	MAKE_KEYVALUE(Ignore),
-	MAKE_KEYVALUE(IgnorePoints),
-	MAKE_KEYVALUE(Row),
-	MAKE_KEYVALUE(Col),
-	MAKE_KEYVALUE(WriteType),
-	MAKE_KEYVALUE(Text),
-	MAKE_KEYVALUE(IgnorePictures),
-	MAKE_KEYVALUE(DefaultLanguage),
-	MAKE_KEYVALUE(TmpDir),
-	MAKE_KEYVALUE(UsCustomFuncComment),
-	MAKE_KEYVALUE(ExportDirectory),
-	MAKE_KEYVALUE(ExportByLang),
-	MAKE_KEYVALUE(RPGMakerOutputPath),
-	MAKE_KEYVALUE(RPGMakerBasicData),
-	MAKE_KEYVALUE(RPGMakerScripts),
-	MAKE_KEYVALUE(OverwriteLangscore),
-	MAKE_KEYVALUE(OverwriteLangscoreCustom),
-	MAKE_KEYVALUE(PackingInputDir),
-    MAKE_KEYVALUE(PackingEnablePerLang),
-    MAKE_KEYVALUE(PackingPerLangOutputDir),
-	MAKE_KEYVALUE(ApplicationVersion),
-	MAKE_KEYVALUE(ConfigVersion),
-	MAKE_KEYVALUE(AttachLsTransType),
-	MAKE_KEYVALUE(ExportAllScriptStrings),
-	MAKE_KEYVALUE(EnableLanguagePatch),
-	MAKE_KEYVALUE(IsFirstExported),
-	MAKE_KEYVALUE(Validate),
-	MAKE_KEYVALUE(ValidateTextMode),
-	MAKE_KEYVALUE(ValidateSizeList),
-	MAKE_KEYVALUE(ValidateCSVList)
-};
-
-const char* config::key(JsonKey key)
-{
-	if(jsonKeys.find(key) == jsonKeys.end()){ return nullptr; }
-	return jsonKeys[key];
-}
 
 class config::Impl
 {
@@ -124,6 +72,11 @@ public:
 std::filesystem::path config::Impl::configPath = "";
 nlohmann::json config::Impl::json;
 
+
+const char* langscore::config::key(JsonKey key)
+{
+    return configKey(key);
+}
 
 void langscore::config::attachConfigFile(std::filesystem::path path){
 	Impl::configPath = std::move(path);
@@ -351,22 +304,38 @@ std::vector<config::BasicData> langscore::config::rpgMakerBasicData()
 	{
         auto& script = s.value();
 
-        auto& sizeListlistData = script[key(JsonKey::ValidateSizeList)];
-        std::vector<std::uint16_t> sizeList;
-        for(auto s = sizeListlistData.begin(); s != sizeListlistData.end(); ++s) {
-            sizeList.emplace_back(pImpl->get(s.value(), 0));
-        }
 
-        std::sort(sizeList.begin(), sizeList.end());
-        //0ÇçÌèú
-        sizeList.erase(std::remove(sizeList.begin(), sizeList.end(), 0), sizeList.end());
+        TextValidateTypeMap validateTextInfo;
+        if(script.find(key(JsonKey::ValidateTextCategory)) != script.end()) 
+        {
+            const auto& infos = script[key(JsonKey::ValidateTextCategory)];
+            for (auto validateItr = infos.begin(); validateItr != infos.end(); ++validateItr)
+            {
+                auto validateInfoObj = validateItr.value();
+                std::string name = validateInfoObj[key(JsonKey::Name)];
+                TextValidationLangMap langMap;
+                for(auto& langEntry : validateInfoObj.items()) 
+                {
+                    if(langEntry.key() == key(JsonKey::Name)) {
+                        continue;
+                    }
+                    auto& langInfo = langEntry.value();
+                    config::ValidateTextInfo infosTemp;
+                    infosTemp.setValue(langInfo[key(JsonKey::ValidateTextMode)]);
+                    auto& sizeList = langInfo[key(JsonKey::ValidateSizeList)];
+                    infosTemp.width = sizeList[key(JsonKey::ValidateTextWidth)];
+                    infosTemp.count = sizeList[key(JsonKey::ValidateTextLength)];
+                    langMap[utility::cnvStr<std::u8string>(langEntry.key())] = std::move(infosTemp);
+                }
+                validateTextInfo[utility::cnvStr<std::u8string>(name)] = std::move(langMap);
+            }
+        }
 
 		BasicData data = {
 			utility::cnvStr<std::u8string>(pImpl->get(script[key(JsonKey::Name)], ""s)),
 			pImpl->get(script[key(JsonKey::Ignore)], false),
             0,	//writeMode
-            pImpl->get(script[key(JsonKey::ValidateTextMode)], 0),  //textValidateMode
-            std::move(sizeList)  //textValidateSize
+            std::move(validateTextInfo)  //textValidateSize
 		};
 		if(data.filename.empty() == false){
 			result.emplace_back(std::move(data));
@@ -387,9 +356,7 @@ std::vector<config::ScriptData> langscore::config::rpgMakerScripts()
 			utility::cnvStr<std::u8string>(pImpl->get(script[key(JsonKey::Name)], ""s)),
 			pImpl->get(script[key(JsonKey::Ignore)], false),
             0,	//writeMode,
-            0,  //textValidateMode
             {}, //textValidateSize
-			{}
 		};
 		auto& ignorePoints = script[key(JsonKey::IgnorePoints)];
 		for(auto i = ignorePoints.begin(); i != ignorePoints.end(); ++i){

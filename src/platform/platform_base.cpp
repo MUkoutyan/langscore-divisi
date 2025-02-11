@@ -339,14 +339,12 @@ bool platform_base::validateTranslateFileList(std::vector<ValidateFileInfo> csvP
         }
 
         auto& texts = csvReader.currentTexts();
+        //TODO: ここでanalyze側のcsvを参照して、textTypeを取得しマージする。
+
+
         result &= validateTranslateList(texts, _path);
 
-        if(fileInfo.textMode == config::ValidateTextMode::TextCount) {
-            result &= validateTextCount(std::move(texts), fileInfo.textValidateSize, std::move(_path));
-        }
-        else if(fileInfo.textMode == config::ValidateTextMode::TextWidth) {
-            result &= validateTextWidth(std::move(texts), fileInfo.textValidateSize, std::move(_path));
-        }
+        result &= validateTexts(std::move(texts), fileInfo.textValidateInfos, std::move(_path));
     }
     return result;
 }
@@ -511,7 +509,7 @@ std::u8string langscore::platform_base::convertDisplayTexts(std::u8string origin
     return text;
 }
 
-bool langscore::platform_base::validateTextCount(std::vector<TranslateText> translateList, std::vector<std::uint16_t> detectCountList, std::filesystem::path path) const
+bool langscore::platform_base::validateTexts(std::vector<TranslateText> translateList, const config::TextValidateTypeMap& validateInfoList, std::filesystem::path path) const
 {
     //const auto OutputError = [&path](auto type, auto errorSummary, auto lang, auto str, size_t row) {
     //    auto result = utility::join({type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row)}, ","s);
@@ -525,108 +523,89 @@ bool langscore::platform_base::validateTextCount(std::vector<TranslateText> tran
         langMap[utility::cnvStr<std::u8string>(lang.name)] = lang;
     }
 
-    if(detectCountList.empty()) {
+    if(validateInfoList.empty()) {
         return true;
     }
+
+    auto fontDir = this->getGameProjectFontDirectory();
     size_t row = 0;
     for(auto& translate : translateList)
     {
-        for(auto& pair : translate.translates)
-        {
-            auto& lang = langMap[pair.first];
-
-            auto texts = utility::split(pair.second, u8"\n"s);
-            int maxNumTexts = 0;
-            for(auto&& text : texts)
-            {
-                auto removed_esc_text = convertDisplayTexts(std::move(text));
-                //アイコンサイズを考慮する。
-                //文字の拡大・縮小時のサイズは考慮しない。(width側では考慮する)
-                //アイコンサイズは1文字としてカウントする？
-
-                auto textStr = utility::cnvStr<std::string>(std::move(removed_esc_text));
-                auto icuStr = icu::UnicodeString::fromUTF8(textStr.c_str());
-                icu::StringCharacterIterator it(icuStr);
-                int count = 0;
-                for(UChar32 cp = it.first32(); it.hasNext(); cp = it.next()) {
-                    count++;
-                }
-                if(maxNumTexts < count) {
-                    maxNumTexts = count;
-                }
-            }
-
-            //if(translate.hasFaceGraphic) {
-            //    if(2 <= detectCountList.size() && detectCountList[1] < maxNumTexts) {
-            //        OutputError(path, ValidateErrorType::Warning, OverTextCount, utility::cnvStr<std::string>(pair.first), utility::cnvStr<std::string>(pair.second), row);
-            //    }
-            //}
-            //else {
-            //    if(1 <= detectCountList.size() && detectCountList[0] < maxNumTexts) {
-            //        OutputError(path, ValidateErrorType::Warning, OverTextCount, utility::cnvStr<std::string>(pair.first), utility::cnvStr<std::string>(pair.second), row);
-            //    }
-            //}
+        if(validateInfoList.find(translate.textType) == validateInfoList.end()) {
+            continue;
         }
-        row++;
-    }
-    return true;
-}
 
-bool langscore::platform_base::validateTextWidth(std::vector<TranslateText> texts, std::vector<std::uint16_t> detectWidthList, std::filesystem::path path) const
-{
-    //const auto OutputError = [&path](auto type, auto errorSummary, auto width, auto str, size_t row) {
-    //    auto result = utility::join({type, std::to_string(errorSummary), width, str, path.string(), std::to_string(row)}, ","s);
-    //    std::cout << result << std::endl;
-    //};
+        const auto& validateLangMap = validateInfoList.at(translate.textType);
 
-    config config;
-    auto langs = config.languages();
-    std::map<std::u8string, config::Language> langMap;
-    for(auto& lang : langs)
-    {
-        langMap[utility::cnvStr<std::u8string>(lang.name)] = lang;
-    }
-
-    if(detectWidthList.empty()) {
-        return true;
-    }
-    auto gameProjDir = fs::absolute(fs::path(config.langscoreProjectPath()) / config.gameProjectPath());
-    auto fontDir = this->getGameProjectFontDirectory();
-    size_t row = 0;
-    for(auto& text : texts)
-    {
-        for(auto& pair : text.translates)
+        for(const auto& [langText, textLines] : translate.translates)
         {
-            const auto& lang = langMap[pair.first];
-            auto fontName = lang.font.file.filename();
-            auto textInfos = measureTextWidth(convertDisplayTexts(pair.second), (fontDir / fontName).u8string(), lang.font.size);
-            if(textInfos.empty()) {
+            if(validateLangMap.find(langText) == validateLangMap.end()) {
                 continue;
             }
-            //textInfosの末尾から検索し、detectWidthListの値を超えるものがあればエラーを出力する。
-            auto width_result = std::max_element(textInfos.begin(), textInfos.end(), [](auto& a, auto& b) { return a.second.right < b.second.right; });
-            int width = 0;
-            if(width_result != textInfos.end()) {
-                width = width_result->second.right;
+
+            auto& lang = langMap[langText];
+            const auto& validateInfo = validateLangMap.at(langText);
+            if(validateInfo.mode == config::ValidateTextMode::Ignore) {
+                continue;
+            }
+            else if(validateInfo.mode == config::ValidateTextMode::TextCount)
+            {
+                auto texts = utility::split(textLines, u8"\n"s);
+                int maxNumTexts = 0;
+                for(auto&& text : texts)
+                {
+                    auto removed_esc_text = convertDisplayTexts(std::move(text));
+                    //アイコンサイズを考慮する。
+                    //文字の拡大・縮小時のサイズは考慮しない。(width側では考慮する)
+                    //アイコンサイズは1文字としてカウントする？
+
+                    auto textStr = utility::cnvStr<std::string>(std::move(removed_esc_text));
+                    auto icuStr = icu::UnicodeString::fromUTF8(textStr.c_str());
+                    icu::StringCharacterIterator it(icuStr);
+                    int count = 0;
+                    for(UChar32 cp = it.first32(); it.hasNext(); cp = it.next()) {
+                        count++;
+                    }
+                    if(maxNumTexts < count) {
+                        maxNumTexts = count;
+                    }
+                }
+
+                if(validateInfo.width < maxNumTexts) {
+                    OutputErrorWithWidth(path, ValidateErrorType::Warning, OverTextCount, ""s, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), maxNumTexts, row);
+                }
+                else {
+                    //該当のテキストタイプが見つからない。更新忘れ？エラーを出す。
+                }
+            }
+            else if(validateInfo.mode == config::ValidateTextMode::TextWidth)
+            {
+                auto fontName = lang.font.file.filename();
+                auto textInfos = measureTextWidth(convertDisplayTexts(textLines), (fontDir / fontName).u8string(), lang.font.size);
+                if(textInfos.empty()) {
+                    continue;
+                }
+                //textInfosの末尾から検索し、detectWidthListの値を超えるものがあればエラーを出力する。
+                auto width_result = std::max_element(textInfos.begin(), textInfos.end(), [](auto& a, auto& b) { return a.second.right < b.second.right; });
+                int width = 0;
+                if(width_result != textInfos.end()) {
+                    width = width_result->second.right;
+                }
+
+                if(validateInfo.count < width) {
+                    OutputErrorWithWidth(path, ValidateErrorType::Warning, PartiallyClipped, ""s, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), width, row);
+                }
+                else {
+                    //該当のテキストタイプが見つからない。更新忘れ？エラーを出す。
+                }
             }
             
-            //if(text.hasFaceGraphic) {
-            //    if(2 <= detectWidthList.size() && detectWidthList[1] < width) {
-            //        OutputErrorWithWidth(path, ValidateErrorType::Warning, PartiallyClipped, ""s, utility::cnvStr<std::string>(csvwriter::convertCsvText(pair.second)), width, row);
-            //    }
-            //}
-            //else {
-            //    if(1 <= detectWidthList.size() && detectWidthList[0] < width) {
-            //        OutputErrorWithWidth(path, ValidateErrorType::Warning, PartiallyClipped, ""s, utility::cnvStr<std::string>(csvwriter::convertCsvText(pair.second)), width, row);
-            //    }
-            //}
+
         }
         row++;
     }
-
     return true;
 }
-
 
 //freeTypeを使用して、文字の横幅を計測する。
 std::vector<std::pair<std::u8string, platform_base::TextHorizontalLength>> platform_base::measureTextWidth(std::u8string baseText, std::u8string fontPath, int fontSize) const

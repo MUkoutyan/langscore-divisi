@@ -42,8 +42,7 @@ namespace langscore
 
         struct ValidateFileInfo {
             std::filesystem::path csvPath;
-            config::ValidateTextMode textMode;
-            std::vector<std::uint16_t> textValidateSize;
+            config::TextValidateTypeMap textValidateInfos;
         };
 
         platform_base() :appPath(""), invoker(config{}.projectType()) {}
@@ -119,8 +118,7 @@ namespace langscore
 		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;
 		std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> findRPGMakerEscChars(std::u8string text) const;
         std::u8string convertDisplayTexts(std::u8string text) const;
-        bool validateTextWidth(std::vector<TranslateText> texts, std::vector<std::uint16_t> validateSizeList, std::filesystem::path path) const;
-        bool validateTextCount(std::vector<TranslateText> texts, std::vector<std::uint16_t> validateSizeList, std::filesystem::path path) const;
+        bool validateTexts(std::vector<TranslateText> texts, const config::TextValidateTypeMap& validateSizeList, std::filesystem::path path) const;
 
         //テキストの幅を計測する。戻り値:{textの1文字, {左座標, 右の座標}}
         struct TextHorizontalLength { int left; int right; };

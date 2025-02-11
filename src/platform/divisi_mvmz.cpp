@@ -400,9 +400,8 @@ ErrorStatus divisi_mvmz::validate()
 
         csvPathList.emplace_back(ValidateFileInfo{
             f.path(),
-            static_cast<config::ValidateTextMode>(result->textValidateMode),
-            result->textValidateSize
-            });
+            result->textValidateInfos
+        });
     }
 
     //整合性チェック
