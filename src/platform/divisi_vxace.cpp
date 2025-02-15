@@ -886,7 +886,7 @@ void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSV
 {
     if(list.empty()){ return; }
     //アクター名の変更・二つ名の変更　の抽出
-    utility::u8stringlist extend_names;
+    std::vector<TranslateText> extend_names;
     fs::path actor_path;
     const std::array<int, 2> targetCode = {320, 324};
     for(auto path : list)
@@ -905,10 +905,10 @@ void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSV
             if(std::find(targetCode.cbegin(), targetCode.cend(), text.code) == targetCode.cend()){
                 continue;
             }
-            extend_names.emplace_back(text.original);
+            extend_names.emplace_back(text);
         }
     }
-    std::sort(extend_names.begin(), extend_names.end());
+    std::sort(extend_names.begin(), extend_names.end(), [](const auto& x, const auto& y) { return x.original < y.original; });
     extend_names.erase(std::unique(extend_names.begin(), extend_names.end()), extend_names.end());
 
     auto actor_filename = actor_path.filename().replace_extension(".csv");
@@ -919,19 +919,16 @@ void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSV
 
         auto plain_csv = plaincsvreader{actor_csv_filepath.replace_extension(".csv")}.getPlainCsvTexts();
 
-        for(const auto& name : extend_names)
+        for(const auto& transText : extend_names)
         {
             auto result = std::find_if(plain_csv.cbegin(), plain_csv.cend(), [&](const auto& row){
-                return row[0] == name;
+                return row[0] == transText.original;
             });
             if(result != plain_csv.cend()){ continue; }
 
-            utility::u8stringlist row;
-            row.reserve(this->supportLangs.size() + 1);
-            row.emplace_back(name);
-            for(const auto& l : this->supportLangs){
-                row.emplace_back((l == this->defaultLanguage) ? name : u8""s);
-            }
+            utility::u8stringlist row = {
+                transText.original, transText.nameType
+            };
             plain_csv.emplace_back(std::move(row));
 
         }

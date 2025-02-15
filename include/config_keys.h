@@ -53,6 +53,7 @@ namespace langscore
         ValidateTextWidth,
         ValidateCSVList,
         ValidateTextCategory,
+        ControlCharList,
 
         NumKeys,
     };
@@ -106,7 +107,8 @@ namespace langscore
         MAKE_KEYVALUE(ValidateTextLength),
         MAKE_KEYVALUE(ValidateTextWidth),
         MAKE_KEYVALUE(ValidateCSVList),
-        MAKE_KEYVALUE(ValidateTextCategory)
+        MAKE_KEYVALUE(ValidateTextCategory),
+        MAKE_KEYVALUE(ControlCharList)
     };
 
     static const char* configKey(JsonKey key)

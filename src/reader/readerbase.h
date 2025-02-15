@@ -21,9 +21,9 @@ namespace langscore
 		std::vector<TranslateText>&& currentTexts() && { return std::move(texts); }
 		ScriptPackage&  curerntScriptTransMap() & { return scriptTranslatesMap; }
 		ScriptPackage&& curerntScriptTransMap() && { return std::move(scriptTranslatesMap); }
-		const std::vector<std::u8string>& curerntUseLangList() & { return useLangList; }
+		const std::vector<std::u8string>& curerntUseLangList() const & { return useLangList; }
 		std::vector<std::u8string>&& curerntUseLangList() && { return std::move(useLangList); }
-		const std::vector<PluginInfo>& curerntPluginInfoList() & { return pluginInfoList; }
+		const std::vector<PluginInfo>& curerntPluginInfoList() const & { return pluginInfoList; }
 		std::vector<PluginInfo>&& curerntPluginInfoList() && { return std::move(pluginInfoList); }
 
 	protected:

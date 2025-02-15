@@ -46,7 +46,7 @@ namespace langscore
 			{u8"RPG::Map",    {u8"@battleback1_name", u8"@battleback2_name", u8"@parallax_name"}},
 			{u8"RPG::Troop",  {u8"@name"}},
 			{u8"RPG::Actor",  {u8"@face_name"}},
-			{ u8"RPG::System",    {u8"@battleback1_name", u8"@battleback2_name"} },
+			{u8"RPG::System",    {u8"@battleback1_name", u8"@battleback2_name"} },
 		};
 
 		void addText(const nlohmann::json& json, int code = 0)
@@ -193,12 +193,6 @@ namespace langscore
                             addText(*s, code);
                         }
                     }
-                    else if(parentClass == u8"RPG::State")
-                    {
-                        if(arrayinKey == u8"@message2") {
-
-                        }
-                    }
 				}
 			}
 		}
@@ -231,6 +225,29 @@ namespace langscore
                             }
                             else {
                                 textTypeForMaker = TranslateText::messageWithGraphic;
+                            }
+                            break;
+                        }
+                    }
+                }
+                else if(code == 320)
+                {
+                    for(auto s = root.begin(); s != root.end(); ++s)
+                    {
+                        if(s.key() != "@parameters") {
+                            continue;
+                        }
+                        nlohmann::json arrayData;
+                        s->get_to(arrayData);
+                        if(1 < arrayData.size()) {
+                            std::string actorNameText;
+                            arrayData[1].get_to(actorNameText);
+
+                            if(actorNameText.empty()) {
+                                textTypeForMaker = TranslateText::other;
+                            }
+                            else {
+                                textTypeForMaker = TranslateText::nameType;
                             }
                             break;
                         }

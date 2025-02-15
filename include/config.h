@@ -139,6 +139,7 @@ namespace langscore
 		utility::u8stringlist ignorePictures();
 		utility::u8stringlist globalFontList();
 		utility::u8stringlist localFontList();
+        utility::u8stringlist extendControlCharList();
         char globalWriteMode();
         bool enableLanguagePatch();
 

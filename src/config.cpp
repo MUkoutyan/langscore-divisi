@@ -7,6 +7,7 @@
 #include "config.h"
 #include "config.h"
 #include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -321,7 +322,7 @@ std::vector<config::BasicData> langscore::config::rpgMakerBasicData()
                     }
                     auto& langInfo = langEntry.value();
                     config::ValidateTextInfo infosTemp;
-                    infosTemp.setValue(langInfo[key(JsonKey::ValidateTextMode)]);
+                    infosTemp.mode = static_cast<ValidateTextMode>(pImpl->get(langInfo[key(JsonKey::ValidateTextMode)], 0));
                     auto& sizeList = langInfo[key(JsonKey::ValidateSizeList)];
                     infosTemp.width = sizeList[key(JsonKey::ValidateTextWidth)];
                     infosTemp.count = sizeList[key(JsonKey::ValidateTextLength)];
@@ -409,6 +410,17 @@ utility::u8stringlist langscore::config::localFontList()
 		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
 	}
 	return result;
+}
+
+utility::u8stringlist langscore::config::extendControlCharList()
+{
+    auto& validate = pImpl->json[key(JsonKey::Validate)];
+    auto& controlChars = validate[key(JsonKey::ControlCharList)];
+    utility::u8stringlist result;
+    for(auto s = controlChars.begin(); s != controlChars.end(); ++s) {
+        result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
+    }
+    return result;
 }
 
 char langscore::config::globalWriteMode()

@@ -3,6 +3,9 @@
 #include "writer/uniquerowcsvwriter.hpp"
 #include "reader/speciftranstext.hpp"
 #include <iostream>
+#include <map>
+#include <set>
+#include <future>
 
 #include <unicode/utypes.h>
 #include <unicode/unistr.h>
@@ -268,88 +271,102 @@ bool FindNewlineCR(fs::path path)
 
 bool platform_base::validateTranslateFileList(std::vector<ValidateFileInfo> csvPathList) const
 {
-    //const auto OutputError = [](auto path, auto type, auto errorSummary, auto lang, auto str, size_t row) {
-    //    auto result = utility::join({type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row)}, ","s);
-    //    std::cout << result << std::endl;
-    //};
-    bool result = true;
     config config;
+    bool result = true;
+    
     for(auto& fileInfo : csvPathList)
     {
-        const auto& _path = fileInfo.csvPath;
+        auto _path = fileInfo.csvPath;
         const auto fileName = _path.filename().stem().string();
-        //マップは\r\nだとバグるのでチェックする。
-        if(fileName.find("Map") != std::string::npos && FindNewlineCR(_path)) {
-            OutputError(_path, ValidateErrorType::Warning, IncludeCR, ""s, ""s, 0);
-            continue;
-        }
+        auto wroteCsvReader = csvreader{this->supportLangs, {_path}};
+        
+        result &= validateCsvFormat(fileInfo, wroteCsvReader);
 
-        auto csvReader = csvreader{this->supportLangs, {_path}};
+        auto translateTexts = std::move(wroteCsvReader).currentTexts();
 
-        auto csvUseLangs = csvReader.curerntUseLangList();
-        if(this->supportLangs.size() != csvUseLangs.size()) {
-            OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
-        }
-        else {
-            auto lang = this->supportLangs;
-            std::sort(lang.begin(), lang.end());
-            std::sort(csvUseLangs.begin(), csvUseLangs.end());
-            if(false == std::equal(lang.begin(), lang.end(), csvUseLangs.begin(), csvUseLangs.end())) {
-                OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
-            }
-        }
+        //ツクールのテキストで使用する制御文字を検出。
+        //[]で括る必要のある制御文字と、単体で完結する制御文字の二種類。
+        auto validateTextInfoList = convertValidateTextInfo(fileName, translateTexts);
 
+        result &= validateTextFormat(validateTextInfoList, _path);
+
+
+        if(fileInfo.textValidateInfos.empty() == false)
         {
-            //csvが正しいかどうかのチェック。
-            //currentTextsにすると不正な状態でも空として保持されてしまうため、
-            //plaincsvreaderを使用する。
-            auto plainTexts = plaincsvreader{_path}.getPlainCsvTexts();
-            auto header = plainTexts.front();
-            plainTexts.erase(plainTexts.begin());
-            if(header.size() != csvUseLangs.size() + 1) {
-                OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
-                result = false;
-            }
-
-            int rowCount = 0;
-            for(auto& row : plainTexts)
-            {
-                if(rowCount == plainTexts.size() - 1) {
-                    //末行の末列は配列に追加されないため、-1までを許容する。
-                    if(row.size() < header.size() - 1) {
-                        auto csvText = csvwriter::convertCsvText(row[0]);
-                        auto text = row.empty() == false ? utility::cnvStr<std::string>(csvText) : ""s;
-                        OutputError(_path, ValidateErrorType::Error, InvalidCSV, ""s, text, rowCount);
-                        result = false;
-                        break;
-                    }
-                }
-                else
-                {
-                    if(row.size() != header.size()) {
-                        auto csvText = csvwriter::convertCsvText(row[0]);
-                        auto text = row.empty() == false ? utility::cnvStr<std::string>(csvText) : ""s;
-                        OutputError(_path, ValidateErrorType::Error, InvalidCSV, ""s, text, rowCount);
-                        result = false;
-                        break;
-                    }
-                }
-                rowCount++;
-            }
+            result &= validateTexts(validateTextInfoList, fileInfo.textValidateInfos, std::move(_path));
         }
-
-        auto& texts = csvReader.currentTexts();
-        //TODO: ここでanalyze側のcsvを参照して、textTypeを取得しマージする。
-
-
-        result &= validateTranslateList(texts, _path);
-
-        result &= validateTexts(std::move(texts), fileInfo.textValidateInfos, std::move(_path));
     }
     return result;
 }
 
-bool platform_base::validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const
+bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, const csvreader& wroteCsvReader) const
+{
+    bool result = true;
+    const auto& _path = fileInfo.csvPath;
+    const auto fileName = _path.filename().stem().string();
+    //マップは\r\nだとバグるのでチェックする。
+    if(fileName.find("Map") != std::string::npos && FindNewlineCR(_path)) {
+        OutputError(_path, ValidateErrorType::Warning, IncludeCR, ""s, ""s, 0);
+        return false;
+    }
+
+
+    auto csvUseLangs = wroteCsvReader.curerntUseLangList();
+    if(this->supportLangs.size() != csvUseLangs.size()) {
+        OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
+    }
+    else {
+        auto lang = this->supportLangs;
+        std::sort(lang.begin(), lang.end());
+        std::sort(csvUseLangs.begin(), csvUseLangs.end());
+        if(false == std::equal(lang.begin(), lang.end(), csvUseLangs.begin(), csvUseLangs.end())) {
+            OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
+        }
+    }
+
+    {
+        //csvが正しいかどうかのチェック。
+        //currentTextsにすると不正な状態でも空として保持されてしまうため、
+        //plaincsvreaderを使用する。
+        auto plainTexts = plaincsvreader{_path}.getPlainCsvTexts();
+        auto header = plainTexts.front();
+        plainTexts.erase(plainTexts.begin());
+        if(header.size() != csvUseLangs.size() + 1) {
+            OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
+            result = false;
+        }
+
+        int rowCount = 0;
+        for(auto& row : plainTexts)
+        {
+            if(rowCount == plainTexts.size() - 1) {
+                //末行の末列は配列に追加されないため、-1までを許容する。
+                if(row.size() < header.size() - 1) {
+                    auto csvText = csvwriter::convertCsvText(row[0]);
+                    auto text = row.empty() == false ? utility::cnvStr<std::string>(csvText) : ""s;
+                    OutputError(_path, ValidateErrorType::Error, InvalidCSV, ""s, text, rowCount);
+                    result = false;
+                    break;
+                }
+            }
+            else
+            {
+                if(row.size() != header.size()) {
+                    auto csvText = csvwriter::convertCsvText(row[0]);
+                    auto text = row.empty() == false ? utility::cnvStr<std::string>(csvText) : ""s;
+                    OutputError(_path, ValidateErrorType::Error, InvalidCSV, ""s, text, rowCount);
+                    result = false;
+                    break;
+                }
+            }
+            rowCount++;
+        }
+    }
+
+    return result;
+}
+
+bool platform_base::validateTextFormat(const std::vector<ValidateTextInfo>& textsInfos, std::filesystem::path path) const
 {
     //const auto OutputError = [&path](auto type, auto errorSummary, auto lang, auto str, size_t row) {
     //    auto result = utility::join({type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row)}, ","s);
@@ -357,45 +374,45 @@ bool platform_base::validateTranslateList(std::vector<TranslateText> texts, std:
     //};
     size_t row = 1;
     bool result = true;
-    for(auto& text : texts)
+    for(auto& textInfo : textsInfos)
     {
-        if(text.original.empty()) {
+        //原文が空の場合はエラー(かなりやばい)
+        if(textInfo.origin.original.empty()) {
             OutputError(path, ValidateErrorType::Error, EmptyCol, "original"s, ""s, row);
             result = false;
         }
-        //ツクールのテキストで使用する制御文字を検出。
-        //[]で括る必要のある制御文字と、単体で完結する制御文字の二種類。
-        auto [withValEscList, EscList] = findRPGMakerEscChars(text.original);
 
         std::vector<std::string> emptyTextLangs;
-        for(auto& trans : text.translates)
+        for(const auto& [lang, translatedText] : textInfo.origin.translates)
         {
-            const auto& translatedText = trans.second;
             if(translatedText.empty()) {
-                emptyTextLangs.emplace_back(utility::cnvStr<std::string>(trans.first));
+                emptyTextLangs.emplace_back(utility::cnvStr<std::string>(lang));
                 result = false;
                 continue;
             }
 
             //制御文字の検出
             auto escStr = ""s;
-            for(auto& esc : withValEscList) {
+            for(const auto& esc : textInfo.escWithValueChars) {
                 if(translatedText.find(esc) == translatedText.npos) {
                     escStr += utility::cnvStr<std::string>(esc) + " "s;
                     result = false;
                 }
             }
-            for(auto& esc : EscList) {
+            for(const auto& esc : textInfo.escChars) {
                 if(translatedText.find(esc) == translatedText.npos) {
                     escStr += utility::cnvStr<std::string>(esc) + " "s;
                     result = false;
                 }
             }
 
+            //原文と比較したとき、制御文字が不足している文章はエラー
             if(escStr.empty() == false) {
-                OutputError(path, ValidateErrorType::Error, NotFoundEsc, utility::cnvStr<std::string>(trans.first), escStr, row);
+                OutputError(path, ValidateErrorType::Error, NotFoundEsc, utility::cnvStr<std::string>(lang), escStr, row);
             }
         }
+
+        //翻訳文が空の言語がある場合は警告
         if(emptyTextLangs.empty() == false) {
             OutputError(path, ValidateErrorType::Warning, EmptyCol, utility::join(emptyTextLangs, " "s), ""s, row);
         }
@@ -410,9 +427,9 @@ bool platform_base::validateTranslateList(std::vector<TranslateText> texts, std:
 
     //Mapの場合は改行のミスを検出する
     bool exit = false;
-    for(auto& text : texts)
+    for(const auto& infos : textsInfos)
     {
-        for(auto& trans : text.translates)
+        for(const auto& trans : infos.origin.translates)
         {
             //文章毎に出力するメリットをあまり感じないので、ファイル単位で出力する。
             if(trans.second.find(u8"\r\n") != std::u8string::npos) {
@@ -427,6 +444,91 @@ bool platform_base::validateTranslateList(std::vector<TranslateText> texts, std:
     return result;
 }
 
+// エスケープ文字を削除する関数
+void removeEscapeCharacters(std::u8string& text, const std::vector<std::u8string>& escWithValueChars, const std::vector<std::u8string>& escChars) 
+{
+    for(const auto& esc : escWithValueChars) {
+        auto pos = text.find(esc);
+        while(pos != std::u8string::npos) {
+            auto endPos = text.find(u8']', pos);
+            if(endPos != std::u8string::npos) {
+                endPos++;
+                text.erase(pos, endPos - pos);
+            }
+            else {
+                break;
+            }
+            pos = text.find(esc, pos);
+        }
+    }
+
+    for(const auto& esc : escChars) {
+        auto pos = text.find(esc);
+        while(pos != std::u8string::npos) {
+            text.erase(pos, esc.length());
+            pos = text.find(esc, pos);
+        }
+    }
+}
+
+std::vector<platform_base::ValidateTextInfo> platform_base::convertValidateTextInfo(std::string fileName, const std::vector<TranslateText>& texts) const
+{
+    std::vector<ValidateTextInfo> resultLists;
+
+    const auto FormatText = [](const auto& text) {
+        return utility::right_trim(text, u8"\r\n"s);
+    };
+
+    config config;
+    auto analyzeDirPath = fs::path(config.langscoreAnalyzeDirectorty());
+    auto csvContents = plaincsvreader{analyzeDirPath / (fileName + ".csv")}.getPlainCsvTexts();
+    std::unordered_map<std::u8string, std::u8string> textMap;
+    if(csvContents.empty() == false) {
+        std::set<std::u8string> nameTypeList;
+        csvContents.erase(csvContents.begin()); // ヘッダーの削除
+
+        for(auto& transText : texts) {
+            textMap[FormatText(transText.original)] = u8"";
+        }
+
+        for(const auto& row : csvContents) {
+            auto it = textMap.find(FormatText(row[0]));
+            if(it != textMap.end() && row.size() > 1) {
+                it->second = row[1];
+            }
+        }
+    }
+
+    for(auto& transText : texts) 
+    {
+        ValidateTextInfo result;
+        result.origin = transText;
+
+        auto it = textMap.find(FormatText(transText.original));
+        if(it != textMap.end()) {
+            result.origin.textType = it->second;
+        }
+        if(result.origin.original.empty()) { continue; }
+
+        // エスケープ文字の検出
+        detectConstrolChar(result);
+
+        // result.escWithValueChars, result.escCharsの内容を基に
+        // result.display内の文字列から制御文字を削除する。
+        result.display.original = result.origin.original;
+        result.display.translates = result.origin.translates;
+        removeEscapeCharacters(result.display.original, result.escWithValueChars, result.escChars);
+
+        for(auto& [lang, text] : result.display.translates) {
+            removeEscapeCharacters(text, result.escWithValueChars, result.escChars);
+        }
+
+        resultLists.emplace_back(std::move(result));
+    }
+
+    return resultLists;
+}
+
 static const std::vector<std::u8string> escWithValueChars = {
     u8"\\v[", u8"\\n[", u8"\\p[", u8"\\c[", u8"\\l[", u8"\\r["
     u8"\\V[", u8"\\N[", u8"\\P[", u8"\\C[", u8"\\L[", u8"\\R["
@@ -435,13 +537,9 @@ static const std::vector<std::u8string> escChars = {
     u8"\\g", u8"\\G", u8"\\{", u8"\\}", u8"\\$", u8"\\.", u8"\\|",
     u8"\\!", u8"\\>", u8"\\<", u8"\\^", u8"\\\\"
 };
-std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> platform_base::findRPGMakerEscChars(std::u8string originalText) const
+void langscore::platform_base::detectConstrolChar(ValidateTextInfo& validateInfo) const
 {
-    std::vector<std::u8string> result1;
-    std::vector<std::u8string> result2;
-    if(originalText.empty()) { return std::forward_as_tuple(result1, result2); }
-
-    auto text = originalText;
+    auto text = validateInfo.origin.original;
     std::transform(text.begin(), text.end(), text.data(), ::tolower);
     for(const auto& c : escWithValueChars)
     {
@@ -454,67 +552,83 @@ std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> platform_base
                 break;
             }
             endPos++;
-            auto result = originalText.substr(pos, endPos - pos);
+            auto substr_result = text.substr(pos, endPos - pos);
             offset = endPos;
-            result1.emplace_back(std::move(result));
+            validateInfo.escWithValueChars.emplace_back(std::move(substr_result));
         }
     }
-    std::sort(result1.begin(), result1.end());
-    result1.erase(std::unique(result1.begin(), result1.end()), result1.end());
+    std::sort(validateInfo.escWithValueChars.begin(), validateInfo.escWithValueChars.end());
+    validateInfo.escWithValueChars.erase(std::unique(validateInfo.escWithValueChars.begin(), validateInfo.escWithValueChars.end()), validateInfo.escWithValueChars.end());
 
     for(const auto& c : escChars)
     {
         auto pos = text.find(c);
         for(; pos != text.npos; pos = text.find(c)) {
-            result2.emplace_back(originalText.substr(pos, c.length()));
+            validateInfo.escChars.emplace_back(text.substr(pos, c.length()));
             break;
         }
     }
-    std::sort(result2.begin(), result2.end());
-    result2.erase(std::unique(result2.begin(), result2.end()), result2.end());
+    std::sort(validateInfo.escChars.begin(), validateInfo.escChars.end());
+    validateInfo.escChars.erase(std::unique(validateInfo.escChars.begin(), validateInfo.escChars.end()), validateInfo.escChars.end());
 
-    return std::forward_as_tuple(result1, result2);
-}
-
-std::u8string langscore::platform_base::convertDisplayTexts(std::u8string originalText) const
-{
-    if(originalText.empty()) { return originalText; }
-
-    auto text = originalText;
-    std::transform(text.begin(), text.end(), text.data(), ::tolower);
-    for(const auto& c : escWithValueChars)
+    config config;
+    auto exCharList = config.extendControlCharList();
+    for(const auto& ctrlChar : exCharList)
     {
+        auto c = u8"\\"s + ctrlChar;
         auto pos = text.find(c);
-        auto offset = 0;
-        for(; pos != text.npos; pos = text.find(c, offset))
+        if(c.find(u8"[") != std::u8string::npos)
         {
-            auto endPos = text.find(u8']', pos);
-            if(endPos == text.npos) {
+            auto offset = 0;
+            for(; pos != text.npos; pos = text.find(c, offset))
+            {
+                auto endPos = text.find(u8']', pos);
+                if(endPos == text.npos) {
+                    break;
+                }
+                endPos++;
+                auto substr_result = text.substr(pos, endPos - pos);
+                offset = endPos;
+                validateInfo.escWithValueChars.emplace_back(std::move(substr_result));
+            }
+        }
+        else
+        {
+            for(; pos != text.npos; pos = text.find(c)) {
+                validateInfo.escChars.emplace_back(text.substr(pos, c.length()));
                 break;
             }
-            endPos++;
-
-            auto result = text.substr(pos, endPos - pos);
-            text = utility::replace(text, result, u8""s);
         }
-    } 
-
-    for(const auto& c : escChars)
-    {
-        text = utility::replace(text, c, u8""s);
     }
-
-    text = utility::replace(text, u8"\\\""s, u8"\""s);
-
-    return text;
 }
 
-bool langscore::platform_base::validateTexts(std::vector<TranslateText> translateList, const config::TextValidateTypeMap& validateInfoList, std::filesystem::path path) const
+std::uint64_t langscore::platform_base::countNumTexts(const std::u8string& multilineText) const
 {
-    //const auto OutputError = [&path](auto type, auto errorSummary, auto lang, auto str, size_t row) {
-    //    auto result = utility::join({type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row)}, ","s);
-    //    std::cout << result << std::endl;
-    //};
+    auto texts = utility::split(multilineText, u8"\n"s);
+    int maxNumTexts = 0;
+    for(auto&& text : texts)
+    {
+        //アイコンサイズを考慮する。
+        //文字の拡大・縮小時のサイズは考慮しない。(width側では考慮する)
+        //アイコンサイズは1文字としてカウントする？
+
+        auto textStr = utility::cnvStr<std::string>(std::move(text));
+        auto icuStr = icu::UnicodeString::fromUTF8(textStr.c_str());
+        icu::StringCharacterIterator it(icuStr);
+        int count = 0;
+        //コードユニットが2つ以上の文字を考慮するため、next32を使用する。(🌏などの絵文字)
+        for(UChar32 cp = it.first32(); it.hasNext(); cp = it.next32()) {
+            count++;
+        }
+        if(maxNumTexts < count) {
+            maxNumTexts = count;
+        }
+    }
+    return maxNumTexts;
+}
+
+bool langscore::platform_base::validateTexts(const std::vector<ValidateTextInfo>& translateList, const config::TextValidateTypeMap& validateInfoList, std::filesystem::path path) const
+{
     config config;
     auto langs = config.languages();
     std::map<std::u8string, config::Language> langMap;
@@ -528,17 +642,22 @@ bool langscore::platform_base::validateTexts(std::vector<TranslateText> translat
     }
 
     auto fontDir = this->getGameProjectFontDirectory();
-    size_t row = 0;
+    size_t row = 1; //表示側は1開始なのでrowは1から開始する。
     for(auto& translate : translateList)
     {
-        if(validateInfoList.find(translate.textType) == validateInfoList.end()) {
+        const auto& textType = translate.origin.textType;
+        if(validateInfoList.find(textType) == validateInfoList.end()) {
+            row++;
             continue;
         }
 
-        const auto& validateLangMap = validateInfoList.at(translate.textType);
+        const auto& validateLangMap = validateInfoList.at(textType);
 
-        for(const auto& [langText, textLines] : translate.translates)
+        for(const auto& [langText, textLines] : translate.display.translates)
         {
+            if(textLines.find(u8"Did you come here to see") != std::u8string::npos) {
+                std::cout << "debug" << std::endl;
+            }
             if(validateLangMap.find(langText) == validateLangMap.end()) {
                 continue;
             }
@@ -550,29 +669,10 @@ bool langscore::platform_base::validateTexts(std::vector<TranslateText> translat
             }
             else if(validateInfo.mode == config::ValidateTextMode::TextCount)
             {
-                auto texts = utility::split(textLines, u8"\n"s);
-                int maxNumTexts = 0;
-                for(auto&& text : texts)
-                {
-                    auto removed_esc_text = convertDisplayTexts(std::move(text));
-                    //アイコンサイズを考慮する。
-                    //文字の拡大・縮小時のサイズは考慮しない。(width側では考慮する)
-                    //アイコンサイズは1文字としてカウントする？
+                auto maxNumTexts = countNumTexts(textLines);
 
-                    auto textStr = utility::cnvStr<std::string>(std::move(removed_esc_text));
-                    auto icuStr = icu::UnicodeString::fromUTF8(textStr.c_str());
-                    icu::StringCharacterIterator it(icuStr);
-                    int count = 0;
-                    for(UChar32 cp = it.first32(); it.hasNext(); cp = it.next()) {
-                        count++;
-                    }
-                    if(maxNumTexts < count) {
-                        maxNumTexts = count;
-                    }
-                }
-
-                if(validateInfo.width < maxNumTexts) {
-                    OutputErrorWithWidth(path, ValidateErrorType::Warning, OverTextCount, ""s, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), maxNumTexts, row);
+                if(validateInfo.count < maxNumTexts) {
+                    OutputErrorWithWidth(path, ValidateErrorType::Warning, OverTextCount, lang.name, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), maxNumTexts, row);
                 }
                 else {
                     //該当のテキストタイプが見つからない。更新忘れ？エラーを出す。
@@ -581,7 +681,7 @@ bool langscore::platform_base::validateTexts(std::vector<TranslateText> translat
             else if(validateInfo.mode == config::ValidateTextMode::TextWidth)
             {
                 auto fontName = lang.font.file.filename();
-                auto textInfos = measureTextWidth(convertDisplayTexts(textLines), (fontDir / fontName).u8string(), lang.font.size);
+                auto textInfos = measureTextWidth(textLines, (fontDir / fontName).u8string(), lang.font.size);
                 if(textInfos.empty()) {
                     continue;
                 }
@@ -592,8 +692,8 @@ bool langscore::platform_base::validateTexts(std::vector<TranslateText> translat
                     width = width_result->second.right;
                 }
 
-                if(validateInfo.count < width) {
-                    OutputErrorWithWidth(path, ValidateErrorType::Warning, PartiallyClipped, ""s, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), width, row);
+                if(validateInfo.width < width) {
+                    OutputErrorWithWidth(path, ValidateErrorType::Warning, PartiallyClipped, lang.name, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), width, row);
                 }
                 else {
                     //該当のテキストタイプが見つからない。更新忘れ？エラーを出す。
@@ -645,7 +745,7 @@ std::vector<std::pair<std::u8string, platform_base::TextHorizontalLength>> platf
 
         int left = 0;
 
-        for(UChar32 cp = it.first32(); it.hasNext(); cp = it.next())
+        for(UChar32 cp = it.first32(); it.hasNext(); cp = it.next32())
         {
             icu::UnicodeString charStr(cp);
 

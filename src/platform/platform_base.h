@@ -3,6 +3,7 @@
 #include "../include/config.h"
 #include "../utility.hpp"
 #include "../writer/writerbase.h"
+#include "../reader/csvreader.h"
 #include "errorstatus.hpp"
 
 namespace langscore
@@ -114,11 +115,29 @@ namespace langscore
 			return writer.write(std::move(path), std::move(defaultLanguage), overwriteMode);
 		}
 
+        struct ValidateTextInfo 
+        {
+            TranslateText origin;
+
+            struct Display {
+                std::u8string original;
+                std::unordered_map<std::u8string, std::u8string> translates;
+            };
+            Display display;
+            
+            std::vector<std::u8string> escWithValueChars;
+            std::vector<std::u8string> escChars;
+        };
+
+        std::vector<ValidateTextInfo> convertValidateTextInfo(std::string fileName, const std::vector<TranslateText>& texts) const;
+        void detectConstrolChar(ValidateTextInfo& validateInfo) const;
+
 		bool validateTranslateFileList(std::vector<ValidateFileInfo> csvPathList) const;
-		bool validateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const;
-		std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> findRPGMakerEscChars(std::u8string text) const;
-        std::u8string convertDisplayTexts(std::u8string text) const;
-        bool validateTexts(std::vector<TranslateText> texts, const config::TextValidateTypeMap& validateSizeList, std::filesystem::path path) const;
+        
+        bool validateCsvFormat(ValidateFileInfo& fileInfo, const csvreader& wroteCsvReader) const;
+		bool validateTextFormat(const std::vector<ValidateTextInfo>& texts, std::filesystem::path path) const;
+        std::uint64_t countNumTexts(const std::u8string& multilineText) const;
+        bool validateTexts(const std::vector<ValidateTextInfo>& texts, const config::TextValidateTypeMap& validateSizeList, std::filesystem::path path) const;
 
         //テキストの幅を計測する。戻り値:{textの1文字, {左座標, 右の座標}}
         struct TextHorizontalLength { int left; int right; };
