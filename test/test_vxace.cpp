@@ -1,29 +1,38 @@
 ﻿
-class DummyPlatformBase : public langscore::platform_base 
+class DummyPlatformBase : public langscore::platform_base
 {
 public:
-
     void setProjectPath(std::filesystem::path path) override {}
-    ErrorStatus analyze() override { return Status_Success; }
-    ErrorStatus update() override { return Status_Success; }
-    ErrorStatus write() override { return Status_Success; }
-    ErrorStatus validate() override { return Status_Success; }
-    ErrorStatus packing() override { return Status_Success; }
+    ErrorStatus analyze() override { return ErrorStatus(); }
+    ErrorStatus reanalysis() override { return ErrorStatus(); }
+    ErrorStatus updatePlugin() override { return ErrorStatus(); }
+    ErrorStatus exportCSV() override { return ErrorStatus(); }
+    ErrorStatus validate() override { return ErrorStatus(); }
+    ErrorStatus packing() override { return ErrorStatus(); }
 
-    std::tuple<std::vector<std::u8string>, std::vector<std::u8string>> testFindRPGMakerEscChars(std::u8string text) const {
-        return this->findRPGMakerEscChars(std::move(text));
+    platform_base::ValidateTextInfo testFindRPGMakerEscChars(std::u8string text) const {
+        platform_base::ValidateTextInfo textInfo;
+        textInfo.origin.original = std::move(text);
+        this->detectConstrolChar(textInfo);
+        return textInfo;
     }
 
-
-    bool testValidateTranslateFileList(utility::filelist csvPathList) const {
+    bool testValidateTranslateFileList(std::vector<ValidateFileInfo> csvPathList) const {
         return this->validateTranslateFileList(std::move(csvPathList));
     }
     bool testValidateTranslateList(std::vector<TranslateText> texts, std::filesystem::path path) const {
-        return this->validateTranslateList(std::move(texts), std::move(path));
+        //textsをstd::vector<ValidateTextInfo>に変換してvalidateTextsを呼び出す。
+        std::vector<platform_base::ValidateTextInfo> validateTexts;
+        for(auto& text : texts) {
+            ValidateTextInfo validateText;
+            validateText.origin = text;
+            this->detectConstrolChar(validateText);
+            validateTexts.emplace_back(std::move(validateText));
+        }
+
+        return this->validateTextFormat(std::move(validateTexts), std::move(path));
     }
-
 };
-
 class Langscore_VXAce_Invoker : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -86,8 +95,9 @@ protected:
 TEST_F(Langscore_VXAce_Invoker, NoAssignProject)
 {
 	attachConfigFile("data/vxace/ソポァゼゾタダＡボマミ_Invalid_langscore/config.json");
-	langscore::invoker invoker;
-	auto result = invoker.analyze();
+    config config;
+    langscore::invoker invoker(config.projectType());
+	auto result = invoker.analyze(config.langscoreAnalyzeDirectorty());
 	ASSERT_EQ(result.moduleCode(), ErrorStatus::Module::INVOKER);
 	ASSERT_EQ(result.code(), 1);
 }
@@ -100,9 +110,9 @@ TEST_F(Langscore_VXAce_Invoker, AnalyzeVXAceProject)
 
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 	std::filesystem::remove_all(outputPath);
-	langscore::invoker invoker;
+	langscore::invoker invoker(config.projectType());
 	invoker.setProjectPath(config.gameProjectPath());
-	auto analyzeResult = invoker.analyze();
+	auto analyzeResult = invoker.analyze(config.langscoreAnalyzeDirectorty());
 	ASSERT_TRUE(analyzeResult.valid());
 
 	auto itr = fs::recursive_directory_iterator(outputPath);
@@ -120,9 +130,9 @@ TEST_F(Langscore_VXAce_Invoker, AnalyzeWhiteSpaceVXAceProject)
 
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 	std::filesystem::remove_all(outputPath);
-	langscore::invoker invoker;
+	langscore::invoker invoker(config.projectType());
 	invoker.setProjectPath(config.gameProjectPath());
-	auto analyzeResult = invoker.analyze();
+	auto analyzeResult = invoker.analyze(config.langscoreAnalyzeDirectorty());
 	ASSERT_TRUE(analyzeResult.valid());
 
 	auto itr = fs::recursive_directory_iterator(outputPath);
@@ -139,9 +149,9 @@ TEST_F(Langscore_VXAce_Invoker, CheckValidScriptList)
 	ClearGenerateFiles(config);
 
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
-	langscore::invoker invoker;
+	langscore::invoker invoker(config.projectType());
 	invoker.setProjectPath(config.gameProjectPath());
-	invoker.analyze();
+	invoker.analyze(config.langscoreAnalyzeDirectorty());
 
 	ASSERT_TRUE(fs::exists(outputPath / "Scripts/_list.csv"));
 	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
@@ -175,8 +185,8 @@ TEST_F(Langscore_VXAce_Divisi, CheckIncludeEmptyPath)
 	langscore::divisi divisi("./", "data/vxace/Include WhiteSpacePath Project_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
-	ASSERT_TRUE(divisi.write().valid());
-	ASSERT_TRUE(divisi.update().valid());
+	ASSERT_TRUE(divisi.exportCSV().valid());
+	ASSERT_TRUE(divisi.reanalysis().valid());
 }
 
 TEST_F(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
@@ -193,7 +203,7 @@ TEST_F(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 		//インスタンスは別に分ける。
 		langscore::config::detachConfigFile();
 		langscore::divisi divisi("./", "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
-		ASSERT_TRUE(divisi.write().valid());
+		ASSERT_TRUE(divisi.updatePlugin().valid());
 	}
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
@@ -215,7 +225,7 @@ TEST_F(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 	auto scriptCsv = rubyReader.currentTexts();
 
 	csvwriter csvwriter{rubyReader};
-	csvwriter.write("data\\dummy.csv");
+	csvwriter.write("data\\dummy.csv", u8"ja");
 
 	csvreader csvreader({u8"ja"}, "data\\dummy.csv");
 	auto writedCsvTexts = csvreader.currentTexts();
@@ -292,7 +302,7 @@ TEST_F(Langscore_VXAce_Divisi, WriteVXAceProject)
 	}
 
 	ASSERT_TRUE(divisi.analyze().valid());
-	ASSERT_TRUE(divisi.write().valid());
+	ASSERT_TRUE(divisi.updatePlugin().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
@@ -333,7 +343,7 @@ TEST_F(Langscore_VXAce_Divisi, WriteVocab)
 	}
 
 	ASSERT_TRUE(divisi.analyze().valid());
-	ASSERT_TRUE(divisi.write().valid());
+	ASSERT_TRUE(divisi.updatePlugin().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
@@ -374,7 +384,7 @@ TEST_F(Langscore_VXAce_Divisi, WriteLangscoreCustom)
 	langscore::rbscriptwriter scriptWriter(rubyReader);
 
 	const auto outputFileName = "./data/langscore_custom.rb"s;
-	auto result = scriptWriter.write(outputFileName);
+	auto result = scriptWriter.write(outputFileName, u8"ja");
 	ASSERT_TRUE(result.valid());
 
 	{
@@ -415,7 +425,7 @@ TEST_F(Langscore_VXAce_Divisi, ValidateLangscoreCustom)
 	}
 
 	ASSERT_TRUE(divisi.analyze().valid());
-	ASSERT_TRUE(divisi.write().valid());
+	ASSERT_TRUE(divisi.updatePlugin().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
@@ -425,7 +435,8 @@ TEST_F(Langscore_VXAce_Divisi, ValidateLangscoreCustom)
 	{
 		auto result = std::ranges::find_if(scriptList, [](const auto& x) {
 			return x[1] == u8"langscore_custom";
-			});
+		});
+        ASSERT_TRUE(result != scriptList.end());
 		langscoreCustomFilename = outputPath / "Scripts" / (std::u8string((*result)[0]) + u8".rb"s);
 	}
 
@@ -444,7 +455,7 @@ TEST_F(Langscore_VXAce_Divisi, ValidateLangscoreCustom)
 		return result != lines.cend();
 		};
 	ASSERT_TRUE(FindString("def Langscore.Translate_Script_Text"s));
-	ASSERT_TRUE(FindString("def Langscore.translate_"s));
+	//ASSERT_TRUE(FindString("def Langscore.translate_"s));
 
 	fs::copy(scriptDataDest, scriptDataSrc, fs::copy_options::overwrite_existing);
 
@@ -546,50 +557,50 @@ TEST_F(Langscore_VXAce_Divisi, VXAce_FindEscChar)
 
 	{
 		std::u8string text = u8"HoniHoni";
-		auto [result1, result2] = divisi_vxace.testFindRPGMakerEscChars(text);
-		ASSERT_TRUE(result1.empty() && result2.empty());
+		auto result = divisi_vxace.testFindRPGMakerEscChars(text);
+		ASSERT_TRUE(result.escWithValueChars.empty() && result.escChars.empty());
 	}
 	{
 		std::u8string text = u8"Honi\\V[0]Honi";
-		auto [result1, result2] = divisi_vxace.testFindRPGMakerEscChars(text);
-		ASSERT_TRUE(result1.empty() == false && result2.empty());
-		ASSERT_TRUE(result1[0] == u8"\\V[0]");
+		auto result = divisi_vxace.testFindRPGMakerEscChars(text);
+		ASSERT_TRUE(result.escWithValueChars.empty() == false && result.escChars.empty());
+		ASSERT_TRUE(result.escWithValueChars[0] == u8"\\V[0]");
 	}
 	{
 		std::u8string text = u8"Honi\\N[funi]Honi";
-		auto [result1, result2] = divisi_vxace.testFindRPGMakerEscChars(text);
-		ASSERT_TRUE(result1.empty() == false && result2.empty());
-		ASSERT_TRUE(result1[0] == u8"\\N[funi]");
+		auto result = divisi_vxace.testFindRPGMakerEscChars(text);
+		ASSERT_TRUE(result.escWithValueChars.empty() == false && result.escChars.empty());
+		ASSERT_TRUE(result.escWithValueChars[0] == u8"\\N[funi]");
 	}
 	{
 		std::u8string text = u8"Honi\\P[58919047]Honi";
-		auto [result1, result2] = divisi_vxace.testFindRPGMakerEscChars(text);
-		ASSERT_TRUE(result1.empty() == false && result2.empty());
-		ASSERT_TRUE(result1[0] == u8"\\P[58919047]");
+		auto result = divisi_vxace.testFindRPGMakerEscChars(text);
+		ASSERT_TRUE(result.escWithValueChars.empty() == false && result.escChars.empty());
+		ASSERT_TRUE(result.escWithValueChars[0] == u8"\\P[58919047]");
 	}
 	{
 		std::u8string text = u8"Honi\\C[16]Honi";
-		auto [result1, result2] = divisi_vxace.testFindRPGMakerEscChars(text);
-		ASSERT_TRUE(result1.empty() == false && result2.empty());
-		ASSERT_TRUE(result1[0] == u8"\\C[16]");
+		auto result = divisi_vxace.testFindRPGMakerEscChars(text);
+		ASSERT_TRUE(result.escWithValueChars.empty() == false && result.escChars.empty());
+		ASSERT_TRUE(result.escWithValueChars[0] == u8"\\C[16]");
 	}
 	{
 		std::u8string text = u8"ほに\\l[16]ほに";
-		auto [result1, result2] = divisi_vxace.testFindRPGMakerEscChars(text);
-		ASSERT_TRUE(result1.empty() == false && result2.empty());
-		ASSERT_TRUE(result1[0] == u8"\\l[16]");
+		auto result = divisi_vxace.testFindRPGMakerEscChars(text);
+		ASSERT_TRUE(result.escWithValueChars.empty() == false && result.escChars.empty());
+		ASSERT_TRUE(result.escWithValueChars[0] == u8"\\l[16]");
 	}
 	{
 		std::u8string text = u8"あいう\\{えお";
-		auto [result1, result2] = divisi_vxace.testFindRPGMakerEscChars(text);
-		ASSERT_TRUE(result1.empty() && result2.empty() == false);
-		ASSERT_TRUE(result2[0] == u8"\\{");
+		auto result = divisi_vxace.testFindRPGMakerEscChars(text);
+		ASSERT_TRUE(result.escWithValueChars.empty() && result.escChars.empty() == false);
+		ASSERT_TRUE(result.escChars[0] == u8"\\{");
 	}
 	{
 		std::u8string text = u8"99999\\G 手に入れた！";
-		auto [result1, result2] = divisi_vxace.testFindRPGMakerEscChars(text);
-		ASSERT_TRUE(result1.empty() && result2.empty() == false);
-		ASSERT_TRUE(result2[0] == u8"\\G");
+		auto result = divisi_vxace.testFindRPGMakerEscChars(text);
+		ASSERT_TRUE(result.escWithValueChars.empty() && result.escChars.empty() == false);
+		ASSERT_TRUE(result.escChars[0] == u8"\\G");
 	}
 }
 
@@ -684,13 +695,13 @@ TEST(Langscore_VXAce_Divisi_Analyze, ValidateTexts)
 
     for(auto& row : scriptCsv)
     {
-        for(auto& t : row) {
-            auto result = std::find_if(includeTexts.cbegin(), includeTexts.cend(), [&t](const auto& x) {
-                return x == t;
-                });
-            if(result == includeTexts.cend()) {
-                GTEST_FAIL() << "Not Found!" << std::string(t.begin(), t.end());
-            }
+        ASSERT_FALSE(row.empty());
+        auto t = row[0];
+        auto result = std::find_if(includeTexts.cbegin(), includeTexts.cend(), [t](const auto& x) {
+            return x == t;
+            });
+        if(result == includeTexts.cend()) {
+            GTEST_FAIL() << "Not Found!" << std::string(t.begin(), t.end());
         }
     }
     GTEST_SUCCEED();

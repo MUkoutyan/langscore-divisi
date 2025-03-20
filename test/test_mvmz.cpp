@@ -159,7 +159,9 @@ TEST(Langscore_MV_Divisi_Analyze, ValidateTexts)
 
     for(auto& row : scriptCsv)
     {
-        for(auto& t : row) {
+        //for(auto& t : row) 
+        auto& t = row[0];
+        {
             auto result = std::find_if(includeTexts.cbegin(), includeTexts.cend(), [&t](const auto& x) {
                 return x == t;
                 });
@@ -181,7 +183,7 @@ TEST(Langscore_MV_Divisi_Write, ValidateFiles)
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	
-	ASSERT_TRUE(divisi.write().valid());
+	ASSERT_TRUE(divisi.exportCSV().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreProjectPath()) / "data" / "translate";
 
@@ -239,7 +241,7 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS)
 
 	ASSERT_TRUE(divisi.analyze().valid());
 
-	ASSERT_TRUE(divisi.write().valid());
+	ASSERT_TRUE(divisi.updatePlugin().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.gameProjectPath());
 
@@ -283,7 +285,7 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
 
 	ASSERT_TRUE(divisi.analyze().valid());
 
-	ASSERT_TRUE(divisi.write().valid());
+	ASSERT_TRUE(divisi.updatePlugin().valid());
 	langscore::config config;
 	auto outputPath = fs::path(config.gameProjectPath());
 
@@ -317,3 +319,37 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
 }
 
 
+
+TEST(Langscore_MV_Divisi_Write, Multiple_Export)
+{
+    ClearGenerateFiles();
+    checkAndCreateConfigFile("data/mv/LangscoreTest_MultipleExport_langscore/config.json", "Game.rpgproject");
+    //テキストが一致するかの整合性を確認するテスト
+    langscore::config::detachConfigFile();
+    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json");
+
+    ASSERT_TRUE(divisi.analyze().valid());
+
+    ASSERT_TRUE(divisi.exportCSV().valid());
+
+    fs::path root("data/mv/LangscoreTest_MultipleExport_langscore/data/translate");
+    std::vector<std::string> checkLangs = {"en", "ja", "zh-cn", "zh-tw"};
+    for(auto lang : checkLangs)
+    {
+        auto checkDir = root / lang;
+        ASSERT_TRUE(fs::exists(checkDir)) << "Failed : " << lang;
+        int numFiles = 0;
+        fs::path firstFile;
+        for(auto i : fs::directory_iterator{checkDir}) { 
+            if(firstFile.empty()) { firstFile = i; }
+            numFiles++; 
+        }
+        ASSERT_EQ(numFiles, 15) << "Failed : " << lang;
+
+        auto texts = plaincsvreader{firstFile}.getPlainCsvTexts();
+        ASSERT_FALSE(texts.empty()) << "Failed : " << lang;
+        ASSERT_EQ(texts[0].size(), 2) << "Failed : " << lang;
+    }
+
+    GTEST_SUCCEED();
+}

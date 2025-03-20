@@ -864,23 +864,23 @@ if(Langscore.isMV())
 //-----------------------------------------------------
 
 Game_System.prototype.isJapanese = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage === "ja" : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language === "ja" : false;
 };
 
 Game_System.prototype.isChinese = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage.match(/^zh/) : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language.match(/^zh/) : false;
 };
 
 Game_System.prototype.isKorean = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage === "ko" : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language === "ko" : false;
 };
 
 Game_System.prototype.isCJK = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage.match(/^(ja|zh|ko)/) : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language.match(/^(ja|zh|ko)/) : false;
 };
 
 Game_System.prototype.isRussian = function() {
-  return Langscore.currentLanguage ? Langscore.currentLanguage === "ru" : false;
+  return Langscore.langscore_current_language ? Langscore.langscore_current_language === "ru" : false;
 };
 
 //アクター名の変更
@@ -1131,14 +1131,16 @@ ConfigManager.makeData = function() {
 
 
 var ConfigManager_applyData = ConfigManager.applyData;
-ConfigManager.applyData = function(config) {
+ConfigManager.applyData = function(config) 
+{
+  Langscore.langscore_current_language = Langscore.Default_Language;
+  
   ConfigManager_applyData.apply(this, arguments);
   var lang = config["currentLanguage"];
   if(lang !== undefined){
     Langscore.langscore_current_language = lang;
   }
   else{
-    Langscore.langscore_current_language = Langscore.Default_Language;
   }
 };
 

@@ -924,4 +924,24 @@ describe('Langscore for Map', function()
     });
   });
 
+  it('2024/10報告不具合 名前入力が常に英語になる', async function() 
+  {
+    //isJapanese系の関数が正しい値を返していない。langscore_current_language変数の名前を間違えていた。(.currentLanguage)
+    
+    var dummy_window = new window.Window_NameInput(new window.Rectangle(0,0,0,0));
+
+    expect(window.Langscore.langscore_current_language).to.not.equal(undefined)
+    window._langscore.changeLanguage("ja", true);
+    expect(window.$gameSystem.isJapanese()).to.true;
+    expect(dummy_window.table()[0][0]).to.equal("あ");
+    window._langscore.changeLanguage("en", true);
+    expect(window.$gameSystem.isJapanese()).to.not.true;
+    expect(dummy_window.table()[0][0]).to.equal("A");
+  });
+
+  it('2025/01新機能 言語パッチ', async function()
+  {
+    window._langscore.
+  });
+
 });

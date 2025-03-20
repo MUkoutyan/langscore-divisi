@@ -19,16 +19,16 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 
-if(MSVC)
-    string(REPLACE "/MD" "/MT" CMAKE_C_FLAGS_DEBUG            ${CMAKE_C_FLAGS_DEBUG})
-    string(REPLACE "/MD" "/MT" CMAKE_C_FLAGS_MINSIZEREL       ${CMAKE_C_FLAGS_MINSIZEREL})
-    string(REPLACE "/MD" "/MT" CMAKE_C_FLAGS_RELEASE          ${CMAKE_C_FLAGS_RELEASE})
-    string(REPLACE "/MD" "/MT" CMAKE_C_FLAGS_RELWITHDEBINFO   ${CMAKE_C_FLAGS_RELWITHDEBINFO})
-    string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_DEBUG          ${CMAKE_CXX_FLAGS_DEBUG})
-    string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_MINSIZEREL     ${CMAKE_CXX_FLAGS_MINSIZEREL})
-    string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE        ${CMAKE_CXX_FLAGS_RELEASE})
-    string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
-endif(MSVC)
+# if(MSVC)
+#     string(REPLACE "/MD" "/MT" CMAKE_C_FLAGS_DEBUG            ${CMAKE_C_FLAGS_DEBUG})
+#     string(REPLACE "/MD" "/MT" CMAKE_C_FLAGS_MINSIZEREL       ${CMAKE_C_FLAGS_MINSIZEREL})
+#     string(REPLACE "/MD" "/MT" CMAKE_C_FLAGS_RELEASE          ${CMAKE_C_FLAGS_RELEASE})
+#     string(REPLACE "/MD" "/MT" CMAKE_C_FLAGS_RELWITHDEBINFO   ${CMAKE_C_FLAGS_RELWITHDEBINFO})
+#     string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_DEBUG          ${CMAKE_CXX_FLAGS_DEBUG})
+#     string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_MINSIZEREL     ${CMAKE_CXX_FLAGS_MINSIZEREL})
+#     string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE        ${CMAKE_CXX_FLAGS_RELEASE})
+#     string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+# endif(MSVC)
 
 # CMAKE_BUILD_TYPEをプリプロセッサ定数として追加
 add_definitions(-DCMAKE_BUILD_TYPE_STRING="${CMAKE_BUILD_TYPE}")
@@ -40,6 +40,11 @@ set(Test_Includes
 	"../3rdparty/json/single_include"
 	"../3rdparty/hash-library"
 	"../3rdparty/tree-sitter/include"
+	${PROJECT_SOURCE_DIR}/../3rdparty/json
+	${PROJECT_SOURCE_DIR}/../3rdparty/hash-library
+	${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/include
+	${PROJECT_SOURCE_DIR}/../3rdparty/freetype/include
+	${PROJECT_SOURCE_DIR}/../3rdparty/icu/include
 )
 
 file(GLOB_RECURSE DIVISI_SOURCES
@@ -63,6 +68,14 @@ target_link_libraries(divisi_test
     gmock
     gmock_main
     ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
+	debug ${PROJECT_SOURCE_DIR}/../3rdparty/freetype/freetypeD.lib
+    optimized ${PROJECT_SOURCE_DIR}/../3rdparty/freetype/freetype.lib
+    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuin.lib
+    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuio.lib
+    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutest.lib
+    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutu.lib
+    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuuc.lib
+    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icudt.lib
 )
 
 #debug ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
@@ -79,6 +92,6 @@ foreach(DLL_FILE ${GTEST_DLL_FILES})
 endforeach()
 
 
-add_test(NAME test COMMAND divisi_test)
+add_test(NAME test COMMAND divisi_test --gtest_output=json:cpp_test_results.json)
 
 configure_file(${CMAKE_SOURCE_DIR}/test/test_config.h.in ${CMAKE_SOURCE_DIR}/test/test_config.h )

@@ -4,6 +4,7 @@
 #include "test_writer.cpp"
 #include "test_vxace.cpp"
 #include "test_mvmz.cpp"
+#include "test_validation.cpp"
 
 #include <gtest/gtest.h>
 
@@ -17,7 +18,9 @@ int main(int argc, char** argv)
     {
         auto destPath = fs::path(std::string(BINARYT_DIRECTORY) + "/data");
         try {
+            std::cout << "Copying files..." << std::endl;
             fs::copy(TEST_DATA_SRC, destPath, fs::copy_options::recursive);
+            std::cout << "done." << std::endl;
         }
         catch(const fs::filesystem_error& e) {
             std::cerr << e.what() << std::endl;
