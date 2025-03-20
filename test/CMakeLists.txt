@@ -3,7 +3,13 @@
 #
 cmake_minimum_required (VERSION 3.22)
 project (divisi_test VERSION 1)
-set(CMAKE_CXX_STANDARD 20)
+if(MSVC)
+	set(CMAKE_CXX_STANDARD 23)
+elseif()
+	set(CMAKE_CXX_STANDARD 23)
+	set(CMAKE_CXX_COMPILER clang++)
+	set(CMAKE_C_COMPILER clang)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
@@ -94,4 +100,5 @@ endforeach()
 
 add_test(NAME test COMMAND divisi_test --gtest_output=json:cpp_test_results.json)
 
-configure_file(${CMAKE_SOURCE_DIR}/test/test_config.h.in ${CMAKE_SOURCE_DIR}/test/test_config.h )
+message(${PROJECT_SOURCE_DIR})
+configure_file(${PROJECT_SOURCE_DIR}/test_config.h.in ${PROJECT_SOURCE_DIR}/test_config.h )

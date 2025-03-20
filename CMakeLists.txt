@@ -2,7 +2,7 @@
 # プロジェクト専用ロジックはこちらです。
 #
 cmake_minimum_required (VERSION 3.22)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 project(divisi_project VERSION 0.8.4)
 

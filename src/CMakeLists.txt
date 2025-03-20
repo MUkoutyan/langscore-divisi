@@ -11,6 +11,7 @@ elseif()
 	set(CMAKE_CXX_COMPILER clang++)
 	set(CMAKE_C_COMPILER clang)
 endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(CMAKE_BUILD_TYPE MATCHES "Test" OR CMAKE_BUILD_TYPE MATCHES "Test_Debug")
 include_directories(
@@ -93,6 +94,25 @@ target_link_libraries(divisi_lib
 )
 
 else()
+
+# ICU =============
+set(ICU_ROOT /opt/icu76)
+
+find_package(ICU REQUIRED COMPONENTS i18n uc data)
+
+if(NOT ICU_FOUND)
+    set(ICU_INCLUDE_DIR ${ICU_ROOT}/include)
+    set(ICU_LIB_DIR ${ICU_ROOT}/lib)
+    set(ICU_LIBRARIES ${ICU_LIB_DIR}/libicuuc.so ${ICU_LIB_DIR}/libicui18n.so ${ICU_LIB_DIR}/libicudata.so)
+endif()
+
+target_include_directories(divisi_lib PUBLIC ${ICU_INCLUDE_DIR})
+target_link_libraries(divisi_lib ${ICU_LIBRARIES})
+#==================
+
+find_package(Freetype REQUIRED)
+target_include_directories(divisi_lib PUBLIC ${FREETYPE_INCLUDE_DIRS})
+target_link_libraries(divisi_lib ${FREETYPE_LIBRARIES})
 
 target_link_libraries(divisi_lib
 	debug ${PROJECT_SOURCE_DIR}/3rdparty/tree-sitter/libtree-sitterD.a
