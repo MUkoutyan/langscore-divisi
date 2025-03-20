@@ -1,11 +1,13 @@
 import os
 import sys
 import io
+import shutil
 from datetime import datetime, timedelta
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 test_root_dir = current_dir
+divisi_root = os.path.abspath(os.path.join(test_root_dir, "../"))
 # rootディレクトリのパスを取得してsys.pathに追加
 sys.path.append(test_root_dir)
 from internal import test_core as core
@@ -57,6 +59,18 @@ def process_mvmz_logs(logs):
         mz_failures.extend(failures)
 
     return mz_failures
+
+def extract_failed_tests(test_results):
+    failed_tests = []
+    for suite in test_results['testsuites']:
+        for case in suite['testsuite']:
+            if case['result'] != 'COMPLETED':
+                failed_tests.append({
+                    'test_suite': suite['name'],
+                    'test_case': case['name'],
+                    'failure_message': case.get('failures', [{}])[0].get('message', 'No message')
+                })
+    return failed_tests
 
 def run_rvcnv_test(rvcnv_script_path, details_md_text, results_md_texts):
     TEST_NAME = "rvcnv"
@@ -181,7 +195,7 @@ def run_divisi_test(divisi_script_path, details_md_text, results_md_texts):
     TEST_NAME = "divisi"
 
     start_date = datetime.now()
-    output, error, result = core.run_python_script(divisi_script_path, cwd=os.path.join(test_root_dir, "divisi_ct"))
+    output, error, result = core.run_python_script(divisi_script_path, cwd=os.path.join(test_root_dir, "divisi_ct"), _timeout=3000)
     success, failures, errors = core.analyze_python_test_result(output)
     test_result = result and (len(failures) == 0) and (len(errors) == 0)
     end_date = datetime.now()
@@ -330,7 +344,92 @@ def run_mz_test(mz_test_script_path, details_md_text, results_md_texts):
             details_md_text.append("```\n" + error.rstrip() + "\n```\n\n")
 
     return test_result
+
     
+def run_cpp_test(mz_test_script_path, details_md_text, results_md_texts):
+    TEST_NAME = "CPP"
+
+    start_date = datetime.now()
+
+    # MZ test using WSL script
+
+    test_build_directory = os.path.join(divisi_root, "build\\Test_Debug")
+    cmake_args = [
+        f"{divisi_root}",
+        "-G", 
+        "Ninja",  
+        "-DCMAKE_BUILD_TYPE:STRING=Test_Debug",
+        f"-DCMAKE_BINARY_DIR:STRING={test_build_directory}"
+        f"-DTEST_DATA_SRC:STRING={divisi_root}\\test\\data"
+        f"{divisi_root}"
+        f"{test_build_directory}"
+    ]
+    if os.path.exists(test_build_directory):
+        core.remove_read_only(test_build_directory)
+        shutil.rmtree(test_build_directory)
+    
+    os.makedirs(test_build_directory)
+    output, error, result = core.run_command("cmake.exe", cmake_args, cwd=test_build_directory)
+    if result == False:
+        results_md_texts.append(f"| {TEST_NAME} | Failed | CMake | --- |")
+        details_md_text.append(f"```\n")
+        details_md_text.append(f"- {error}\n")
+        details_md_text.append(f"```\n")
+        return False
+
+    if result == True:
+        output, error, result = core.run_command("ninja", cwd=test_build_directory)
+        if result == False:
+            results_md_texts.append(f"| {TEST_NAME} | Failed | Ninja | --- |")
+            details_md_text.append(f"```\n")
+            details_md_text.append(f"- {error}\n")
+            details_md_text.append(f"```\n")
+            return False
+
+    dll_files = os.listdir(f"{test_build_directory}/bin")
+    # DLLファイルをフィルタリングし、コピーする
+    for file in dll_files:
+        if file.endswith('.dll'):
+            source_path = os.path.join(f"{test_build_directory}/bin", file)
+            destination_path = os.path.join(test_build_directory, file)
+            shutil.copy(source_path, destination_path)
+
+    output, error, result = core.run_command("divisi_test.exe", ["--gtest_output=json:cpp_test_results.json"], cwd=test_build_directory)
+    failures = []
+    if result == True:
+        with open(os.path.join(test_build_directory, 'test_results.json'), 'r') as f:
+            failures = extract_failed_tests(f)
+        test_result = result and len(failures) == 0
+    else:
+        test_result = False
+    
+    end_date = datetime.now()
+    
+    if test_result:
+        results_md_texts.append(f"| {TEST_NAME} | Passed | None | {elapsed_time(start_date, end_date)}(total) |")
+    else:
+        for failure in failures:
+            test_case = failure['test_cast']
+            prefix = f"{TEST_NAME}"
+            results_md_texts.append(f"| {prefix} | Failed | {test_case} | {elapsed_time(start_date, end_date)}(total) |")
+
+    if not test_result:
+        details_md_text.append(f"### Failures in {TEST_NAME} Test\n\n")
+        for failure in failures:
+            details_md_text.append(f"{failure}\n")
+        if not error is None and 0 < len(error):
+            details_md_text.append(f"```\n")
+            details_md_text.append(f"- {error}\n")
+            details_md_text.append(f"```\n")
+
+        if 0 < len(output):
+            details_md_text.append(f"## {TEST_NAME} Test Output\n\n")
+            details_md_text.append("```\n" + output.rstrip() + "\n```\n\n")
+        if not error is None and 0 < len(error):
+            details_md_text.append(f"## {TEST_NAME} Test Error\n\n")
+            details_md_text.append("```\n" + error.rstrip() + "\n```\n\n")
+
+    return test_result
 
 def main():
     if len(sys.argv) < 2 or 0 == len(sys.argv[1]):
@@ -348,6 +447,7 @@ def main():
     vxace_script_path   = f'{test_plugin_path}\\run_vxace_test.ps1'
     mv_test_script_path = f'{test_plugin_path}\\run_mv_test.sh'
     mz_test_script_path = f'{test_plugin_path}\\run_mz_test.sh'
+    cpp_test_script_path = f'{test_plugin_path}\\run_mz_test.sh'
     
     # ログファイルのパス
     log_file_path = f'{test_root_dir}\\test_log.md'
@@ -357,23 +457,26 @@ def main():
     start_date = datetime.now()
     
     all_tests_passed = True
-    if 'all' in test_selection or 'lscsv' in test_selection:
+    if 'all' in test_selection or 'plugin' in test_selection or 'lscsv' in test_selection:
         all_tests_passed &= run_lscsv_test(lscsv_script_path, details_md_text, results_md_texts)
 
-    if 'all' in test_selection or 'rvcnv' in test_selection:
+    if 'all' in test_selection or 'plugin' in test_selection or 'rvcnv' in test_selection:
         all_tests_passed &= run_rvcnv_test(rvcnv_test_path, details_md_text, results_md_texts)
+
+    if 'all' in test_selection or 'plugin' in test_selection or 'vxace' in test_selection:
+        all_tests_passed &= run_vxace_test(vxace_script_path, details_md_text, results_md_texts)
+
+    if 'all' in test_selection or 'plugin' in test_selection or 'mv' in test_selection:
+        all_tests_passed &= run_mv_test(mv_test_script_path, details_md_text, results_md_texts)
+
+    if 'all' in test_selection or 'plugin' in test_selection or 'mz' in test_selection:
+        all_tests_passed &= run_mz_test(mz_test_script_path, details_md_text, results_md_texts)
+        
+    if 'all' in test_selection or 'cpp' in test_selection:
+        all_tests_passed &= run_cpp_test(cpp_test_script_path, details_md_text, results_md_texts)
 
     if 'all' in test_selection or 'divisi' in test_selection:
         all_tests_passed &= run_divisi_test(divisi_script_path, details_md_text, results_md_texts)
-
-    if 'all' in test_selection or 'vxace' in test_selection:
-        all_tests_passed &= run_vxace_test(vxace_script_path, details_md_text, results_md_texts)
-
-    if 'all' in test_selection or 'mv' in test_selection:
-        all_tests_passed &= run_mv_test(mv_test_script_path, details_md_text, results_md_texts)
-
-    if 'all' in test_selection or 'mz' in test_selection:
-        all_tests_passed &= run_mz_test(mz_test_script_path, details_md_text, results_md_texts)
 
     end_date = datetime.now()
 

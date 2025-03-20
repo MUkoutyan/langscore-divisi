@@ -85,7 +85,7 @@ def run_wsl_script(script_path, args=None, **option):
         print(f"Failed to run WSL script: {e}")
         return str(), str(e), False
 
-def run_python_script(script_path, args=None, **option):
+def run_python_script(script_path, args=None, _timeout=180, **option):
     try:
         command = ['python']
         command.append(script_path)
@@ -94,7 +94,7 @@ def run_python_script(script_path, args=None, **option):
         result = subprocess.run(
             command,
             capture_output=True, text=True,
-            encoding='utf-8', timeout=180, **option
+            encoding='utf-8', timeout=_timeout, **option
         )
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:

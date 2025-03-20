@@ -29,7 +29,7 @@ def force_remove_readonly(func, path, _):
 
 
 def run_divisi(project_path, option):
-    DIVISI_PATH = '..\\..\\bin\\divisi.exe'
+    DIVISI_PATH = divisi_root_dir + '\\bin\\divisi.exe'
     if option == "create":
         args = [
             '--createConfigFile', project_path,
@@ -265,11 +265,14 @@ class TestUpdate(unittest.TestCase):
         ]
 
         def check_mvmz_function(work_path, work_ls_path, source_path):
+            run_divisi(work_ls_path + "\\config.json", "analyze")
             if os.path.exists(work_path):
                 shutil.rmtree(work_path, onerror=force_remove_readonly)
             copy_folder(source_path, work_path)
+
             run_divisi(work_ls_path + "\\config.json", "update")
             self.assertTrue(os.path.exists(work_ls_path + "\\update"))
+
             for file in analyze_expected_files:
                 file_path = os.path.join(work_ls_path + "\\data\\translate", file)
                 self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {work_ls_path}")
@@ -283,6 +286,7 @@ class TestUpdate(unittest.TestCase):
         check_mvmz_function(mz_work_path, mz_work_ls_path, source_update_mz_work_path)
         
         def check_vxace_function(work_path, work_ls_path, source_path):
+            run_divisi(work_ls_path + "\\config.json", "analyze")
             if os.path.exists(work_path):
                 shutil.rmtree(work_path, onerror=force_remove_readonly)
             copy_folder(source_path, work_path)
