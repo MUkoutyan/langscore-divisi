@@ -77,9 +77,9 @@ def run_rvcnv_test(rvcnv_script_path, details_md_text, results_md_texts):
 
     start_date = datetime.now()
 
-    output, error, result = core.run_python_script(os.path.join(rvcnv_script_path, "run_rvcnv_test.py"), args=[os.path.join(test_root_dir, "../rvcnv/rvcnv.exe")])
-    success, failures, error = core.analyze_python_test_result(output)
-    test_result = result and (len(failures) == 0) and (len(error) == 0)
+    output, error_base, result = core.run_python_script(os.path.join(rvcnv_script_path, "run_rvcnv_test.py"), args=[os.path.join(test_root_dir, "../rvcnv/rvcnv.exe")])
+    success, failures = core.analyze_python_test_result(error_base)
+    test_result = result and (len(failures) == 0)
     end_date = datetime.now()
 
     if test_result:
@@ -94,17 +94,17 @@ def run_rvcnv_test(rvcnv_script_path, details_md_text, results_md_texts):
         details_md_text.append(f"### Failures in {TEST_NAME} Test\n\n")
         for failure in failures:
             details_md_text.append(f"- {failure}\n")
-        if 0 < len(error):
+        if 0 < len(error_base):
             details_md_text.append(f"```\n")
-            details_md_text.append(f"- {error}\n")
+            details_md_text.append(f"- {error_base}\n")
             details_md_text.append(f"```\n")
 
         if 0 < len(output):
             details_md_text.append(f"## {TEST_NAME} Test Output\n\n")
             details_md_text.append("```\n" + output.rstrip() + "\n```\n\n")
-        if 0 < len(error):
+        if 0 < len(failures):
             details_md_text.append(f"## {TEST_NAME} Test Error\n\n")
-            details_md_text.append("```\n" + error.rstrip() + "\n```\n\n")
+            details_md_text.append("```\n" + error_base.rstrip() + "\n```\n\n")
 
     return test_result
 
@@ -135,8 +135,8 @@ def run_lscsv_test(lscsv_script_path, details_md_text, results_md_texts):
 
     #Python
     output, error, result = core.run_python_script(os.path.join(lscsv_path, "lscsv_test.py"), cwd=lscsv_path)
-    success, failures, error_txt = core.analyze_python_test_result(output)
-    test_result &= result and (len(failures) == 0) and (len(error_txt) == 0)
+    success, failures = core.analyze_python_test_result(error)
+    test_result &= result and (len(failures) == 0)
     
     if not test_result:
         output_total += output
@@ -196,8 +196,8 @@ def run_divisi_test(divisi_script_path, details_md_text, results_md_texts):
 
     start_date = datetime.now()
     output, error, result = core.run_python_script(divisi_script_path, cwd=os.path.join(test_root_dir, "divisi_ct"), _timeout=3000)
-    success, failures, errors = core.analyze_python_test_result(output)
-    test_result = result and (len(failures) == 0) and (len(errors) == 0)
+    success, failures = core.analyze_python_test_result(output)
+    test_result = result and (len(failures) == 0)
     end_date = datetime.now()
 
     if test_result:
@@ -212,15 +212,11 @@ def run_divisi_test(divisi_script_path, details_md_text, results_md_texts):
         details_md_text.append(f"### Failures in {TEST_NAME} Test\n\n")
         for failure in failures:
             details_md_text.append(f"- {failure}\n")
-        if 0 < len(errors):
-            details_md_text.append(f"```\n")
-            details_md_text.append(f"- {errors}\n")
-            details_md_text.append(f"```\n")
 
         if 0 < len(output):
             details_md_text.append(f"## {TEST_NAME} Test Output\n\n")
             details_md_text.append("```\n" + output.rstrip() + "\n```\n\n")
-        if 0 < len(error):
+        if 0 < len(failures):
             details_md_text.append(f"## {TEST_NAME} Test Error\n\n")
             details_md_text.append("```\n" + error.rstrip() + "\n```\n\n")
 

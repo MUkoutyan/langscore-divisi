@@ -118,28 +118,37 @@ def run_ruby_script(script_path, args=None, **option):
         return str(), str(e), False
 
 def analyze_python_test_result(output):
-    success_tests = []
-    failed_tests = []
-    error_tests = []
+    success_tests = set()
+    failed_tests = {}
 
+    if output == None:
+        return list(success_tests), failed_tests
+    
     lines = output.splitlines()
-    for line in lines:
-        # テストケースの成功を示す行
-        success_match = re.match(r'\w* \(__main__\.(\w+\.?\w+)\) \.\.\. ok', line)
-        if success_match:
-            success_tests.append(success_match.group(1))
-        
-        # テストケースの失敗を示す行
-        failed_match = re.match(r'\w* \(__main__\.(\w+\.?\w+)\) \.\.\. FAIL', line)
-        if failed_match:
-            failed_tests.append(failed_match.group(1))
-        
-        # テストケースのエラーを示す行
-        error_match = re.match(r'\w* \(__main__\.(\w+\.?\w+)\) \.\.\. ERROR', line)
-        if error_match:
-            error_tests.append(error_match.group(1))
+    failed_test_name = None
 
-    return success_tests, failed_tests, error_tests
+    for line in lines:
+        # テストの結果判定
+        success_match = re.match(r'(\w+) \(__main__\.(\w+\.?\w+)\) \.\.\. ok', line)
+        failed_match = re.match(r'(\w+) \(__main__\.(\w+\.?\w+)\) \.\.\. FAIL', line)
+
+        if success_match:
+            success_tests.add(success_match.group(2))
+        elif failed_match:
+            failed_test_name = failed_match.group(2)
+            failed_tests[failed_test_name] = ""  # 失敗テストとして登録
+
+        # 失敗の詳細を取得
+        if failed_test_name and "Traceback" in line:
+            trace_index = lines.index(line) + 1  # Traceback の次の行からメッセージを探す
+            error_message = []
+            while trace_index < len(lines) and lines[trace_index].strip():
+                error_message.append(lines[trace_index].strip())
+                trace_index += 1
+            failed_tests[failed_test_name] = " ".join(error_message)  # 失敗理由を格納
+            failed_test_name = None  # 解析が終わったのでリセット
+
+    return list(success_tests), failed_tests
 
 def analyze_ruby19_test_result(output):
     # Ruby1.9.2でのテスト結果を解析

@@ -1,5 +1,4 @@
-﻿#pragma once
-#include "test.h"
+﻿#include "test.h"
 #include "test_base.cpp"
 #include "test_writer.cpp"
 #include "test_vxace.cpp"
