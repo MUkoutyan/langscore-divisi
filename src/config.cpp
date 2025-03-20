@@ -155,6 +155,11 @@ std::u8string langscore::config::gameProjectPath()
 	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Project)], ""s));
 	auto path = pImpl->toAbsolutePath(u8Path);
 	path.make_preferred();
+
+    if(std::filesystem::is_directory(path) == false) {
+        path = path.parent_path();
+    }
+
 	return path.u8string();
 }
 
@@ -245,28 +250,43 @@ config::ProjectType langscore::config::projectType()
 		return false;
 	};
 
-	std::filesystem::directory_iterator it(gameProjectPath());
-	for(auto& file : it) {
-		auto ext = file.path().extension();
-		if(ext == ".rvproj2") {
-			pImpl->projectType = config::ProjectType::VXAce;
-			break;
-		}
-		else if(ext == ".rmmzproject")
-		{
-			if(hasHeader(file.path(), "RPGMZ")) {
-				pImpl->projectType = config::ProjectType::MZ;
-				break;
-			}
-		}
-		else if(ext == ".rpgproject")
-		{
-			if(hasHeader(file.path(), "RPGMV")) {
-				pImpl->projectType = config::ProjectType::MV;
-				break;
-			}
-		}
-	}
+    const auto checkFile = [&](const std::filesystem::path& path)
+    {
+        auto ext = path.extension();
+        if(ext == ".rvproj2") {
+            return config::ProjectType::VXAce;
+        }
+        else if(ext == ".rmmzproject")
+        {
+            if(hasHeader(path, "RPGMZ")) {
+                return config::ProjectType::MZ;
+            }
+        }
+        else if(ext == ".rpgproject")
+        {
+            if(hasHeader(path, "RPGMV")) {
+                return config::ProjectType::MV;
+            }
+        }
+
+        return config::ProjectType::None;
+    };
+
+    auto projectPath = gameProjectPath();
+    if(std::filesystem::is_directory(projectPath))
+    {
+        std::filesystem::directory_iterator it(projectPath);
+        for(auto& file : it) {
+            auto type = checkFile(file.path());
+            if(type != config::ProjectType::None) {
+                pImpl->projectType = type;
+                break;
+            }
+        }
+    }
+    else {
+        pImpl->projectType = checkFile(std::filesystem::path(projectPath));
+    }
 
 	return pImpl->projectType;
 }

@@ -114,6 +114,9 @@ void invoker::setApplicationFolder(std::filesystem::path path){
 
 void invoker::setProjectPath(std::filesystem::path path)
 {
+    if(std::filesystem::is_directory(path) == false) {
+        path = path.parent_path();
+    }
     this->_projectPath = std::move(path);
 }
 

@@ -530,7 +530,7 @@ std::vector<platform_base::ValidateTextInfo> platform_base::convertValidateTextI
 }
 
 static const std::vector<std::u8string> escWithValueChars = {
-    u8"\\v[", u8"\\n[", u8"\\p[", u8"\\c[", u8"\\l[", u8"\\r["
+    u8"\\v[", u8"\\n[", u8"\\p[", u8"\\c[", u8"\\l[", u8"\\r[",
     u8"\\V[", u8"\\N[", u8"\\P[", u8"\\C[", u8"\\L[", u8"\\R["
 };
 static const std::vector<std::u8string> escChars = {
@@ -540,7 +540,6 @@ static const std::vector<std::u8string> escChars = {
 void langscore::platform_base::detectConstrolChar(ValidateTextInfo& validateInfo) const
 {
     auto text = validateInfo.origin.original;
-    std::transform(text.begin(), text.end(), text.data(), ::tolower);
     for(const auto& c : escWithValueChars)
     {
         auto pos = text.find(c);

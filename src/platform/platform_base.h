@@ -125,8 +125,8 @@ namespace langscore
             };
             Display display;
             
-            std::vector<std::u8string> escWithValueChars;
-            std::vector<std::u8string> escChars;
+            std::vector<std::u8string> escWithValueChars;   //検出した制御文字とその値
+            std::vector<std::u8string> escChars;            //検出した制御文字
         };
 
         std::vector<ValidateTextInfo> convertValidateTextInfo(std::string fileName, const std::vector<TranslateText>& texts) const;
