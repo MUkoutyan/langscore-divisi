@@ -99,11 +99,12 @@ ErrorStatus divisi_mvmz::analyze()
 
 ErrorStatus divisi_mvmz::reanalysis()
 {
+    std::cout << "Update project..." << std::endl;
     config config;
 
     const auto analyzeDirPath = config.langscoreAnalyzeDirectorty();
     if(fs::exists(analyzeDirPath) == false) {
-        return {ErrorStatus::Module::DIVISI_MVMZ, 1};
+        return {ErrorStatus::Module::DIVISI_MVMZ, 1, utility::cnvStr<std::string>(analyzeDirPath)};
     }
 
     //変にマージしないように一旦全削除
@@ -237,6 +238,7 @@ ErrorStatus divisi_mvmz::reanalysis()
 
 ErrorStatus langscore::divisi_mvmz::updatePlugin()
 {
+    std::cout << "Update plugin..." << std::endl;
     config config;
     auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore.js"s;
     bool replaceLs = fs::exists(outputScriptFilePath) == false;
@@ -244,9 +246,12 @@ ErrorStatus langscore::divisi_mvmz::updatePlugin()
         replaceLs = config.overwriteLangscore();
     }
     writeLangscorePlugin(replaceLs);
+    std::cout << "Update plugin done." << std::endl;
 
+    std::cout << "Copy font file." << std::endl;
     auto fontDestPath = this->getGameProjectFontDirectory();
     copyFonts(fontDestPath);
+    std::cout << "Copy font file done." << std::endl;
     return Status_Success;
 }
 
@@ -733,7 +738,7 @@ void langscore::divisi_mvmz::writeFixedBasicData()
     }
     
 
-    std::cout << "Finish." << std::endl;
+    std::cout << "writeFixedBasicData Finish." << std::endl;
 }
 
 void langscore::divisi_mvmz::writeFixedScript()
@@ -774,7 +779,7 @@ void langscore::divisi_mvmz::writeFixedScript()
         writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, scriptReader, this->defaultLanguage, this->supportLangs, mergeTextMode, false);
     }
 
-    std::cout << "Finish." << std::endl;
+    std::cout << "writeFixedScript Finish." << std::endl;
 }
 
 

@@ -57,4 +57,7 @@ foreach(DLL_FILE ${ICU_DLL_FILES})
     )
 endforeach()
 
+
+install(FILES ${ICU_DLL_FILES} DESTINATION ${PROJECT_SOURCE_DIR}/bin/)
+
 endif()

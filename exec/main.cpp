@@ -5,6 +5,63 @@
 #include "versioninfo.h"
 #include "config.h"
 
+#include <exception>
+#include <cstdlib>
+#include <csignal>
+
+
+#if defined(_MSC_VER)
+// MSVC (VS2022) 用: C++23 の std::stacktrace を利用
+#include <stacktrace>
+void print_stacktrace() {
+    std::cerr << "[Stack Trace]:\n"
+        << std::stacktrace::current()
+        << std::endl;
+}
+#else
+// clang++ (Ubuntu) 用: POSIX の execinfo.h を利用
+#include <execinfo.h>
+#include <unistd.h>
+void print_stacktrace() {
+    constexpr int max_frames = 50;
+    void* frames[max_frames];
+    int frame_count = backtrace(frames, max_frames);
+    // backtrace_symbols() は動的に領域を確保するので free() する必要があります
+    char** symbols = backtrace_symbols(frames, frame_count);
+    if(symbols != nullptr) {
+        std::cerr << "[Stack Trace]:" << std::endl;
+        for(int i = 0; i < frame_count; ++i) {
+            std::cerr << symbols[i] << std::endl;
+        }
+        free(symbols);
+    }
+}
+#endif
+
+// シグナルハンドラ（例: SIGSEGV, SIGABRT など）
+void crash_handler(int signum) {
+    std::cerr << "Crash signal (" << signum << ") received.\n";
+    print_stacktrace();
+    std::abort();
+}
+
+// std::terminate ハンドラ（未捕捉例外発生時）
+void _terminate_handler() {
+    std::cerr << "std::terminate was called due to an UNCAUGHT EXCEPTION.\n";
+    print_stacktrace();
+    std::abort();
+}
+
+void setup_crash_handlers() {
+    // シグナルハンドラの設定
+    std::signal(SIGSEGV, crash_handler);
+    std::signal(SIGABRT, crash_handler);
+    // 必要に応じて SIGFPE, SIGILL, SIGTERM なども追加可能
+
+    // std::terminate ハンドラの設定
+    std::set_terminate(_terminate_handler);
+}
+
 struct ARGS
 {
 	std::filesystem::path appPath;
@@ -102,6 +159,7 @@ ARGS analyzeOption(int argc, const char* argv[])
 
 int main(int argc, const char* argv[])
 {
+    setup_crash_handlers();
 	std::cout << "Langscore Divisi Version " << VER_FILEVERSION_STR << std::endl;
 	std::cout << "Build on " << __DATE__ << " " << __TIME__ << std::endl;
 	if(argc < 2){
@@ -164,5 +222,6 @@ int main(int argc, const char* argv[])
         }
 	}
 
+    std::cout << "Complete." << std::endl;
 	return 0;
 }

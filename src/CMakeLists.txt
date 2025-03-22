@@ -2,7 +2,6 @@
 # プロジェクト専用ロジックはこちらです。
 #
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(MSVC)
 	set(CMAKE_CXX_STANDARD 23)

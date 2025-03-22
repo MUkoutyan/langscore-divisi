@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <format>
 
 class ErrorStatus
 {
@@ -23,7 +24,9 @@ public:
         SCRIPTTEXTPARSER,
     };
 
-    ErrorStatus(Module module = Module::None, int code = NoError): _moduleCode(module), _code(code), specMsg("") {}
+    ErrorStatus(Module module = Module::None, int code = NoError, std::string message = "")
+        : _moduleCode(module), _code(code), specMsg(std::move(message)) {}
+
     int val() const noexcept { return int(_moduleCode) << 4 | _code; }
     Module moduleCode() const noexcept { return _moduleCode; }
     int code() const noexcept { return _code; }
@@ -112,19 +115,29 @@ private:
     }
     std::string errorDivisiVxAce()
     {
+        std::string base = "";
         switch (_code)
         {
-        case NoError: return "";
-        case 1: return "error code 1 : \"analyze\" has not been executed";
+        case NoError: return base;
+        case 1: base = "error code 1 : \"analyze\" has not been executed";
         }
-        return "";
+
+        if(false == specMsg.empty()) {
+            return std::format("{} ({})", base, specMsg);
+        }
+        return base;
     }
     std::string errorDivisiMVMZ()
     {
+        std::string base = "";
         switch(_code)
         {
         case NoError: return "";
-        case 1: return "error code 1 : validate error. Not Found Packing Input Directory.";
+        case 1: base = "error code 1 : validate error. Not Found Packing Input Directory.";
+        }
+
+        if(false == specMsg.empty()) {
+            return std::format("{} ({})", base, specMsg);
         }
         return "";
     }
