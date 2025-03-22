@@ -66,6 +66,14 @@ set(test_sources
 
 add_executable(divisi_test ${test_sources})
 
+if(MSVC)
+	set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
+	set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+else()
+    add_compile_options(-stdlib=libc++)
+	target_link_libraries(divisi_test)
+endif()
+
 target_include_directories(divisi_test PUBLIC ${Test_Includes})
 
 target_link_libraries(divisi_test

@@ -250,7 +250,3 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"Failed to run command: {e}")
 
-    if result.wasSuccessful():
-        exit(0)
-    else:
-        exit(1)

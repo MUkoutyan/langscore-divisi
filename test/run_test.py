@@ -94,7 +94,7 @@ def run_rvcnv_test(rvcnv_script_path, details_md_text, results_md_texts):
         details_md_text.append(f"### Failures in {TEST_NAME} Test\n\n")
         for failure in failures:
             details_md_text.append(f"- {failure}\n")
-        if 0 < len(error_base):
+        if error_base and 0 < len(error_base):
             details_md_text.append(f"```\n")
             details_md_text.append(f"- {error_base}\n")
             details_md_text.append(f"```\n")

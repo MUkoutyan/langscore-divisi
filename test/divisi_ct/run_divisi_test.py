@@ -167,7 +167,7 @@ class TestWrite(unittest.TestCase):
         
     def test_write(self):
         # MV =====================================
-        run_divisi(mv_work_ls_path + "\\config.json", "write")
+        run_divisi(mv_work_ls_path + "\\config.json", "exportCSV")
         self.assertTrue(os.path.exists(mv_work_ls_path + "\\data\\translate"))
         begin_exported_file_size = []
         for file in write_expected_files:
@@ -175,7 +175,7 @@ class TestWrite(unittest.TestCase):
             begin_exported_file_size.append(os.path.getsize(file_path))
             self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {mv_work_ls_path}")
             
-        run_divisi(mv_work_ls_path + "\\config.json", "write")
+        run_divisi(mv_work_ls_path + "\\config.json", "exportCSV")
         for i in range(len(write_expected_files)):
             file_path = os.path.join(mv_work_ls_path + "\\data\\translate", write_expected_files[i])
             after_filesize = os.path.getsize(file_path)
@@ -183,7 +183,7 @@ class TestWrite(unittest.TestCase):
 
 
         # MZ =====================================
-        run_divisi(mz_work_ls_path + "\\config.json", "write")
+        run_divisi(mz_work_ls_path + "\\config.json", "exportCSV")
         self.assertTrue(os.path.exists(mz_work_ls_path + "\\data\\translate"))
         begin_exported_file_size = []
         for file in write_expected_files:
@@ -191,7 +191,7 @@ class TestWrite(unittest.TestCase):
             begin_exported_file_size.append(os.path.getsize(file_path))
             self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {mz_work_ls_path}")
             
-        run_divisi(mz_work_ls_path + "\\config.json", "write")
+        run_divisi(mz_work_ls_path + "\\config.json", "exportCSV")
         for i in range(len(write_expected_files)):
             file_path = os.path.join(mz_work_ls_path + "\\data\\translate", write_expected_files[i])
             after_filesize = os.path.getsize(file_path)
@@ -199,7 +199,7 @@ class TestWrite(unittest.TestCase):
 
         
         # Vxace =====================================
-        run_divisi(vxace_work_ls_path + "\\config.json", "write")
+        run_divisi(vxace_work_ls_path + "\\config.json", "exportCSV")
         actual_files = os.listdir(os.path.join(vxace_work_ls_path, "Data", "Translate"))
         self.assertTrue(os.path.exists(vxace_work_ls_path + "\\Data\\Translate"))
         begin_exported_file_size = []
@@ -208,14 +208,14 @@ class TestWrite(unittest.TestCase):
             self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {vxace_work_ls_path}")
             begin_exported_file_size.append(os.path.getsize(file_path))
             
-        run_divisi(vxace_work_ls_path + "\\config.json", "write")
+        run_divisi(vxace_work_ls_path + "\\config.json", "exportCSV")
         for i in range(len(write_expected_files)):
             file_path = os.path.join(vxace_work_ls_path + "\\data\\translate", write_expected_files[i])
             after_filesize = os.path.getsize(file_path)
             self.assertTrue(begin_exported_file_size[i] == after_filesize, f"{file} does not exist in {vxace_work_ls_path}")
 
         # Include Empty =====================================
-        run_divisi(include_empty_work_ls_path + "\\config.json", "write")
+        run_divisi(include_empty_work_ls_path + "\\config.json", "exportCSV")
         self.assertTrue(os.path.exists(include_empty_work_ls_path + "\\data\\translate"))
         begin_exported_file_size = []
         for file in write_expected_files:
@@ -223,7 +223,7 @@ class TestWrite(unittest.TestCase):
             begin_exported_file_size.append(os.path.getsize(file_path))
             self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {include_empty_work_ls_path}")
             
-        run_divisi(include_empty_work_ls_path + "\\config.json", "write")
+        run_divisi(include_empty_work_ls_path + "\\config.json", "exportCSV")
         for i in range(len(write_expected_files)):
             file_path = os.path.join(include_empty_work_ls_path + "\\data\\translate", write_expected_files[i])
             after_filesize = os.path.getsize(file_path)
@@ -246,10 +246,10 @@ class TestUpdate(unittest.TestCase):
         run_divisi(vxace_work_ls_path + "\\config.json", "analyze")
         run_divisi(include_empty_work_ls_path + "\\config.json", "analyze")
         
-        run_divisi(mv_work_ls_path + "\\config.json", "write")
-        run_divisi(mz_work_ls_path + "\\config.json", "write")
-        run_divisi(vxace_work_ls_path + "\\config.json", "write")
-        run_divisi(include_empty_work_ls_path + "\\config.json", "write")
+        run_divisi(mv_work_ls_path + "\\config.json", "exportCSV")
+        run_divisi(mz_work_ls_path + "\\config.json", "exportCSV")
+        run_divisi(vxace_work_ls_path + "\\config.json", "exportCSV")
+        run_divisi(include_empty_work_ls_path + "\\config.json", "exportCSV")
 
     @classmethod
     def tearDownClass(self):
@@ -270,7 +270,7 @@ class TestUpdate(unittest.TestCase):
                 shutil.rmtree(work_path, onerror=force_remove_readonly)
             copy_folder(source_path, work_path)
 
-            run_divisi(work_ls_path + "\\config.json", "update")
+            run_divisi(work_ls_path + "\\config.json", "reanalysis")
             self.assertTrue(os.path.exists(work_ls_path + "\\update"))
 
             for file in analyze_expected_files:
@@ -291,7 +291,7 @@ class TestUpdate(unittest.TestCase):
                 shutil.rmtree(work_path, onerror=force_remove_readonly)
             copy_folder(source_path, work_path)
             actual_files = os.listdir(os.path.join(work_ls_path, "Data", "Translate"))
-            run_divisi(work_ls_path + "\\config.json", "update")
+            run_divisi(work_ls_path + "\\config.json", "reanalysis")
             self.assertTrue(os.path.exists(work_ls_path + "\\update"))
             for file in analyze_expected_files:
                 self.assertIn(file, actual_files, f"{file} does not exist in {work_ls_path}")
