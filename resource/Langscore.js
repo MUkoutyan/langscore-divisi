@@ -1,7 +1,7 @@
 //---------------------------------------------------------------
 // 
 // Langscore CoreScript "Unison" 
-// Version 0.9.10
+// Version 0.9.11
 // Written by BreezeSinfonia 來奈津
 // 
 // 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -162,7 +162,7 @@ var Langscore = class
 
   handleError(message)
   {
-    if (ls_should_throw_for_debug) {
+    if (this.ls_should_throw_for_debug) {
       throw new Error(message);
     } else {
         console.error(message);
@@ -187,7 +187,7 @@ var Langscore = class
   translate(text, langscore_map, lang = Langscore.langscore_current_language)
   {
     if(Langscore.isNull(langscore_map)){
-      handleError("Langscore Error(translate): langscore_map is null")
+      this.handleError("Langscore Error(translate): langscore_map is null")
       return text;
     }
     
@@ -195,7 +195,7 @@ var Langscore = class
 
     var translatedList = langscore_map[key];
     if(!translatedList){ 
-      handleError("Langscore Error(translate): not found translatedList")
+      this.handleError("Langscore Error(translate): not found translatedList")
       return text; 
     }
     var t = translatedList[lang];
@@ -208,7 +208,7 @@ var Langscore = class
   translate_for_map(text) 
   {
     if(!this.ls_current_map){ 
-      handleError("Langscore Error(translate_for_map): Invalid ls_current_map")
+      this.handleError("Langscore Error(translate_for_map): Invalid ls_current_map")
       return text; 
     }
     
@@ -223,7 +223,7 @@ var Langscore = class
     }
     var currentMapTranslatedmap = this.ls_current_map[currentMapId];
     if(!currentMapTranslatedmap){ 
-      handleError(`Langscore Error(translate_for_map): not found currentMapId(${currentMapId})`)
+      this.handleError(`Langscore Error(translate_for_map): not found currentMapId(${currentMapId})`)
       return text; 
     }
 
@@ -707,7 +707,7 @@ Langscore.isFirstLoaded = false;
 Langscore.Langscore_Parameters = PluginManager.parameters('Langscore');
 %{SUPPORT_LANGUAGE}%;
 Langscore.Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
-Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters['Enable Language Patch Mode']);
+Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters['Enable Language Patch Mode'] === "true");
 
 %{SUPPORT_FONTS}%
 
