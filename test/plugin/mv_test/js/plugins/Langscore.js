@@ -318,10 +318,21 @@ var Langscore = class
     this.ls_current_map = new Map;
     this.ls_graphic_cache = {};
 
+    this.ls_should_throw_for_debug = false;
+
     if(StorageManager.isLocalMode()){
         this.fs = require('fs');
         this.path = require('path');
         this.basePath = this.path.dirname(process.mainModule.filename);
+    }
+  }
+
+  handleError(message)
+  {
+    if (ls_should_throw_for_debug) {
+      throw new Error(message);
+    } else {
+        console.error(message);
     }
   }
 
@@ -343,13 +354,17 @@ var Langscore = class
   translate(text, langscore_map, lang = Langscore.langscore_current_language)
   {
     if(Langscore.isNull(langscore_map)){
+      handleError("Langscore Error(translate): langscore_map is null")
       return text;
     }
     
     var key = text;
 
     var translatedList = langscore_map[key];
-    if(!translatedList){ return text; }
+    if(!translatedList){ 
+      handleError("Langscore Error(translate): not found translatedList")
+      return text; 
+    }
     var t = translatedList[lang];
     if(t){
       text = t;
@@ -359,7 +374,10 @@ var Langscore = class
 
   translate_for_map(text) 
   {
-    if(!this.ls_current_map){ return text; }
+    if(!this.ls_current_map){ 
+      handleError("Langscore Error(translate_for_map): Invalid ls_current_map")
+      return text; 
+    }
     
     var parent = this;
     var currentMapId = 0;
@@ -371,7 +389,10 @@ var Langscore = class
       currentMapId = $gameMap._mapId;
     }
     var currentMapTranslatedmap = this.ls_current_map[currentMapId];
-    if(!currentMapTranslatedmap){ return text; }
+    if(!currentMapTranslatedmap){ 
+      handleError(`Langscore Error(translate_for_map): not found currentMapId(${currentMapId})`)
+      return text; 
+    }
 
     var translate_result = parent.translate(text, currentMapTranslatedmap);
     if(translate_result !== text){
@@ -394,8 +415,9 @@ var Langscore = class
             return originText;
         }
       }
-  }
-    return origin;
+    }
+    
+    return transed_text;
   }
 
   translate_list_reset()
@@ -423,6 +445,18 @@ var Langscore = class
       return;
     }
 
+    var enablePatch = false;
+    if(Langscore.EnablePathMode)
+    {
+      if(StorageManager.isLocalMode() === false)
+      {
+        throw new Error('LangscoreのパッチモードはWebブラウザではサポートしていません。');
+      }
+      else{
+        enablePatch = true;
+      }
+    }
+
     if(!Langscore.Support_Language.includes(lang)){
       return;
     }
@@ -440,6 +474,13 @@ var Langscore = class
     this.updateWeapons();
     this.updateSystem();
     this.updateActor();
+    
+    if(enablePatch === true){
+      if($gameMap){
+        //$gameMap === nullは起動直後に起こり得る。
+        this.loadMapData($gameMap.mapId());
+      }
+    }
 
     this._updateMethods.forEach(function(method) {
       method();
@@ -793,6 +834,26 @@ var Langscore = class
     xhr.send();
   };
 
+  
+  loadMapData(mapId)
+  {
+    if(Langscore.isMV())
+      {
+        if(mapId > 0){
+          var fileName = 'Map%1.csv'.format(mapId.padZero(3));
+          this.mapLoader = ResourceHandler.createLoader('data/translate/' + fileName, _langscore.loadMapDataFile.bind(this, mapId));
+          this.loadMapDataFile(mapId);
+        }
+      }
+      else if(Langscore.isMZ())
+      {
+        if(mapId > 0){
+          var fileName = 'Map%1.csv'.format(mapId.padZero(3));
+          this.loadMapDataFile(mapId);
+        }
+      }
+  }
+
   registerUpdateMethodAtLanguageUpdate(method) {
     if (typeof method === "function") {
         this._updateMethods.push(method);
@@ -900,21 +961,9 @@ var DataManager_loadMapData = DataManager.loadMapData;
 DataManager.loadMapData = function(mapId) 
 {
   DataManager_loadMapData.call(this, mapId);
-  if(Langscore.isMV())
-  {
-    if(mapId > 0){
-      var fileName = 'Map%1.csv'.format(mapId.padZero(3));
-      _langscore.mapLoader = ResourceHandler.createLoader('data/translate/' + fileName, _langscore.loadMapDataFile.bind(this, mapId));
-      _langscore.loadMapDataFile(mapId);
-    }
-  }
-  else if(Langscore.isMZ())
-  {
-    if(mapId > 0){
-      var fileName = 'Map%1.csv'.format(mapId.padZero(3));
-      _langscore.loadMapDataFile(mapId);
-    }
-  }
+  //TODO: ロード時等に二回呼ばれて、動作に問題はないが無駄。
+  //      消しても問題ないかが把握しきれていないので、一旦残す。
+  _langscore.loadMapData(mapId);
 };
 
 
@@ -1234,6 +1283,17 @@ ConfigManager.applyData = function(config)
   var lang = config["currentLanguage"];
   if(lang !== undefined && Langscore.Support_Language.includes(lang)){
     Langscore.langscore_current_language = lang;
+  }
+
+  //Support_Language以外の言語が指定されると、起動直後にisFirstLoadedがtrueにならずハングする。
+  //対応言語を手動編集した場合に発生しうるので未想定の動作だが、念のためのチェック。
+  if(!Langscore.Support_Language.includes(Langscore.langscore_current_language)){
+    Langscore.langscore_current_language = Langscore.Default_Language;
+    //厳重にチェック
+    if(!Langscore.Support_Language.includes(Langscore.langscore_current_language)){
+      //Support_Languageが空はヤバいのでクラッシュさせる。チェックしない。
+      Langscore.langscore_current_language = Langscore.Support_Language[0];
+    }
   }
 };
 
