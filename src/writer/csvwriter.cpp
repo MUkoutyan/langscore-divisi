@@ -409,7 +409,7 @@ ErrorStatus langscore::csvwriter::writeForAnalyze(std::filesystem::path path, st
                 }
             }
 
-            rowtext.emplace_back(text.textType);
+            std::ranges::copy(text.textType, std::back_inserter(rowtext));
 
             writeU8String(outputCSVFile, utility::join(rowtext, delimiter));
         }
@@ -431,7 +431,7 @@ ErrorStatus langscore::csvwriter::writeForAnalyze(std::filesystem::path path, st
                 rowtext.emplace_back(convertCsvText(lang.second));
             }
 
-            rowtext.emplace_back(text.textType);
+            std::ranges::copy(text.textType, std::back_inserter(rowtext));
 
             writeU8String(outputCSVFile, utility::join(rowtext, delimiter));
         }

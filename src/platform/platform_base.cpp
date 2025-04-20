@@ -473,61 +473,75 @@ void removeEscapeCharacters(std::u8string& text, const std::vector<std::u8string
 
 std::vector<platform_base::ValidateTextInfo> platform_base::convertValidateTextInfo(std::string fileName, const std::vector<TranslateText>& texts) const
 {
-    std::vector<ValidateTextInfo> resultLists;
 
+    // テキストから右端の改行コードを削除するヘルパー関数
     const auto FormatText = [](const auto& text) {
         return utility::right_trim(text, u8"\r\n"s);
     };
 
+    // 設定を読み込み
     config config;
+    // 分析ディレクトリのパスを取得
     auto analyzeDirPath = fs::path(config.langscoreAnalyzeDirectorty());
+    // 対応するCSVファイルを読み込む（テキストタイプ情報を含む）
     auto csvContents = plaincsvreader{analyzeDirPath / (fileName + ".csv")}.getPlainCsvTexts();
+    // 原文とテキストタイプのマッピングを格納するマップ
     std::unordered_map<std::u8string, std::u8string> textMap;
     if(csvContents.empty() == false) {
         std::set<std::u8string> nameTypeList;
-        csvContents.erase(csvContents.begin()); // ヘッダーの削除
+        csvContents.erase(csvContents.begin()); // ヘッダー行を削除
 
+        // テキストリストから全ての原文をマップのキーとして登録
         for(auto& transText : texts) {
             textMap[FormatText(transText.original)] = u8"";
         }
 
+        // CSVの内容を解析して、テキストタイプを対応する原文に関連付ける
         for(const auto& row : csvContents) {
             auto it = textMap.find(FormatText(row[0]));
             if(it != textMap.end() && row.size() > 1) {
-                it->second = row[1];
+                it->second = row[1];  // テキストタイプを設定
             }
         }
     }
 
-    for(auto& transText : texts) 
+    // 結果を格納するリスト
+    std::vector<ValidateTextInfo> resultLists;
+    // 翻訳テキストリストを処理
+    for(auto& transText : texts)
     {
         ValidateTextInfo result;
-        result.origin = transText;
+        result.origin = transText;  // 原文と翻訳を含むオリジナルデータをコピー
 
+        // テキストマップから該当するタイプを取得して設定
         auto it = textMap.find(FormatText(transText.original));
         if(it != textMap.end()) {
-            result.origin.textType = it->second;
+            result.origin.textType.emplace_back(it->second);
         }
+        // 空の原文はスキップ
         if(result.origin.original.empty()) { continue; }
 
-        // エスケープ文字の検出
+        // 制御文字（エスケープシーケンス）を検出
         detectConstrolChar(result);
 
-        // result.escWithValueChars, result.escCharsの内容を基に
-        // result.display内の文字列から制御文字を削除する。
+        // 表示用のテキストを作成（制御文字を除去したもの）
         result.display.original = result.origin.original;
         result.display.translates = result.origin.translates;
+        // 原文から制御文字を削除
         removeEscapeCharacters(result.display.original, result.escWithValueChars, result.escChars);
 
+        // 各言語の翻訳テキストからも同様に制御文字を削除
         for(auto& [lang, text] : result.display.translates) {
             removeEscapeCharacters(text, result.escWithValueChars, result.escChars);
         }
 
+        // 結果リストに追加
         resultLists.emplace_back(std::move(result));
     }
 
     return resultLists;
 }
+
 
 static const std::vector<std::u8string> escWithValueChars = {
     u8"\\v[", u8"\\n[", u8"\\p[", u8"\\c[", u8"\\l[", u8"\\r[",
@@ -644,62 +658,61 @@ bool langscore::platform_base::validateTexts(const std::vector<ValidateTextInfo>
     size_t row = 1; //表示側は1開始なのでrowは1から開始する。
     for(auto& translate : translateList)
     {
-        const auto& textType = translate.origin.textType;
-        if(validateInfoList.find(textType) == validateInfoList.end()) {
-            row++;
-            continue;
-        }
-
-        const auto& validateLangMap = validateInfoList.at(textType);
-
-        for(const auto& [langText, textLines] : translate.display.translates)
+        for(const auto& textType : translate.origin.textType)
         {
-            if(textLines.find(u8"Did you come here to see") != std::u8string::npos) {
-                std::cout << "debug" << std::endl;
-            }
-            if(validateLangMap.find(langText) == validateLangMap.end()) {
+            if(validateInfoList.find(textType) == validateInfoList.end()) {
                 continue;
             }
 
-            auto& lang = langMap[langText];
-            const auto& validateInfo = validateLangMap.at(langText);
-            if(validateInfo.mode == config::ValidateTextMode::Ignore) {
-                continue;
-            }
-            else if(validateInfo.mode == config::ValidateTextMode::TextCount)
-            {
-                auto maxNumTexts = countNumTexts(textLines);
+            const auto& validateLangMap = validateInfoList.at(textType);
 
-                if(validateInfo.count < maxNumTexts) {
-                    OutputErrorWithWidth(path, ValidateErrorType::Warning, OverTextCount, lang.name, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), maxNumTexts, row);
-                }
-                else {
-                    //該当のテキストタイプが見つからない。更新忘れ？エラーを出す。
-                }
-            }
-            else if(validateInfo.mode == config::ValidateTextMode::TextWidth)
+            for(const auto& [langText, textLines] : translate.display.translates)
             {
-                auto fontName = lang.font.file.filename();
-                auto textInfos = measureTextWidth(textLines, (fontDir / fontName).u8string(), lang.font.size);
-                if(textInfos.empty()) {
+                if(textLines.find(u8"Did you come here to see") != std::u8string::npos) {
+                    std::cout << "debug" << std::endl;
+                }
+                if(validateLangMap.find(langText) == validateLangMap.end()) {
                     continue;
                 }
-                //textInfosの末尾から検索し、detectWidthListの値を超えるものがあればエラーを出力する。
-                auto width_result = std::max_element(textInfos.begin(), textInfos.end(), [](auto& a, auto& b) { return a.second.right < b.second.right; });
-                int width = 0;
-                if(width_result != textInfos.end()) {
-                    width = width_result->second.right;
-                }
 
-                if(validateInfo.width < width) {
-                    OutputErrorWithWidth(path, ValidateErrorType::Warning, PartiallyClipped, lang.name, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), width, row);
+                auto& lang = langMap[langText];
+                const auto& validateInfo = validateLangMap.at(langText);
+                if(validateInfo.mode == config::ValidateTextMode::Ignore) {
+                    continue;
                 }
-                else {
-                    //該当のテキストタイプが見つからない。更新忘れ？エラーを出す。
+                else if(validateInfo.mode == config::ValidateTextMode::TextCount)
+                {
+                    auto maxNumTexts = countNumTexts(textLines);
+
+                    if(validateInfo.count < maxNumTexts) {
+                        OutputErrorWithWidth(path, ValidateErrorType::Warning, OverTextCount, lang.name, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), maxNumTexts, row);
+                    }
+                    else {
+                        //該当のテキストタイプが見つからない。更新忘れ？エラーを出す。
+                    }
+                }
+                else if(validateInfo.mode == config::ValidateTextMode::TextWidth)
+                {
+                    auto fontName = lang.font.file.filename();
+                    auto textInfos = measureTextWidth(textLines, (fontDir / fontName).u8string(), lang.font.size);
+                    if(textInfos.empty()) {
+                        continue;
+                    }
+                    //textInfosの末尾から検索し、detectWidthListの値を超えるものがあればエラーを出力する。
+                    auto width_result = std::max_element(textInfos.begin(), textInfos.end(), [](auto& a, auto& b) { return a.second.right < b.second.right; });
+                    int width = 0;
+                    if(width_result != textInfos.end()) {
+                        width = width_result->second.right;
+                    }
+
+                    if(validateInfo.width < width) {
+                        OutputErrorWithWidth(path, ValidateErrorType::Warning, PartiallyClipped, lang.name, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), width, row);
+                    }
+                    else {
+                        //該当のテキストタイプが見つからない。更新忘れ？エラーを出す。
+                    }
                 }
             }
-            
-
         }
         row++;
     }

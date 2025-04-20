@@ -2,6 +2,7 @@
 #include "config.h"
 
 #include "../writer/rbscriptwriter.h"
+#include "../writer/jsonwriter.h"
 #include "../writer/uniquerowcsvwriter.hpp"
 #include "../reader/vxacejsonreader.hpp"
 #include "../reader/rubyreader.hpp"
@@ -116,14 +117,21 @@ ErrorStatus langscore::divisi_vxace::reanalysis()
     utility::filelist analyzeCsvList;
     for(const auto& f : fs::directory_iterator{analyzeDirPath}){
         auto extension = f.path().extension();
-        if(extension == ".csv"){
+        if(extension == ".csv" || extension == ".lsjson") {
             analyzeCsvList.emplace_back(f.path());
         }
     }
     utility::filelist updateCsvList;
-    for(const auto& f : fs::directory_iterator{updateDirPath}){
+    for(const auto& f : fs::directory_iterator{updateDirPath})
+    {
         auto extension = f.path().extension();
-        if(extension == ".csv"){
+        if(extension == ".lsjson"){
+            updateCsvList.emplace_back(f.path());
+        }
+        else if(f.path().filename() == "MapInfos.csv") {
+            updateCsvList.emplace_back(f.path());
+        }
+        else if(f.path().filename() == "Scripts.csv") {
             updateCsvList.emplace_back(f.path());
         }
     }
@@ -133,7 +141,13 @@ ErrorStatus langscore::divisi_vxace::reanalysis()
     utility::filelist throughCopyList;  //何もせずにコピーする
 
     //消されるファイルの列挙
-    for(const auto& s : analyzeCsvList){
+    for(const auto& s : analyzeCsvList)
+    {
+        if(s.extension() == ".csv") { 
+            messageList.emplace_back(std::make_pair(s.filename(), Type::Delete));
+            continue;
+        }
+        
         auto result = std::ranges::find_if(updateCsvList, [&s](const auto& x){
             return x.filename() == s.filename();
         });
@@ -175,7 +189,7 @@ ErrorStatus langscore::divisi_vxace::reanalysis()
     };
     for(auto s : analyzeCsvList)
     {
-        if(s.extension() != ".csv"){ continue; }
+        if(s.extension() != ".lsjson"){ continue; }
         CompareFileHash(std::move(s), updateCsvList);
     }
 
@@ -460,27 +474,30 @@ void divisi_vxace::writeAnalyzedBasicData()
 {
     std::cout << "writeAnalyzedBasicData" << std::endl;
     std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
-    for(auto& path : this->basicDataFileList)
+    for(const auto& path : this->basicDataFileList)
     {
         std::ifstream loadFile(path);
         nlohmann::json json;
         loadFile >> json;
 
-        auto csvFilePath = path;
-        csvFilePath.make_preferred().replace_extension(".csv");
-        std::cout << "Write CSV : " << csvFilePath << std::endl;
+        auto jsonFilePath = path;
+        jsonFilePath.make_preferred().replace_extension(".lsjson");
+        auto fileName = jsonFilePath.filename();
+        std::cout << "Write JSON : " << jsonFilePath << std::endl;
 
         std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, std::move(json));
-        csvwriter writer(reader);
-        writer.writeForAnalyze(csvFilePath, this->defaultLanguage, MergeTextMode::AcceptTarget);
-        jsonreader_map[path.filename()] = std::move(reader);
+        jsonwriter writer(reader);
+        writer.writeForAnalyze(std::move(jsonFilePath), this->defaultLanguage, MergeTextMode::AcceptTarget);
+        jsonreader_map[fileName] = std::move(reader);
     }
 
-    if(this->basicDataFileList.empty() == false){
-        auto csvFilePath = this->basicDataFileList[0].make_preferred().replace_extension(".csv");
-        auto writeCsvFolder = {csvFilePath.parent_path().u8string()};
-        this->fetchActorTextFromMap(writeCsvFolder, this->basicDataFileList, jsonreader_map);
-        this->adjustCSV(writeCsvFolder, this->basicDataFileList);
+    if(this->basicDataFileList.empty() == false) {
+        auto jsonFilePath = this->basicDataFileList[0].make_preferred().replace_extension(".lsjson");
+        auto writeJsonFolder = {jsonFilePath.parent_path().u8string()};
+
+        // CSVとJSONの両方を出力（互換性のため）
+        this->fetchActorTextFromMap(writeJsonFolder, this->basicDataFileList, jsonreader_map);
+        this->adjustCSV(writeJsonFolder, this->basicDataFileList);
     }
 
     std::cout << "Finish." << std::endl;
@@ -494,7 +511,7 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 
     config config;
     //Rubyスクリプトを予め解析してテキストを生成しておく。
-    rubyreader reader(this->supportLangs, this->scriptFileList);
+    rubyreader reader({u8"scriptLineInfo"}, this->scriptFileList);
     auto& transTexts = reader.currentTexts();
 
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
@@ -507,19 +524,32 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
     auto resourceFolder = this->appPath.parent_path() / "resource";
     auto vocabs = csvreader{this->supportLangs, {resourceFolder / "vocab.csv"}}.currentTexts();
     
+    //※scriptFileNameMapに拡張子は無し
     auto scriptFileNameMap = plaincsvreader{baseDirectory + u8"/Scripts/_list.csv"s}.getPlainCsvTexts();
     const auto GetScriptName = [&scriptFileNameMap](std::u8string scriptName)
     {
         for(const auto& row : scriptFileNameMap){
-            if(row[1] == scriptName){ return row[2]; }
+            if(row[0] == scriptName){ return row[1]; }
         }
         return u8""s;
     };
 
+    //Langscoreのスクリプトは除外する
     auto& scriptTrans = reader.curerntScriptTransMap();
+    auto result_without_langscore_scripts = std::remove_if(scriptTrans.begin(), scriptTrans.end(), [&GetScriptName](const auto& x)
+    {
+        auto scriptFileName = utility::removeExtension(std::get<0>(x));
+        auto scriptName = GetScriptName(std::move(scriptFileName));
+        return scriptName == Script_File_Name || scriptName == Custom_Script_File_Name;
+    });
+    if(scriptTrans.end() != result_without_langscore_scripts) {
+        scriptTrans.erase(result_without_langscore_scripts, scriptTrans.end());
+    }
+
+    //Vocab.rbの内容を適用
     for(auto& pathPair : scriptTrans)
     {
-        auto scriptFileName = std::get<0>(pathPair);
+        auto scriptFileName = utility::removeExtension(std::get<0>(pathPair));
         auto scriptName = GetScriptName(scriptFileName);
         if(scriptName != u8"Vocab"s){ continue; }
 
@@ -556,7 +586,6 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 
     //memoに行数が格納されているため入れ替え
     for(auto& t : transTexts){
-        t.scriptLineInfo.swap(t.original);
         t.translates[u8"scriptLineInfo"s] = t.scriptLineInfo;
     }
 
@@ -601,15 +630,15 @@ void langscore::divisi_vxace::writeFixedBasicData()
 
     auto ignoreScripts = config.rpgMakerBasicData();
     auto list = this->basicDataFileList;
-    auto rm_result = std::remove_if(list.begin(), list.end(), [&](const auto& path){
-        auto result = std::find_if(ignoreScripts.cbegin(), ignoreScripts.cend(), [f = path.filename()](const auto& x){
+    auto rm_result = std::ranges::remove_if(list, [&](const auto& path){
+        auto result = std::ranges::find_if(ignoreScripts, [f = path.filename()](const auto& x){
             return x.ignore && x.filename == f.u8string();
         });
         return result != ignoreScripts.cend();
     });
-    list.erase(rm_result, list.end());
+    list.erase(rm_result.begin(), list.end());
     //一通り書き出し
-    std::for_each(list.begin(), list.end(), [&writeRvCsv](const auto& path){ writeRvCsv(path); });
+    std::ranges::for_each(list, [&writeRvCsv](const auto& path){ writeRvCsv(path); });
 
     this->fetchActorTextFromMap(translateFolderList, list, jsonreader_map);
     this->adjustCSV(translateFolderList, list);
@@ -851,6 +880,9 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
 
         writeFixedTranslateText<rbscriptwriter>(reader, lsCustomScriptPath, this->defaultLanguage, this->supportLangs, langscore::MergeTextMode::AcceptTarget, true);
     }
+    else {
+        std::cout << "not replace langscore_custom.rb. replace flag is false" << std::endl;
+    }
 
     //langscore.rbの出力
     auto outputScriptFilePath = outputPath / (scriptFileNameList[0] + u8".rb"s);
@@ -878,6 +910,9 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
             }
             replaceScript = true;
         }
+    }
+    else {
+        std::cout << "not replace langscore.rb. replace flag is false" << std::endl;
     }
 
 }

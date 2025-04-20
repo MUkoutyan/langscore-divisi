@@ -2,6 +2,7 @@
 #include "config.h"
 
 #include "writer/jsscriptwriter.h"
+#include "writer/jsonwriter.h"
 #include "writer/csvwriter.h"
 #include "reader/csvreader.h"
 #include "reader/mvmzjsonreader.hpp"
@@ -498,74 +499,6 @@ ErrorStatus divisi_mvmz::packing()
     return Status_Success;
 }
 
-/*
-//プラグイン使用版
-ErrorStatus divisi_mvmz::packing()
-{
-    std::cout << "Packing." << std::endl;
-
-    config config;
-    if(config.packingEnablePerLang())
-    {
-        this->currentGameProjectPath.make_preferred();
-        auto srcPath = this->currentGameProjectPath;
-        srcPath.make_preferred();
-        auto gameProjectFolderName = srcPath.filename();
-
-        auto defLangTemp = this->defaultLanguage;
-        auto langList = this->supportLangs;
-
-        auto inputGameProjectFolder = this->currentGameProjectPath;
-        auto outputFolder = fs::path(config.packingPerLangOutputDir());
-        for(const auto& lang : langList)
-        {
-            this->supportLangs = {lang};
-            this->defaultLanguage = lang;
-            this->currentGameProjectPath = (outputFolder / lang / gameProjectFolderName).make_preferred();
-            if(fs::exists(this->currentGameProjectPath) == false) {
-                fs::create_directories(this->currentGameProjectPath);
-            }
-            std::error_code ec;
-            fs::copy(srcPath, this->currentGameProjectPath, std::filesystem::copy_options::recursive, ec);
-            if(ec) {
-                std::cout << "Packing Error: " << ec.message() << std::endl;
-            }
-            this->writeLangscorePlugin(true);
-
-            auto csvOutputFolder = this->currentGameProjectPath / "data" / "translate";
-            if(fs::exists(csvOutputFolder) == false) {
-                fs::create_directories(csvOutputFolder);
-            }
-            auto translateFolder = inputGameProjectFolder/"data"/"translate";
-            for(auto& csvPath : fs::recursive_directory_iterator{translateFolder}) 
-            {
-                auto csvReader = csvreader{{lang}, csvPath};
-                auto transMap = csvReader.currentTexts();
-                std::vector<TranslateText> replacedTexts;
-                for(auto trans : transMap) 
-                {
-                    auto& translates = trans.translates;
-                    std::erase_if(translates, [&lang](auto& pair) {
-                        return pair.first != lang;
-                    });
-
-                    replacedTexts.emplace_back(std::move(trans));
-                }
-
-                auto fileName = csvPath.path().filename();
-                csvwriter{speciftranstext{{lang}, std::move(replacedTexts)}}.write(csvOutputFolder/fileName, MergeTextMode::AcceptTarget);
-            }
-        }
-
-        this->currentGameProjectPath = std::move(srcPath);
-        this->supportLangs = std::move(langList);
-        this->defaultLanguage = std::move(defLangTemp);
-    }
-
-    return Status_Success;
-}
-*/
-
 std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8string deserializeOutPath)
 {
     size_t numScripts = 0;
@@ -643,21 +576,23 @@ void divisi_mvmz::writeAnalyzedBasicData()
         nlohmann::json json;
         loadFile >> json;
 
-        auto csvFilePath = path;
-        csvFilePath.make_preferred().replace_extension(".csv");
-        std::cout << "Write CSV : " << csvFilePath << std::endl;
+        auto jsonFilePath = path;
+        jsonFilePath.make_preferred().replace_extension(".lsjson");
+        std::cout << "Write JSON : " << jsonFilePath << std::endl;
 
         std::unique_ptr<readerbase> reader = std::make_unique<mvmz_jsonreader>(path, this->supportLangs, std::move(json));
-        csvwriter writer(reader);
-        writer.writeForAnalyze(csvFilePath, this->defaultLanguage, MergeTextMode::AcceptTarget);
-        jsonreader_map[path.filename()] = std::move(reader);
+        jsonwriter writer(reader);
+        writer.writeForAnalyze(jsonFilePath, this->defaultLanguage, MergeTextMode::AcceptTarget);
+        jsonreader_map[jsonFilePath.filename()] = std::move(reader);
     }
 
-    if(this->basicDataFileList.empty() == false){
-        auto csvFilePath = this->basicDataFileList[0].make_preferred().replace_extension(".csv");
-        auto writeCsvFolder = csvFilePath.parent_path().u8string();
-        this->fetchActorTextFromMap(writeCsvFolder, this->basicDataFileList, jsonreader_map);
-        this->adjustCSV(writeCsvFolder, this->basicDataFileList);
+    if(this->basicDataFileList.empty() == false) {
+        auto jsonFilePath = this->basicDataFileList[0].make_preferred().replace_extension(".lsjson");
+        auto writeJsonFolder = jsonFilePath.parent_path().u8string();
+
+        // CSVとJSONの両方を出力（互換性のため）
+        this->fetchActorTextFromMap(writeJsonFolder, this->basicDataFileList, jsonreader_map);
+        this->adjustCSV(writeJsonFolder, this->basicDataFileList);
     }
 
     std::cout << "Finish." << std::endl;
@@ -808,6 +743,9 @@ void langscore::divisi_mvmz::writeLangscorePlugin(bool replaceLs)
                 outScriptFile << utility::toString(l) << "\n";
             }
         }
+    }
+    else {
+        std::cout << "not output langscore.js. replace flag is false" << std::endl;
     }
 
     //plugin.jsの更新

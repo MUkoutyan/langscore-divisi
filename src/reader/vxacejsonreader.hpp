@@ -89,7 +89,8 @@ namespace langscore
 
 			TranslateText t(std::move(text), useLangList);
 			t.code = code;
-            t.textType = textTypeForMaker;
+            
+            t.textType.emplace_back(textTypeForMaker);
             textTypeForMaker = TranslateText::other;
 			auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
 				return x.original == t.original;
@@ -289,7 +290,7 @@ namespace langscore
                         textTypeForMaker = TranslateText::battleMessage;
                     }
                     else if(key == u8"@name") {
-                        textTypeForMaker = TranslateText::nameType;
+                        textTypeForMaker = TranslateText::battleName;
                     }
                     else if(key == u8"@description") {
                         textTypeForMaker = TranslateText::descriptionType;
@@ -297,6 +298,9 @@ namespace langscore
                 }
                 else {
                     if(key == u8"@name") {
+                        textTypeForMaker = TranslateText::nameType;
+                    }
+                    else if(key == u8"@nickname") {
                         textTypeForMaker = TranslateText::nameType;
                     }
                     else if(key == u8"@description") {
