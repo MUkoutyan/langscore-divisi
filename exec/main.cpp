@@ -182,6 +182,7 @@ int main(int argc, const char* argv[])
 	if(args.analyze){
 		result = divisi.analyze();
         if(result.invalid()) {
+            std::cerr << "analyze was invalid." << std::endl;
             std::cerr << result.toStr() << std::endl;
             return result.val();
         }
@@ -189,6 +190,7 @@ int main(int argc, const char* argv[])
 	if(args.reanalysis){
 		result = divisi.reanalysis();
         if(result.invalid()) {
+            std::cerr << "reanalysis was invalid." << std::endl;
             std::cerr << result.toStr() << std::endl;
             return result.val();
         }
@@ -196,6 +198,7 @@ int main(int argc, const char* argv[])
     if(args.updatePlugin) {
         result = divisi.updatePlugin();
         if(result.invalid()) {
+            std::cerr << "reanalysis was invalid." << std::endl;
             std::cerr << result.toStr() << std::endl;
             return result.val();
         }
@@ -203,6 +206,7 @@ int main(int argc, const char* argv[])
 	if(args.exportCSV){
 		result = divisi.exportCSV();
         if(result.invalid()) {
+            std::cerr << "exportCSV was invalid." << std::endl;
             std::cerr << result.toStr() << std::endl;
             return result.val();
         }
@@ -210,6 +214,7 @@ int main(int argc, const char* argv[])
 	if(args.validate){
 		result = divisi.validate();
         if(result.invalid()) {
+            std::cerr << "validate was invalid." << std::endl;
             std::cerr << result.toStr() << std::endl;
             return result.val();
         }
@@ -217,6 +222,7 @@ int main(int argc, const char* argv[])
 	if(args.packing){
 		result = divisi.packing();
         if(result.invalid()) {
+            std::cerr << "packing was invalid." << std::endl;
             std::cerr << result.toStr() << std::endl;
             return result.val();
         }
