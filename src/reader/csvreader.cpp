@@ -222,6 +222,11 @@ std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path p
 
 	if(col.empty() == false){ AddCols(std::move(col)); }
 
+    // 行の最後がカンマで終わっている場合、空の列を追加
+    else if(!cols.empty()) {
+        AddCols(u8"");
+    }
+
 	if(cols.empty() == false){
 		csv.emplace_back(std::move(cols));
 	}
