@@ -146,6 +146,7 @@ namespace langscore
 						case 405: [[fallthrough]];	//文章のスクロール表示
 						case 320: [[fallthrough]];	//アクター名の変更
 						case 324:		//二つ名の変更
+                        case 325: //プロフィールの変更
 						//case 231:		//画像の表示
 							result = true;
 							[[fallthrough]];
