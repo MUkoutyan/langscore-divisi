@@ -1,7 +1,15 @@
+#pragma once
 #include "tree_sitter/api.h"
 #include <string>
 #include <vector>
 #include <tuple>
+
+static void ts_logger_func(void* payload, TSLogType type, const char* mes)
+{
+    if(*((bool*)payload)) {
+        std::cout << mes << std::endl;
+    }
+}
 
 static std::tuple<uint32_t, uint32_t> GetNodeStartEndByte(TSNode node)
 {

@@ -13,12 +13,7 @@
 // tree-sitter-javascriptの言語関数を提供する。
 extern "C" TSLanguage * tree_sitter_javascript();
 
-static void ts_logger_func(void* payload, TSLogType type, const char* mes)
-{
-    if(*((bool*)payload)) {
-        std::cout << mes << std::endl;
-    }
-}
+
 
 namespace langscore {
 
