@@ -214,33 +214,82 @@ utility::u8stringlist platform_base::GetScriptFileName(config& config, utility::
 	return result;
 }
 
-
 void platform_base::writeFixedGraphFileNameData()
 {
-	std::cout << "writeFixedGraphFileNameData" << std::endl;
+    std::cout << "writeFixedGraphFileNameData" << std::endl;
 
-	config config;
-	auto mergeTextMode = MergeTextMode::MergeKeepSource;
-	auto mergeTextModeRaw = config.globalWriteMode();
-	if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
-		mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
-	}
-	auto ignorePictures = config.ignorePictures();
-	std::vector<TranslateText> transTextList;
-	for(auto& f : graphicFileList){
-		auto result = std::find(ignorePictures.cbegin(), ignorePictures.cend(), f.generic_u8string());
-		if(result != ignorePictures.cend()){ continue; }
-		transTextList.emplace_back(f.generic_u8string(), supportLangs);
-	}
-	speciftranstext transText{supportLangs, std::move(transTextList)};
-
-	auto csvPathList = exportFolderPath("Graphics.csv");
-    for(auto& csvPath : csvPathList) {
-        std::cout << "Write Graphics : " << csvPath << std::endl;
-        writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transText, this->defaultLanguage, this->supportLangs, mergeTextMode);
+    config config;
+    std::u8string root;
+    auto mergeTextMode = MergeTextMode::MergeKeepSource;
+    auto mergeTextModeRaw = config.globalWriteMode();
+    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4) {
+        mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
     }
-	std::cout << "Finish." << std::endl;
+
+    auto ignorePictures = config.ignorePictures();
+    std::vector<TranslateText> transTextList;
+    for(auto& f : graphicFileList) {
+        auto result = std::find(ignorePictures.cbegin(), ignorePictures.cend(), f.generic_u8string());
+        if(result != ignorePictures.cend()) { continue; }
+        transTextList.emplace_back(f.generic_u8string(), supportLangs);
+    }
+
+    if(config.enableLanguagePatch())
+    {
+        // 言語パッチモードが有効な場合、言語ごとに分けて出力
+        const auto pair = config.exportDirectoryWithLang(root);
+
+        for(auto& [lang, translateFolder] : pair)
+        {
+            auto outputPath = fs::path(translateFolder) / "Graphics.csv";
+            std::cout << "Write Graphics : " << outputPath << std::endl;
+
+            // 言語ごとの翻訳テキストを作成
+            speciftranstext transText{std::vector<std::u8string>{lang}, transTextList};
+            writeFixedTranslateText<uniquerowcsvwriter>(outputPath, transText, this->defaultLanguage, std::vector<std::u8string>{lang}, mergeTextMode);
+        }
+    }
+    else
+    {
+        // 通常モードでは全言語を同じCSVに出力
+        auto csvPathList = exportFolderPath("Graphics.csv");
+        speciftranstext transText{supportLangs, std::move(transTextList)};
+
+        for(auto& csvPath : csvPathList) {
+            std::cout << "Write Graphics : " << csvPath << std::endl;
+            writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transText, this->defaultLanguage, this->supportLangs, mergeTextMode);
+        }
+    }
+
+    std::cout << "Finish." << std::endl;
 }
+
+//void platform_base::writeFixedGraphFileNameData()
+//{
+//	std::cout << "writeFixedGraphFileNameData" << std::endl;
+//
+//	config config;
+//	auto mergeTextMode = MergeTextMode::MergeKeepSource;
+//	auto mergeTextModeRaw = config.globalWriteMode();
+//	if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
+//		mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
+//	}
+//	auto ignorePictures = config.ignorePictures();
+//	std::vector<TranslateText> transTextList;
+//	for(auto& f : graphicFileList){
+//		auto result = std::find(ignorePictures.cbegin(), ignorePictures.cend(), f.generic_u8string());
+//		if(result != ignorePictures.cend()){ continue; }
+//		transTextList.emplace_back(f.generic_u8string(), supportLangs);
+//	}
+//	speciftranstext transText{supportLangs, std::move(transTextList)};
+//
+//	auto csvPathList = exportFolderPath("Graphics.csv");
+//    for(auto& csvPath : csvPathList) {
+//        std::cout << "Write Graphics : " << csvPath << std::endl;
+//        writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transText, this->defaultLanguage, this->supportLangs, mergeTextMode);
+//    }
+//	std::cout << "Finish." << std::endl;
+//}
 
 
 bool FindNewlineCR(fs::path path)

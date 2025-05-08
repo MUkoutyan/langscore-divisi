@@ -621,7 +621,7 @@ void langscore::divisi_mvmz::writeFixedBasicData()
     });
     dataFileList.erase(rm_result.begin(), rm_result.end());
 
-    if(config.exportByLanguage()) 
+    if(config.enableLanguagePatch())
     {
         const auto pair = config.exportDirectoryWithLang(root);
         std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
@@ -676,6 +676,47 @@ void langscore::divisi_mvmz::writeFixedBasicData()
     std::cout << "writeFixedBasicData Finish." << std::endl;
 }
 
+//void langscore::divisi_mvmz::writeFixedScript()
+//{
+//    std::cout << "writeFixedScript" << std::endl;
+//    config config;
+//
+//    auto mergeTextMode = MergeTextMode::MergeKeepSource;
+//    auto mergeTextModeRaw = config.globalWriteMode();
+//    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
+//        mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
+//    }
+//
+//    auto scriptInfoList = config.rpgMakerScripts();
+//    auto scriptList = scriptFileList;
+//    {
+//        auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&scriptInfoList](const auto& path){
+//            auto osPath = path.stem();
+//            auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&osPath](const auto& script){
+//                return script.filename == osPath && script.ignore;
+//            });
+//            return result != scriptInfoList.cend();
+//        });
+//        scriptList.erase(rm_result, scriptList.end());
+//    }
+//
+//    //スクリプトの翻訳を書き込むCSVの書き出し
+//    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+//    auto pluginsPath = this->currentGameProjectPath / u8"js/plugins.js"s;
+//    javascriptreader scriptReader(def_lang, this->supportLangs, pluginsPath, scriptList);
+//    auto transTexts = scriptReader.currentTexts();
+//    scriptReader.applyIgnoreScripts(scriptInfoList);
+//
+//    std::u8string root;
+//    const auto translateFolderList = config.exportDirectory(root);
+//    for(auto& translateFolder : translateFolderList){
+//        std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
+//        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, scriptReader, this->defaultLanguage, this->supportLangs, mergeTextMode, false);
+//    }
+//
+//    std::cout << "writeFixedScript Finish." << std::endl;
+//}
+
 void langscore::divisi_mvmz::writeFixedScript()
 {
     std::cout << "writeFixedScript" << std::endl;
@@ -683,16 +724,16 @@ void langscore::divisi_mvmz::writeFixedScript()
 
     auto mergeTextMode = MergeTextMode::MergeKeepSource;
     auto mergeTextModeRaw = config.globalWriteMode();
-    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
+    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4) {
         mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
     }
 
     auto scriptInfoList = config.rpgMakerScripts();
     auto scriptList = scriptFileList;
     {
-        auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&scriptInfoList](const auto& path){
+        auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&scriptInfoList](const auto& path) {
             auto osPath = path.stem();
-            auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&osPath](const auto& script){
+            auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&osPath](const auto& script) {
                 return script.filename == osPath && script.ignore;
             });
             return result != scriptInfoList.cend();
@@ -700,22 +741,45 @@ void langscore::divisi_mvmz::writeFixedScript()
         scriptList.erase(rm_result, scriptList.end());
     }
 
-    //スクリプトの翻訳を書き込むCSVの書き出し
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     auto pluginsPath = this->currentGameProjectPath / u8"js/plugins.js"s;
-    javascriptreader scriptReader(def_lang, this->supportLangs, pluginsPath, scriptList);
-    auto transTexts = scriptReader.currentTexts();
-    scriptReader.applyIgnoreScripts(scriptInfoList);
 
     std::u8string root;
-    const auto translateFolderList = config.exportDirectory(root);
-    for(auto& translateFolder : translateFolderList){
-        std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, scriptReader, this->defaultLanguage, this->supportLangs, mergeTextMode, false);
+
+    if(config.enableLanguagePatch())
+    {
+        // 言語パッチモードが有効な場合、言語ごとに分けて出力
+        const auto pair = config.exportDirectoryWithLang(root);
+
+        for(auto& [lang, translateFolder] : pair)
+        {
+            // 各言語向けのJavaScriptReaderを作成
+            javascriptreader scriptReader(def_lang, {lang}, pluginsPath, scriptList);
+            scriptReader.applyIgnoreScripts(scriptInfoList);
+
+            auto outputPath = translateFolder / fs::path{"Scripts.csv"};
+            std::cout << "Write Fix Script CSV : " << outputPath << std::endl;
+            writeFixedTranslateText<csvwriter>(outputPath, scriptReader, this->defaultLanguage, {lang}, mergeTextMode, false);
+        }
+    }
+    else
+    {
+        // 通常モードでは全言語を同じCSVに出力
+        const auto translateFolderList = config.exportDirectory(root);
+
+        // 全言語に対応したJavaScriptReaderを使用
+        javascriptreader scriptReader(def_lang, this->supportLangs, pluginsPath, scriptList);
+        scriptReader.applyIgnoreScripts(scriptInfoList);
+
+        for(auto& translateFolder : translateFolderList) {
+            std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
+            writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, scriptReader, this->defaultLanguage, this->supportLangs, mergeTextMode, false);
+        }
     }
 
     std::cout << "writeFixedScript Finish." << std::endl;
 }
+
 
 
 void langscore::divisi_mvmz::writeLangscorePlugin(bool replaceLs)
