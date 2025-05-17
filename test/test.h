@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include <gtest/gtest.h>
 #include "config.h"
@@ -8,10 +8,14 @@
 #include "..\\src\\platform\\divisi_vxace.h"
 #include "..\\src\\writer\\csvwriter.h"
 #include "..\\src\\writer\\rbscriptwriter.h"
+#include "..\\src\\writer\\jsonwriter.h"
 #include "..\\src\\reader\\csvreader.h"
 #include "..\\src\\reader\\speciftranstext.hpp"
 #include "..\\src\\reader\\rubyreader.hpp"
+#include "..\\src\\reader\\mvmzjsonreader.hpp"
 #include "..\\src\\reader\\javascriptreader.hpp"
+#include "..\\src\\reader\\vxacejsonreader.hpp"
+#include "..\\src\\reader\\jsonreader.hpp"
 #include "..\\src\\utility.hpp"
 #include "..\\src\\scripttextparser.hpp"
 #include <iostream>
@@ -70,10 +74,16 @@ void ClearGenerateFiles()
 	Delete(".\\data\\mv\\LangscoreTest\\data\\translate");
 	Delete(".\\data\\mv\\LangscoreTest\\js\\plugins\\Langscore.js");
 	Delete(".\\data\\mv\\LangscoreTest_langscore\\analyze");
-	Delete(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~\\Data\\Translate");
-	Delete(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_langscore\\analyze");
-	Delete(".\\data\\vxace\\ƒ\ƒ|ƒ@ƒ[ƒ]ƒ^ƒ_‚`ƒ{ƒ}ƒ~_Invalid_langscore\\analyze");
+    Delete(".\\data\\mv\\LangscoreTest_langscore\\data");
+    Delete(".\\data\\mv\\LangscoreTest_MultipleExport_langscore\\analyze");
+    Delete(".\\data\\mv\\LangscoreTest_MultipleExport_langscore\\data");
+	Delete(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ\\Data\\Translate");
+	Delete(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\analyze");
+	Delete(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_langscore\\data");
+	Delete(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_Invalid_langscore\\analyze");
+	Delete(".\\data\\vxace\\ã‚½ãƒã‚¡ã‚¼ã‚¾ã‚¿ãƒ€ï¼¡ãƒœãƒãƒŸ_Invalid_langscore\\data");
 	Delete(".\\data\\vxace\\Include WhiteSpacePath Project_langscore\\analyze");
+	Delete(".\\data\\vxace\\Include WhiteSpacePath Project_langscore\\data");
 	Delete(".\\data\\langscore_custom.rb"s);
 }
 
@@ -103,10 +113,10 @@ static void checkAndCreateConfigFile(fs::path config_path, std::filesystem::path
     {
         std::string suffix = "_langscore";
 
-        // ƒpƒX‚ğ•ªŠ„
+        // ãƒ‘ã‚¹ã‚’åˆ†å‰²
         std::filesystem::path parentPath = config_path.parent_path();
 
-        // ƒtƒHƒ‹ƒ_–¼‚©‚çƒTƒtƒBƒbƒNƒX‚ğíœ
+        // ãƒ•ã‚©ãƒ«ãƒ€åã‹ã‚‰ã‚µãƒ•ã‚£ãƒƒã‚¯ã‚¹ã‚’å‰Šé™¤
         std::filesystem::path gamePath;
         for(auto& part : parentPath) {
             std::string partStr = part.string();

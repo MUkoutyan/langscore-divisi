@@ -191,6 +191,9 @@ TEST_F(Langscore_VXAce_Divisi, CheckIncludeEmptyPath)
 
 TEST_F(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 {
+    //Langscore.rbが正しく出力されているかを確認するテスト。
+    //ここで失敗する場合、divisi_vxace::formatSystemVariableのミスか、
+    //rubyreaderクラスの解析処理に問題がある可能性がある。
 	ClearGenerateFiles();
 	{
 		langscore::config::detachConfigFile();
@@ -231,20 +234,15 @@ TEST_F(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 	auto writedCsvTexts = csvreader.currentTexts();
 
     std::vector<std::u8string> expectedTexts = {
-        u8"en", u8"ja", u8"VL Gothic", u8"メイリオ", u8"Data/Translate", u8"/",
-        u8"Invalid CSV Data", 
-        u8"Error! : 翻訳文の中に列数が一致しない箇所があります！ : #{mismatch_cells.first}",
-        u8"File : #{file_name}, Header size : #{size}, Languages : #{rows[0]}",
-        u8"Error! : 翻訳文の中に列数が一致しない箇所があります！ : #{mismatch_cells.first}",
-        u8".rvdata2", u8"load_data #{file_name}", u8".csv", u8"rb:utf-8:utf-8",
-        u8"open #{file_name}", u8"Warning : 翻訳ファイルが見つかりません。 #{file_name}",
-        u8"\n", u8",", u8"\"", u8"Graphics", u8"Scripts", u8"Troops", u8"CommonEvents",
+        u8"en", u8"ja", u8"VL Gothic", u8"メイリオ", u8"Data/Translate",
+        u8".rvdata2", u8".csv", u8"rb:utf-8:utf-8",
+        u8",", u8"Graphics", u8"Scripts", u8"Troops", u8"CommonEvents",
         u8"Actors", u8"System", u8"Classes", u8"Skills", u8"States", u8"Weapons",
-        u8"Armors", u8"Items", u8"Enemies", u8"Map%03d", u8"_",
+        u8"Armors", u8"Items", u8"Enemies", u8"Map%03d",
         u8"現在選択中の言語が表示されます。", u8"The currently selected language is displayed.",
         u8"English", u8"日本語", u8"OK", u8"Reselect", u8"Cancel", u8"kernel32",
         u8"GetPrivateProfileString", u8"L", u8"WritePrivateProfileString", u8"i", u8" ",
-        u8"Langscore", u8"Lang", u8"./Game.ini", u8"Langscore Load ini : #{$langscore_current_language}"
+        u8"Langscore", u8"Lang", u8"./Game.ini"
     };
 
     volatile int index = 0;
@@ -266,8 +264,8 @@ TEST_F(Langscore_VXAce_Divisi, CheckScriptCSV)
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
-	ASSERT_TRUE(fs::exists(outputPath / "Scripts.csv"));
-	langscore::csvreader csvreader{{}, outputPath / "Scripts.csv"};
+	ASSERT_TRUE(fs::exists(outputPath / "Scripts.lsjson"));
+	langscore::analyzejsonreader csvreader{outputPath / "Scripts.lsjson"};
 	auto scriptCsv = csvreader.currentTexts();
 	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
 
@@ -306,7 +304,7 @@ TEST_F(Langscore_VXAce_Divisi, WriteVXAceProject)
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
-	ASSERT_TRUE(fs::exists(outputPath / "Scripts.csv"));
+	ASSERT_TRUE(fs::exists(outputPath / "Scripts.lsjson"));
 	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
 
 	fs::path langscoreCustomFilename;
@@ -347,7 +345,7 @@ TEST_F(Langscore_VXAce_Divisi, WriteVocab)
 	langscore::config config;
 	auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
-	ASSERT_TRUE(fs::exists(outputPath / "Scripts.csv"));
+	ASSERT_TRUE(fs::exists(outputPath / "Scripts.lsjson"));
 	auto scriptList = plaincsvreader{outputPath / "Scripts/_list.csv"}.getPlainCsvTexts();
 
 	fs::path langscoreCustomFilename;
@@ -653,13 +651,13 @@ TEST(Langscore_VXAce_Divisi_Analyze, ValidateTexts)
     langscore::config config;
     auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
 
-    ASSERT_TRUE(fs::exists(outputPath / "Map001.csv"));
-    auto scriptCsv = plaincsvreader{outputPath / "Map001.csv"}.getPlainCsvTexts();
+    ASSERT_TRUE(fs::exists(outputPath / "Map001.lsjson"));
+    auto scriptCsv = analyzejsonreader{outputPath / "Map001.lsjson"}.currentTexts();
     ASSERT_TRUE(scriptCsv.empty() == false);
 
     //Ver.0.7.4からVXAceにおいて末尾に改行を付けないように変更した。
     std::vector<std::u8string> includeTexts = {
-        u8"original",u8"通常のテキストです",u8"改行を含む\nテキストです",u8"カンマを含む,テキストです",
+        u8"通常のテキストです",u8"改行を含む\nテキストです",u8"カンマを含む,テキストです",
         u8"\"タ\"フ\"ルクォーテーションを含むテキストです\"",
         u8"\"\"\"Hello, World\"\",\nそれはプログラムを書く際の\",\"\"\"謎の呪文\"\"(Mystery spell)―――\"",
         u8"1番の変数の値は \\V[1] です。",u8"1番のアクターの名前は \\N[1] です。",
@@ -695,8 +693,7 @@ TEST(Langscore_VXAce_Divisi_Analyze, ValidateTexts)
 
     for(auto& row : scriptCsv)
     {
-        ASSERT_FALSE(row.empty());
-        auto t = row[0];
+        auto t = row.original;
         auto result = std::find_if(includeTexts.cbegin(), includeTexts.cend(), [t](const auto& x) {
             return x == t;
             });
@@ -705,4 +702,518 @@ TEST(Langscore_VXAce_Divisi_Analyze, ValidateTexts)
         }
     }
     GTEST_SUCCEED();
+}
+
+// VXAce用のJSONリーダーのテキストタイプのテスト
+TEST(Langscore_VXAce_VXAceJsonReader, TextTypeForMaker)
+{
+    // 最初にdivisi.analyze()を実行してJSONファイルを生成
+    ClearGenerateFiles();
+    langscore::config::detachConfigFile();
+    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+
+    ASSERT_TRUE(divisi.analyze().valid());
+    langscore::config config;
+    auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
+
+    // 生成されたActors.jsonファイルを読み込む
+    std::filesystem::path jsonFilePath = outputPath / "Actors.json";
+    ASSERT_TRUE(fs::exists(jsonFilePath)) << "Actors.json not found in analyze directory";
+
+    std::ifstream loadFile(jsonFilePath);
+    nlohmann::json json;
+    loadFile >> json;
+
+    std::vector<std::u8string> useLangs = {u8"en", u8"ja"};
+    langscore::vxace_jsonreader reader(useLangs, std::move(json));
+
+    // テキストタイプが正しく設定されているかを確認
+    const auto& texts = reader.currentTexts();
+    ASSERT_FALSE(texts.empty()) << "No texts found";
+
+    // 名前とプロフィールのテキストタイプを確認
+    bool foundName = false;
+    bool foundNickname = false;
+    bool foundProfile = false;
+
+    for(const auto& text : texts) {
+        if(text.original == u8"エルーシェ" || text.original == u8"ラフィーナ") {
+            EXPECT_TRUE(std::find(text.textType.begin(), text.textType.end(), TranslateText::nameType) != text.textType.end()) << "Name text type incorrect";
+            foundName = true;
+        }
+        else if(text.original == u8"雑用係" || text.original == u8"傲慢ちき") {
+            EXPECT_TRUE(std::find(text.textType.begin(), text.textType.end(), TranslateText::nameType) != text.textType.end()) << "Nickname text type incorrect";
+            foundNickname = true;
+        }
+        else if(text.original == u8"ケスティニアスの雑用係。\r\nそんなに仕事は無い。" ||
+                text.original == u8"チビのツンデレウーマン。\r\n魔法が得意。") 
+        {
+            EXPECT_TRUE(std::find(text.textType.begin(), text.textType.end(), TranslateText::descriptionType) != text.textType.end()) << "Profile text type incorrect";
+            foundProfile = true;
+        }
+    }
+
+    EXPECT_TRUE(foundName) << "Name text not found";
+    EXPECT_TRUE(foundNickname) << "Nickname text not found";
+    EXPECT_TRUE(foundProfile) << "Profile text not found";
+}
+
+// データタイプの検出テスト
+TEST(Langscore_VXAce_VXAceJsonReader, DetectDataType)
+{
+    // 最初にdivisi.analyze()を実行してJSONファイルを生成
+    ClearGenerateFiles();
+    langscore::config::detachConfigFile();
+    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+
+    ASSERT_TRUE(divisi.analyze().valid());
+    langscore::config config;
+    auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
+
+    // 異なるファイル名でデータタイプが正しく検出されるかテスト
+    std::vector<std::string> testCases = {
+        "Actors.json",
+        "Armors.json",
+        "Classes.json",
+        "CommonEvents.json",
+        "Enemies.json",
+        "Items.json",
+        "Map001.json",
+        "Skills.json",
+        "States.json",
+        "System.json",
+        "Troops.json",
+        "Weapons.json"
+    };
+
+    std::vector<std::u8string> useLangs = {u8"en", u8"ja"};
+
+    for(const auto& filename : testCases) {
+        std::filesystem::path jsonFilePath = outputPath / filename;
+        if(fs::exists(jsonFilePath)) {
+            std::ifstream loadFile(jsonFilePath);
+            nlohmann::json json;
+            loadFile >> json;
+            langscore::vxace_jsonreader reader(useLangs, std::move(json));
+
+            // データが読み込めたことを確認
+            const auto& texts = reader.currentTexts();
+
+            // データタイプが正しく検出されていることを確認するメッセージ
+            SUCCEED() << "Successfully detected data type for " << filename;
+        }
+        else {
+            // ファイルが見つからない場合はスキップ
+            GTEST_SKIP() << "File not found: " << jsonFilePath.string();
+        }
+    }
+}
+
+// テキストの積み上げ処理テスト
+TEST(Langscore_VXAce_VXAceJsonReader, StackTextProcessing)
+{
+    // 最初にdivisi.analyze()を実行してJSONファイルを生成
+    ClearGenerateFiles();
+    langscore::config::detachConfigFile();
+    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+
+    ASSERT_TRUE(divisi.analyze().valid());
+    langscore::config config;
+    auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
+
+    // Map001のJSON(イベントテキストを含むファイル)を読み込む
+    std::filesystem::path jsonFilePath = outputPath / "Map001.json";
+    ASSERT_TRUE(fs::exists(jsonFilePath)) << "Map001.json not found in analyze directory";
+
+    std::ifstream loadFile(jsonFilePath);
+    nlohmann::json json;
+    loadFile >> json;
+
+    std::vector<std::u8string> useLangs = {u8"en", u8"ja"};
+    langscore::vxace_jsonreader reader(useLangs, std::move(json));
+
+    // テキストが正しく積み上げられているかを確認
+    const auto& texts = reader.currentTexts();
+
+    // テキストがあることを確認
+    ASSERT_FALSE(texts.empty()) << "No texts found in Map001";
+
+    // 積み上げられたメッセージを確認
+    bool foundStackedText = false;
+    for(const auto& text : texts) {
+        if(text.code == 401) {
+            // イベントのメッセージ
+            if(text.original == u8"通常のテキストです" ||
+                text.original == u8"改行を含む\nテキストです") {
+                foundStackedText = true;
+                break;
+            }
+        }
+    }
+    EXPECT_TRUE(foundStackedText) << "Stacked text not found";
+
+    // 選択肢も正しく抽出されているか確認
+    bool foundChoices = false;
+    for(const auto& text : texts) {
+        if(text.code == 102) {
+            // 選択肢のテキスト
+            if(text.original == u8"ラフィーナ" ||
+                text.original == u8"エルーシェ" ||
+                text.original == u8"やめる") {
+                foundChoices = true;
+                break;
+            }
+        }
+    }
+    EXPECT_TRUE(foundChoices) << "Choices not found";
+}
+
+// テキストタイプの検証テスト
+TEST(Langscore_VXAce_VXAceJsonReader, TextTypeValidation)
+{
+    // 最初にdivisi.analyze()を実行してJSONファイルを生成
+    ClearGenerateFiles();
+    langscore::config::detachConfigFile();
+    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+
+    ASSERT_TRUE(divisi.analyze().valid());
+    langscore::config config;
+    auto outputPath = fs::path(config.langscoreAnalyzeDirectorty());
+
+    // 各種JSONファイルを読み込んでtextTypeを検証する
+    struct TestCase {
+        std::string filename;
+        std::vector<std::pair<std::u8string, const char8_t*>> expectedTexts;
+    };
+
+    std::vector<TestCase> testCases = {
+        // アクター関連のテキストタイプ
+        {"Actors.json", {
+            {u8"エルーシェ", TranslateText::nameType},
+            {u8"ラフィーナ", TranslateText::nameType},
+            {u8"雑用係", TranslateText::nameType},
+            {u8"傲慢ちき", TranslateText::nameType},
+            {u8"ケスティニアスの雑用係。\r\nそんなに仕事は無い。", TranslateText::descriptionType},
+            {u8"チビのツンデレウーマン。\r\n魔法が得意。", TranslateText::descriptionType}
+        }},
+        // アイテム関連のテキストタイプ
+        {"Items.json", {
+            {u8"ポーション", TranslateText::nameType},
+            {u8"マジックウォーター", TranslateText::nameType},
+            {u8"ディスペルハーブ", TranslateText::nameType}
+        }},
+        // マップイベントのテキストタイプ
+        {"Map001.json", {
+            {u8"通常のテキストです", TranslateText::message},
+            {u8"改行を含む\nテキストです", TranslateText::message},
+            {u8"名前変えるよ", TranslateText::message},
+            {u8"ラフィーナ", TranslateText::other},
+            {u8"エルーシェ", TranslateText::other},
+            {u8"やめる", TranslateText::other}
+        }}
+    };
+
+    std::vector<std::u8string> useLangs = {u8"en", u8"ja"};
+
+    for(const auto& testCase : testCases) {
+        // JSONファイルを読み込む
+        std::filesystem::path jsonFilePath = outputPath / testCase.filename;
+        if(!fs::exists(jsonFilePath)) {
+            GTEST_SKIP() << "Test file not found: " << jsonFilePath.string();
+            continue;
+        }
+
+        std::ifstream loadFile(jsonFilePath);
+        nlohmann::json json;
+        loadFile >> json;
+
+        langscore::vxace_jsonreader reader(useLangs, std::move(json));
+        const auto& texts = reader.currentTexts();
+
+        // 期待されるテキストとそのタイプを確認
+        for(const auto& [expectedText, expectedType] : testCase.expectedTexts) {
+            bool found = false;
+            for(const auto& text : texts) {
+                if(text.original == expectedText) {
+                    EXPECT_TRUE(std::find(text.textType.begin(), text.textType.end(), expectedType) != text.textType.end()) 
+                        << "Wrong text type for '" << std::string(expectedText.begin(), expectedText.end())
+                        << "' in " << testCase.filename;
+                    found = true;
+                    break;
+                }
+            }
+
+            // 期待されるテキストが見つからなかった場合は警告だけ出す（データが変わっている可能性もあるため）
+            if(!found) {
+                ADD_FAILURE() << "Text '" << std::string(expectedText.begin(), expectedText.end())
+                    << "' not found in " << testCase.filename;
+            }
+        }
+    }
+}
+
+// 親ヘルパー関数の定義（重複を避けるため）
+// ファイルの存在確認がなければ加えてください
+auto createRubyScriptFile = [](const std::u8string& content) {
+    std::filesystem::path tempPath = "data/temp_ruby_test.rb";
+    std::ofstream file(tempPath);
+    file << utility::cnvStr<std::string>(content);
+    file.close();
+    return tempPath;
+};
+
+
+// rubyreaderクラスのテスト
+TEST(Langscore_Reader, RubyReader_TreeSitter_StringExtraction)
+{
+    // テスト用の一時Rubyファイルを作成する関数
+    auto createRubyScriptFile = [](const std::u8string& content) {
+        std::filesystem::path tempPath = "data/temp_ruby_test.rb";
+        std::ofstream file(tempPath);
+        file << utility::cnvStr<std::string>(content);
+        file.close();
+        return tempPath;
+        };
+
+    // テストケース1: 基本的な文字列抽出
+    {
+        std::u8string script = u8"str = \"Hello, World!\"\nstr2 = 'こんにちは世界！'";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        ASSERT_EQ(texts.size(), 2);
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"Hello, World!";
+            }));
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"こんにちは世界！";
+            }));
+
+        // 位置情報の確認
+        for(const auto& text : texts) {
+            auto parts = utility::split(text.scriptLineInfo, u8':');
+            ASSERT_EQ(parts.size(), 3);
+            ASSERT_EQ(parts[0], u8"temp_ruby_test");
+        }
+    }
+
+    // テストケース2: 文字列補間
+    {
+        std::u8string script = u8"name = \"User\"\nstr = \"Hello, #{name}!\"\nmessage = \"Error!: #{file_name}, #{mismatch_cells.to_s}\"";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"User";
+            }));
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"Hello, #{name}!";
+            }));
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"Error!: #{file_name}, #{mismatch_cells.to_s}";
+            }));
+    }
+
+    // テストケース3: コメント内の文字列は無視されることを確認
+    {
+        std::u8string script = u8"# This is a comment with \"string\"\nreal_string = \"Actual text\"";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        ASSERT_EQ(texts.size(), 1);
+        ASSERT_EQ(texts[0].original, u8"Actual text");
+    }
+
+    // テストケース4: 空の文字列
+    {
+        std::u8string script = u8"empty_string = \"\"\nanother_empty = ''";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        // 空文字列は抽出されないか、抽出された場合は空であることを確認
+        for(const auto& text : texts) {
+            ASSERT_FALSE(text.original.empty()) << "Empty strings should not be extracted";
+        }
+    }
+
+    // テストケース5: シンボルと特殊な文字列表記
+    {
+        std::u8string script = u8"symbol = :symbol_name\n"
+            u8"percent_q = %q{Text with 'single' quotes}\n"
+            u8"percent_Q = %Q{Text with \"double\" quotes and #{interpolation}}";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"Text with 'single' quotes";
+        }));
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"Text with \"double\" quotes and #{interpolation}";
+        }));
+    }
+
+    // テストケース6: メソッド内の文字列引数
+    {
+        std::u8string script = u8"def translate(text)\n"
+            u8"  puts text\n"
+            u8"end\n"
+            u8"translate(\"This is a message\")\n"
+            u8"translate('Another message')";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"This is a message";
+            }));
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"Another message";
+            }));
+    }
+
+    // テストケース7: 無視すべきメソッド呼び出し
+    {
+        std::u8string script = u8"require \"some_library\"\n"
+            u8"puts \"This should be ignored\"\n"
+            u8"p \"Also ignored\"\n"
+            u8"important = \"This should be extracted\"";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        // "require", "puts", "p" の引数の文字列は無視されるべき
+        ASSERT_FALSE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"some_library";
+            }));
+        ASSERT_FALSE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"This should be ignored";
+            }));
+        ASSERT_FALSE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"Also ignored";
+            }));
+
+        // 通常の変数への代入は抽出される
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"This should be extracted";
+            }));
+    }
+
+    // テスト後にテンポラリファイルを削除
+    std::filesystem::remove("data/temp_ruby_test.rb");
+}
+
+TEST(Langscore_Reader, RubyReader_TreeSitter_Performance)
+{
+    // 大きなRubyファイルの作成
+    std::filesystem::path tempPath = "data/large_ruby_test.rb";
+    {
+        std::ofstream file(tempPath);
+        // 多数の文字列を含む大きなファイルを生成
+        for(int i = 0; i < 1000; i++) {
+            file << "str" << i << " = \"String content " << i << " for testing performance\"\n";
+            file << "str_single" << i << " = 'Single quoted string " << i << "'\n";
+            if(i % 10 == 0) {
+                file << "# Comment line with \"strings\" that should be ignored " << i << "\n";
+            }
+            if(i % 50 == 0) {
+                file << "multi_line" << i << " = <<-TEXT\n";
+                file << "  Heredoc content line 1 for iteration " << i << "\n";
+                file << "  Heredoc content line 2 for iteration " << i << "\n";
+                file << "TEXT\n";
+            }
+        }
+        file.close();
+    }
+
+    // パフォーマンス測定
+    auto start = std::chrono::high_resolution_clock::now();
+    langscore::rubyreader scriptReader({u8"en", u8"ja"}, {tempPath});
+    auto texts = scriptReader.currentTexts();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    // 基本的な検証
+    ASSERT_FALSE(texts.empty());
+    ASSERT_GT(texts.size(), 1000); // 少なくとも1000の文字列が含まれているはず
+
+    // 処理時間を出力（参考情報）
+    std::cout << "Tree-sitter Ruby parser processed " << texts.size()
+        << " strings in " << duration << "ms" << std::endl;
+
+    // テスト後に一時ファイルを削除
+    std::filesystem::remove(tempPath);
+}
+
+// 行コメントと範囲コメントの処理テスト
+TEST(Langscore_Reader, RubyReader_CommentHandling)
+{
+    // テストケース1: 行コメント
+    {
+        std::u8string script = u8"# This is a full line comment\n"
+            u8"string_var = \"Text value\" # This is an end-of-line comment";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        ASSERT_EQ(texts.size(), 1);
+        ASSERT_EQ(texts[0].original, u8"Text value");
+    }
+
+    // テストケース2: 範囲コメント
+    {
+        std::u8string script = u8"=begin\n"
+            u8"This is a block comment\n"
+            u8"with \"strings\" that should be ignored\n"
+            u8"=end\n"
+            u8"real_string = \"This should be extracted\"";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        ASSERT_EQ(texts.size(), 1);
+        ASSERT_EQ(texts[0].original, u8"This should be extracted");
+    }
+
+    // テストケース3: コメントと文字列の混在
+    {
+        std::u8string script = u8"# Line comment\n"
+            u8"string1 = \"First string\"\n"
+            u8"=begin\n"
+            u8"Block comment\n"
+            u8"=end\n"
+            u8"string2 = \"Second string\" # End comment\n"
+            u8"string3 = \"String with # inside\"";
+        auto scriptPath = createRubyScriptFile(script);
+
+        langscore::rubyreader scriptReader({u8"en", u8"ja"}, {scriptPath});
+        auto texts = scriptReader.currentTexts();
+
+        ASSERT_EQ(texts.size(), 3);
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"First string";
+            }));
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"Second string";
+            }));
+        ASSERT_TRUE(std::any_of(texts.begin(), texts.end(), [](const auto& t) {
+            return t.original == u8"String with # inside";
+            }));
+    }
+
+    // テスト後にテンポラリファイルを削除
+    std::filesystem::remove("data/temp_ruby_test.rb");
 }

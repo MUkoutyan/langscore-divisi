@@ -8,10 +8,8 @@
 #include <gtest/gtest.h>
 
 
-
 int main(int argc, char** argv)
 {
-
 	std::cout << TEST_DATA_SRC << std::endl;
 	if(fs::exists(std::string(BINARYT_DIRECTORY) + "/data") == false) 
     {
@@ -31,6 +29,13 @@ int main(int argc, char** argv)
 	
     // GoogleTestの初期化
     ::testing::InitGoogleTest(&argc, argv);
+
+    // Google Test の出力を確認
+    std::cout << "Running tests with arguments: ";
+    for(int i = 0; i < argc; ++i) {
+        std::cout << argv[i] << " ";
+    }
+    std::cout << std::endl;
 
     // テストの実行
     int result = RUN_ALL_TESTS();

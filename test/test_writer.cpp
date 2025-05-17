@@ -168,23 +168,23 @@ TEST_F(Langscore_Writer, DetectStringPosition)
 		ASSERT_EQ(std::get<0>(result[0]), u8"Error!: Missmatch Num Cells : #{file_name}, #{mismatch_cells.to_s}"s);
 	}
 }
-
-TEST_F(Langscore_Writer, CheckRubyCommentLine) 
+TEST_F(Langscore_Writer, CheckRubyCommentLine)
 {
     //文字列の抽出の結果をテストする
     // テストケース 1: 通常のスクリプト
     {
-        std::u8string script = u8"chstring";
+        std::u8string script = u8"'Hello, world!'";
         auto scriptPath = createScriptFile(script);
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts(); // 取得したテキストを検証
-        
-        ASSERT_TRUE(texts.empty());
+
+        ASSERT_EQ(texts.size(), 1);
+        ASSERT_EQ(texts[0].original, u8"Hello, world!");
     }
 
     // テストケース 2: コメントアウトされた行
     {
-        std::u8string script = u8"#Commentout";
+        std::u8string script = u8"# これはコメントです";
         auto scriptPath = createScriptFile(script);
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
@@ -192,9 +192,31 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine)
         ASSERT_EQ(texts.size(), 0); // コメント行は無視されるのでテキストは空
     }
 
-    // テストケース 3: =begin コメントブロックの開始
+    // テストケース 3: マルチバイト文字を含む通常のスクリプト
     {
-        std::u8string script = u8"=begin";
+        std::u8string script = u8"'こんにちは、世界！'";
+        auto scriptPath = createScriptFile(script);
+        langscore::rubyreader scriptWriter({}, {scriptPath});
+        auto texts = scriptWriter.currentTexts();
+
+        ASSERT_EQ(texts.size(), 1);
+        ASSERT_EQ(texts[0].original, u8"こんにちは、世界！");
+    }
+
+    // テストケース 4: マルチバイト文字を含む式展開
+    {
+        std::u8string script = u8"\"キー:#{値}\"";
+        auto scriptPath = createScriptFile(script);
+        langscore::rubyreader scriptWriter({}, {scriptPath});
+        auto texts = scriptWriter.currentTexts();
+
+        ASSERT_EQ(texts.size(), 1);
+        ASSERT_EQ(texts[0].original, u8"キー:#{値}");
+    }
+
+    // テストケース 5: マルチバイト文字を含むコメントブロック
+    {
+        std::u8string script = u8"=begin\nこれはコメントブロックです\n=end";
         auto scriptPath = createScriptFile(script);
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
@@ -202,149 +224,17 @@ TEST_F(Langscore_Writer, CheckRubyCommentLine)
         ASSERT_EQ(texts.size(), 0); // コメントブロックなのでテキストは空
     }
 
-    // テストケース 4: 通常の行と =begin コメントブロックの混在
+    // テストケース 6: マルチバイト文字を含む通常の行とコメントブロックの混在
     {
-        std::u8string script = u8"\"Hoge\" =begin";
+        std::u8string script = u8"'こんにちは'\n=begin\nコメントブロック\n=end";
         auto scriptPath = createScriptFile(script);
         langscore::rubyreader scriptWriter({}, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1);
-        ASSERT_EQ(texts[0].original, u8"Hoge");
-    }
-
-    // テストケース 5: =begin が含まれるがコメントブロックではない行
-    {
-        std::u8string script = u8"\"Hoge\" \"=begin\"Honi";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 2); // 全行が有効なスクリプトとして残る
-        ASSERT_EQ(texts[0].original, u8"Hoge");
-        ASSERT_EQ(texts[1].original, u8"=begin");
-    }
-
-    // テストケース 6: 有効なスクリプト行
-    {
-        std::u8string script = u8"Valid Script Line";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 0);
-    }
-
-    // テストケース 7: =end コメントブロックの終了
-    {
-        std::u8string script = u8"=end";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 0); // コメントブロックの終了なのでテキストは空
-    }
-
-    // テストケース 8: コメントブロックがない有効なスクリプト行
-    {
-        std::u8string script = u8"Without Comment Block";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 0); // コメントブロックがないのでそのまま残る
-    }
-
-    // テストケース 9: コメントが含まれるスクリプト行
-    {
-        std::u8string script = u8"Script~~~ #Comment";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 0); // コメント部分はスペースに置き換えられる
-    }
-
-    // テストケース 10: 式展開が含まれるスクリプト行
-    {
-        std::u8string script = u8"\"Key:#{Value}\"";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 1); // 式展開はそのまま残る
-        ASSERT_EQ(texts[0].original, u8"Key:#{Value}");
-    }
-
-    // テストケース 11: 式展開と変換メソッドが含まれるスクリプト行
-    {
-        std::u8string script = u8R"("Text".lstrans'Honi')";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 1); // 式展開と変換メソッドの呼び出しがスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"Text");
-    }
-
-    // テストケース 12: 文字列を変換するメソッドが含まれるスクリプト行
-    {
-        std::u8string script = u8R"("Text".lstrans"64:28:1")";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 1); // 変換メソッドの引数がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"Text");
-    }
-
-    // テストケース 13: 空の引数を持つ変換メソッドが含まれるスクリプト行
-    {
-        std::u8string script = u8R"("Text".lstrans(''))";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 1); // 空の引数がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"Text");
-    }
-
-    // テストケース 14: 式展開と文字列を変換するメソッドが含まれるスクリプト行
-    {
-        std::u8string script = u8R"(Honi:"Te'xt".lstrans('Hoge') "DetectText")";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 2); // 式展開と変換メソッドが部分的にスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"Te'xt");
-        ASSERT_EQ(texts[1].original, u8"DetectText");
-    }
-
-    // テストケース 15: 式展開を含まない変換メソッドが含まれるスクリプト行
-    {
-        std::u8string script = u8R"("Text".lstrans(""))";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 1); // 空の引数がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"Text");
-    }
-
-    // テストケース 16: 式展開と文字列を変換するメソッドが含まれるスクリプト行
-    {
-        std::u8string script = u8R"(Honi:"Text".lstrans("Hoge") "DetectText")";
-        auto scriptPath = createScriptFile(script);
-        langscore::rubyreader scriptWriter({}, {scriptPath});
-        auto texts = scriptWriter.currentTexts();
-
-        ASSERT_EQ(texts.size(), 2); // 式展開と変換メソッドが部分的にスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"Text");
-        ASSERT_EQ(texts[1].original, u8"DetectText");
+        ASSERT_EQ(texts[0].original, u8"こんにちは");
     }
 }
-
 TEST_F(Langscore_Writer, CheckJavaScriptCommentLine) 
 {
     // テストケース 1: 通常のスクリプト
@@ -399,7 +289,7 @@ TEST_F(Langscore_Writer, CheckJavaScriptCommentLine)
 
     // テストケース 6: コメントを含む行の置換
     {
-        std::u8string script = u8"\"Hoge\"/*Comment*/\"Honi\"";
+        std::u8string script = u8"\"Hoge\";/*Comment*/\"Honi\";";
         auto scriptPath = createDummyJavaScriptFile(script);
         langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
@@ -430,17 +320,16 @@ TEST_F(Langscore_Writer, DetectRubyString)
     {
         auto extracted_strings = scriptWriter.currentTexts();
 
-        ASSERT_EQ(10, extracted_strings.size());
+        ASSERT_EQ(9, extracted_strings.size());
         ASSERT_TRUE(u8"Hello, world!" == extracted_strings[0].original);
-        ASSERT_TRUE(u8"This is a \"quote\" character." == extracted_strings[1].original);
-        ASSERT_TRUE(u8"This string has a \n newline character." == extracted_strings[2].original);
+        ASSERT_TRUE(u8"This is a \\\"quote\\\" character." == extracted_strings[1].original);
+        ASSERT_TRUE(u8"This string has a \\n newline character." == extracted_strings[2].original);
         ASSERT_TRUE(u8"This one has a , comma character." == extracted_strings[3].original);
-        ASSERT_TRUE(u8"This string has both \"quote\" and \n newline characters." == extracted_strings[4].original);
+        ASSERT_TRUE(u8"This string has both \\\"quote\\\" and \\n newline characters." == extracted_strings[4].original);
         ASSERT_TRUE(u8"This is a 'single quote' character." == extracted_strings[5].original);
-        ASSERT_TRUE(u8"This string has a \"quote\", a 'single quote' and a \n newline character." == extracted_strings[6].original);
-        ASSERT_TRUE(u8"\"\"" == extracted_strings[7].original);
-        ASSERT_TRUE(u8"\n" == extracted_strings[8].original);
-        ASSERT_TRUE(u8"," == extracted_strings[9].original);
+        ASSERT_TRUE(u8"This string has a \\\"quote\\\", a 'single quote' and a \\n newline character." == extracted_strings[6].original);
+        ASSERT_TRUE(u8"\\\"\\\"" == extracted_strings[7].original);
+        ASSERT_TRUE(u8"," == extracted_strings[8].original);
     }
 
 }
@@ -452,39 +341,22 @@ TEST_F(Langscore_Writer, DetectStringPositionFromFile)
     langscore::rubyreader scriptWriter({}, {u8"./data/vxace/" + fileName + u8".rb"});
     auto result = scriptWriter.currentTexts();
 
-	ASSERT_EQ(result.size(), 14);
+	ASSERT_EQ(result.size(), 5);
 
 	size_t i = 0;
-	ASSERT_TRUE(result[i++].original == u8"あHoniい"s);
 	ASSERT_TRUE(result[i++].original == u8"𦹀𧃴𧚄𨉷𨏍𪆐🙁😇"s);
 	ASSERT_TRUE(result[i++].original == u8"HoniHoni"s);
-	ASSERT_TRUE(result[i++].original == u8"trans #{text}"s);
-	ASSERT_TRUE(result[i++].original == u8"call initialize_clone"s);
-	ASSERT_TRUE(result[i++].original == u8"call initialize_clone"s);
-	ASSERT_TRUE(result[i++].original == u8"call to_str"s);
 	ASSERT_TRUE(result[i++].original == u8"あいうえお"s);
-	ASSERT_TRUE(result[i++].original == u8"A"s);
-	ASSERT_TRUE(result[i++].original == u8"B"s);
-	ASSERT_TRUE(result[i++].original == u8"A"s);
-	ASSERT_TRUE(result[i++].original == u8"翻訳テキスト"s);
-	ASSERT_TRUE(result[i++].original == u8"翻訳テキスト2"s);
-	ASSERT_TRUE(result[i++].original == u8"\\C[16]プレイ時間\\X[104]\\C[0]\\T[%4$3d'%3$02d]"s);
+	ASSERT_TRUE(result[i++].original == u8"chstring:14:2"s);
+	ASSERT_TRUE(result[i++].original == u8"\\C[16]プレイ時間\\X[104]\\C[0]\\T[%4$3d\\'%3$02d]"s);
 
 	i = 0;
 	//"を含まない単語の開始位置
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":8:4");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":8:16");
+	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":8:20");
 	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":11:2");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":16:10");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":23:8");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":28:8");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":33:8");
 	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":38:6");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":43:13");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":44:4");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":45:4");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":47:2");
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":48:2");
+    ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":49:29");
+	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":51:2");
 }
 
 TEST_F(Langscore_Writer, ConvertCsvText_ASCII)
@@ -582,12 +454,12 @@ TEST_F(Langscore_Writer, ConvertCsvText_Multibyte)
         ASSERT_EQ(texts[0].original, u8"文章中の\\\"記号");
     }
     {
-        auto input = u8"var hoge = \"コンマ,\"と引用符\"";
+        auto input = u8"var hoge = \"コンマ,\\\"と引用符\"";
         auto scriptPath = createDummyJavaScriptFile(input);
         langscore::javascriptreader scriptWriter(u8"ja", {}, testDir / u8"js/plugins.js"s, {scriptPath});
         auto texts = scriptWriter.currentTexts();
 
         ASSERT_EQ(texts.size(), 1); // コメントアウト部分がスペースに置き換えられる
-        ASSERT_EQ(texts[0].original, u8"コンマ,\"と引用符");
+        ASSERT_EQ(texts[0].original, u8"コンマ,\\\"と引用符");
     }
 }

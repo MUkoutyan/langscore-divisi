@@ -81,16 +81,58 @@ target_link_libraries(divisi_test
     gtest_main
     gmock
     gmock_main
-    ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
-	debug ${PROJECT_SOURCE_DIR}/../3rdparty/freetype/freetypeD.lib
-    optimized ${PROJECT_SOURCE_DIR}/../3rdparty/freetype/freetype.lib
-    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuin.lib
-    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuio.lib
-    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutest.lib
-    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutu.lib
-    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuuc.lib
-    ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icudt.lib
 )
+
+add_compile_options(/P /Fi"${CMAKE_BINARY_DIR}/preprocessed_output.i")
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Test_Debug")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebugDLL") # /MDd
+    message("Link Debug Library")
+    string(REPLACE "/MD" "/MDd" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    string(REPLACE "/MD" "/MDd" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+    message(${CMAKE_CXX_FLAGS})
+    #add_compile_definitions(_ITERATOR_DEBUG_LEVEL=2)
+    target_link_libraries(divisi_test
+        ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/freetype/freetypeD.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuin.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuio.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutest.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutu.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuuc.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icudt.lib
+    )
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Test")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL") # /MD
+    message("Link Release Library")
+    string(REPLACE "/MDd" "/MD" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    string(REPLACE "/MDd" "/MD" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+    #add_compile_definitions(_ITERATOR_DEBUG_LEVEL=0)
+    target_link_libraries(divisi_test
+        ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitter.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/freetype/freetype.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuin.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuio.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutest.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutu.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuuc.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icudt.lib
+    )
+else()
+    message(WARNING "Unknown CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}. Defaulting to Release libraries.")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL") # /MD
+    #add_compile_definitions(_ITERATOR_DEBUG_LEVEL=0)
+    target_link_libraries(divisi_test
+        ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitter.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/freetype/freetype.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuin.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuio.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutest.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icutu.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icuuc.lib
+        ${PROJECT_SOURCE_DIR}/../3rdparty/icu/lib64/icudt.lib
+    )
+endif()
 
 #debug ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
 #optimized ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitter.lib
@@ -105,8 +147,16 @@ foreach(DLL_FILE ${GTEST_DLL_FILES})
     )
 endforeach()
 
+# gmock.dll をコピーする処理を追加
+add_custom_command(TARGET divisi_test POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_BINARY_DIR}/bin/gmock.dll"
+    "${CMAKE_BINARY_DIR}"
+)
 
-add_test(NAME test COMMAND divisi_test --gtest_output=json:cpp_test_results.json)
+add_test(NAME test COMMAND ${CMAKE_BINARY_DIR}/divisi_test)
+set_tests_properties(test PROPERTIES COMMAND_EXPAND_LISTS TRUE)
+set_tests_properties(test PROPERTIES COMMAND "${CMAKE_BINARY_DIR}/divisi_test;--gtest_output=json:${CMAKE_BINARY_DIR}/cpp_test_results.json")
 
 message(${PROJECT_SOURCE_DIR})
 configure_file(${PROJECT_SOURCE_DIR}/test_config.h.in ${PROJECT_SOURCE_DIR}/test_config.h )
