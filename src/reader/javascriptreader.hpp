@@ -155,17 +155,19 @@ private:
         }
         else if(j.is_string()) {
             std::string stringValue = j.get<std::string>();
-            try {
-                auto nestedJson = nlohmann::json::parse(stringValue);
-                // ネストされたJSONを処理
-                processJson(nestedJson, result, path);
-            }
-            catch(nlohmann::json::parse_error&) {
+
+            // JSON解析を例外なしで行う
+            auto nestedJson = nlohmann::json::parse(stringValue, nullptr, false);
+            if(nestedJson.is_discarded()) {
                 // ネストされたJSONではないので、通常どおり処理
                 PluginParameter param;
-                param.key   = utility::join(path, u8"/"s);
+                param.key = utility::join(path, u8"/"s);
                 param.value = utility::cnvStr<std::u8string>(stringValue);
                 result.emplace_back(std::move(param));
+            }
+            else {
+                // ネストされたJSONを処理
+                processJson(nestedJson, result, path);
             }
         }
     }
