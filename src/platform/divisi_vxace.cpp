@@ -491,15 +491,6 @@ void divisi_vxace::writeAnalyzedBasicData()
         jsonreader_map[fileName] = std::move(reader);
     }
 
-    if(this->basicDataFileList.empty() == false) {
-        auto jsonFilePath = this->basicDataFileList[0].make_preferred().replace_extension(".lsjson");
-        auto writeJsonFolder = {jsonFilePath.parent_path().u8string()};
-
-        // CSVとJSONの両方を出力（互換性のため）
-        this->fetchActorTextFromMap(writeJsonFolder, this->basicDataFileList, jsonreader_map);
-        this->adjustCSV(writeJsonFolder, this->basicDataFileList);
-    }
-
     std::cout << "Finish." << std::endl;
 }
 
@@ -508,6 +499,28 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
     //解析直後の素のデータを書き出す。
     //無視リスト等は考慮せず、書き出し先はTempフォルダ以下になる。
     std::cout << "writeAnalyzedRvScript" << std::endl;
+
+    //※scriptFileNameMapに拡張子は無し
+    auto scriptFileNameMap = plaincsvreader{baseDirectory + u8"/Scripts/_list.csv"s}.getPlainCsvTexts();
+    const auto GetScriptName = [&scriptFileNameMap](std::u8string scriptName)
+    {
+        for(const auto& row : scriptFileNameMap) {
+            if(row[0] == scriptName) { return row[1]; }
+        }
+        return u8""s;
+    };
+
+    //Langscoreのスクリプトは除外する
+    auto scriptList = this->scriptFileList;
+    auto result_without_langscore_scripts = std::remove_if(scriptList.begin(), scriptList.end(), [&GetScriptName](const auto& x)
+    {
+        auto scriptFileName = x.stem().u8string();
+        auto scriptName = GetScriptName(std::move(scriptFileName));
+        return scriptName == std::u8string_view{Script_File_Name} || scriptName == std::u8string_view{Custom_Script_File_Name};
+    });
+    if(scriptList.end() != result_without_langscore_scripts) {
+        scriptList.erase(result_without_langscore_scripts, scriptList.end());
+    }
 
     config config;
     //Rubyスクリプトを予め解析してテキストを生成しておく。
@@ -523,28 +536,10 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
     //デフォルトスクリプトのVocab.rb内の文字列は予めScriptsの中に翻訳済みの内容を入れておく
     auto resourceFolder = this->appPath.parent_path() / "resource";
     auto vocabs = csvreader{this->supportLangs, {resourceFolder / "vocab.csv"}}.currentTexts();
-    
-    //※scriptFileNameMapに拡張子は無し
-    auto scriptFileNameMap = plaincsvreader{baseDirectory + u8"/Scripts/_list.csv"s}.getPlainCsvTexts();
-    const auto GetScriptName = [&scriptFileNameMap](std::u8string scriptName)
-    {
-        for(const auto& row : scriptFileNameMap){
-            if(row[0] == scriptName){ return row[1]; }
-        }
-        return u8""s;
-    };
 
-    //Langscoreのスクリプトは除外する
+
+
     auto& scriptTrans = reader.curerntScriptTransMap();
-    auto result_without_langscore_scripts = std::remove_if(scriptTrans.begin(), scriptTrans.end(), [&GetScriptName](const auto& x)
-    {
-        auto scriptFileName = utility::removeExtension(std::get<0>(x));
-        auto scriptName = GetScriptName(std::move(scriptFileName));
-        return scriptName == Script_File_Name || scriptName == Custom_Script_File_Name;
-    });
-    if(scriptTrans.end() != result_without_langscore_scripts) {
-        scriptTrans.erase(result_without_langscore_scripts, scriptTrans.end());
-    }
 
     //Vocab.rbの内容を適用
     for(auto& pathPair : scriptTrans)
@@ -589,9 +584,13 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
         t.translates[u8"scriptLineInfo"s] = t.scriptLineInfo;
     }
 
-    std::cout << "Write CSV : " << outputPath << std::endl;
-    csvwriter writer(reader);
-    writer.write(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
+    std::cout << "Write Analyze JSON : " << outputPath << std::endl;
+    jsonwriter writer(reader);
+    writer.writeForAnalyze(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
+
+    //std::cout << "Write CSV : " << outputPath << std::endl;
+    //csvwriter writer(reader);
+    //writer.write(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
 
     std::cout << "Finish." << std::endl;
 }
@@ -611,12 +610,17 @@ void langscore::divisi_vxace::writeFixedBasicData()
 
     auto ignoreScripts = config.rpgMakerBasicData();
     auto dataFileList = this->basicDataFileList;
-    auto rm_result = std::ranges::remove_if(dataFileList, [&](auto& path) {
+    auto rm_result = std::ranges::remove_if(dataFileList, [&](auto& path) 
+    {
+        auto s = path.stem();
+        if(s == "Tilesets" || s == "MapInfos" || s == "Animations") {
+            return true;
+        }
         auto result = std::ranges::find_if(ignoreScripts, [f = path.filename()](const auto& x) {
             return x.ignore && x.filename == f.u8string();
-            });
-        return result != ignoreScripts.cend();
         });
+        return result != ignoreScripts.cend();
+    });
     dataFileList.erase(rm_result.begin(), rm_result.end());
 
     if(config.enableLanguagePatch())
@@ -672,99 +676,6 @@ void langscore::divisi_vxace::writeFixedBasicData()
 
     std::cout << "writeFixedBasicData Finish." << std::endl;
 }
-
-//void langscore::divisi_vxace::writeFixedBasicData()
-//{
-//    std::cout << "writeFixedBasicData" << std::endl;
-//
-//    config config;
-//    std::u8string root;
-//    const auto translateFolderList = config.exportDirectory(root);
-//
-//    auto mergeTextMode = MergeTextMode::MergeKeepSource;
-//    auto mergeTextModeRaw = config.globalWriteMode();
-//    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
-//        mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
-//    }
-//
-//    std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
-//    auto writeRvCsv = [this, &translateFolderList, &jsonreader_map, mergeTextMode](fs::path inputPath)
-//    {
-//        std::ifstream loadFile(inputPath);
-//        nlohmann::json json;
-//        loadFile >> json;
-//
-//        auto csvFilePath = inputPath.filename();
-//        csvFilePath.make_preferred().replace_extension(".csv");
-//        for(auto& translateFolder : translateFolderList){
-//            auto outputPath = translateFolder / csvFilePath;
-//            std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
-//            std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, json);
-//            writeFixedTranslateText<csvwriter>(outputPath, reader, this->defaultLanguage, this->supportLangs, mergeTextMode);
-//            jsonreader_map[inputPath.filename()] = std::move(reader);
-//        }
-//    };
-//
-//    auto ignoreScripts = config.rpgMakerBasicData();
-//    auto list = this->basicDataFileList;
-//    auto rm_result = std::ranges::remove_if(list, [&](const auto& path){
-//        auto result = std::ranges::find_if(ignoreScripts, [f = path.filename()](const auto& x){
-//            return x.ignore && x.filename == f.u8string();
-//        });
-//        return result != ignoreScripts.cend();
-//    });
-//    list.erase(rm_result.begin(), list.end());
-//    //一通り書き出し
-//    std::ranges::for_each(list, [&writeRvCsv](const auto& path){ writeRvCsv(path); });
-//
-//    this->fetchActorTextFromMap(translateFolderList, list, jsonreader_map);
-//    this->adjustCSV(translateFolderList, list);
-//
-//    std::cout << "Finish." << std::endl;
-//}
-
-//void langscore::divisi_vxace::writeFixedRvScript()
-//{
-//    std::cout << "writeFixedRvScript" << std::endl;
-//    //無視リスト等を反映させて書き出す。
-//    //書き出し先はプロジェクト直下のTranslateになる。
-//
-//    //Rubyスクリプトを予め解析してテキストを生成しておく。
-//    config config;
-//
-//    auto mergeTextMode = MergeTextMode::MergeKeepSource;
-//    auto mergeTextModeRaw = config.globalWriteMode();
-//    if(0 <= mergeTextModeRaw && mergeTextModeRaw <= 4){
-//        mergeTextMode = static_cast<MergeTextMode>(mergeTextModeRaw);
-//    }
-//
-//    auto scriptInfoList = config.rpgMakerScripts();
-//    auto scriptList = scriptFileList;
-//    {
-//        auto rm_result = std::remove_if(scriptList.begin(), scriptList.end(), [&scriptInfoList](const auto& path){
-//            auto osPath = path.stem();
-//            auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&osPath](const auto& script){
-//                return script.filename == osPath && script.ignore;
-//            });
-//            return result != scriptInfoList.cend();
-//        });
-//        scriptList.erase(rm_result, scriptList.end());
-//    }
-//
-//    //スクリプトの翻訳を書き込むCSVの書き出し
-//    rubyreader reader(this->supportLangs, scriptList);
-//    reader.applyIgnoreScripts(scriptInfoList);
-//
-//    std::u8string root;
-//    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-//    const auto translateFolderList = config.exportDirectory(root);
-//    for(auto& translateFolder : translateFolderList){
-//        std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-//        writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, reader, this->defaultLanguage, this->supportLangs, mergeTextMode);
-//    }
-//
-//    std::cout << "Finish." << std::endl;
-//}
 
 void langscore::divisi_vxace::writeFixedRvScript()
 {

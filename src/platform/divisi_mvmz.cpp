@@ -532,8 +532,8 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
         if(itr != scriptCsv.cend())
         {
             if(2 < itr->size()){
-                if((*itr)[1] == Script_File_Name) { continue; }
-                else if((*itr)[1] == Custom_Script_File_Name){ continue; }
+                if((*itr)[1] == std::u8string_view{Script_File_Name}) { continue; }
+                else if((*itr)[1] == std::u8string_view{Custom_Script_File_Name}){ continue; }
             }
         }
 
@@ -586,15 +586,6 @@ void divisi_mvmz::writeAnalyzedBasicData()
         jsonreader_map[jsonFilePath.filename()] = std::move(reader);
     }
 
-    if(this->basicDataFileList.empty() == false) {
-        auto jsonFilePath = this->basicDataFileList[0].make_preferred().replace_extension(".lsjson");
-        auto writeJsonFolder = jsonFilePath.parent_path().u8string();
-
-        // CSVとJSONの両方を出力（互換性のため）
-        this->fetchActorTextFromMap(writeJsonFolder, this->basicDataFileList, jsonreader_map);
-        this->adjustCSV(writeJsonFolder, this->basicDataFileList);
-    }
-
     std::cout << "Finish." << std::endl;
 }
 
@@ -613,7 +604,12 @@ void langscore::divisi_mvmz::writeFixedBasicData()
 
     auto ignoreScripts = config.rpgMakerBasicData();
     auto dataFileList = this->basicDataFileList;
-    auto rm_result = std::ranges::remove_if(dataFileList, [&](auto& path) {
+    auto rm_result = std::ranges::remove_if(dataFileList, [&](auto& path) 
+    {
+        auto s = path.stem();
+        if(s == "Tilesets" || s == "MapInfos" || s == "Animations") {
+            return true;
+        }
         auto result = std::ranges::find_if(ignoreScripts, [f = path.filename()](const auto& x) {
             return x.ignore && x.filename == f.u8string();
         });
@@ -1062,8 +1058,8 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
     auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
     auto pluginsPath = this->currentGameProjectPath / u8"js/plugins.js"s;
     //Javascriptを予め解析してテキストを生成しておく。
-    javascriptreader scriptWriter(def_lang, this->supportLangs, pluginsPath, this->scriptFileList);
-    auto& transTexts = scriptWriter.currentTexts();
+    javascriptreader scriptReader(def_lang, this->supportLangs, pluginsPath, this->scriptFileList);
+    auto& transTexts = scriptReader.currentTexts();
 
     for(auto& t : transTexts){
         if(t.translates.find(def_lang) == t.translates.end()){ continue; }
@@ -1084,9 +1080,12 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
         t.translates[u8"scriptLineInfo"s] = t.scriptLineInfo;
     }
 
-    std::cout << "Write CSV : " << outputPath << std::endl;
-    csvwriter writer(scriptWriter);
-    writer.write(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
+    std::cout << "Write Analyze JSON : " << outputPath << std::endl;
+    jsonwriter writer(scriptReader);
+    writer.writeForAnalyze(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
+
+    //csvwriter writer(scriptWriter);
+    //writer.write(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
 
     std::cout << "Finish." << std::endl;
 }

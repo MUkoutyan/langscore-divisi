@@ -175,6 +175,9 @@ void langscore::platform_base::copyFonts(fs::path fontDestPath)
         auto languages = config.languages();
         for(auto& language : languages)
         {
+            if(language.font.file.empty()) {
+                continue;
+            }
             auto destPath = fontDestPath / language.font.file.filename();
             //appPathはbin/divisi.exeとなる。
             //また、Langscore.exeから呼び出されることを想定しているため、
