@@ -1,7 +1,7 @@
 //---------------------------------------------------------------
 // 
 // Langscore CoreScript "Unison" 
-// Version 0.9.11
+// Version 0.9.12
 // Written by BreezeSinfonia 來奈津
 // 
 // 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -930,6 +930,17 @@ Window_Base.prototype.convertEscapeCharacters = function(text)
   result = _langscore.translate(text, _langscore.ls_common_event);
   if(result && result !== text){
     return Window_Base_convertEscapeCharacters.call(this, result);
+  }
+
+  if(Langscore.isMZ()){
+    //MZでは名前ボックスが存在している。
+    //名前ボックスの場合でMap側に翻訳文が見つからない場合、Actors.csv側の翻訳文を検索する。
+    if(this instanceof Window_NameBox){
+      result = _langscore.translate(text, _langscore.ls_actors_tr);
+      if(result && result !== text){
+        return Window_Base_convertEscapeCharacters.call(this, result);
+      }
+    }
   }
   
   return Window_Base_convertEscapeCharacters.call(this, text);
