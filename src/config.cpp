@@ -24,18 +24,55 @@ public:
 	std::filesystem::path path;
 	config::ProjectType projectType = config::ProjectType::None;
 
-	template<typename Value>
-	Value get(nlohmann::json::reference j, Value defValue = 0)
-	{
-		try{
-			Value v;
-			return j.get_to<Value>(v);
-		}
-		catch(...){
-			return defValue;
-		}
-		return defValue;
-	}
+    template<typename Value>
+    Value get(nlohmann::json::reference j, Value defValue = 0)
+    {
+        try {
+            Value v;
+            return j.get_to<Value>(v);
+        }
+        catch(...) {
+            return defValue;
+        }
+        return defValue;
+    }
+
+    template<typename Value>
+    Value get(const nlohmann::json& j, const char* key, Value defValue = Value())
+    {
+        if(j.contains(key)) {
+            try {
+                return j.value(key, defValue);
+            }
+            catch(...) {
+                return defValue;
+            }
+        }
+        return defValue;
+    }
+
+    template<typename Value>
+    Value getNested(const nlohmann::json& j, std::initializer_list<const char*> keys, Value defValue = Value())
+    {
+        const nlohmann::json* current = &j;
+        for(auto it = keys.begin(); it != keys.end(); ++it) {
+            if(current->contains(*it)) {
+                if(it == keys.end() - 1) {
+                    try {
+                        return current->value(*it, defValue);
+                    }
+                    catch(...) {
+                        return defValue;
+                    }
+                }
+                current = &(*current)[*it];
+            }
+            else {
+                return defValue;
+            }
+        }
+        return defValue;
+    }
 
 	void load(std::filesystem::path path)
 	{
@@ -118,86 +155,89 @@ std::u8string langscore::config::langscoreProjectPath()
 
 std::vector<config::Language> config::languages()
 {
-	auto& langs = pImpl->json[key(JsonKey::Languages)];
+    auto langs = pImpl->get(pImpl->json, key(JsonKey::Languages), nlohmann::json::array());
 
-	std::vector<Language> result;
+    std::vector<Language> result;
 
+    std::string fontFamily = "VL Gothic"s;
+    std::string fontFileName = "VL-Gothic-Regular.ttf"s;
 
-	std::string fontFamily = "VL Gothic"s;
-	std::string fontFileName = "VL-Gothic-Regular.ttf"s;
+    for(auto s = langs.begin(); s != langs.end(); ++s)
+    {
+        auto& lang = s.value();
+        if(pImpl->get(lang, key(JsonKey::Enable), false) == false) { continue; }
 
-	for(auto s = langs.begin(); s != langs.end(); ++s)
-	{
-		auto& lang = s.value();
-		if(pImpl->get(lang[key(JsonKey::Enable)], false) == false){ continue; }
-
-
-		result.emplace_back(
+        result.emplace_back(
             lang[key(JsonKey::Enable)],
-			pImpl->get(lang[key(JsonKey::LanguageName)], "ja"s),
-			FontData{
-				utility::cnvStr<std::u8string>(pImpl->get(lang[key(JsonKey::FontName)], fontFamily)),
-				pImpl->get(lang[key(JsonKey::FontPath)], fontFileName),
-				pImpl->get(lang[key(JsonKey::FontSize)], 22)
-			}
-		);
-	}
+            pImpl->get(lang, key(JsonKey::LanguageName), "ja"s),
+            FontData{
+                utility::cnvStr<std::u8string>(pImpl->get(lang, key(JsonKey::FontName), fontFamily)),
+                pImpl->get(lang, key(JsonKey::FontPath), fontFileName),
+                pImpl->get(lang, key(JsonKey::FontSize), 22)
+            }
+        );
+    }
 
-	return result;
+    return result;
 }
-
 std::string langscore::config::defaultLanguage() {
-	return pImpl->get(pImpl->json[key(JsonKey::DefaultLanguage)], "ja"s);
+    return pImpl->get(pImpl->json, key(JsonKey::DefaultLanguage), "ja"s);
 }
 
 std::u8string langscore::config::gameProjectPath()
 {
-	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Project)], ""s));
-	auto path = pImpl->toAbsolutePath(u8Path);
-	path.make_preferred();
+    auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json, key(JsonKey::Project), ""s));
+    auto path = pImpl->toAbsolutePath(u8Path);
+    path.make_preferred();
 
     if(std::filesystem::is_directory(path) == false) {
         path = path.parent_path();
     }
 
-	return path.u8string();
+    return path.u8string();
 }
 
 std::u8string config::langscoreAnalyzeDirectorty() {
-	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Analyze)][key(JsonKey::TmpDir)], ""s));
-	auto path = pImpl->toAbsolutePathWeak(u8Path);
-	path.make_preferred();
-	return path.u8string();
+    auto u8Path = utility::cnvStr<std::u8string>(
+        pImpl->getNested(pImpl->json, {key(JsonKey::Analyze), key(JsonKey::TmpDir)}, ""s)
+    );
+    auto path = pImpl->toAbsolutePathWeak(u8Path);
+    path.make_preferred();
+    return path.u8string();
 }
 
 std::u8string langscore::config::langscoreUpdateDirectorty()
 {
-	auto path = pImpl->toAbsolutePathWeak(u8"update"s);
-	path.make_preferred();
-	return path.u8string();
+    auto path = pImpl->toAbsolutePathWeak(u8"update"s);
+    path.make_preferred();
+    return path.u8string();
 }
 
-std::string config::usScriptFuncComment(){
-	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::UsCustomFuncComment)], "project://Scripts/{0}#{1},{2}"s);
+
+std::string config::usScriptFuncComment() {
+    return pImpl->getNested(pImpl->json, {key(JsonKey::Write), key(JsonKey::UsCustomFuncComment)},
+        "project://Scripts/{0}#{1},{2}"s);
 }
 
 utility::u8stringlist langscore::config::exportDirectory(std::u8string& root)
 {
-	auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportDirectory)], ""s));
-	u8Path = pImpl->toAbsolutePathWeak(u8Path).u8string();
-	root = u8Path;
+    auto u8Path = utility::cnvStr<std::u8string>(
+        pImpl->getNested(pImpl->json, {key(JsonKey::Write), key(JsonKey::ExportDirectory)}, ""s)
+    );
+    u8Path = pImpl->toAbsolutePathWeak(u8Path).u8string();
+    root = u8Path;
 
-	if(this->exportByLanguage() == false){
-		return {u8Path};
-	}
+    if(this->exportByLanguage() == false) {
+        return {u8Path};
+    }
 
-	auto langs = this->languages();
-	utility::u8stringlist result;
-	for(auto& lang : langs){
-		result.emplace_back(u8Path + utility::cnvStr<std::u8string>("/" + lang.name));
-	}
+    auto langs = this->languages();
+    utility::u8stringlist result;
+    for(auto& lang : langs) {
+        result.emplace_back(u8Path + utility::cnvStr<std::u8string>("/" + lang.name));
+    }
 
-	return result;
+    return result;
 }
 
 std::vector<std::pair<std::u8string, std::u8string>> langscore::config::exportDirectoryWithLang(std::u8string& root)
@@ -206,7 +246,9 @@ std::vector<std::pair<std::u8string, std::u8string>> langscore::config::exportDi
         return {};
     }
 
-    auto u8Path = utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportDirectory)], ""s));
+    auto u8Path = utility::cnvStr<std::u8string>(
+        pImpl->getNested(pImpl->json, {key(JsonKey::Write), key(JsonKey::ExportDirectory)}, ""s)
+    );
     u8Path = pImpl->toAbsolutePathWeak(u8Path).u8string();
     root = u8Path;
 
@@ -220,35 +262,48 @@ std::vector<std::pair<std::u8string, std::u8string>> langscore::config::exportDi
     return result;
 }
 
-
 bool langscore::config::exportByLanguage()
 {
-    auto exportByLang = pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::ExportByLang)], false);
-    auto enableLangPatch = pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::EnableLanguagePatch)], false);
+    auto exportByLang = pImpl->getNested(pImpl->json,
+        {key(JsonKey::Write), key(JsonKey::ExportByLang)}, false);
+    auto enableLangPatch = pImpl->getNested(pImpl->json,
+        {key(JsonKey::Write), key(JsonKey::EnableLanguagePatch)}, false);
     return exportByLang || enableLangPatch;
 }
 
 bool langscore::config::overwriteLangscore()
 {
-	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::OverwriteLangscore)], false);
+    return pImpl->getNested(pImpl->json,
+        {key(JsonKey::Write), key(JsonKey::OverwriteLangscore)}, false);
+}
+
+std::u8string config::outputTranslateFilePathForRPGMaker()
+{
+    return u8"Data/Translate"s;
+}
+
+bool langscore::config::overwriteLangscoreCustom()
+{
+    return pImpl->getNested(pImpl->json,
+        {key(JsonKey::Write), key(JsonKey::OverwriteLangscoreCustom)}, false);
 }
 
 config::ProjectType langscore::config::projectType()
 {
-	if(pImpl->projectType != ProjectType::None) {
-		return pImpl->projectType;
-	}
+    if(pImpl->projectType != ProjectType::None) {
+        return pImpl->projectType;
+    }
 
-	const auto hasHeader = [](std::filesystem::path path, std::string_view headerText)
-	{
-		std::ifstream proj(path);
-		if(proj.is_open()) {
-			std::string header(5, ' ');
-			proj.read(&header[0], 5);
-			return header == headerText;
-		}
-		return false;
-	};
+    const auto hasHeader = [](std::filesystem::path path, std::string_view headerText)
+    {
+        std::ifstream proj(path);
+        if(proj.is_open()) {
+            std::string header(5, ' ');
+            proj.read(&header[0], 5);
+            return header == headerText;
+        }
+        return false;
+    };
 
     const auto checkFile = [&](const std::filesystem::path& path)
     {
@@ -288,154 +343,154 @@ config::ProjectType langscore::config::projectType()
         pImpl->projectType = checkFile(std::filesystem::path(projectPath));
     }
 
-	return pImpl->projectType;
+    return pImpl->projectType;
 }
 
-bool langscore::config::overwriteLangscoreCustom()
-{
-	return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::OverwriteLangscoreCustom)], false);
-}
-
-std::u8string config::outputTranslateFilePathForRPGMaker()
-{
-	return u8"Data/Translate"s;
-}
 
 std::u8string langscore::config::packingInputDirectory()
 {
-	return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::PackingInputDir)], ""s));
+    return utility::cnvStr<std::u8string>(
+        pImpl->get(pImpl->json, key(JsonKey::PackingInputDir), ""s)
+    );
 }
 
 bool langscore::config::packingEnablePerLang()
 {
-    return pImpl->get(pImpl->json[key(JsonKey::PackingEnablePerLang)], false);
+    return pImpl->get(pImpl->json, key(JsonKey::PackingEnablePerLang), false);
 }
 
 std::u8string langscore::config::packingPerLangOutputDir()
 {
-    return utility::cnvStr<std::u8string>(pImpl->get(pImpl->json[key(JsonKey::PackingPerLangOutputDir)], ""s));
+    return utility::cnvStr<std::u8string>(
+        pImpl->get(pImpl->json, key(JsonKey::PackingPerLangOutputDir), ""s)
+    );
 }
 
 std::vector<config::BasicData> langscore::config::rpgMakerBasicData()
 {
-	auto& write = pImpl->json[key(JsonKey::Write)];
-	auto& dataList = write[key(JsonKey::RPGMakerBasicData)];
-	std::vector<BasicData> result;
-	for(auto s = dataList.begin(); s != dataList.end(); ++s)
-	{
+    auto write = pImpl->get(pImpl->json, key(JsonKey::Write), nlohmann::json::object());
+    auto dataList = pImpl->get(write, key(JsonKey::RPGMakerBasicData), nlohmann::json::array());
+    std::vector<BasicData> result;
+    for(auto s = dataList.begin(); s != dataList.end(); ++s)
+    {
         auto& script = s.value();
 
-
         TextValidateTypeMap validateTextInfo;
-        if(script.find(key(JsonKey::ValidateTextCategory)) != script.end()) 
+        if(script.contains(key(JsonKey::ValidateTextCategory)))
         {
             const auto& infos = script[key(JsonKey::ValidateTextCategory)];
-            for (auto validateItr = infos.begin(); validateItr != infos.end(); ++validateItr)
+            for(auto validateItr = infos.begin(); validateItr != infos.end(); ++validateItr)
             {
                 auto validateInfoObj = validateItr.value();
-                std::string name = validateInfoObj[key(JsonKey::Name)];
+                std::string name = pImpl->get(validateInfoObj, key(JsonKey::Name), ""s);
                 TextValidationLangMap langMap;
-                for(auto& langEntry : validateInfoObj.items()) 
+                for(auto& langEntry : validateInfoObj.items())
                 {
                     if(langEntry.key() == key(JsonKey::Name)) {
                         continue;
                     }
                     auto& langInfo = langEntry.value();
                     config::ValidateTextInfo infosTemp;
-                    infosTemp.mode = static_cast<ValidateTextMode>(pImpl->get(langInfo[key(JsonKey::ValidateTextMode)], 0));
-                    auto& sizeList = langInfo[key(JsonKey::ValidateSizeList)];
-                    infosTemp.width = sizeList[key(JsonKey::ValidateTextWidth)];
-                    infosTemp.count = sizeList[key(JsonKey::ValidateTextLength)];
+                    infosTemp.mode = static_cast<ValidateTextMode>(
+                        pImpl->get(langInfo, key(JsonKey::ValidateTextMode), 0)
+                        );
+                    auto sizeList = pImpl->get(langInfo, key(JsonKey::ValidateSizeList), nlohmann::json::object());
+                    infosTemp.width = pImpl->get(sizeList, key(JsonKey::ValidateTextWidth), 0);
+                    infosTemp.count = pImpl->get(sizeList, key(JsonKey::ValidateTextLength), 0);
                     langMap[utility::cnvStr<std::u8string>(langEntry.key())] = std::move(infosTemp);
                 }
                 validateTextInfo[utility::cnvStr<std::u8string>(name)] = std::move(langMap);
             }
         }
 
-		BasicData data = {
-			utility::cnvStr<std::u8string>(pImpl->get(script[key(JsonKey::Name)], ""s)),
-			pImpl->get(script[key(JsonKey::Ignore)], false),
+        BasicData data = {
+            utility::cnvStr<std::u8string>(pImpl->get(script, key(JsonKey::Name), ""s)),
+            pImpl->get(script, key(JsonKey::Ignore), false),
             0,	//writeMode
             std::move(validateTextInfo)  //textValidateSize
-		};
-		if(data.filename.empty() == false){
-			result.emplace_back(std::move(data));
-		}
-	}
-	return result;
+        };
+        if(data.filename.empty() == false) {
+            result.emplace_back(std::move(data));
+        }
+    }
+    return result;
 }
+
 
 std::vector<config::ScriptData> langscore::config::rpgMakerScripts()
 {
-	auto& write = pImpl->json[key(JsonKey::Write)];
-	auto& scripts = write[key(JsonKey::RPGMakerScripts)];
-	std::vector<ScriptData> result;
-	for(auto s = scripts.begin(); s != scripts.end(); ++s)
-	{
-		auto& script = s.value();
-		ScriptData data = {
-			utility::cnvStr<std::u8string>(pImpl->get(script[key(JsonKey::Name)], ""s)),
-			pImpl->get(script[key(JsonKey::Ignore)], false),
+    auto write = pImpl->get(pImpl->json, key(JsonKey::Write), nlohmann::json::object());
+    auto scripts = pImpl->get(write, key(JsonKey::RPGMakerScripts), nlohmann::json::array());
+    std::vector<ScriptData> result;
+    for(auto s = scripts.begin(); s != scripts.end(); ++s)
+    {
+        auto& script = s.value();
+        ScriptData data = {
+            utility::cnvStr<std::u8string>(pImpl->get(script, key(JsonKey::Name), ""s)),
+            pImpl->get(script, key(JsonKey::Ignore), false),
             0,	//writeMode,
             {}, //textValidateSize
-		};
-		auto& ignorePoints = script[key(JsonKey::IgnorePoints)];
-		for(auto i = ignorePoints.begin(); i != ignorePoints.end(); ++i){
-			auto& rc = i.value();
-			data.texts.emplace_back(rc[key(JsonKey::Row)], rc[key(JsonKey::Col)],
-									pImpl->get(rc[key(JsonKey::Disable)], false),
-									pImpl->get(rc[key(JsonKey::Ignore)], false),
-									pImpl->get(rc[key(JsonKey::WriteType)], -1),
-									pImpl->get(script[key(JsonKey::AttachLsTransType)], 0),
-									utility::cnvStr<std::u8string>(pImpl->get(rc[key(JsonKey::Text)], ""s)));
-		}
+        };
+        auto ignorePoints = pImpl->get(script, key(JsonKey::IgnorePoints), nlohmann::json::array());
+        for(auto i = ignorePoints.begin(); i != ignorePoints.end(); ++i) {
+            auto& rc = i.value();
+            data.texts.emplace_back(
+                pImpl->get(rc, key(JsonKey::Row), 0),
+                pImpl->get(rc, key(JsonKey::Col), 0),
+                pImpl->get(rc, key(JsonKey::Disable), false),
+                pImpl->get(rc, key(JsonKey::Ignore), false),
+                pImpl->get(rc, key(JsonKey::WriteType), -1),
+                pImpl->get(script, key(JsonKey::AttachLsTransType), 0),
+                utility::cnvStr<std::u8string>(pImpl->get(rc, key(JsonKey::Text), ""s))
+            );
+        }
 
-		if(data.filename.empty() == false){
-			result.emplace_back(std::move(data));
-		}
-	}
-	return result;
+        if(data.filename.empty() == false) {
+            result.emplace_back(std::move(data));
+        }
+    }
+    return result;
 }
 
 utility::u8stringlist langscore::config::ignorePictures()
 {
-	auto& write = pImpl->json[key(JsonKey::Write)];
-	auto& pictures = write[key(JsonKey::IgnorePictures)];
-	utility::u8stringlist result;
-	for(auto s = pictures.begin(); s != pictures.end(); ++s){
-		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
-	}
-	return result;
+    auto write = pImpl->get(pImpl->json, key(JsonKey::Write), nlohmann::json::object());
+    auto pictures = pImpl->get(write, key(JsonKey::IgnorePictures), nlohmann::json::array());
+    utility::u8stringlist result;
+    for(auto s = pictures.begin(); s != pictures.end(); ++s) {
+        result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
+    }
+    return result;
 }
 
 utility::u8stringlist langscore::config::globalFontList()
 {
-	auto& write = pImpl->json[key(JsonKey::Write)];
-	auto& fontPaths = write[key(JsonKey::FontPath)];
-	auto& globals = fontPaths[key(JsonKey::Global)];
-	utility::u8stringlist result;
-	for(auto s = globals.begin(); s != globals.end(); ++s){
-		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
-	}
-	return result;
+    auto write = pImpl->get(pImpl->json, key(JsonKey::Write), nlohmann::json::object());
+    auto fontPaths = pImpl->get(write, key(JsonKey::FontPath), nlohmann::json::object());
+    auto globals = pImpl->get(fontPaths, key(JsonKey::Global), nlohmann::json::array());
+    utility::u8stringlist result;
+    for(auto s = globals.begin(); s != globals.end(); ++s) {
+        result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
+    }
+    return result;
 }
 
 utility::u8stringlist langscore::config::localFontList()
 {
-	auto& write = pImpl->json[key(JsonKey::Write)];
-	auto& fontPaths = write[key(JsonKey::FontPath)];
-	auto& locals = fontPaths[key(JsonKey::Local)];
-	utility::u8stringlist result;
-	for(auto s = locals.begin(); s != locals.end(); ++s){
-		result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
-	}
-	return result;
+    auto write = pImpl->get(pImpl->json, key(JsonKey::Write), nlohmann::json::object());
+    auto fontPaths = pImpl->get(write, key(JsonKey::FontPath), nlohmann::json::object());
+    auto locals = pImpl->get(fontPaths, key(JsonKey::Local), nlohmann::json::array());
+    utility::u8stringlist result;
+    for(auto s = locals.begin(); s != locals.end(); ++s) {
+        result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
+    }
+    return result;
 }
 
 utility::u8stringlist langscore::config::extendControlCharList()
 {
-    auto& validate = pImpl->json[key(JsonKey::Validate)];
-    auto& controlChars = validate[key(JsonKey::ControlCharList)];
+    auto validate = pImpl->get(pImpl->json, key(JsonKey::Validate), nlohmann::json::object());
+    auto controlChars = pImpl->get(validate, key(JsonKey::ControlCharList), nlohmann::json::array());
     utility::u8stringlist result;
     for(auto s = controlChars.begin(); s != controlChars.end(); ++s) {
         result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
@@ -445,13 +500,14 @@ utility::u8stringlist langscore::config::extendControlCharList()
 
 char langscore::config::globalWriteMode()
 {
-	auto& write = pImpl->json[key(JsonKey::Write)];
-	return pImpl->get(write[key(JsonKey::WriteType)], (char)0);
+    auto write = pImpl->get(pImpl->json, key(JsonKey::Write), nlohmann::json::object());
+    return pImpl->get(write, key(JsonKey::WriteType), (char)0);
 }
 
 bool langscore::config::enableLanguagePatch()
 {
-    return pImpl->get(pImpl->json[key(JsonKey::Write)][key(JsonKey::EnableLanguagePatch)], false);
+    return pImpl->getNested(pImpl->json,
+        {key(JsonKey::Write), key(JsonKey::EnableLanguagePatch)}, false);
 }
 
 //int langscore::config::validateTextMode()
