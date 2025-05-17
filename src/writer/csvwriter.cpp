@@ -312,17 +312,19 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 
 ErrorStatus csvwriter::write(fs::path path, std::u8string defaultLanguage, MergeTextMode overwriteMode)
 {
-	if(this->texts.empty()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 0); }
 	path.replace_extension(csvwriter::extension);
 
 	std::ofstream outputCSVFile(path, std::ios::binary);
 	if(outputCSVFile.bad()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
 
 	const std::u8string delimiter(u8",");
-	auto headers = this->texts[0].createHeader(this->useLangs);
-
+    utility::u8stringlist headers = {u8"original"};
+    std::copy(this->useLangs.begin(), this->useLangs.end(), std::back_inserter(headers));
 
 	writeU8String(outputCSVFile, utility::join(headers, delimiter));
+
+    if(this->texts.empty()) { return Status_Success; }
+
 	if(this->fillDefaultLanguageColumn)
 	{
 		//デフォルト言語の列を埋める場合の処理
@@ -382,7 +384,7 @@ ErrorStatus langscore::csvwriter::writeForAnalyze(std::filesystem::path path, st
     if(outputCSVFile.bad()) { return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
 
     const std::u8string delimiter(u8",");
-    auto headers = this->texts[0].createHeaderForAnalyze(this->useLangs);
+    utility::u8stringlist headers = {u8"original", u8"type"};
 
 
     writeU8String(outputCSVFile, utility::join(headers, delimiter));

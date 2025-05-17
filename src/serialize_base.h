@@ -57,36 +57,6 @@ namespace langscore
         int code;   //RPGツクールでコマンドを検出した際に使用
         std::vector<std::u8string> textType; //ツクール内での種類(名前、説明、アイコン付きテキスト、テキスト等)
 
-        //CSV用のヘッダーを作成
-        auto createHeader(const std::vector<std::u8string>& useLanguageList = {}) const
-        {
-            std::vector<std::u8string> result;
-            result.emplace_back(u8"original");
-            if(useLanguageList.empty()) {
-                for(const auto& l : translates) {
-                    result.emplace_back(l.first);
-                }
-            }
-            else {
-                for(const auto& l : translates) 
-                {
-                    if(std::ranges::find(useLanguageList, l.first) == useLanguageList.end()) {
-                        continue;
-                    }
-                    result.emplace_back(l.first);
-                }
-            }
-            return result;
-        }
-
-
-        auto createHeaderForAnalyze(const std::vector<std::u8string>& useLanguageList = {}) const
-        {
-            auto result = createHeader(useLanguageList);
-            result.emplace_back(u8"type");
-            return result;
-        }
-
         bool operator==(const TranslateText& obj) const {
             return this->original == obj.original
                 && this->translates == obj.translates
