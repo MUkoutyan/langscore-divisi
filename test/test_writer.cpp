@@ -336,6 +336,8 @@ TEST_F(Langscore_Writer, DetectRubyString)
 
 TEST_F(Langscore_Writer, DetectStringPositionFromFile)
 {
+    //注)このテストが失敗する場合、vxaceのrubyスクリプトの解析において過去のバージョンとの互換性が取れていない。
+    //   langscore_customの出力に影響が出るため、変更する場合は注意書きを載せる必要がある。
 	std::u8string fileName = u8"chstring";
 
     langscore::rubyreader scriptWriter({}, {u8"./data/vxace/" + fileName + u8".rb"});
@@ -352,11 +354,12 @@ TEST_F(Langscore_Writer, DetectStringPositionFromFile)
 
 	i = 0;
 	//"を含まない単語の開始位置
-	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":8:20");
+	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":8:16");
 	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":11:2");
 	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":38:6");
-    ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":49:29");
+    ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":49:17");
 	ASSERT_TRUE(result[i++].scriptLineInfo == fileName + u8":51:2");
+
 }
 
 TEST_F(Langscore_Writer, ConvertCsvText_ASCII)

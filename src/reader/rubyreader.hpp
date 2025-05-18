@@ -232,7 +232,7 @@ namespace langscore
                 if(start_byte < end_byte) {
                     // (row, column+1) は実際の文字列開始位置
                     result.emplace_back(
-                        std::make_pair(row, column + 1),
+                        std::make_pair(row, column),
                         std::make_pair(start_byte, end_byte)
                     );
                 }
@@ -268,8 +268,6 @@ namespace langscore
                     // interpolationが含まれる場合はstringで文字列を直接扱う。
                     // ""が含まれる点に注意。
 
-
-
                     auto dq_list = findChildNodeList(node, "\"");
                     if(dq_list.size() != 2) {
                         //構文ミスしてそうな文字列
@@ -298,7 +296,7 @@ namespace langscore
                     if(start_byte < end_byte) {
                         // (row, column+1) は実際の文字列開始位置
                         result.emplace_back(
-                            std::make_pair(row, column + 1),
+                            std::make_pair(row, column+1),
                             std::make_pair(start_byte, end_byte)
                         );
                     }
@@ -481,6 +479,10 @@ namespace langscore
                 }
             }
 
+            if(file_contents.empty()) {
+                return {};
+            }
+
             // Tree-sitterの初期化
             TSLogger logger = {(void*)&this->print_debug, &ts_logger_func};
             TSParser* parser = ts_parser_new();
@@ -499,8 +501,19 @@ namespace langscore
             std::vector<TranslateText> result;
             auto filename = path.filename().stem().u8string();
 
-            for(auto& node : parse_result)
+            // ファイル全体を行ごとに分割
+            std::vector<std::u8string> lines;
             {
+                std::istringstream stream(file_contents);
+                std::string line;
+                while(std::getline(stream, line)) {
+                    lines.emplace_back(utility::cnvStr<std::u8string>(line));
+                }
+            }
+
+            if(lines.empty()) { return {}; }
+
+            for(auto& node : parse_result) {
                 auto [row, column] = node.row_col;
                 auto [start_byte, end_byte] = node.start_end_byte;
 
@@ -516,6 +529,16 @@ namespace langscore
                     continue;
                 }
 
+                // UTF-8文字単位で列数を計算
+                ScriptTextParser parser;
+                if(row == 0 || row-1 < lines.size()) {
+                    const auto& target_line = lines[row-1];
+                    column = parser.wordCountUTF8(target_line.substr(0, column));
+                }
+                else {
+                    column = 0; // 行が範囲外の場合は列数を0に設定
+                }
+
                 // TranslateTextオブジェクトを作成
                 langscore::TranslateText t = {
                     utility::cnvStr<std::u8string>(text),
@@ -525,7 +548,7 @@ namespace langscore
                 // 行と列の情報を文字列に変換
                 auto lineCountStr = std::to_string(row);
                 std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());
-                auto colCountStr = std::to_string(column);
+                auto colCountStr = std::to_string(column+1);
                 std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
 
                 // スクリプト位置情報を設定
@@ -534,6 +557,42 @@ namespace langscore
 
                 result.emplace_back(std::move(t));
             }
+
+            //for(auto& node : parse_result)
+            //{
+            //    auto [row, column] = node.row_col;
+            //    auto [start_byte, end_byte] = node.start_end_byte;
+
+            //    // 範囲チェック
+            //    if(start_byte >= end_byte || start_byte >= file_contents.length() || end_byte > file_contents.length()) {
+            //        continue;
+            //    }
+
+            //    std::string text = file_contents.substr(start_byte, end_byte - start_byte);
+
+            //    // 空文字列や意味のない文字列は無視
+            //    if(text.empty() || text == "\\n" || text == "\\r" || text == "\\t") {
+            //        continue;
+            //    }
+
+            //    // TranslateTextオブジェクトを作成
+            //    langscore::TranslateText t = {
+            //        utility::cnvStr<std::u8string>(text),
+            //        this->useLangList
+            //    };
+
+            //    // 行と列の情報を文字列に変換
+            //    auto lineCountStr = std::to_string(row);
+            //    std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());
+            //    auto colCountStr = std::to_string(column);
+            //    std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
+
+            //    // スクリプト位置情報を設定
+            //    auto scriptPos = filename + u8":" + u8lineCount + u8":" + u8ColCountStr;
+            //    t.scriptLineInfo = scriptPos;
+
+            //    result.emplace_back(std::move(t));
+            //}
 
             // リソースの解放
             ts_tree_delete(tree);
