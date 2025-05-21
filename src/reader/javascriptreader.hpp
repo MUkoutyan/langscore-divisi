@@ -27,7 +27,6 @@ public:
         , pluginsPath(std::move(pluginsPath))
         , print_debug(print_debug)
 	{
-        this->setComment(u8"//", u8"/*", u8"*/");
         //使用しているプラグインの抽出
         this->pluginInfoList = readPluginInfo();
 
@@ -566,13 +565,9 @@ private:
         return; //関数が長いのでメモ的な意味でreturn
     }//void extractStringFragments()
 
-    ScriptTextParser::DataType findStrings(std::u8string line) const override {
-        ScriptTextParser scriptParser;
-        return scriptParser.findStrings(line);
-    }
 
     
-    std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path) const override
+    std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path) const
     {
         std::ifstream input_file(path);
         if(!input_file.is_open()) {

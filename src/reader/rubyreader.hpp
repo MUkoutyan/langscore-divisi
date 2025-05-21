@@ -23,8 +23,6 @@ namespace langscore
             : readerbase(std::move(langs), std::move(scriptFileList))
             , print_debug(false)
         {
-            this->setComment(u8"#", u8"=begin", u8"=end");
-
             config config;
             const auto lsAnalyzePath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
             auto filePathPair = plaincsvreader{lsAnalyzePath / "Scripts/_list.csv"}.getPlainCsvTexts();
@@ -44,7 +42,7 @@ namespace langscore
                 auto scriptTexts = this->parse(path);
                 auto result = std::remove_if(scriptTexts.begin(), scriptTexts.end(), [](const auto& x) {
                     return x.original.empty();
-                    });
+                });
                 scriptTexts.erase(result, scriptTexts.end());
                 if(scriptTexts.empty()) { continue; }
 
@@ -78,7 +76,7 @@ namespace langscore
                 if(fileName == u8"langscore"s || fileName == u8"langscore_custom"s) {
                     std::erase_if(this->texts, [fileName = utility::removeExtension(fileName)](const auto& x) {
                         return x.original.find(fileName) != std::remove_const_t<std::remove_reference_t<decltype(x.original)>>::npos;
-                        });
+                    });
                     continue;
                 }
 
@@ -94,13 +92,13 @@ namespace langscore
                 else {
                     std::erase_if(this->texts, [&fileName](const auto& x) {
                         return x.original.find(fileName) != std::remove_const_t<std::remove_reference_t<decltype(x.original)>>::npos;
-                        });
+                    });
                 }
             }
             {
                 std::erase_if(this->texts, [&ignoreRowName](const auto& t) {
                     return std::ranges::find(ignoreRowName, t.original) != ignoreRowName.cend();
-                    });
+                });
             }
         }
 
@@ -192,15 +190,16 @@ namespace langscore
             std::string node_type = ts_node_type(node);
 
             // 無視するノードタイプ
+            //element_referenceは args["hoge"] のような記述
             static const std::vector<std::string_view> ignore_type = {
-                "identifier", "operator", "integer","simple_symbol",
+                "identifier", "operator", "integer","simple_symbol", "element_reference"
                 "symbol", "ERROR", ".", ":", "::", "=>", "=", "==", ",", "{", "}", "(", ")",
-                "comment"
+                "comment", "array", "regex", "when", "if", "else", "elsif", "then", "case", "do", "while"
             };
 
             // 無視するメソッド/関数名
             static const std::vector<std::string_view> ignore_method = {
-                "require", "puts", "print", "p", 
+                "require", "puts", "print", "p", "include?", "gsub!", "gsub"
                 "attr_accessor", "attr_reader", "attr_writer",
                 "ls_output_log", "raise"
             };
@@ -432,7 +431,8 @@ namespace langscore
 
             // 再帰的に子ノードを処理
             uint32_t child_count = ts_node_child_count(node);
-            for(uint32_t i = 0; i < child_count; i++) {
+            for(uint32_t i = 0; i < child_count; i++) 
+            {
                 extractStringNodes(
                     ts_node_child(node, i),
                     source_code,
@@ -441,12 +441,7 @@ namespace langscore
             }
         }
 
-        ScriptTextParser::DataType findStrings(std::u8string line) const override {
-            ScriptTextParser scriptParser;
-            return scriptParser.findStrings(line);
-        }
-
-        std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path) const override
+        std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path) const
         {
             // Rubyファイルを読み込む
             std::ifstream input_file(path);
@@ -558,296 +553,11 @@ namespace langscore
                 result.emplace_back(std::move(t));
             }
 
-            //for(auto& node : parse_result)
-            //{
-            //    auto [row, column] = node.row_col;
-            //    auto [start_byte, end_byte] = node.start_end_byte;
-
-            //    // 範囲チェック
-            //    if(start_byte >= end_byte || start_byte >= file_contents.length() || end_byte > file_contents.length()) {
-            //        continue;
-            //    }
-
-            //    std::string text = file_contents.substr(start_byte, end_byte - start_byte);
-
-            //    // 空文字列や意味のない文字列は無視
-            //    if(text.empty() || text == "\\n" || text == "\\r" || text == "\\t") {
-            //        continue;
-            //    }
-
-            //    // TranslateTextオブジェクトを作成
-            //    langscore::TranslateText t = {
-            //        utility::cnvStr<std::u8string>(text),
-            //        this->useLangList
-            //    };
-
-            //    // 行と列の情報を文字列に変換
-            //    auto lineCountStr = std::to_string(row);
-            //    std::u8string u8lineCount(lineCountStr.begin(), lineCountStr.end());
-            //    auto colCountStr = std::to_string(column);
-            //    std::u8string u8ColCountStr(colCountStr.begin(), colCountStr.end());
-
-            //    // スクリプト位置情報を設定
-            //    auto scriptPos = filename + u8":" + u8lineCount + u8":" + u8ColCountStr;
-            //    t.scriptLineInfo = scriptPos;
-
-            //    result.emplace_back(std::move(t));
-            //}
-
             // リソースの解放
             ts_tree_delete(tree);
             ts_parser_delete(parser);
 
             return result;
         }
-
-        ProgressNextStep checkLineComment(TextCodec& lineText) const override
-        {
-            //先頭が行コメントなら無視する
-            auto lineCommentBegin = lineText.find(this->lineComment);
-            if(lineCommentBegin == TextCodec::npos) {
-                return lineText.empty() ? ProgressNextStep::NextLine : ProgressNextStep::Throught;
-            }
-
-            //検出位置が0なら文字列が入る余地が無いのでコメントとして扱う
-            if(lineCommentBegin == 0) {
-                return ProgressNextStep::NextLine;
-            }
-
-            //文字列中の場合はコメントとして扱わない ("#{number}"など)
-            if(findBeginEnclose(lineText, lineCommentBegin) != TextCodecChar{}) {
-                return ProgressNextStep::Throught;
-            }
-
-            std::fill_n(lineText.begin() + lineCommentBegin, lineText.size() - lineCommentBegin, TextCodecChar(' '));
-
-            if(isValidProgramLine(lineText) == false) {
-                return ProgressNextStep::NextLine;
-            }
-            return lineText.empty() ? ProgressNextStep::NextLine : ProgressNextStep::Throught;
-        }
     };
 }
-
-
-/*
-//javascriptreaderのruby版のクラスを作成
-#include "readerbase.h"
-#include "utility.hpp"
-#include "csvreader.h"
-#include "config.h"
-#include "scripttextparser.hpp"
-#include <filesystem>
-#include <ranges>
-
-namespace langscore
-{
-
-	class rubyreader: public readerbase
-	{
-	public:
-		rubyreader(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)
-			: readerbase(std::move(langs), std::move(scriptFileList))
-		{
-			this->setComment(u8"#", u8"=begin", u8"=end");
-
-			config config;
-			const auto lsAnalyzePath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
-			auto filePathPair = plaincsvreader{lsAnalyzePath / "Scripts/_list.csv"}.getPlainCsvTexts();
-			for(const auto& row : filePathPair)
-			{
-				auto info = PluginInfo{
-					utility::cnvStr<std::u8string>(row[1]),
-					utility::cnvStr<std::u8string>(row[0]) + u8".rb",
-					true, u8"", {}
-				};
-				pluginInfoList.emplace_back(std::move(info));
-			}
-
-			for(auto& path : this->scriptFileList)
-			{
-				auto scriptTexts = this->parse(path);
-				this->texts.insert(this->texts.end(), scriptTexts.begin(), scriptTexts.end());
-
-				scriptTranslatesMap.emplace_back(path.filename().u8string(), std::move(scriptTexts));
-			}
-		}
-		~rubyreader() override {}
-
-
-		void applyIgnoreScripts(const std::vector<config::ScriptData>& scriptInfoList)
-		{
-			if(this->texts.empty()){ return; }
-			using namespace std::string_literals;
-			namespace fs = std::filesystem;
-
-			config config;
-			auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-
-			for(auto& t : this->texts){
-				if(t.translates.find(def_lang) == t.translates.end()){ continue; }
-				t.translates[def_lang] = t.original;
-				t.scriptLineInfo.swap(t.original);
-			}
-
-			//無視する行の判定
-			rubyreader reader({def_lang}, {});
-			utility::u8stringlist ignoreRowName;
-			for(auto& scriptInfo : pluginInfoList)
-			{
-				auto fileName = fs::path(scriptInfo.filename).filename().u8string();
-                auto scriptName = scriptInfo.name;
-
-                if(scriptName == u8"langscore" || scriptName == u8"langscore_custom") {
-                    std::erase_if(this->texts, [fileName = utility::removeExtension(fileName)](const auto& x) {
-                        return x.original.find(fileName) != std::remove_const_t<std::remove_reference_t<decltype(x.original)>>::npos;
-                    });
-                    continue;
-                }
-
-                auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&](const auto& x) {
-                    return x.filename == fileName;
-                });
-
-                if(result == scriptInfoList.end()) {
-                    continue;
-                }
-
-				if(result->ignore == false){
-					for(const auto& textInfo : result->texts)
-					{
-						if(textInfo.disable){ continue; }
-						if(textInfo.ignore){ continue; }
-                        //スクリプト内の行を無視する。
-						auto name = fileName + utility::cnvStr<std::u8string>(":" + std::to_string(textInfo.row) + ":" + std::to_string(textInfo.col));
-						ignoreRowName.emplace_back(std::move(name));
-					}
-				}
-				else{
-                    //スクリプト自体を無視する。
-					std::erase_if(this->texts, [&fileName](const auto& x){
-						return x.original.find(fileName) != std::remove_const_t<std::remove_reference_t<decltype(x.original)>>::npos;
-					});
-				}
-			}
-
-            if(ignoreRowName.empty() == false)
-			{
-                //無視する行の削除。
-				std::erase_if(this->texts, [&ignoreRowName](const auto& t){
-					return std::find(ignoreRowName.cbegin(), ignoreRowName.cend(), t.original) != ignoreRowName.cend();
-				});
-			}
-		}
-
-	private:
-
-		std::vector<TranslateText> parse(std::filesystem::path path)
-		{
-			//パース自体はあくまでコンストラクタに渡されたファイルパスをそのまま読み込ませるべきなので、
-			//ここでスクリプト名によるフィルター等は行わない。
-			return convertScriptToCSV(path);
-		}
-
-		std::u8string GetScriptName(std::u8string fileName) const
-		{
-			using namespace std::string_literals;
-
-			auto result = std::ranges::find_if(pluginInfoList, [&fileName](const auto& x){
-				return x.filename == fileName;
-			});
-			if(result == pluginInfoList.end()){ return u8""s; }
-			auto scriptName = (*result).name;
-			if(scriptName == u8"langscore"){ return u8""s; }
-			if(scriptName == u8"langscore_custom"){ return u8""s; }
-			return scriptName;
-		}
-
-		ProgressNextStep checkLineComment(TextCodec& lineText) const override
-		{
-			//先頭が行コメントなら無視する
-			auto lineCommentBegin = lineText.find(this->lineComment);
-			if(lineCommentBegin == TextCodec::npos){
-				return lineText.empty() ? ProgressNextStep::NextLine : ProgressNextStep::Throught;
-			}
-
-			//検出位置が0なら文字列が入る余地が無いのでコメントとして扱う
-			if(lineCommentBegin == 0){
-				return ProgressNextStep::NextLine;
-			}
-
-			//文字列中の場合はコメントとして扱わない ("#{number}"など)
-			if(findBeginEnclose(lineText, lineCommentBegin) != TextCodecChar{}){
-				return ProgressNextStep::Throught;
-			}
-
-			std::fill_n(lineText.begin() + lineCommentBegin, lineText.size() - lineCommentBegin, TextCodecChar(' '));
-
-			if(isValidProgramLine(lineText) == false){
-				return ProgressNextStep::NextLine;
-			}
-			return lineText.empty() ? ProgressNextStep::NextLine : ProgressNextStep::Throught;
-		}
-
-		ScriptTextParser::DataType findStrings(std::u8string line) const
-		{
-			if(line.empty()) { return {}; }
-
-			using namespace std::string_view_literals;
-			ScriptTextParser parser;
-			//行内の文字を抽出。マルチバイト文字を1文字とカウントするための形式。
-			auto wordList = parser.ConvertWordList(line);
-
-			//文字列が無ければ無視
-			if(std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x) { return std::get<0>(x) == u8"\""sv; }) == wordList.cend() &&
-				std::find_if(wordList.cbegin(), wordList.cend(), [](const auto& x) { return std::get<0>(x) == u8"'"sv; }) == wordList.cend())
-			{
-				return {};
-			}
-
-			ScriptTextParser::DataType transTextList;
-			size_t strStart = 0;
-			bool findDq = false;
-			bool findSq = false;
-			size_t col = 0;
-			size_t index = 1;
-			bool beforeEsc = false;
-			for(auto& strView : wordList)
-			{
-				auto& str = std::get<0>(strView);
-				if(beforeEsc == false)
-				{
-					if(str == u8"\"" && findSq == false) {
-						if(findDq == false) {
-							col = index;
-							strStart = std::get<1>(strView) + 1;
-						}
-						else {
-							auto endPos = std::get<1>(strView);
-							parser.convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
-						}
-						findDq = !findDq;
-					}
-					else if(str == u8"'" && findDq == false) {
-						if(findSq == false) {
-							col = index;
-							strStart = std::get<1>(strView) + 1;
-						}
-						else {
-							auto endPos = std::get<1>(strView);
-							parser.convertTranslateTextFromMatch(line.substr(strStart, endPos - strStart), col, transTextList);
-						}
-						findSq = !findSq;
-					}
-				}
-
-				beforeEsc = str == u8"\\";
-
-				index++;
-			}
-			return transTextList;
-		}
-	};
-
-}
-*/
