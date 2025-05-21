@@ -200,7 +200,7 @@ ErrorStatus jsonwriter::write(fs::path path, std::u8string defaultLanguage, Merg
         outputJson.push_back(item);
     }
 
-    outputFile << outputJson.dump(4);
+    outputFile << outputJson.dump(2);
     return Status_Success;
 }
 
@@ -221,23 +221,6 @@ ErrorStatus jsonwriter::writeForAnalyze(fs::path path, std::u8string defaultLang
         nlohmann::json item;
         item["original"] = utility::cnvStr<std::string>(text.original);
         
-        //nlohmann::json translates = nlohmann::json::object();
-        //for(const auto& lang : text.translates)
-        //{
-        //    if(std::ranges::find(this->useLangs, lang.first) == this->useLangs.cend()) {
-        //        continue;
-        //    }
-
-        //    std::u8string translatedText;
-        //    if(this->fillDefaultLanguageColumn && defaultLanguage == lang.first && lang.second.empty()) {
-        //        translatedText = text.original;
-        //    } else {
-        //        translatedText = lang.second;
-        //    }
-        //    translates[utility::cnvStr<std::string>(lang.first)] = utility::cnvStr<std::string>(translatedText);
-        //}
-        //
-        //item["translates"] = translates;
         item["type"] = utility::cnvStr<std::string>(text.textType);
         if(text.code != 0) {
             item["code"] = text.code;
@@ -246,7 +229,38 @@ ErrorStatus jsonwriter::writeForAnalyze(fs::path path, std::u8string defaultLang
         outputJson.push_back(item);
     }
 
-    outputFile << outputJson.dump(4);
+    outputFile << outputJson.dump(2);
+    return Status_Success;
+}
+
+ErrorStatus jsonwriter::writeForAnalyzeScript(std::filesystem::path path, std::u8string defaultLanguage, MergeTextMode overwriteMode)
+{
+    if(this->texts.empty()) { return ErrorStatus(ErrorStatus::Module::CSVWRITER, 0); }
+    path.replace_extension(jsonwriter::extension);
+
+    std::ofstream outputFile(path);
+    if(outputFile.bad()) { return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
+
+    nlohmann::json outputJson = nlohmann::json::array();
+
+    for(const auto& text : this->texts)
+    {
+        if(text.original.empty()) { continue; }
+
+        nlohmann::json item;
+        item["original"] = utility::cnvStr<std::string>(text.original);
+
+        item["type"] = utility::cnvStr<std::string>(text.textType);
+
+        auto lineInfo = utility::split(text.scriptLineInfo, u8":"s);
+        item["file"] = utility::cnvStr<std::string>(lineInfo[0]);
+        item["row"] = atoll(utility::cnvStr<std::string>(lineInfo[1]).c_str());
+        item["col"] = atoll(utility::cnvStr<std::string>(lineInfo[2]).c_str());
+
+        outputJson.push_back(item);
+    }
+
+    outputFile << outputJson.dump(2);
     return Status_Success;
 }
 
@@ -278,6 +292,6 @@ ErrorStatus jsonwriter::writePlain(std::filesystem::path path, std::vector<utili
         outputJson.push_back(row);
     }
 
-    outputFile << outputJson.dump(4);
+    outputFile << outputJson.dump(2);
     return Status_Success;
 }

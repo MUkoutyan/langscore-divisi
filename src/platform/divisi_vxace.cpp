@@ -537,8 +537,6 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
     auto resourceFolder = this->appPath.parent_path() / "resource";
     auto vocabs = csvreader{this->supportLangs, {resourceFolder / "vocab.csv"}}.currentTexts();
 
-
-
     auto& scriptTrans = reader.curerntScriptTransMap();
 
     //Vocab.rbの内容を適用
@@ -586,11 +584,7 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 
     std::cout << "Write Analyze JSON : " << outputPath << std::endl;
     jsonwriter writer(reader);
-    writer.writeForAnalyze(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
-
-    //std::cout << "Write CSV : " << outputPath << std::endl;
-    //csvwriter writer(reader);
-    //writer.write(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
+    writer.writeForAnalyzeScript(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
 
     std::cout << "Finish." << std::endl;
 }
@@ -919,9 +913,9 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
                 auto osPath = path.stem();
                 auto result = std::find_if(scriptInfoList.cbegin(), scriptInfoList.cend(), [&osPath](const auto& script) {
                     return script.filename == osPath && script.ignore;
-                    });
-                return result != scriptInfoList.cend();
                 });
+                return result != scriptInfoList.cend();
+            });
             scriptList.erase(rm_result, scriptList.end());
         }
 

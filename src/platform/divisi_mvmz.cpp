@@ -1082,7 +1082,7 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
 
     std::cout << "Write Analyze JSON : " << outputPath << std::endl;
     jsonwriter writer(scriptReader);
-    writer.writeForAnalyze(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
+    writer.writeForAnalyzeScript(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
 
     //csvwriter writer(scriptWriter);
     //writer.write(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
