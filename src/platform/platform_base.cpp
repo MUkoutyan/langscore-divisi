@@ -362,10 +362,20 @@ bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, con
         return false;
     }
 
+    config config;
 
     auto csvUseLangs = wroteCsvReader.curerntUseLangList();
-    if(this->supportLangs.size() != csvUseLangs.size()) {
-        OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
+    if(this->supportLangs.size() != csvUseLangs.size()) 
+    {
+        if(config.enableLanguagePatch())
+        {
+            if(std::ranges::find(this->supportLangs, csvUseLangs[0]) == this->supportLangs.end()) {
+                OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
+            }
+        }
+        else {
+            OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
+        }
     }
     else {
         auto lang = this->supportLangs;
