@@ -111,6 +111,8 @@ module Langscore
     $ls_armors_tr = nil
     $ls_item_tr = nil
     $ls_enemies_tr = nil
+    $ls_current_map = {}
+    $ls_graphic_cache = {}
     $ls_graphics_tr = LSCSV.to_hash("Graphics")
     $ls_scripts_tr = LSCSV.to_hash("Scripts")
     $ls_troop_tr = LSCSV.to_hash("Troops")
