@@ -105,63 +105,41 @@ class LSCSV
     return if rows == nil
     result = []
     cols = []
-    bracketed_dq = false
+    find_quote = false
 
     add_col = lambda do |col|
-      col.chomp!  #末尾に改行があれば削除
-      # 改行や,等を含んでいて""で括られている文字列の場合、
-      # この時点で""括りは外れている。
+      col.chomp! #末尾に改行があれば削除
+      #セルに分けた時点で先頭・末尾の"が不要になるため、削除する
+      if col.start_with?("\"") && col.end_with?("\"")
+        col = col.slice!(1..col.length-2)
+      end
+
+      #"を表すための""はCSVでのみ必須のため、読み込み時点で""は"と解釈。
+      col.gsub!("\"\"", "\"")
       cols.push(col)
     end
 
-    read_and_poeek_next_char = lambda do |i|
-      return "" if rows.length <= (i+1)
-      return rows[i+1];
-    end
-
     col = ""
-    str_length = rows.length
-    str_index = 0
-    while str_index < str_length
+    rows.each_char do |c|
 
-      c = rows[str_index]
-
-      if c == "\""
-        next_char = read_and_poeek_next_char.call(str_index)
-        break if next_char == ""
-
-        if bracketed_dq == false && col.length == 0
-          bracketed_dq = true;
-          str_index += 1
-          next;
-        elsif next_char == "\""
-          str_index += 1;
-          col += next_char;
-        end
-
-        if bracketed_dq && (next_char == "," || next_char == "\r" || next_char == "\n")
-          bracketed_dq = false;
-        end
-
-        str_index += 1
-        next
+      if c=="\""
+        find_quote = !find_quote
       end
 
-      if bracketed_dq
+      if find_quote
         #""内なら無条件で追加
         col += c
-        str_index += 1
         next
       end
 
       #以下は""で括られていない場合に通る
       if c==","
-        bracketed_dq = false
+        find_quote = false
         add_col.call(col)
         col = ""
       elsif c=="\n"
-        bracketed_dq = false
         col += c #一旦改行を追加。add_col内のchompが適用できるようにする。
+        find_quote = false
         add_col.call(col)
         col = ""
 
@@ -176,8 +154,6 @@ class LSCSV
       else
         col += c
       end
-
-      str_index += 1
 
     end
 
