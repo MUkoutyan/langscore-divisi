@@ -8,7 +8,7 @@
 #include <exception>
 #include <cstdlib>
 #include <csignal>
-
+#include "converter/to_patch_csv.h"
 
 #if defined(_MSC_VER)
 // MSVC (VS2022) 用: C++23 の std::stacktrace を利用
@@ -67,6 +67,7 @@ struct ARGS
 	std::filesystem::path appPath;
 	std::filesystem::path configFile;
 	std::filesystem::path gameProjectPath;
+    std::filesystem::path convetCsvFolderPath;
     bool createConfigFile = false;
 	bool analyze          = false;
 	bool reanalysis       = false;
@@ -74,6 +75,8 @@ struct ARGS
 	bool exportCSV        = false;
 	bool validate         = false;
 	bool packing          = false;
+    bool convertPatchCSV  = false;
+    bool convertBoundCSV  = false;
     bool outputTestScript = false;
 	langscore::MergeTextMode overwriteMode = langscore::MergeTextMode::AcceptSource;
     langscore::config::ProjectType projectType = langscore::config::ProjectType::None;
@@ -145,6 +148,20 @@ ARGS analyzeOption(int argc, const char* argv[])
 		else if(str.find("--packing") != std::string_view::npos){
 			args.packing = true;
 		}
+        else if(str.find("--convertPatchCSV") != std::string_view::npos) 
+        {
+            args.convertPatchCSV = true;
+            ++i;	//次の要素を読み込む
+            args.convetCsvFolderPath = getFilePathFromArgs(i, argc, argv);
+            std::cout << args.convetCsvFolderPath << " ";
+        }
+        else if(str.find("--convertBoundCSV") != std::string_view::npos)
+        {
+            args.convertBoundCSV = true;
+            ++i;	//次の要素を読み込む
+            args.convetCsvFolderPath = getFilePathFromArgs(i, argc, argv);
+            std::cout << args.convetCsvFolderPath << " ";
+        }
         else if(str.find("--createConfigFile") != std::string_view::npos) {
             args.createConfigFile = true;
             ++i;	//次の要素を読み込む
@@ -177,6 +194,23 @@ int main(int argc, const char* argv[])
 	ErrorStatus result;
     if(args.createConfigFile) {
         result = divisi.createConfig(args.gameProjectPath);
+    }
+
+    if(args.convertPatchCSV) {
+        langscore::convert_patch_csv{args.convetCsvFolderPath};
+        if(result.invalid()) {
+            std::cerr << "convertPatchCSV was invalid." << std::endl;
+            std::cerr << result.toStr() << std::endl;
+            return result.val();
+        }
+    }
+    else if(args.convertBoundCSV) {
+        langscore::convert_bound_csv{args.convetCsvFolderPath};
+        if(result.invalid()) {
+            std::cerr << "convertBoundCSV was invalid." << std::endl;
+            std::cerr << result.toStr() << std::endl;
+            return result.val();
+        }
     }
 
 	if(args.analyze){

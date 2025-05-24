@@ -56,7 +56,8 @@ set(lib_files
     "writer/jsscriptwriter.h"
 	"writer/jsscriptwriter.cpp" "config_writer.cpp"
     "writer/jsonwriter.h" "writer/jsonwriter.cpp"
-    "writer/marshal_replacer.h" "writer/marshal_replacer.cpp")
+    "writer/marshal_replacer.h" "writer/marshal_replacer.cpp"
+    "converter/to_patch_csv.cpp")
 
 # ソースをこのプロジェクトの実行可能ファイルに追加します。
 add_library (divisi_lib STATIC ${lib_files})
