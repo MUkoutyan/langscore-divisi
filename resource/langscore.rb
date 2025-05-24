@@ -1,7 +1,7 @@
 #---------------------------------------------------------------
 # 
 # Langscore CoreScript "Unison" 
-# Version 1.0.2
+# Version 1.0.3
 # Written by BreezeSinfonia 來奈津
 # 
 # 注意：このスクリプトは自動生成されました。編集は非推奨です。
