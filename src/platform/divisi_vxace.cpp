@@ -328,9 +328,8 @@ ErrorStatus langscore::divisi_vxace::validate()
     if(config.enableLanguagePatch())
     {
         // 言語パッチモードが有効な場合、言語フォルダ事に探査。
-        auto translateFolderList = config.exportDirectory(root);
-        for(const auto& tsFolder : translateFolderList) {
-            FetchCsvFileList(tsFolder);
+        for(const auto& tsFolderName : this->supportLangs) {
+            FetchCsvFileList(packingDirectory / tsFolderName);
         }
     }
     else
