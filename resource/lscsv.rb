@@ -1,4 +1,4 @@
-#==========LSCSV Ver 1.0.0 ==========
+#==========LSCSV Ver 1.0.1 ==========
 
 class LsDumpData
   attr_accessor :data
@@ -74,6 +74,13 @@ class LSCSV
         trans_file = File.open(file_name, "rb:utf-8:utf-8")
         ls_output_log "open #{file_name}"
         result = trans_file.read
+        if file_name.include?("Map") || file_name.include?("Troops") || file_name.include?("CommonEvents")
+          #これらのファイルは改行文字をLFで扱う
+          result.gsub!(/\r\n/, "\n")
+        else
+          #他のファイルは改行文字をCRLFで扱う
+          result.gsub!(/(?<!\r)\n/, "\r\n")
+        end
       rescue
         ls_output_log "Warning : 翻訳ファイルが見つかりません。 #{file_name}", 3
       end
@@ -116,6 +123,7 @@ class LSCSV
 
       #"を表すための""はCSVでのみ必須のため、読み込み時点で""は"と解釈。
       col.gsub!("\"\"", "\"")
+      col.chomp! #""を削った後に末尾に改行があってもいけないので削除
       cols.push(col)
     end
 
