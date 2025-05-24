@@ -153,7 +153,7 @@ namespace utility
         else if(0xe0 <= ptr && ptr <= 0xef){ length = 3; }
         else if(0xf0 <= ptr && ptr <= 0xf4){ length = 4; }
         else {
-            assert(("Invalid UTF8 String", false));
+            assert(("Invalid UTF8 String" && false));
         }
         return length;
     }

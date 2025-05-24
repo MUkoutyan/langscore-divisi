@@ -22,11 +22,12 @@ class javascriptreader: public readerbase
     bool print_debug = false;
 public:
 	javascriptreader(std::u8string _defaultLanguage, std::vector<std::u8string> langs, std::filesystem::path pluginsPath, std::vector<std::filesystem::path> scriptFileList, bool print_debug = false)
-        : readerbase(std::move(langs), std::move(scriptFileList))
+        : readerbase(std::move(scriptFileList))
         , defaultLanguage(std::move(_defaultLanguage))
         , pluginsPath(std::move(pluginsPath))
         , print_debug(print_debug)
 	{
+        this->useLangList = std::move(langs);
         //使用しているプラグインの抽出
         this->pluginInfoList = readPluginInfo();
 

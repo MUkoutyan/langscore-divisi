@@ -208,3 +208,167 @@ TEST_F(PlatformBaseTest, MeasureTextWidth_InvalidFontPath) {
     auto result = this->measureTextWidth(text, invalidFontPath, fontSize);
     EXPECT_TRUE(result.empty()); // フォントが無効な場合、空の結果が返ることを期待
 }
+
+// テスト用のモッククラス
+class TestPlatformBase : public platform_base {
+public:
+    void setProjectPath(std::filesystem::path path) override {}
+    ErrorStatus analyze() override { return ErrorStatus(); }
+    ErrorStatus reanalysis() override { return ErrorStatus(); }
+    ErrorStatus updatePlugin() override { return ErrorStatus(); }
+    ErrorStatus exportCSV() override { return ErrorStatus(); }
+    ErrorStatus validate() override { return ErrorStatus(); }
+    ErrorStatus packing() override { return ErrorStatus(); }
+
+
+    // テスト用にprotectedメソッドを公開
+    using platform_base::convertCopyOption;
+    using platform_base::exportFolderPath;
+    using platform_base::writeFixedGraphFileNameData;
+    using platform_base::validateCsvFormat;
+    using platform_base::validateTextFormat;
+    using platform_base::validateTexts;
+    using platform_base::countNumTexts;
+    using platform_base::measureTextWidth;
+    using platform_base::convertValidateTextInfo;
+    using platform_base::detectConstrolChar;
+};
+
+// std::coutの出力をキャプチャするためのヘルパークラス
+class CoutCapture {
+public:
+    CoutCapture() {
+        oldBuffer = std::cout.rdbuf();
+        std::cout.rdbuf(captureStream.rdbuf());
+    }
+
+    ~CoutCapture() {
+        std::cout.rdbuf(oldBuffer);
+    }
+
+    std::string getCapturedOutput() {
+        return captureStream.str();
+    }
+
+private:
+    std::ostringstream captureStream;
+    std::streambuf* oldBuffer;
+};
+
+// csvreaderとValidateFileInfoのテスト
+TEST_F(PlatformBaseTest, ValidateCsvFormat_MissingFile) {
+    // ValidateFileInfoの正しい構造を使用
+    ValidateFileInfo fileInfo;
+    fileInfo.csvPath = std::filesystem::path("non_existent_file.csv");
+
+    CoutCapture capture;
+
+    // csvreaderはnullptrとして渡す（ファイルが存在しない場合のテスト）
+    bool result = this->validateCsvFormat(fileInfo, {u8"ja", u8"en"});
+
+    // 結果の検証
+    std::string output = capture.getCapturedOutput();
+    EXPECT_TRUE(output.find("\"Type\":1") != std::string::npos);
+    // 出力にファイルパスの情報が含まれているか確認
+    EXPECT_TRUE(output.find("non_existent_file.csv") != std::string::npos);
+}
+
+// テキスト検証のテスト
+TEST_F(PlatformBaseTest, ValidateTextFormat_Test) {
+    // ValidateTextInfoの正しい構造でオブジェクトを作成
+    std::vector<ValidateTextInfo> texts;
+    ValidateTextInfo validateText;
+
+    // TranslateTextの正しい構造を使用
+    validateText.display.original = u8"テスト原文";
+    validateText.display.translates[u8"ja"] = u8"テスト文字列";
+    validateText.display.translates[u8"en"] = u8"Test string with \r\n line breaks";
+    validateText.origin.textType = {u8"message"};
+    texts.push_back(validateText);
+
+    // 検証条件設定（TextValidateTypeMapの正しい構造を使用）
+    config::TextValidateTypeMap validateInfoList;
+    // テキストタイプ -> 言語 -> 検証情報のマッピング
+    validateInfoList[u8"message"][u8"en"].mode = config::ValidateTextMode::TextCount;
+    validateInfoList[u8"message"][u8"en"].count = 10; // 文字数制限を10に設定
+
+    CoutCapture capture;
+
+    // validateTextFormatを呼び出し
+    bool result = this->validateTexts(texts, validateInfoList, std::filesystem::path("test_path"));
+
+    // 結果の検証
+    std::string output = capture.getCapturedOutput();
+    EXPECT_TRUE(output.find("\"Type\":1") != std::string::npos);
+}
+
+// validateTextsのテスト
+TEST_F(PlatformBaseTest, ValidateTexts_WithErrors) {
+    // 複数のテキストを含むテストケース
+    std::vector<ValidateTextInfo> translateList;
+
+    // 最初のテキスト（長すぎるテキスト）
+    ValidateTextInfo text1;
+    text1.display.original = u8"原文1";
+    text1.display.translates[u8"ja"] = u8"日本語テキスト";
+    text1.display.translates[u8"en"] = u8"Very long English text that exceeds the maximum length limit";
+    // テキストタイプを設定
+    text1.origin.textType.push_back(u8"message");
+    translateList.push_back(text1);
+
+    // 2つ目のテキスト（制御文字を含む）
+    ValidateTextInfo text2;
+    text2.display.original = u8"原文2";
+    text2.display.translates[u8"ja"] = u8"制御文字\r\n含む";
+    text2.display.translates[u8"en"] = u8"Contains\tcontrol\rchars";
+    text2.origin.textType.push_back(u8"message");
+    translateList.push_back(text2);
+
+    // 検証条件設定
+    config::TextValidateTypeMap validateInfoList;
+    // 文字数による検証モード
+    validateInfoList[u8"message"][u8"en"].mode = config::ValidateTextMode::TextCount;
+    validateInfoList[u8"message"][u8"en"].count = 20;  // 英語の最大文字数
+
+    // 幅による検証モード（制御文字は自動的に検出される）
+    validateInfoList[u8"message"][u8"ja"].mode = config::ValidateTextMode::TextWidth;
+    validateInfoList[u8"message"][u8"ja"].width = 200;  // 日本語の最大幅
+
+    CoutCapture capture;
+
+    // TestValidateTextsを通してテスト
+    bool result = this->validateTexts(translateList, validateInfoList, "test_path");
+
+    // 結果の検証
+    std::string output = capture.getCapturedOutput();
+    EXPECT_TRUE(output.find("\"Type\":1") != std::string::npos);
+    // 長さエラーの検証
+    EXPECT_TRUE(output.find("\"Language\":\"en\"") != std::string::npos);
+    EXPECT_TRUE(output.find("\"Summary\":7") != std::string::npos);
+}
+
+// 空のテキストリストでのvalidateTextsのテスト
+TEST_F(PlatformBaseTest, ValidateTexts_EmptyList) {
+    // 空のテキストリスト
+    std::vector<ValidateTextInfo> emptyList;
+
+    // TextValidateTypeMapの正しい構造
+    config::TextValidateTypeMap validateInfoList;
+    // いくつかのデフォルト設定を追加
+    validateInfoList[u8"message"][u8"en"].mode = config::ValidateTextMode::TextCount;
+    validateInfoList[u8"message"][u8"en"].count = 100;
+
+    std::filesystem::path path("test_path");
+
+    CoutCapture capture;
+
+    // validateTextsを呼び出し
+    bool result = this->validateTexts(std::move(emptyList), validateInfoList, path);
+
+    std::string output = capture.getCapturedOutput();
+    // 空リストでも何かしらの出力がある場合はそれを検証
+    if(!output.empty()) {
+        EXPECT_TRUE(output.find("\"Type\":1") != std::string::npos ||
+            output.find("empty") != std::string::npos);
+    }
+}

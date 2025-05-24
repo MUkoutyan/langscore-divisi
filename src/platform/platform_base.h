@@ -16,19 +16,6 @@ namespace langscore
 
         enum ValidateErrorType { Error, Warning };
 
-
-        /*
-        * enum ErrorTextCol
-        * {
-        *     Type = 0,
-        *     Summary,
-        *     Language,
-        *     Details,
-        *     File,
-        *     Row,
-        * };
-        */
-
 		enum ValidateSummary : char {
 			EmptyCol = 0,       //翻訳文が空
 			NotFoundEsc,        //原文にある制御文字が翻訳文に含まれていない
@@ -117,12 +104,14 @@ namespace langscore
 
         struct ValidateTextInfo 
         {
+            //原文のテキストタイプ用
             TranslateText origin;
 
             struct Display {
                 std::u8string original;
                 std::unordered_map<std::u8string, std::u8string> translates;
             };
+            //実際に表示されているテキスト
             Display display;
             
             std::vector<std::u8string> escWithValueChars;   //検出した制御文字とその値
@@ -134,9 +123,13 @@ namespace langscore
 
 		bool validateTranslateFileList(std::vector<ValidateFileInfo> csvPathList) const;
         
-        bool validateCsvFormat(ValidateFileInfo& fileInfo, const csvreader& wroteCsvReader) const;
+        //翻訳CSVのフォーマットを検証
+        bool validateCsvFormat(ValidateFileInfo& fileInfo, utility::u8stringlist useLanguages) const;
+
+        //翻訳CSVのテキストの内容を検証
 		bool validateTextFormat(const std::vector<ValidateTextInfo>& texts, std::filesystem::path path) const;
         std::uint64_t countNumTexts(const std::u8string& multilineText) const;
+        //翻訳CSV内の文章の文字長を検証
         bool validateTexts(const std::vector<ValidateTextInfo>& texts, const config::TextValidateTypeMap& validateSizeList, std::filesystem::path path) const;
 
         //テキストの幅を計測する。戻り値:{textの1文字, {左座標, 右の座標}}

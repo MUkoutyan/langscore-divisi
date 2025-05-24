@@ -8,10 +8,15 @@ namespace langscore
 class speciftranstext : public readerbase
 {
 public:
-	speciftranstext(std::vector<std::u8string> langs, std::vector<TranslateText> texts)
-		: readerbase(std::move(langs), {}){
+	speciftranstext(std::vector<TranslateText> texts)
+		: readerbase({}){
 		this->texts = std::move(texts);
 	}
+    speciftranstext(std::vector<std::u8string> useLangs, std::vector<TranslateText> texts)
+        : readerbase({}) {
+        this->useLangList = std::move(useLangs);
+        this->texts = std::move(texts);
+    }
 	virtual ~speciftranstext() {}
 };
 }

@@ -4,9 +4,9 @@
 
 using namespace langscore;
 
-readerbase::readerbase(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList)
+readerbase::readerbase(std::vector<std::filesystem::path> scriptFileList)
 	: pluginInfoList()
-	, useLangList(std::move(langs)), scriptFileList(std::move(scriptFileList))
+	, scriptFileList(std::move(scriptFileList))
 	, texts(), scriptTranslatesMap()
 {
 }

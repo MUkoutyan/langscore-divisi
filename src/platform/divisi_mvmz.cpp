@@ -389,25 +389,41 @@ ErrorStatus divisi_mvmz::validate()
 {
     config config;
     std::u8string root;
-    const auto exportDirectory = config.packingInputDirectory();
+    const auto packingDirectory = config.packingInputDirectory();
     std::vector<ValidateFileInfo> csvPathList;
 
     auto basicData = config.rpgMakerBasicData();
-    for(const auto& f : fs::recursive_directory_iterator{exportDirectory})
+
+    const auto FetchCsvFileList = [&basicData, &csvPathList](const auto& path)
     {
-        auto extension = f.path().extension();
-        auto fileName = f.path().filename();
-        if(extension != ".csv") { continue; }
+        for(const auto& f : fs::directory_iterator{path})
+        {
+            auto extension = f.path().extension();
+            auto fileName = f.path().filename().stem();
+            if(extension != ".csv") { continue; }
 
-        auto result = std::find_if(basicData.cbegin(), basicData.cend(), [&fileName](const auto& x) {
-            return fs::path(x.filename).filename() == fileName;
+            auto result = std::find_if(basicData.cbegin(), basicData.cend(), [&fileName](const auto& x) {
+                return fs::path(x.filename).filename().stem() == fileName;
             });
-        if(result == basicData.cend()) { continue; }
+            if(result == basicData.cend()) { continue; }
 
-        csvPathList.emplace_back(ValidateFileInfo{
-            f.path(),
-            result->textValidateInfos
-        });
+            csvPathList.emplace_back(ValidateFileInfo{
+                f.path(),
+                result->textValidateInfos
+            });
+        }
+    };
+
+    if(config.enableLanguagePatch())
+    {
+        auto translateFolderList = config.exportDirectory(root);
+        for(const auto& tsFolder : translateFolderList){
+            FetchCsvFileList(tsFolder);
+        }
+    }
+    else
+    {
+        FetchCsvFileList(packingDirectory);
     }
 
     //整合性チェック
@@ -451,7 +467,7 @@ ErrorStatus divisi_mvmz::packing()
             auto translateFolder = inputGameProjectFolder / "data" / "translate";
             for(auto& csvPath : fs::recursive_directory_iterator{translateFolder})
             {
-                auto csvReader = csvreader{{lang}, csvPath};
+                auto csvReader = csvreader{csvPath};
                 auto transMap = csvReader.currentTexts();
                 std::vector<TranslateText> replacedTexts;
                 for(auto trans : transMap)

@@ -5,8 +5,8 @@
 
 using namespace langscore;
 
-csvreader::csvreader(std::vector<std::u8string> langs, utility::filelist scriptFileList)
-	: readerbase(std::move(langs), std::move(scriptFileList))
+csvreader::csvreader(utility::filelist scriptFileList)
+	: readerbase(std::move(scriptFileList))
 {
 	for(auto& path : this->scriptFileList){
 		auto texts = parse(std::move(path));
@@ -14,8 +14,8 @@ csvreader::csvreader(std::vector<std::u8string> langs, utility::filelist scriptF
 	}
 }
 
-csvreader::csvreader(std::vector<std::u8string> langs, std::filesystem::path path)
-	: csvreader(std::move(langs), utility::filelist{std::move(path)})
+csvreader::csvreader(std::filesystem::path path)
+	: csvreader(utility::filelist{std::move(path)})
 {}
 
 csvreader::~csvreader()
@@ -29,11 +29,11 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 
 	const auto& header = csv[0];
 	if(header.size() < 2){ return {}; }
-	useLangList = {header.begin() + 1, header.end()};
+	this->useLangList = {header.begin() + 1, header.end()};
 
 	std::vector<TranslateText> result;
 	std::for_each(csv.cbegin() + 1, csv.cend(), [this, &header, &result](const auto& row){
-		TranslateText t{row[0], useLangList};
+		TranslateText t{row[0], this->useLangList};
 		for(int i = 1; i < row.size(); ++i)
 		{
 			if (i < header.size())
@@ -56,7 +56,7 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 }
 
 plaincsvreader::plaincsvreader(utility::filelist path)
-	: readerbase({}, {std::move(path)})
+	: readerbase({std::move(path)})
 {
 	for(auto& path : scriptFileList){
 		this->plainCsvTexts = parse(path);

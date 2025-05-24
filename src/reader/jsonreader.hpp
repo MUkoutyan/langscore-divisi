@@ -7,8 +7,8 @@ namespace langscore {
 class jsonreaderbase : public readerbase
 {
 public:
-	jsonreaderbase(std::vector<std::u8string> useLangs, nlohmann::json json)
-		: readerbase(std::move(useLangs), {}), json(std::move(json)){
+	jsonreaderbase(nlohmann::json json)
+		: readerbase({}), json(std::move(json)){
 	}
 	virtual ~jsonreaderbase(){};
 
@@ -23,7 +23,7 @@ class analyzejsonreader : public readerbase
 public:
     // 単一のJSONファイルを読み込む
     analyzejsonreader(std::filesystem::path jsonPath)
-        : readerbase({}, {}) // 言語リストとスクリプトリストは空で初期化
+        : readerbase({}) // 言語リストとスクリプトリストは空で初期化
     {
         if(std::filesystem::exists(jsonPath)) {
             jsonFiles.push_back(jsonPath);
@@ -33,7 +33,7 @@ public:
 
     // 複数のJSONファイルを読み込む
     analyzejsonreader(std::vector<std::filesystem::path> jsonPaths)
-        : readerbase({}, {}) // 言語リストとスクリプトリストは空で初期化
+        : readerbase({}) // 言語リストとスクリプトリストは空で初期化
     {
         for(const auto& path : jsonPaths) {
             if(std::filesystem::exists(path)) {
@@ -81,7 +81,7 @@ private:
         {
             if(item.contains("original")) {
                 std::u8string original = utility::cnvStr<std::u8string>(item["original"].get<std::string>());
-                TranslateText text(original, useLangList);
+                TranslateText text(original, {});
 
                 // 翻訳テキストを取得
                 if(item.contains("translates") && item["translates"].is_object()) {

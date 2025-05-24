@@ -22,7 +22,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 		return true;
 	}
 
-	auto sourceTranslates = csvreader{this->useLangs, sourceFilePath}.currentTexts();
+	auto sourceTranslates = csvreader{sourceFilePath}.currentTexts();
 	if(sourceTranslates.empty()){ return true; }
 
 	//ソース側を適用

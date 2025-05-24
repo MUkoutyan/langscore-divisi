@@ -8,7 +8,7 @@ namespace langscore
 	{
 	public:
 		vxace_jsonreader(std::vector<std::u8string> useLangs, nlohmann::json json)
-			: jsonreaderbase(std::move(useLangs), std::move(json))
+			: jsonreaderbase(std::move(json))
 			, stackText(false)
 			, stackTextStr(u8"")
 		{

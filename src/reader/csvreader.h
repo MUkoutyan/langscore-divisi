@@ -8,8 +8,8 @@ namespace langscore
 	class csvreader: public readerbase
 	{
 	public:
-		csvreader(std::vector<std::u8string> langs, utility::filelist scriptFileList);
-		csvreader(std::vector<std::u8string> langs, std::filesystem::path path);
+		csvreader(utility::filelist scriptFileList);
+		csvreader(std::filesystem::path path);
 		~csvreader() override;
 
 	private:

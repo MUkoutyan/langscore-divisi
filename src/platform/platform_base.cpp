@@ -1,5 +1,6 @@
 ﻿#include "platform_base.h"
 #include "reader/csvreader.h"
+#include "reader/jsonreader.hpp"
 #include "writer/uniquerowcsvwriter.hpp"
 #include "reader/speciftranstext.hpp"
 #include <iostream>
@@ -248,7 +249,7 @@ void platform_base::writeFixedGraphFileNameData()
             std::cout << "Write Graphics : " << outputPath << std::endl;
 
             // 言語ごとの翻訳テキストを作成
-            speciftranstext transText{std::vector<std::u8string>{lang}, transTextList};
+            speciftranstext transText{transTextList};
             writeFixedTranslateText<uniquerowcsvwriter>(outputPath, transText, this->defaultLanguage, std::vector<std::u8string>{lang}, mergeTextMode);
         }
     }
@@ -256,7 +257,7 @@ void platform_base::writeFixedGraphFileNameData()
     {
         // 通常モードでは全言語を同じCSVに出力
         auto csvPathList = exportFolderPath("Graphics.csv");
-        speciftranstext transText{supportLangs, std::move(transTextList)};
+        speciftranstext transText{std::move(transTextList)};
 
         for(auto& csvPath : csvPathList) {
             std::cout << "Write Graphics : " << csvPath << std::endl;
@@ -330,19 +331,23 @@ bool platform_base::validateTranslateFileList(std::vector<ValidateFileInfo> csvP
     {
         auto _path = fileInfo.csvPath;
         const auto fileName = _path.filename().stem().string();
-        auto wroteCsvReader = csvreader{this->supportLangs, {_path}};
+        auto wroteCsvReader = csvreader{{_path}};
         
-        result &= validateCsvFormat(fileInfo, wroteCsvReader);
+        //翻訳CSVのフォーマットが正しいかどうかのチェック。
+        //ValidateSummary::NotEQLang, ValidateSummary::InvalidCSVを検出する。
+        result &= validateCsvFormat(fileInfo, this->supportLangs);
 
         auto translateTexts = std::move(wroteCsvReader).currentTexts();
 
-        //ツクールのテキストで使用する制御文字を検出。
+        //ツクールのテキストで使用する制御文字を列挙する。検出処理ではないため注意。
         //[]で括る必要のある制御文字と、単体で完結する制御文字の二種類。
         auto validateTextInfoList = convertValidateTextInfo(fileName, translateTexts);
 
+        //文章のフォーマットが正しいかどうかのチェック。
+        //EmptyCol, NotFoundEsc, IncludeCRを検出する。
         result &= validateTextFormat(validateTextInfoList, _path);
 
-
+        //文章の文字長チェックの指定があれば、チェックする。
         if(fileInfo.textValidateInfos.empty() == false)
         {
             result &= validateTexts(validateTextInfoList, fileInfo.textValidateInfos, std::move(_path));
@@ -351,7 +356,7 @@ bool platform_base::validateTranslateFileList(std::vector<ValidateFileInfo> csvP
     return result;
 }
 
-bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, const csvreader& wroteCsvReader) const
+bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, utility::u8stringlist useLanguages) const
 {
     bool result = true;
     const auto& _path = fileInfo.csvPath;
@@ -363,13 +368,13 @@ bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, con
     }
 
     config config;
+    const auto isEnablePachMode = config.enableLanguagePatch();
 
-    auto csvUseLangs = wroteCsvReader.curerntUseLangList();
-    if(this->supportLangs.size() != csvUseLangs.size()) 
+    if(this->supportLangs.size() != useLanguages.size()) 
     {
-        if(config.enableLanguagePatch())
+        if(isEnablePachMode)
         {
-            if(std::ranges::find(this->supportLangs, csvUseLangs[0]) == this->supportLangs.end()) {
+            if(std::ranges::find(this->supportLangs, useLanguages[0]) == this->supportLangs.end()) {
                 OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
             }
         }
@@ -380,8 +385,8 @@ bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, con
     else {
         auto lang = this->supportLangs;
         std::sort(lang.begin(), lang.end());
-        std::sort(csvUseLangs.begin(), csvUseLangs.end());
-        if(false == std::equal(lang.begin(), lang.end(), csvUseLangs.begin(), csvUseLangs.end())) {
+        std::sort(useLanguages.begin(), useLanguages.end());
+        if(false == std::equal(lang.begin(), lang.end(), useLanguages.begin(), useLanguages.end())) {
             OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
         }
     }
@@ -391,11 +396,16 @@ bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, con
         //currentTextsにすると不正な状態でも空として保持されてしまうため、
         //plaincsvreaderを使用する。
         auto plainTexts = plaincsvreader{_path}.getPlainCsvTexts();
+        if(plainTexts.empty()) {
+            return result;
+        }
         auto header = plainTexts.front();
         plainTexts.erase(plainTexts.begin());
-        if(header.size() != csvUseLangs.size() + 1) {
-            OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
-            result = false;
+        if(isEnablePachMode == false) {
+            if(header.size() != useLanguages.size() + 1) {
+                OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
+                result = false;
+            }
         }
 
         int rowCount = 0;
@@ -535,41 +545,37 @@ void removeEscapeCharacters(std::u8string& text, const std::vector<std::u8string
 
 std::vector<platform_base::ValidateTextInfo> platform_base::convertValidateTextInfo(std::string fileName, const std::vector<TranslateText>& texts) const
 {
-
     // テキストから右端の改行コードを削除するヘルパー関数
     const auto FormatText = [](const auto& text) {
-        return utility::right_trim(text, u8"\r\n"s);
+        return utility::replace(utility::right_trim(text, u8"\r\n"s), u8"\r\n"s, u8"\n"s);
     };
 
-    // 設定を読み込み
     config config;
-    // 分析ディレクトリのパスを取得
     auto analyzeDirPath = fs::path(config.langscoreAnalyzeDirectorty());
-    // 対応するCSVファイルを読み込む（テキストタイプ情報を含む）
-    auto csvContents = plaincsvreader{analyzeDirPath / (fileName + ".csv")}.getPlainCsvTexts();
+    // 
+    auto analyzeContents = analyzejsonreader{analyzeDirPath / (fileName + ".lsjson")}.currentTexts();
     // 原文とテキストタイプのマッピングを格納するマップ
     std::unordered_map<std::u8string, std::u8string> textMap;
-    if(csvContents.empty() == false) {
+    if(analyzeContents.empty() == false) {
         std::set<std::u8string> nameTypeList;
-        csvContents.erase(csvContents.begin()); // ヘッダー行を削除
 
         // テキストリストから全ての原文をマップのキーとして登録
         for(auto& transText : texts) {
             textMap[FormatText(transText.original)] = u8"";
         }
 
-        // CSVの内容を解析して、テキストタイプを対応する原文に関連付ける
-        for(const auto& row : csvContents) {
-            auto it = textMap.find(FormatText(row[0]));
-            if(it != textMap.end() && row.size() > 1) {
-                it->second = row[1];  // テキストタイプを設定
+        // テキストタイプを対応する原文に関連付ける
+        for(const auto& row : analyzeContents) 
+        {
+            if(row.textType.empty()) { continue; }
+            auto it = textMap.find(FormatText(row.original));
+            if(it != textMap.end()) {
+                it->second = row.textType[0];
             }
         }
     }
 
-    // 結果を格納するリスト
     std::vector<ValidateTextInfo> resultLists;
-    // 翻訳テキストリストを処理
     for(auto& transText : texts)
     {
         ValidateTextInfo result;
@@ -730,14 +736,10 @@ bool langscore::platform_base::validateTexts(const std::vector<ValidateTextInfo>
 
             for(const auto& [langText, textLines] : translate.display.translates)
             {
-                if(textLines.find(u8"Did you come here to see") != std::u8string::npos) {
-                    std::cout << "debug" << std::endl;
-                }
                 if(validateLangMap.find(langText) == validateLangMap.end()) {
                     continue;
                 }
 
-                auto& lang = langMap[langText];
                 const auto& validateInfo = validateLangMap.at(langText);
                 if(validateInfo.mode == config::ValidateTextMode::Ignore) {
                     continue;
@@ -747,7 +749,7 @@ bool langscore::platform_base::validateTexts(const std::vector<ValidateTextInfo>
                     auto maxNumTexts = countNumTexts(textLines);
 
                     if(validateInfo.count < maxNumTexts) {
-                        OutputErrorWithWidth(path, ValidateErrorType::Warning, OverTextCount, lang.name, utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), maxNumTexts, row);
+                        OutputErrorWithWidth(path, ValidateErrorType::Warning, OverTextCount, utility::cnvStr<std::string>(langText), utility::cnvStr<std::string>(csvwriter::convertCsvText(textLines)), maxNumTexts, row);
                     }
                     else {
                         //該当のテキストタイプが見つからない。更新忘れ？エラーを出す。
@@ -755,6 +757,7 @@ bool langscore::platform_base::validateTexts(const std::vector<ValidateTextInfo>
                 }
                 else if(validateInfo.mode == config::ValidateTextMode::TextWidth)
                 {
+                    auto& lang = langMap[langText];
                     auto fontName = lang.font.file.filename();
                     auto textInfos = measureTextWidth(textLines, (fontDir / fontName).u8string(), lang.font.size);
                     if(textInfos.empty()) {

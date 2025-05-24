@@ -150,7 +150,7 @@ TEST(Langscore_Csv, parsePlain)
 TEST(Langscore_Csv, merge)
 {
 	{
-		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
+		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
@@ -168,7 +168,7 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[1].translates[u8"ja"] == u8"");
 	}
 	{
-		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
+		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
@@ -188,7 +188,7 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"さしすせそ");
 	}
 	{
-		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
+		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
@@ -208,7 +208,7 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"さしすせそ");
 	}
 	{
-		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\before.csv"};
+		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\before.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
@@ -252,7 +252,7 @@ TEST(Langscore_Csv, merge)
 		//ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"");
 	}
 	{
-		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
+		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
@@ -272,7 +272,7 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"");
 	}
 	{
-		langscore::csvreader reader{{}, fs::path(BINARYT_DIRECTORY) / "data\\csv\\before.csv"};
+		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\before.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
@@ -690,7 +690,7 @@ TEST_F(AnalyzeJsonReaderTest, RoundTripTest) {
     originalTexts.push_back(text2);
     
     // jsonwriterでデータを書き出す
-    std::unique_ptr<langscore::readerbase> mockReader = std::make_unique<langscore::readerbase>(langs, std::vector<std::filesystem::path>{});
+    std::unique_ptr<langscore::readerbase> mockReader = std::make_unique<langscore::readerbase>(std::vector<std::filesystem::path>{});
     mockReader->currentTexts() = originalTexts;
     
     langscore::jsonwriter writer(mockReader);

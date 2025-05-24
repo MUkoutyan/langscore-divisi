@@ -304,20 +304,38 @@ ErrorStatus langscore::divisi_vxace::validate()
 
     auto basicData = config.rpgMakerBasicData();
 
-    for(const auto& f : fs::recursive_directory_iterator{ packingDirectory }){
-        auto extension = f.path().extension();
-        auto fileName = f.path().filename().stem();
-        if(extension != ".csv") { continue; }
+    //検証する翻訳CSVを取得する。
+    const auto FetchCsvFileList = [&basicData, &csvPathList](const auto& path)
+    {
+        for(const auto& f : fs::directory_iterator{path})
+        {
+            auto extension = f.path().extension();
+            auto fileName = f.path().filename().stem();
+            if(extension != ".csv") { continue; }
 
-        auto result = std::find_if(basicData.cbegin(), basicData.cend(), [&fileName](const auto& x) {
-            return fs::path(x.filename).filename().stem() == fileName;
-        });
-        if(result == basicData.cend()) { continue; }
+            auto result = std::find_if(basicData.cbegin(), basicData.cend(), [&fileName](const auto& x) {
+                return fs::path(x.filename).filename().stem() == fileName;
+            });
+            if(result == basicData.cend()) { continue; }
 
-        csvPathList.emplace_back(ValidateFileInfo{
-            f.path(),
-            result->textValidateInfos
-        });
+            csvPathList.emplace_back(ValidateFileInfo{
+                f.path(),
+                result->textValidateInfos
+            });
+        }
+    };
+
+    if(config.enableLanguagePatch())
+    {
+        // 言語パッチモードが有効な場合、言語フォルダ事に探査。
+        auto translateFolderList = config.exportDirectory(root);
+        for(const auto& tsFolder : translateFolderList) {
+            FetchCsvFileList(tsFolder);
+        }
+    }
+    else
+    {
+        FetchCsvFileList(packingDirectory);
     }
 
     this->validateTranslateFileList(std::move(csvPathList));
@@ -377,7 +395,7 @@ ErrorStatus langscore::divisi_vxace::packing()
             auto translateFolder = inputGameProjectFolder / "Data" / "Translate";
             for(auto& csvPath : fs::recursive_directory_iterator{translateFolder})
             {
-                auto csvReader = csvreader{{lang}, csvPath};
+                auto csvReader = csvreader{csvPath};
                 auto transMap = csvReader.currentTexts();
                 std::vector<TranslateText> replacedTexts;
                 for(auto trans : transMap)
@@ -391,7 +409,7 @@ ErrorStatus langscore::divisi_vxace::packing()
                 }
 
                 auto fileName = csvPath.path().filename();
-                csvwriter{speciftranstext{{lang}, std::move(replacedTexts)}}.write(csvOutputFolder / fileName, this->defaultLanguage, MergeTextMode::AcceptTarget);
+                csvwriter{speciftranstext{std::move(replacedTexts)}}.write(csvOutputFolder / fileName, this->defaultLanguage, MergeTextMode::AcceptTarget);
             }
         }
 
@@ -535,7 +553,7 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 
     //デフォルトスクリプトのVocab.rb内の文字列は予めScriptsの中に翻訳済みの内容を入れておく
     auto resourceFolder = this->appPath.parent_path() / "resource";
-    auto vocabs = csvreader{this->supportLangs, {resourceFolder / "vocab.csv"}}.currentTexts();
+    auto vocabs = csvreader{{resourceFolder / "vocab.csv"}}.currentTexts();
 
     auto& scriptTrans = reader.curerntScriptTransMap();
 
@@ -761,7 +779,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
             _line = tab + u8"DEFAULT_LANGUAGE = \"" + utility::cnvStr<std::u8string>(defLanguage) + u8"\"";
         }
         else if(findStr(_line, u8"%{ENABLE_PATCH_MODE}%")){
-            _line = tab + u8"ENABLE_PATCH_MODE = \""s + (config.enableLanguagePatch() ? u8"true"s : u8"false"s) + u8"\""s;
+            _line = tab + u8"ENABLE_PATCH_MODE = "s + (config.enableLanguagePatch() ? u8"true"s : u8"false"s);
         }
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {

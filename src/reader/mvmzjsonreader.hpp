@@ -89,11 +89,12 @@ namespace langscore
 	{
 	public:
 		mvmz_jsonreader(const std::filesystem::path& path, std::vector<std::u8string> useLangs, const nlohmann::json& json)
-			: jsonreaderbase(std::move(useLangs), json)
+			: jsonreaderbase(json)
 			, stackText(false)
 			, stackTextStr(u8"")
 			, currentDataType(DetectDataType(path))
 		{
+            this->useLangList = std::move(useLangs);
 			json2tt();	
 		}
 		~mvmz_jsonreader() override {}

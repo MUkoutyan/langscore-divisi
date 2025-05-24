@@ -230,18 +230,18 @@ TEST_F(Langscore_VXAce_Divisi, CheckLangscoreRubyScript)
 	csvwriter csvwriter{rubyReader};
 	csvwriter.write("data\\dummy.csv", u8"ja");
 
-	csvreader csvreader({u8"ja"}, "data\\dummy.csv");
+	csvreader csvreader("data\\dummy.csv");
 	auto writedCsvTexts = csvreader.currentTexts();
 
+    //検出されなければいけないテキストのみを記述。
     std::vector<std::u8string> expectedTexts = {
-        u8"en", u8"ja", u8"VL Gothic", u8"メイリオ", u8"Data/Translate",
-        u8".rvdata2", u8".csv", u8"rb:utf-8:utf-8",
-        u8",", u8"Graphics", u8"Scripts", u8"Troops", u8"CommonEvents",
+        u8"ja", u8"en", u8"VL Gothic", u8"メイリオ", u8"Data/Translate",
+        u8".rvdata2", u8".csv",
+        u8"Graphics", u8"Scripts", u8"Troops", u8"CommonEvents",
         u8"Actors", u8"System", u8"Classes", u8"Skills", u8"States", u8"Weapons",
         u8"Armors", u8"Items", u8"Enemies", u8"Map%03d",
         u8"現在選択中の言語が表示されます。", u8"The currently selected language is displayed.",
-        u8"English", u8"日本語", u8"OK", u8"Reselect", u8"Cancel", u8"kernel32",
-        u8"GetPrivateProfileString", u8"L", u8"WritePrivateProfileString", u8"i", u8" ",
+        u8"English", u8"日本語", u8"OK", u8"Reselect", u8"Cancel", u8" ",
         u8"Langscore", u8"Lang", u8"./Game.ini"
     };
 

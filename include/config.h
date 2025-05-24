@@ -79,7 +79,9 @@ namespace langscore
             }
         };
 
+        //言語, バリデーション情報の組み合わせ
         using TextValidationLangMap = std::map<std::u8string, ValidateTextInfo>;
+        //文章のタイプとTextValidationLangMapの組み合わせ
         using TextValidateTypeMap = std::map<std::u8string, TextValidationLangMap>;
 
 

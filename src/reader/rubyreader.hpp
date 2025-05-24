@@ -20,9 +20,11 @@ namespace langscore
 
     public:
         rubyreader(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList, bool print_debug = false)
-            : readerbase(std::move(langs), std::move(scriptFileList))
+            : readerbase(std::move(scriptFileList))
             , print_debug(false)
         {
+            this->useLangList = std::move(langs);
+
             config config;
             const auto lsAnalyzePath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
             auto filePathPair = plaincsvreader{lsAnalyzePath / "Scripts/_list.csv"}.getPlainCsvTexts();
@@ -192,16 +194,16 @@ namespace langscore
             // 無視するノードタイプ
             //element_referenceは args["hoge"] のような記述
             static const std::vector<std::string_view> ignore_type = {
-                "identifier", "operator", "integer","simple_symbol", "element_reference"
+                "identifier", "operator", "integer", "simple_symbol", "element_reference"
                 "symbol", "ERROR", ".", ":", "::", "=>", "=", "==", ",", "{", "}", "(", ")",
-                "comment", "array", "regex", "when", "if", "else", "elsif", "then", "case", "do", "while"
+                "comment", "regex", "when", "if", "else", "elsif", "case", "do", "while"
             };
 
             // 無視するメソッド/関数名
             static const std::vector<std::string_view> ignore_method = {
                 "require", "puts", "print", "p", "include?", "gsub!", "gsub"
-                "attr_accessor", "attr_reader", "attr_writer",
-                "ls_output_log", "raise"
+                "attr_accessor", "attr_reader", "attr_writer", "split",
+                "ls_output_log", "raise", "load_data"
             };
 
             // 無視すべきノードタイプかどうかを確認
@@ -302,6 +304,17 @@ namespace langscore
                     return;
                 }
             }
+            // 配列リテラル内の文字列を処理する新しい処理
+            else if(node_type == "array") {
+                // 配列の各要素を処理
+                uint32_t child_count = ts_node_child_count(node);
+                for(uint32_t i = 0; i < child_count; i++) {
+                    TSNode child = ts_node_child(node, i);
+                    // 各子ノードを再帰的に処理 (string, string_content等を含む)
+                    extractStringNodes(child, source_code, result);
+                }
+                return;
+            }
             // %q{} や %Q{} などの代替クォート文字列も処理
             else if(node_type == "string_array") {
                 // 例: %q{メッセージ} や %Q[テキスト] など
@@ -335,9 +348,25 @@ namespace langscore
                 return;
             }
             // メソッド呼び出し: .lstrans は無視、他のメソッドは引数中の文字列を抽出
-            else if(node_type == "method_call" || node_type == "call") {
+            else if(node_type == "method_call" || node_type == "call") 
+            {
                 // メソッド名取得
-                auto method_node = findFirstChildNode(node, "identifier");
+                auto constant_node = findFirstChildNode(node, "constant");
+                std::string constant_name;
+                if(!ts_node_is_null(constant_node)) {
+                    constant_name = std::string(
+                        source_code.substr(
+                            ts_node_start_byte(constant_node),
+                            ts_node_end_byte(constant_node)
+                            - ts_node_start_byte(constant_node)
+                        )
+                    );
+                }
+                auto method_node_list = findChildNodeList(node, "identifier");
+                if(method_node_list.empty()) {
+                    return;
+                }
+                auto method_node = method_node_list.back();
                 std::string method_name;
                 if(!ts_node_is_null(method_node)) {
                     method_name = std::string(
@@ -347,6 +376,14 @@ namespace langscore
                             - ts_node_start_byte(method_node)
                         )
                     );
+                }
+
+                //特定の組み合わせを検出
+                if(constant_name == "File" && method_name == "open") {
+                    return;
+                }
+                if(constant_name == "Win32API" && method_name == "new") {
+                    return;
                 }
 
                 // .lstrans の場合は何もしない

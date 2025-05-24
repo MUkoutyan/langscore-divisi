@@ -14,7 +14,7 @@ namespace langscore
 	public:
 		//スクリプト名とそのスクリプトの中身をパースした結果を格納する型
 
-		readerbase(std::vector<std::u8string> langs, std::vector<std::filesystem::path> scriptFileList);
+		readerbase(std::vector<std::filesystem::path> scriptFileList);
 		virtual ~readerbase();
 
 		std::vector<TranslateText>&  currentTexts() & { return texts; }
