@@ -181,7 +181,7 @@ var Langscore = class
   translate(text, langscore_map, lang = Langscore.langscore_current_language)
   {
     if(Langscore.isNull(langscore_map)){
-      this.handleError("Langscore Error(translate): langscore_map is null")
+      // this.handleError("Langscore Error(translate): langscore_map is null")
       return text;
     }
     
@@ -189,7 +189,7 @@ var Langscore = class
 
     var translatedList = langscore_map[key];
     if(!translatedList){ 
-      this.handleError("Langscore Error(translate): not found translatedList")
+      // this.handleError("Langscore Error(translate): not found translatedList")
       return text; 
     }
     var t = translatedList[lang];
@@ -202,7 +202,7 @@ var Langscore = class
   translate_for_map(text) 
   {
     if(!this.ls_current_map){ 
-      this.handleError("Langscore Error(translate_for_map): Invalid ls_current_map")
+      // this.handleError("Langscore Error(translate_for_map): Invalid ls_current_map")
       return text; 
     }
     
@@ -217,7 +217,7 @@ var Langscore = class
     }
     var currentMapTranslatedmap = this.ls_current_map[currentMapId];
     if(!currentMapTranslatedmap){ 
-      this.handleError(`Langscore Error(translate_for_map): not found currentMapId(${currentMapId})`)
+      // this.handleError(`Langscore Error(translate_for_map): not found currentMapId(${currentMapId})`)
       return text; 
     }
 
@@ -334,7 +334,7 @@ var Langscore = class
 
     Langscore.currentFont = Langscore.FontList[lang];
     if(!Langscore.currentFont){
-      console.error(`Langscore: No font is set for ${lang}. Skip font update.`)
+      // console.error(`Langscore: No font is set for ${lang}. Skip font update.`)
       return;
     }
     var currentFontName = Langscore.currentFont["name"];
