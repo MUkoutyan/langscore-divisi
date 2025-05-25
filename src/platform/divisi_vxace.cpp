@@ -778,7 +778,8 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
             _line = tab + u8"DEFAULT_LANGUAGE = \"" + utility::cnvStr<std::u8string>(defLanguage) + u8"\"";
         }
         else if(findStr(_line, u8"%{ENABLE_PATCH_MODE}%")){
-            _line = tab + u8"ENABLE_PATCH_MODE = "s + (config.enableLanguagePatch() ? u8"true"s : u8"false"s);
+            // _line = tab + u8"ENABLE_PATCH_MODE = "s + (config.enableLanguagePatch() ? u8"true"s : u8"false"s);
+            _line = tab + u8"ENABLE_PATCH_MODE = false" + nl;
         }
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {
