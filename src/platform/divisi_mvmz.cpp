@@ -904,7 +904,8 @@ var $plugins =
             if(params[DefaultLanguage].empty() == false) {
                 params[DefaultLanguage] = utility::cnvStr<std::string>(this->defaultLanguage);
             }
-            params[EnableLanguagePatch] = (enableLangPatch ? "true"s : "false"s);
+            // params[EnableLanguagePatch] = (enableLangPatch ? "true"s : "false"s);
+            params[EnableLanguagePatch] = "false";
             params[MustBeIncludedImage] = "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s;
         }
     }
@@ -920,7 +921,8 @@ var $plugins =
             {"parameters", {
                 {SupportLanguage,   langs},
                 {DefaultLanguage,   utility::cnvStr<std::string>(this->defaultLanguage)},
-                {EnableLanguagePatch, (enableLangPatch ? "true"s : "false"s)},
+                // {EnableLanguagePatch, (enableLangPatch ? "true"s : "false"s)},
+                {EnableLanguagePatch, "false"},
                 {MustBeIncludedImage, "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s}
             }}
         };
