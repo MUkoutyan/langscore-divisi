@@ -76,12 +76,6 @@
  * @desc ゲーム初回起動時に適用する言語です。ゲームを作成した際の言語を指定してください。
  * @default %{DEFAULT_LANGUAGE}%
  * 
- * @param Enable Language Patch Mode
- * @type boolean
- * @on 言語パッチモードを有効にする
- * @off 言語パッチモードを無効にする
- * @default false
- * 
  * @param Must Be Included Image
  * @desc デプロイメント時に「未使用ファイルを含まない」をチェックした際も、必ず含めるファイルを指定します。
  * @default
