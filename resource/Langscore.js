@@ -452,6 +452,10 @@ var Langscore = class
     this.internal_modifyArray($dataSystem.terms.params, (el) => el = this.translate(el, this.ls_system_tr) );
     this.internal_modifyArray($dataSystem.terms.commands, (el) => el = this.translate(el, this.ls_system_tr) );
     this.internal_modifyArray($dataSystem.terms.basic, (el) => el = this.translate(el, this.ls_system_tr) );
+    this.internal_modifyArray($dataSystem.weaponTypes, (el) => el = this.translate(el, this.ls_system_tr) );
+    this.internal_modifyArray($dataSystem.equipTypes, (el) => el = this.translate(el, this.ls_system_tr) );
+    this.internal_modifyArray($dataSystem.elements, (el) => el = this.translate(el, this.ls_system_tr) );
+    this.internal_modifyArray($dataSystem.armorTypes, (el) => el = this.translate(el, this.ls_system_tr) );
     Object.keys($dataSystem.terms.messages).forEach(key => {
       var value = $dataSystem.terms.messages[key];
       var origin_text = this.fetch_original_text(value, this.ls_system_tr);
