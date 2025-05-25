@@ -701,7 +701,8 @@ Langscore.isFirstLoaded = false;
 Langscore.Langscore_Parameters = PluginManager.parameters('Langscore');
 %{SUPPORT_LANGUAGE}%;
 Langscore.Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
-Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters['Enable Language Patch Mode'] === "true");
+Langscore.EnablePathMode = false;
+// Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters && Langscore.Langscore_Parameters['Enable Language Patch Mode'] === "true");
 
 %{SUPPORT_FONTS}%
 
