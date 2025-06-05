@@ -12,6 +12,7 @@ namespace langscore
 			, stackText(false)
 			, stackTextStr(u8"")
 		{
+            this->useLangList = std::move(useLangs);
 			json2tt();
 		}
 		~vxace_jsonreader() override {}
