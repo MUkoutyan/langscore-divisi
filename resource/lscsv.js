@@ -26,8 +26,8 @@ class LSCSV
     {
       var origin = r[0];
       var transhash = new Map();
-      row_index.forEach(i => transhash[header[i]] = r[i]);
-      result[origin] = transhash;
+      row_index.forEach(i => transhash.set(header[i], r[i]));
+      result.set(origin, transhash);
     })
     return result;
   }

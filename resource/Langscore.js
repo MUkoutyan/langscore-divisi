@@ -1,7 +1,7 @@
 //---------------------------------------------------------------
 // 
 // Langscore CoreScript "Unison" 
-// Version 0.9.12
+// Version 0.9.13
 // Written by BreezeSinfonia 來奈津
 // 
 // 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -76,6 +76,17 @@
  * @desc ゲーム初回起動時に適用する言語です。ゲームを作成した際の言語を指定してください。
  * @default %{DEFAULT_LANGUAGE}%
  * 
+ * @param Enable Language Patch Mode
+ * @type boolean
+ * @on 言語パッチモードを有効にする
+ * @off 言語パッチモードを無効にする
+ * @default false
+ * 
+ * @param Language State Variable
+ * @desc 言語パッチモード使用時に、言語が選択可能かを格納する先頭の変数を指定して下さい。変数は指定した箇所から10個以上の空きを設けて下さい。格納される言語は上から順に'ja', 'en', 'zh-cn', 'zh-tw', 'ko', 'es', 'de', 'fr', 'it', 'ru'となります。
+ * @type variable
+ * @default -1
+ * 
  * @param Must Be Included Image
  * @desc デプロイメント時に「未使用ファイルを含まない」をチェックした際も、必ず含めるファイルを指定します。
  * @default
@@ -147,11 +158,81 @@ var Langscore = class
 
     this.ls_should_throw_for_debug = false;
 
-    if(StorageManager.isLocalMode()){
+    this.current_language_folders = []
+
+    this.updateTranslateFolderList();
+  }
+
+  updateTranslateFolderList()
+  {
+    if(Langscore.EnablePathMode && StorageManager.isLocalMode()){
         this.fs = require('fs');
         this.path = require('path');
         this.basePath = this.path.dirname(process.mainModule.filename);
+
+      // セキュリティ強化: パスの正規化と検証
+      const translatePath = this.path.resolve(this.path.join(this.basePath, 'data', 'translate'));
+      
+      // ベースパス外へのアクセスを防ぐ
+      if (!translatePath.startsWith(this.path.resolve(this.basePath))) {
+        console.error('Langscore Security Error: Invalid path detected');
+        return;
+      }
+
+      try {
+        const items = this.fs.readdirSync(translatePath);
+        for (const item of items) {
+          // ファイル名の検証
+          if (!this.isValidLanguageFolder(item)) {
+            continue;
+          }
+          
+          const itemPath = this.path.resolve(this.path.join(translatePath, item));
+          
+          // パストラバーサル攻撃を防ぐ
+          if (!itemPath.startsWith(translatePath)) {
+            console.warn(`Langscore Security Warning: Suspicious path detected: ${item}`);
+            continue;
+          }
+          
+          if (this.fs.statSync(itemPath).isDirectory()) {
+            this.current_language_folders.push(item);
+          }
+        }
+      } catch (error) {
+        console.error('Langscore Error: Failed to read translate folder:', error);
+      }
     }
+  }
+
+  // セキュリティ検証メソッドを追加
+  isValidLanguageFolder(folderName) {
+    // 許可する文字のみ（英数字、ハイフン、アンダースコア）
+    const validPattern = /^[a-zA-Z0-9_-]+$/;
+    
+    // 長さ制限
+    if (folderName.length > 10) {
+      return false;
+    }
+    
+    // パターンマッチング
+    if (!validPattern.test(folderName)) {
+      return false;
+    }
+    
+    // 危険な文字列の除外
+    const dangerousPatterns = ['..', '.', 'CON', 'PRN', 'AUX', 'NUL'];
+    if (dangerousPatterns.some(pattern => folderName.toUpperCase().includes(pattern))) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  // 言語コードの厳密な検証
+  isValidLanguageCode(lang) {
+    //以下の言語のみを許容。
+    return Langscore.System_Allowed_Languages.includes(lang);
   }
 
   handleError(message)
@@ -181,18 +262,22 @@ var Langscore = class
   translate(text, langscore_map, lang = Langscore.langscore_current_language)
   {
     if(Langscore.isNull(langscore_map)){
-      // this.handleError("Langscore Error(translate): langscore_map is null")
+      this.handleError("Langscore Error(translate): langscore_map is null")
+      return text;
+    }
+    if((langscore_map instanceof Map) === false){
+      this.handleError("Langscore Error(translate): langscore_map is not map")
       return text;
     }
     
     var key = text;
 
-    var translatedList = langscore_map[key];
+    var translatedList = langscore_map.get(key);
     if(!translatedList){ 
-      // this.handleError("Langscore Error(translate): not found translatedList")
+      this.handleError("Langscore Error(translate): not found translatedList")
       return text; 
     }
-    var t = translatedList[lang];
+    var t = translatedList.get(lang);
     if(t){
       text = t;
     }
@@ -235,9 +320,8 @@ var Langscore = class
   fetch_original_text(transed_text, langscore_map) 
   {
     var origin = transed_text;
-    for (const originText of Object.keys(langscore_map)) {
-      var transMap = langscore_map[originText];
-      for (let transText of Object.values(transMap)) {
+    for (const [originText, transMap] of langscore_map) {
+      for (const [lang, transText] of transMap) {
         if (transText === transed_text) {
             return originText;
         }
@@ -569,17 +653,16 @@ var Langscore = class
   {
     if(!this.ls_scripts_tr){ return; }
     var parent = this;
-    Object.keys(this.ls_scripts_tr).forEach(function(key){
+    for (const [key, trans] of this.ls_scripts_tr) {
       var infos = key.split(':');
-      if(infos.length <= 1 || 2 < infos.length){ return; }
+      if(infos.length <= 1 || 2 < infos.length){ continue; }
       var params = PluginManager.parameters(infos[0]);
-      if(!params || Object.keys(params).length === 0 && params.constructor === Object){ return; }
+      if(!params || Object.keys(params).length === 0 && params.constructor === Object){ continue; }
 
       //パスの場合の処理
       if(infos[1].includes("/")){
-        var trans = parent.ls_scripts_tr[key];
         if(trans){
-            var text = trans[Langscore.langscore_current_language];
+            var text = trans.get(Langscore.langscore_current_language);
             if(text){
                 // JSON文字列である可能性があるため、replaceNestedJSONを呼び出す
                 params = parent.replaceNestedJSON(params, infos[1], text);
@@ -591,34 +674,98 @@ var Langscore = class
       else{
         //通常の文字列の場合の処理
         var param = params[infos[1]];
-        var trans = parent.ls_scripts_tr[key];
         if(param && trans){
-          var text = trans[Langscore.langscore_current_language];
+          var text = trans.get(Langscore.langscore_current_language);
           if(text){
             PluginManager._parameters[infos[0].toLowerCase()][infos[1]] = text;
           }
         }
       }
+    }
+  }
+
+  // Map同士のマージ処理を関数化
+  mergeMapToMap(existingMap, newMap) {
+    for (const [key, value] of newMap) {
+      if (!existingMap.has(key)) {
+        // 新しいキーの場合は追加
+        existingMap.set(key, value);
+        continue;
+      }
+
+      // 既存のキーがある場合の処理
+      const existingValue = existingMap.get(key);
+      if (existingValue instanceof Map && value instanceof Map) {
+        // 両方ともMapの場合は内部要素をマージ
+        for (const [innerKey, innerValue] of value) {
+          existingValue.set(innerKey, innerValue);
+        }
+      } else {
+        // Mapでない場合は上書き
+        existingMap.set(key, value);
+      }
+    }
+  }
+
+  // ObjectからMapへのマージ処理を関数化
+  mergeObjectToMap(existingMap, newObject) {
+    Object.keys(newObject).forEach(key => {
+      if (!existingMap.has(key)) {
+        // 新しいキーの場合は追加
+        existingMap.set(key, newObject[key]);
+        return;
+      }
+
+      // 既存のキーがある場合の処理
+      const existingValue = existingMap.get(key);
+      if (existingValue instanceof Map) {
+        Object.keys(newObject[key]).forEach(innerKey => {
+          existingValue.set(innerKey, newObject[key][innerKey]);
+        });
+      } else {
+        existingMap.set(key, newObject[key]);
+      }
     });
   }
 
-  loadSystemDataFile(varName, fileName) {
+  loadSystemDataFile(varName, fileName, langFolder = "") 
+  {
     var xhr = new XMLHttpRequest();
     var url = 'data/translate/'
-    if(Langscore.EnablePathMode){
-      url += Langscore.langscore_current_language + '/'
+
+    if(langFolder !== ""){
+      url += (langFolder + "/")
     }
-    url += fileName;
+
+    // パス正規化とエスケープ処理
+    const sanitizedFileName = this.sanitizeFileName(fileName);
+    url += sanitizedFileName;
+  
     
     var parent = this;
     xhr.open('GET', url);
     xhr.overrideMimeType('text/plain');
-    xhr.onload = function() {
-      if (xhr.status < 400) {
-        parent[varName] = parent._lscsv.to_map(xhr.responseText, varName);
-      }
-      else{
+    xhr.onload = function() 
+    {
+      // エラーレスポンスの場合は早期リターン
+      if (xhr.status >= 400) {
         parent[varName] = {};
+        return;
+      }
+
+      const newMap = parent._lscsv.to_map(xhr.responseText, varName);
+      
+      // 初回の場合は新しいMapを代入して終了
+      if (!(parent[varName] instanceof Map)) {
+        parent[varName] = newMap;
+        return;
+      }
+
+      // 既存のMapが存在する場合のマージ処理
+      if (newMap instanceof Map) {
+        parent.mergeMapToMap(parent[varName], newMap);
+      } else {
+        parent.mergeObjectToMap(parent[varName], newMap);
       }
     };
     xhr.onerror = parent._mapLoader || function() {
@@ -632,6 +779,35 @@ var Langscore = class
     xhr.send();
   };
 
+  isValidFileName(fileName) {
+    // ファイル名の基本検証
+    if (!fileName || typeof fileName !== 'string') {
+      return false;
+    }
+    
+    // 危険な文字の除外
+    const dangerousChars = /[<>:"|?*\x00-\x1f]/;
+    if (dangerousChars.test(fileName)) {
+      return false;
+    }
+    
+    // パストラバーサルの防止
+    if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+      return false;
+    }
+    
+    // 拡張子の検証
+    if (!fileName.endsWith('.csv')) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  sanitizeFileName(fileName) {
+    // ファイル名のサニタイズ
+    return fileName.replace(/[^a-zA-Z0-9._-]/g, '');
+  }
   
   loadMapDataFile(mapID) {
     var xhr = new XMLHttpRequest();
@@ -646,12 +822,27 @@ var Langscore = class
     xhr.open('GET', url);
     xhr.overrideMimeType('text/plain');
     
-    xhr.onload = function() {
-      if (xhr.status < 400) {
-        parent.ls_current_map[mapID] = parent._lscsv.to_map(xhr.responseText, url);
-      }
-      else{
+    xhr.onload = function() 
+    {
+            // エラーレスポンスの場合は早期リターン
+      if (xhr.status >= 400) {
         parent.ls_current_map[mapID] = {};
+        return;
+      }
+
+      const newMap = parent._lscsv.to_map(xhr.responseText, url);
+      
+      // 初回の場合は新しいMapを代入して終了
+      if (!(parent.ls_current_map[mapID] instanceof Map)) {
+        parent.ls_current_map[mapID] = newMap;
+        return;
+      }
+
+      // 既存のMapが存在する場合のマージ処理
+      if (newMap instanceof Map) {
+        parent.mergeMapToMap(parent.ls_current_map[mapID], newMap);
+      } else {
+        parent.mergeObjectToMap(parent.ls_current_map[mapID], newMap);
       }
     };
     xhr.onerror = parent._mapLoader || function() {
@@ -685,6 +876,40 @@ var Langscore = class
       }
   }
 
+  updateLanguageStateVariables()
+  {
+    //$gameVariablesの初期化後に実行したいため、DataManager.setupNewGame内で呼び出す。
+    if(!Langscore.Language_StateStartVariable){
+      return;
+    }
+    
+    const startVarId = parseInt(Langscore.Language_StateStartVariable);
+    if(!startVarId || startVarId !== -1)
+    {
+      // 各言語の状態を変数に格納
+      Langscore.System_Allowed_Languages.forEach((lang, index) => {
+        const varId = startVarId + index;
+        let isAvailable = 0; // デフォルトは利用不可
+        
+        // パッチモード時：フォルダが存在するかチェック
+        if(this.current_language_folders && this.current_language_folders.includes(lang)){
+          isAvailable = 1;
+        }
+        // 非パッチモード時：サポート言語に含まれているかチェック
+        else if(!Langscore.EnablePathMode && Langscore.Support_Language.includes(lang)){
+          isAvailable = 1;
+        }
+        
+        // 変数に値を設定（ゲーム開始前の場合は$dataSystemを使用）
+        if($dataSystem && $dataSystem.variables && varId < $dataSystem.variables.length){
+          if($gameVariables){
+            $gameVariables.setValue(varId, isAvailable);
+          }
+        }
+      });
+      }
+  }
+
   registerUpdateMethodAtLanguageUpdate(method) {
     if (typeof method === "function") {
         this._updateMethods.push(method);
@@ -703,12 +928,14 @@ Langscore.isFirstLoaded = false;
 
 //MV向けのクラス変数定義
 Langscore.Langscore_Parameters = PluginManager.parameters('Langscore');
+Langscore.System_Allowed_Languages = ['ja', 'en', 'zh-cn', 'zh-tw', 'ko', 'es', 'de', 'fr', 'it', 'ru'];
 %{SUPPORT_LANGUAGE}%;
 Langscore.Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
-Langscore.EnablePathMode = false;
-// Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters && Langscore.Langscore_Parameters['Enable Language Patch Mode'] === "true");
+Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters['Enable Language Patch Mode'] === "true");
 
 %{SUPPORT_FONTS}%
+
+Langscore.Language_StateStartVariable = Langscore.Langscore_Parameters['Language State Variable']
 
 Langscore.langscore_current_language = String(Langscore.Langscore_Parameters['Default Language']);
 Langscore.currentFont = Langscore.FontList[Langscore.langscore_current_language];
@@ -747,6 +974,9 @@ if(Langscore.isMV())
           if(args[0].toUpperCase() === 'CHANGELANGUAGE'){
             _langscore.changeLanguage(args[1]);
           }
+          else if(args[0].toUpperCase() === 'DISPLAYLANGUAGEMENU'){
+            SceneManager.push(Scene_LanguageSelect);
+          }
           break;
       }
   };
@@ -757,6 +987,9 @@ if(Langscore.isMZ())
 {
   PluginManager.registerCommand('Langscore', "changeLanguage", args => {
     _langscore.changeLanguage(args['language']);
+  });
+  PluginManager.registerCommand('Langscore', "displayLanguageMenu", args => {
+    SceneManager.push(Scene_LanguageSelect);
   });
   
   var Scene_Boot_onDatabaseLoaded = Scene_Boot.prototype.onDatabaseLoaded;
@@ -773,15 +1006,38 @@ if(Langscore.isMZ())
 }
 
 
+var DataManager_setupNewGame = DataManager.setupNewGame;
+DataManager.setupNewGame = function() 
+{
+  DataManager_setupNewGame.call(this);
+  _langscore.updateLanguageStateVariables();
+}
+
 var DataManager_loadDatabase = DataManager.loadDatabase;
 DataManager.loadDatabase = function() 
 {
   DataManager_loadDatabase.call(this);
 
+  if(Langscore.EnablePathMode && StorageManager.isLocalMode())
+  {
+    _langscore.current_language_folders.forEach(lang => 
+    {
   for (var i = 0; i < _langscore._databaseFiles.length; i++) {
     var varName = _langscore._databaseFiles[i].name;
     var fileName = _langscore._databaseFiles[i].src;
-    _langscore.loadSystemDataFile(varName, fileName);
+        
+        _langscore.loadSystemDataFile(varName, fileName, lang);
+      }
+    })
+  }
+  else
+  {
+    for (var i = 0; i < _langscore._databaseFiles.length; i++) {
+      var varName = _langscore._databaseFiles[i].name;
+      var fileName = _langscore._databaseFiles[i].src;
+      
+      _langscore.loadSystemDataFile(varName, fileName);
+    }
   }
 };
 
@@ -1104,6 +1360,358 @@ Scene_Boot.prototype.isReady = function() {
   return result && Langscore.isFirstLoaded;
 };
 
+//-----------------------------------------------------------------------------
+// Window_LanguageSelect
+//
+// 言語選択用のコマンドウィンドウクラス
+//-----------------------------------------------------------------------------
+
+function Window_LanguageSelect() {
+    this.initialize.apply(this, arguments);
+}
+
+Window_LanguageSelect.prototype = Object.create(Window_Command.prototype);
+Window_LanguageSelect.prototype.constructor = Window_LanguageSelect;
+
+Window_LanguageSelect.prototype.initialize = function() {
+    this.clearCommandList();
+    this._languageList = [];
+    this.last_selected_language = Langscore.langscore_current_language;
+    this.makeLanguageList();
+
+    // 現在の言語に応じた文言を設定
+    this.setupLanguageTexts();
+
+    Window_Command.prototype.initialize.call(this, 0, 0);
+    
+    var width = this.windowWidth();
+    var height = this.windowHeight();
+    var x = (Graphics.boxWidth - width) / 2;
+    var y = (Graphics.boxHeight - height) / 2;
+    this.move(x, y, width, height);
+    
+    this.selectCurrentLanguage();
+    this.activate();
+};
+
+
+Window_LanguageSelect.prototype.setupLanguageTexts = function() {
+  // 各言語の文言を定義
+  this._texts = {
+    'ja': {
+        title: '言語選択',
+        ok: '確定',
+        cancel: 'キャンセル'
+    },
+    'en': {
+        title: 'Language Select',
+        ok: 'OK',
+        cancel: 'Cancel'
+    },
+    'zh-cn': {
+        title: '语言选择',
+        ok: '确定',
+        cancel: '取消'
+    },
+    'zh-tw': {
+        title: '語言選擇',
+        ok: '確定',
+        cancel: '取消'
+    },
+    'ko': {
+        title: '언어 선택',
+        ok: '확인',
+        cancel: '취소'
+    },
+    'fr': {
+        title: 'Sélection de langue',
+        ok: 'OK',
+        cancel: 'Annuler'
+    },
+    'de': {
+        title: 'Sprachauswahl',
+        ok: 'OK',
+        cancel: 'Abbrechen'
+    },
+    'es': {
+        title: 'Selección de idioma',
+        ok: 'OK',
+        cancel: 'Cancelar'
+    },
+    'ru': {
+        title: 'Выбор языка',
+        ok: 'OK',
+        cancel: 'Отмена'
+    }
+  };
+  
+  // 現在の言語の文言を取得（存在しない場合は日本語をデフォルト）
+  this._currentTexts = this._texts[Langscore.langscore_current_language] || this._texts['ja'];
+};
+
+Window_LanguageSelect.prototype.windowWidth = function() {
+    return 480;
+};
+
+Window_LanguageSelect.prototype.windowHeight = function() {
+    return this.fittingHeight(Math.min(this.maxItems(), 12)); // +3はタイトル、区切り線、確定/キャンセル用
+};
+
+Window_LanguageSelect.prototype.makeLanguageList = function() {
+    this._languageList = [];
+    
+    // current_language_foldersが存在する場合はそれを使用
+    if (_langscore && _langscore.current_language_folders && _langscore.current_language_folders.length > 0) {
+        this._languageList = _langscore.current_language_folders.slice();
+    } else {
+        // フォールバック: Support_Languageを使用
+        this._languageList = Langscore.Support_Language.slice();
+    }
+};
+
+Window_LanguageSelect.prototype.makeCommandList = function() {
+    // タイトル（選択不可）
+    this.addCommand(this._currentTexts.title, 'title', false);
+    
+    // 区切り線（選択不可）
+    this.addCommand('──────────────────', 'separator', false);
+    
+    // 言語リスト
+    for (var i = 0; i < this._languageList.length; i++) {
+        var langCode = this._languageList[i];
+        var displayName = this.getLanguageDisplayName(langCode);
+        var enabled = _langscore.isValidLanguageCode(langCode);
+        
+        // 現在選択中の言語をマーク
+        if (langCode === this.last_selected_language) {
+            displayName = '► ' + displayName + ' ◄';
+        }
+        
+        this.addCommand(displayName, 'language', enabled, langCode);
+    }
+    
+    // 区切り線（選択不可）
+    this.addCommand('──────────────────', 'separator2', false);
+    
+    // 確定・キャンセルコマンド
+    this.addCommand(this._currentTexts.ok, 'ok', true);
+    this.addCommand(this._currentTexts.cancel, 'cancel', true);
+};
+
+Window_LanguageSelect.prototype.getLanguageDisplayName = function(langCode) {
+    // 言語コードを表示名に変換
+    var languageNames = {
+        'ja': '日本語',
+        'en': 'English',
+        'zh-cn': '简体中文',
+        'zh-tw': '繁體中文',
+        'ko': '한국어',
+        'fr': 'Français',
+        'de': 'Deutsch',
+        'es': 'Español',
+        'ru': 'Русский'
+    };
+    
+    return languageNames[langCode] || langCode;
+};
+
+Window_LanguageSelect.prototype.selectCurrentLanguage = function() {
+    
+    // 言語コマンドの中から現在の言語を探す
+    for (var i = 0; i < this._list.length; i++) {
+        if (this._list[i].symbol === 'language' && this._list[i].ext === this.last_selected_language) {
+            this.select(i);
+            return;
+        }
+    }
+    
+    // 見つからない場合は最初の有効な言語コマンドを選択
+    for (var j = 0; j < this._list.length; j++) {
+        if (this._list[j].symbol === 'language' && this._list[j].enabled) {
+            this.select(j);
+            return;
+        }
+    }
+};
+
+Window_LanguageSelect.prototype.drawItem = function(index) {
+    var rect = this.itemRectForText(index);
+    var command = this._list[index];
+    var align = 'center';
+    
+    // タイトルと区切り線の場合
+    if (command.symbol === 'title') {
+        this.changeTextColor(this.systemColor());
+        align = 'center';
+    } else if (command.symbol === 'separator' || command.symbol === 'separator2') {
+        this.changeTextColor(this.normalColor());
+        this.contents.paintOpacity = 128;
+        align = 'center';
+    } else if (command.symbol === 'language') {
+        // 現在選択中の言語の場合
+        if (command.ext === this.last_selected_language) {
+            this.changeTextColor(this.systemColor());
+        } else {
+            this.resetTextColor();
+        }
+        align = 'center';
+    } else {
+        // 確定・キャンセルコマンド
+        this.resetTextColor();
+        align = 'center';
+    }
+    
+    this.changePaintOpacity(command.enabled);
+    this.drawText(command.name, rect.x, rect.y, rect.width, align);
+    this.changePaintOpacity(true);
+    this.contents.paintOpacity = 255;
+};
+
+Window_LanguageSelect.prototype.isOkEnabled = function() {
+    return true;
+};
+
+Window_LanguageSelect.prototype.processOk = function() {
+    var symbol = this.currentSymbol();
+    var ext = this.currentExt();
+    
+    switch (symbol) {
+        case 'language':
+            if (!ext || ext !== this.last_selected_language) {
+                this.last_selected_language = ext
+                // リストを再構築して表示を更新
+                this.playOkSound();
+                this.refresh();
+                this.selectCurrentLanguage();
+            } else {
+                this.playBuzzerSound();
+            }
+            break;
+            
+        case 'ok':
+            // 確定処理
+            Window_Selectable.prototype.processOk.call(this);
+            _langscore.changeLanguage(this.last_selected_language);
+            break;
+            
+        case 'cancel':
+            // キャンセル処理
+            this.processCancel();
+            break;
+            
+        default:
+            this.playBuzzerSound();
+            break;
+    }
+};
+
+Window_LanguageSelect.prototype.changeLanguage = function(language) 
+{    
+    // リストを再構築して表示を更新
+    this.refresh();
+    this.selectCurrentLanguage();
+};
+
+Window_LanguageSelect.prototype.refresh = function() {
+    this.clearCommandList();
+    this.makeCommandList();
+    this.createContents();
+    Window_Command.prototype.refresh.call(this);
+};
+
+Window_LanguageSelect.prototype.cursorDown = function(wrap) {
+    var index = this.index();
+    var maxItems = this.maxItems();
+    
+    // 選択不可な項目をスキップ
+    do {
+        index = (index + 1) % maxItems;
+    } while (!this.isCommandEnabled(index) && index !== this.index());
+    
+    if (index !== this.index()) {
+        this.select(index);
+    }
+};
+
+Window_LanguageSelect.prototype.cursorUp = function(wrap) {
+    var index = this.index();
+    var maxItems = this.maxItems();
+    
+    // 選択不可な項目をスキップ
+    do {
+        index = (index + maxItems - 1) % maxItems;
+    } while (!this.isCommandEnabled(index) && index !== this.index());
+    
+    if (index !== this.index()) {
+        this.select(index);
+    }
+};
+
+//-----------------------------------------------------------------------------
+// Window_LanguageCommand
+//
+// 言語選択のメインコマンドウィンドウ（簡易版）
+//-----------------------------------------------------------------------------
+
+function Window_LanguageCommand() {
+    this.initialize.apply(this, arguments);
+}
+
+Window_LanguageCommand.prototype = Object.create(Window_Command.prototype);
+Window_LanguageCommand.prototype.constructor = Window_LanguageCommand;
+
+Window_LanguageCommand.prototype.initialize = function() {
+    Window_Command.prototype.initialize.call(this, 0, 0);
+    this.updatePlacement();
+};
+
+Window_LanguageCommand.prototype.windowWidth = function() {
+    return 240;
+};
+
+Window_LanguageCommand.prototype.updatePlacement = function() {
+    this.x = (Graphics.boxWidth - this.width) / 2;
+    this.y = (Graphics.boxHeight - this.height) / 2;
+};
+
+Window_LanguageCommand.prototype.makeCommandList = function() {
+    this.addCommand('言語選択', 'language');
+    this.addCommand('戻る', 'cancel');
+};
+
+//-----------------------------------------------------------------------------
+// Scene_LanguageSelect
+//
+// 言語選択シーン（更新版）
+//-----------------------------------------------------------------------------
+
+function Scene_LanguageSelect() {
+    this.initialize.apply(this, arguments);
+}
+
+Scene_LanguageSelect.prototype = Object.create(Scene_MenuBase.prototype);
+Scene_LanguageSelect.prototype.constructor = Scene_LanguageSelect;
+
+Scene_LanguageSelect.prototype.initialize = function() {
+    Scene_MenuBase.prototype.initialize.call(this);
+};
+
+Scene_LanguageSelect.prototype.create = function() {
+    Scene_MenuBase.prototype.create.call(this);
+    this.createLanguageWindow();
+};
+
+Scene_LanguageSelect.prototype.createLanguageWindow = function() {
+    this._languageWindow = new Window_LanguageSelect();
+    this._languageWindow.setHandler('ok', this.popScene.bind(this));
+    this._languageWindow.setHandler('cancel', this.popScene.bind(this));
+    this.addWindow(this._languageWindow);
+};
+
+Scene_LanguageSelect.prototype.onLanguageOk = function() {
+    // 確定ボタンが押された時の処理
+    this._languageWindow.deactivate();
+};
 
 var ConfigManager_makeData = ConfigManager.makeData;
 ConfigManager.makeData = function() {
