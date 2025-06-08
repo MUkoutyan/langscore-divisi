@@ -1,16 +1,16 @@
 //---------------------------------------------------------------
-// 
-// Langscore CoreScript "Unison" 
+//
+// Langscore CoreScript "Unison"
 // Version 0.9.13
 // Written by BreezeSinfonia 來奈津
-// 
+//
 // 注意：このスクリプトは自動生成されました。編集は非推奨です。
 //---------------------------------------------------------------
  /*:en
  * @target MV MZ
  * @plugindesc Translate plugin Langscore for RPG Tskool MV/MZ.
  * @author BreezeSinfonia Kunatsu
- * @url https://github.com/MUkoutyan/langscore-app/releases
+ * @url https://mukoutyan.github.io/langscore-manual/
  * 
  * @help
  * Note: This script is auto-generated, so editing is deprecated.
@@ -34,7 +34,26 @@
  * @desc Language to be applied "at first launch" of the game. Specify the language in which the game was created.
  * @default ja
  * 
- * @param MustBeIncludedImage
+ * @param Enable Translation For Default Language
+ * @text Enable translation for default language
+ * @desc Choose whether to search the translation CSV when the default language is selected.
+ * @type boolean
+ * @on Enable translation
+ * @off Disable translation
+ * @default true
+ * 
+ * @param Enable Language Patch Mode
+ * @type boolean
+ * @on Enable language patch mode
+ * @off Disable language patch mode
+ * @default false
+ * 
+ * @param Language State Variable
+ * @desc When using language patch mode, specify the first variable to store language availability. Ensure at least 10 free variables from this point. Languages are stored in order: %{ALLOWED_LANGUAGE}%.
+ * @type variable
+ * @default -1
+ * 
+ * @param Must Be Included Image
  * @desc 
  * @default Always specify files to be included even when "Do not include unused files" is checked during deployment.
  * @require 1
@@ -45,7 +64,7 @@
  * @target MV MZ
  * @plugindesc 翻訳アプリLangscoreのRPGツクールMV/MZ用プラグインです。
  * @author BreezeSinfonia 來奈津
- * @url https://github.com/MUkoutyan/langscore-app/releases
+ * @url https://mukoutyan.github.io/langscore-manual/
  * 
  * @help
  * 注意：このスクリプトは自動生成されています。Langscore.exeを使用すると更新されるため、編集は非推奨です。
@@ -71,23 +90,39 @@
  * @text 変更する言語
  * @desc 指定可能な文字は%{SUPPORT_LANGUAGE_STR}%です。
  * 
+ * @command displayLanguageMenu
+ * @text 言語変更メニューの表示
+ * @desc 言語変更メニューを表示します。
+ * 
  * @param Default Language
  * @text デフォルト言語
  * @desc ゲーム初回起動時に適用する言語です。ゲームを作成した際の言語を指定してください。
  * @default %{DEFAULT_LANGUAGE}%
  * 
- * @param Enable Language Patch Mode
+ * @param Enable Translation For Default Language
+ * @text デフォルト言語時に翻訳処理を行う
+ * @desc デフォルト言語が選択されている場合、翻訳CSVから検索をするかどうかを選択できます。
  * @type boolean
- * @on 言語パッチモードを有効にする
- * @off 言語パッチモードを無効にする
+ * @on 翻訳処理を行う
+ * @off 翻訳処理を行わない
+ * @default true
+ * 
+ * @param Enable Language Patch Mode
+ * @text 言語パッチモードを有効にする
+ * @desc パッチモードは言語毎に翻訳CSVを用意する方法です。後からの追加
+ * @type boolean
+ * @on 有効
+ * @off 無効
  * @default false
  * 
  * @param Language State Variable
- * @desc 言語パッチモード使用時に、言語が選択可能かを格納する先頭の変数を指定して下さい。変数は指定した箇所から10個以上の空きを設けて下さい。格納される言語は上から順に'ja', 'en', 'zh-cn', 'zh-tw', 'ko', 'es', 'de', 'fr', 'it', 'ru'となります。
+ * @text 言語の利用可否フラグを格納する先頭変数
+ * @desc 言語パッチモード使用時に、言語が選択可能かを格納する先頭の変数を指定して下さい。変数は指定した箇所から10個以上の空きを設けて下さい。格納される言語は上から順に%{ALLOWED_LANGUAGE}%となります。
  * @type variable
  * @default -1
  * 
  * @param Must Be Included Image
+ * @text デプロイメントしても必ず含めるファイル
  * @desc デプロイメント時に「未使用ファイルを含まない」をチェックした際も、必ず含めるファイルを指定します。
  * @default
  * @require 1
@@ -158,12 +193,12 @@ var Langscore = class
 
     this.ls_should_throw_for_debug = false;
 
-    this.current_language_folders = []
+    this.current_language_list = []
 
-    this.updateTranslateFolderList();
+    this.updateTranslateLanguageList();
   }
 
-  updateTranslateFolderList()
+  updateTranslateLanguageList()
   {
     if(Langscore.EnablePathMode && StorageManager.isLocalMode()){
         this.fs = require('fs');
@@ -196,12 +231,15 @@ var Langscore = class
           }
           
           if (this.fs.statSync(itemPath).isDirectory()) {
-            this.current_language_folders.push(item);
+            this.current_language_list.push(item);
           }
         }
       } catch (error) {
         console.error('Langscore Error: Failed to read translate folder:', error);
       }
+    }
+    else{
+      this.current_language_list = Langscore.Support_Language;
     }
   }
 
@@ -240,7 +278,7 @@ var Langscore = class
     if (this.ls_should_throw_for_debug) {
       throw new Error(message);
     } else {
-        console.error(message);
+      //console.error(message);
     }
   }
 
@@ -287,7 +325,7 @@ var Langscore = class
   translate_for_map(text) 
   {
     if(!this.ls_current_map){ 
-      // this.handleError("Langscore Error(translate_for_map): Invalid ls_current_map")
+      this.handleError("Langscore Error(translate_for_map): Invalid ls_current_map")
       return text; 
     }
     
@@ -302,7 +340,7 @@ var Langscore = class
     }
     var currentMapTranslatedmap = this.ls_current_map[currentMapId];
     if(!currentMapTranslatedmap){ 
-      // this.handleError(`Langscore Error(translate_for_map): not found currentMapId(${currentMapId})`)
+      this.handleError(`Langscore Error(translate_for_map): not found currentMapId(${currentMapId})`)
       return text; 
     }
 
@@ -418,7 +456,7 @@ var Langscore = class
 
     Langscore.currentFont = Langscore.FontList[lang];
     if(!Langscore.currentFont){
-      // console.error(`Langscore: No font is set for ${lang}. Skip font update.`)
+      console.error(`Langscore: No font is set for ${lang}. Skip font update.`)
       return;
     }
     var currentFontName = Langscore.currentFont["name"];
@@ -892,7 +930,7 @@ var Langscore = class
         let isAvailable = 0; // デフォルトは利用不可
         
         // パッチモード時：フォルダが存在するかチェック
-        if(this.current_language_folders && this.current_language_folders.includes(lang)){
+        if(this.current_language_list && this.current_language_list.includes(lang)){
           isAvailable = 1;
         }
         // 非パッチモード時：サポート言語に含まれているかチェック
@@ -928,14 +966,15 @@ Langscore.isFirstLoaded = false;
 
 //MV向けのクラス変数定義
 Langscore.Langscore_Parameters = PluginManager.parameters('Langscore');
-Langscore.System_Allowed_Languages = ['ja', 'en', 'zh-cn', 'zh-tw', 'ko', 'es', 'de', 'fr', 'it', 'ru'];
+%{ALLOWED_LANGUAGE}%;
 %{SUPPORT_LANGUAGE}%;
 Langscore.Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
 Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters['Enable Language Patch Mode'] === "true");
 
-%{SUPPORT_FONTS}%
+%{SUPPORT_FONTS}%;
 
 Langscore.Language_StateStartVariable = Langscore.Langscore_Parameters['Language State Variable']
+Langscore.Enable_Translation_For_DefLang = Langscore.Langscore_Parameters['Enable Translation For Default Language']
 
 Langscore.langscore_current_language = String(Langscore.Langscore_Parameters['Default Language']);
 Langscore.currentFont = Langscore.FontList[Langscore.langscore_current_language];
@@ -1020,7 +1059,7 @@ DataManager.loadDatabase = function()
 
   if(Langscore.EnablePathMode && StorageManager.isLocalMode())
   {
-    _langscore.current_language_folders.forEach(lang => 
+    _langscore.current_language_list.forEach(lang => 
     {
   for (var i = 0; i < _langscore._databaseFiles.length; i++) {
     var varName = _langscore._databaseFiles[i].name;
@@ -1170,6 +1209,11 @@ else if(Langscore.isMZ())
 var Window_Base_convertEscapeCharacters = Window_Base.prototype.convertEscapeCharacters;
 Window_Base.prototype.convertEscapeCharacters = function(text) 
 {
+  //デフォルト言語での翻訳処理が無効かつデフォルト言語なら、翻訳処理を無視。
+  if(Langscore.Enable_Translation_For_DefLang === false && Langscore.langscore_current_language === Langscore.Default_Language){
+    return Window_Base_convertEscapeCharacters.call(this, text);
+  }
+
   if (text.length === 0) {
     return Window_Base_convertEscapeCharacters.call(this, text);
   }
@@ -1316,6 +1360,10 @@ DataManager.extractSaveContents = function(contents) {
 var ImageManager_loadBitmap = ImageManager.loadBitmap;
 ImageManager.loadBitmap = function(folder_name, filename, hue = 0) 
 {    
+  if(Langscore.Enable_Translation_For_DefLang === false && Langscore.langscore_current_language === Langscore.Default_Language){
+    return ImageManager_loadBitmap.call(this, folder_name, filename, hue);
+  }
+
   if(_langscore.ls_graphic_cache === null || filename === ""){
     return ImageManager_loadBitmap.call(this, folder_name, filename, hue);
   }
@@ -1382,10 +1430,19 @@ Window_LanguageSelect.prototype.initialize = function() {
     // 現在の言語に応じた文言を設定
     this.setupLanguageTexts();
 
-    Window_Command.prototype.initialize.call(this, 0, 0);
-    
     var width = this.windowWidth();
     var height = this.windowHeight();
+
+    if(Langscore.isMV()){
+    Window_Command.prototype.initialize.call(this, 0, 0);
+    }
+    else if(Langscore.isMZ()){
+      const rect = { x: 0, y: 0, width: width, height: height };
+      Window_Command.prototype.initialize.call(this, rect);
+    }
+    
+    width = this.windowWidth();
+    height = this.windowHeight();
     var x = (Graphics.boxWidth - width) / 2;
     var y = (Graphics.boxHeight - height) / 2;
     this.move(x, y, width, height);
@@ -1457,12 +1514,20 @@ Window_LanguageSelect.prototype.windowHeight = function() {
     return this.fittingHeight(Math.min(this.maxItems(), 12)); // +3はタイトル、区切り線、確定/キャンセル用
 };
 
+
+if(Langscore.isMZ())
+{
+Window_LanguageSelect.prototype.contentsHeight = function() {
+    return this.fittingHeight(Math.min(this.maxItems(), 12)); // +3はタイトル、区切り線、確定/キャンセル用
+};
+}
+
 Window_LanguageSelect.prototype.makeLanguageList = function() {
     this._languageList = [];
     
-    // current_language_foldersが存在する場合はそれを使用
-    if (_langscore && _langscore.current_language_folders && _langscore.current_language_folders.length > 0) {
-        this._languageList = _langscore.current_language_folders.slice();
+    // current_language_listが存在する場合はそれを使用
+    if (_langscore && _langscore.current_language_list && _langscore.current_language_list.length > 0) {
+        this._languageList = _langscore.current_language_list.slice();
     } else {
         // フォールバック: Support_Languageを使用
         this._languageList = Langscore.Support_Language.slice();
@@ -1534,8 +1599,14 @@ Window_LanguageSelect.prototype.selectCurrentLanguage = function() {
     }
 };
 
-Window_LanguageSelect.prototype.drawItem = function(index) {
+Window_LanguageSelect.prototype.drawItem = function(index) 
+{    
+  if(Langscore.isMV()){
     var rect = this.itemRectForText(index);
+  }
+  else if(Langscore.isMZ()){
+    var rect = this.itemLineRect(index);
+  }
     var command = this._list[index];
     var align = 'center';
     
@@ -1565,6 +1636,26 @@ Window_LanguageSelect.prototype.drawItem = function(index) {
     this.drawText(command.name, rect.x, rect.y, rect.width, align);
     this.changePaintOpacity(true);
     this.contents.paintOpacity = 255;
+};
+
+Window_LanguageSelect.prototype.normalColor = function() 
+{
+  if(Langscore.isMV()){
+    return Window_Command.prototype.normalColor.call(this);
+  }
+  else if(Langscore.isMZ()){
+    return ColorManager.normalColor();
+  }
+};
+
+Window_LanguageSelect.prototype.systemColor = function() 
+{
+  if(Langscore.isMV()){
+    return Window_Command.prototype.systemColor.call(this);
+  }
+  else if(Langscore.isMZ()){
+    return ColorManager.systemColor();
+  }
 };
 
 Window_LanguageSelect.prototype.isOkEnabled = function() {
