@@ -122,7 +122,8 @@ namespace langscore
 
 		ProjectType projectType();
 
-		std::vector<Language> languages();
+        std::vector<Language> allLanguages();
+		std::vector<Language> enableLanguages();
 		std::string defaultLanguage();
 		std::u8string gameProjectPath();
 		std::u8string langscoreAnalyzeDirectorty();

@@ -81,21 +81,21 @@ bool jsonwriter::merge(std::filesystem::path sourceFilePath)
     }
 
     // 言語リストのマージ
-    utility::u8stringlist languages;
+    utility::u8stringlist enableLanguages;
     {
         // AcceptSource,AcceptTarget以外の場合、言語は常にマージする
         for(auto& pair : sourceTranslates.empty() ? this->texts[0].translates : sourceTranslates[0].translates) {
-            languages.emplace_back(pair.first);
+            enableLanguages.emplace_back(pair.first);
         }
 
         if(!this->texts.empty() && !sourceTranslates.empty()) {
             for(auto& pair : this->texts[0].translates) {
-                if(std::ranges::find(languages, pair.first) == languages.end()) {
-                    languages.emplace_back(pair.first);
+                if(std::ranges::find(enableLanguages, pair.first) == enableLanguages.end()) {
+                    enableLanguages.emplace_back(pair.first);
                 }
             }
         }
-        std::ranges::sort(languages);
+        std::ranges::sort(enableLanguages);
     }
 
     // MergeKeepSourceの場合、ソースのテキストを優先
@@ -131,7 +131,7 @@ bool jsonwriter::merge(std::filesystem::path sourceFilePath)
             // Bothの場合は両方のテキストをマージする処理をここに追加
             else if(this->overwriteMode == MergeTextMode::Both) {
                 // 言語ごとにマージ
-                for(const auto& lang : languages) {
+                for(const auto& lang : enableLanguages) {
                     if(sourceText.translates.find(lang) != sourceText.translates.end() &&
                         !sourceText.translates.at(lang).empty()) {
 

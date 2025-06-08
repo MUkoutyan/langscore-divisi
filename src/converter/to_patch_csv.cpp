@@ -65,14 +65,14 @@ convert_bound_csv::convert_bound_csv(std::filesystem::path directory_path)
 {
     // 言語ディレクトリを探す
     std::vector<std::filesystem::path> lang_dirs;
-    utility::u8stringlist languages;
+    utility::u8stringlist enableLanguages;
 
     for(const auto& entry : std::filesystem::directory_iterator{directory_path})
     {
         if(entry.is_directory())
         {
             lang_dirs.push_back(entry.path());
-            languages.push_back(entry.path().filename().u8string());
+            enableLanguages.push_back(entry.path().filename().u8string());
         }
     }
 
@@ -135,6 +135,6 @@ convert_bound_csv::convert_bound_csv(std::filesystem::path directory_path)
         // 結合したデータを出力
         auto output_file = directory_path / filename;
         std::cout << "Writing combined file to: " << output_file << std::endl;
-        csvwriter{speciftranstext{languages, std::move(combined_texts)}}.write(output_file, u8"", MergeTextMode::AcceptTarget);
+        csvwriter{speciftranstext{enableLanguages, std::move(combined_texts)}}.write(output_file, u8"", MergeTextMode::AcceptTarget);
     }
 }

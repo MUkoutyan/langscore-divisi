@@ -65,7 +65,6 @@ static void OutputErrorWithWidth(auto path, auto type, auto errorSummary, auto l
     std::cout << j.dump() << std::endl;
 }
 
-
 std::unordered_map<std::u8string, std::u8string> platform_base::Help_Text = {
 	{ u8"en"s,    u8"The currently selected language is displayed."s },
 	{ u8"es"s,    u8"Se muestra el idioma actualmente seleccionado."s },
@@ -173,8 +172,8 @@ void langscore::platform_base::copyFonts(fs::path fontDestPath)
     }
     else
     {
-        auto languages = config.languages();
-        for(auto& language : languages)
+        auto enableLanguages = config.enableLanguages();
+        for(auto& language : enableLanguages)
         {
             if(language.font.file.empty()) {
                 continue;
@@ -711,7 +710,7 @@ std::uint64_t langscore::platform_base::countNumTexts(const std::u8string& multi
 bool langscore::platform_base::validateTexts(const std::vector<ValidateTextInfo>& translateList, const config::TextValidateTypeMap& validateInfoList, std::filesystem::path path) const
 {
     config config;
-    auto langs = config.languages();
+    auto langs = config.enableLanguages();
     std::map<std::u8string, config::Language> langMap;
     for(auto& lang : langs)
     {

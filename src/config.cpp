@@ -8,6 +8,7 @@
 #include "config.h"
 #include "config.h"
 #include "config.h"
+#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -153,7 +154,7 @@ std::u8string langscore::config::langscoreProjectPath()
 	return pImpl->path.parent_path().u8string();
 }
 
-std::vector<config::Language> config::languages()
+std::vector<config::Language> langscore::config::allLanguages()
 {
     auto langs = pImpl->get(pImpl->json, key(JsonKey::Languages), nlohmann::json::array());
 
@@ -165,8 +166,6 @@ std::vector<config::Language> config::languages()
     for(auto s = langs.begin(); s != langs.end(); ++s)
     {
         auto& lang = s.value();
-        if(pImpl->get(lang, key(JsonKey::Enable), false) == false) { continue; }
-
         result.emplace_back(
             lang[key(JsonKey::Enable)],
             pImpl->get(lang, key(JsonKey::LanguageName), "ja"s),
@@ -180,6 +179,16 @@ std::vector<config::Language> config::languages()
 
     return result;
 }
+
+std::vector<config::Language> config::enableLanguages()
+{
+    std::vector<Language> result = this->allLanguages();
+    auto itr = std::ranges::remove_if(result, [](const Language& lang) { return lang.isEnable == false; });
+    result.erase(itr.begin(), itr.end());
+
+    return result;
+}
+
 std::string langscore::config::defaultLanguage() {
     return pImpl->get(pImpl->json, key(JsonKey::DefaultLanguage), "ja"s);
 }
@@ -231,7 +240,7 @@ utility::u8stringlist langscore::config::exportDirectory(std::u8string& root)
         return {u8Path};
     }
 
-    auto langs = this->languages();
+    auto langs = this->enableLanguages();
     utility::u8stringlist result;
     for(auto& lang : langs) {
         result.emplace_back(u8Path + utility::cnvStr<std::u8string>("/" + lang.name));
@@ -252,7 +261,7 @@ std::vector<std::pair<std::u8string, std::u8string>> langscore::config::exportDi
     u8Path = pImpl->toAbsolutePathWeak(u8Path).u8string();
     root = u8Path;
 
-    auto langs = this->languages();
+    auto langs = this->enableLanguages();
     std::vector<std::pair<std::u8string, std::u8string>> result;
     for(auto& lang : langs) {
         auto u8Lang = utility::cnvStr<std::u8string>(lang.name);

@@ -50,7 +50,7 @@ divisi_vxace::divisi_vxace()
 
     this->defaultLanguage = utility::cnvStr<std::u8string>(config.defaultLanguage());
    
-    for(auto langs = config.languages(); auto lang : langs){
+    for(auto langs = config.enableLanguages(); auto lang : langs){
         this->supportLangs.emplace_back(utility::cnvStr<std::u8string>(lang.name));
     }
 }
@@ -774,6 +774,15 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
             auto langs = utility::join(list, u8","s);
             _line = tab + u8"SUPPORT_LANGUAGE = [" + langs + u8"]";
         }
+        else if(findStr(_line, u8"%{ALLOWED_LANGUAGE}%"))
+        {
+            auto list = config.allLanguages();
+            utility::u8stringlist langList;
+            for(auto& t : list) { langList.emplace_back(u8"\"" + utility::cnvStr<std::u8string>(t.name) + u8"\""); }
+            auto langs = utility::join(langList, u8","s);
+
+            _line = tab + u8"STSTEM_ALLOWED_LANGUAGES = [" + langs + u8"]";
+        }
         else if(findStr(_line, u8"%{DEFAULT_LANGUAGE}%")) {
             _line = tab + u8"DEFAULT_LANGUAGE = \"" + utility::cnvStr<std::u8string>(defLanguage) + u8"\"";
         }
@@ -783,7 +792,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
         }
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {
-            auto fonts = config.languages();
+            auto fonts = config.enableLanguages();
             _line = tab + u8"LS_FONT = {" + nl;
             for(auto& pair : fonts)
             {
@@ -815,7 +824,12 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
             _line  = tab + u8"SYSTEM1 = \"" + Help_Text[u8"ja"] + u8"\"" + nl;
             _line += tab + u8"$langscore_system = {" + nl;
             _line += tab + tab + u8"SYSTEM1 => {" + nl;
-            for(auto& l : this->supportLangs){
+
+            auto list = config.allLanguages();
+            utility::u8stringlist langList;
+            for(auto& t : list) { langList.emplace_back(utility::cnvStr<std::u8string>(t.name)); }
+
+            for(auto& l : langList){
                 if(Help_Text.find(l) != Help_Text.end()){
                     _line += tab + tab + tab;
                     _line += u8"\"" + l + u8"\" => \"" + Help_Text[l] + u8"\"," + nl;
@@ -827,7 +841,12 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
         else if(findStr(_line, u8"%{SYSTEM2}%"))
         {
             _line = u8"\tSYSTEM2 = {\n";
-            for(auto& l : this->supportLangs){
+
+            auto list = config.allLanguages();
+            utility::u8stringlist langList;
+            for(auto& t : list) { langList.emplace_back(utility::cnvStr<std::u8string>(t.name)); }
+
+            for(auto& l : langList){
                 if(Language_Items.find(l) != Language_Items.end()){
                     _line += u8"\t\t\"" + l + u8"\" => \"" + Language_Items[l] + u8"\",\n";
                 }

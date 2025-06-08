@@ -35,21 +35,21 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 	std::vector<TranslateText> result;
 	result.reserve(std::max(sourceTranslates.size(), this->texts.size()));
 
-	utility::u8stringlist languages;
+	utility::u8stringlist enableLanguages;
 	{
 		//AcceptSource,AcceptTarget以外の場合、言語は常にマージする。
 		for (auto& pair : sourceTranslates[0].translates) {
-			languages.emplace_back(pair.first);
+			enableLanguages.emplace_back(pair.first);
 		}
 		if (this->texts.empty() == false) {
 			for (auto& pair : this->texts[0].translates)
 			{
-				if (std::ranges::find(languages, pair.first) == languages.end()) {
-					languages.emplace_back(pair.first);
+				if (std::ranges::find(enableLanguages, pair.first) == enableLanguages.end()) {
+					enableLanguages.emplace_back(pair.first);
 				}
 			}
 		}
-		std::ranges::sort(languages);
+		std::ranges::sort(enableLanguages);
 	}
 
     const auto AdjustText = [](auto text) {

@@ -162,7 +162,7 @@ bool langscore::config_writer::write()
     this->rpgMakerScripts = ::fetchScriptDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
 
     std::cout << "output folder " << this->langscoreProjectPath << std::endl;
-    std::vector<std::string> languages = {
+    std::vector<std::string> enableLanguages = {
         "ja","en","zh-cn","zh-tw","ko","es","de","fr","it","ru"
     };
 
@@ -173,8 +173,8 @@ bool langscore::config_writer::write()
 
         auto fontName = u8"VL Gothic";
         auto fontPath = u8"resources/fonts/VL-Gothic-Regular.ttf";
-        for(auto& lang : languages) {
-            this->languages.emplace_back(config::Language{lang == "ja", lang, {fontName, fontPath}});
+        for(auto& lang : enableLanguages) {
+            this->enableLanguages.emplace_back(config::Language{lang == "ja", lang, {fontName, fontPath}});
         }
     }
     else if(this->projectType == config::ProjectType::MV || this->projectType == config::ProjectType::MZ) 
@@ -183,8 +183,8 @@ bool langscore::config_writer::write()
 
         auto fontName = u8"M+ 1m regular";
         auto fontPath = u8"resources/fonts/mplus-1m-regular.ttf";
-        for(auto& lang : languages) {
-            this->languages.emplace_back(config::Language{lang == "ja", lang, {fontName, fontPath}});
+        for(auto& lang : enableLanguages) {
+            this->enableLanguages.emplace_back(config::Language{lang == "ja", lang, {fontName, fontPath}});
         }
     }
 
@@ -203,7 +203,7 @@ std::string config_writer::createJson() const
     root[config::key(JsonKey::ConfigVersion)] = "";
 
     nlohmann::json langs = nlohmann::json::array();
-    for(const auto& l : this->languages) {
+    for(const auto& l : this->enableLanguages) {
         nlohmann::json langObj;
         langObj[config::key(JsonKey::LanguageName)] = l.name;
         langObj[config::key(JsonKey::FontName)] = utility::cnvStr<std::string>(l.font.name);

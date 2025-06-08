@@ -14,7 +14,7 @@ namespace langscore
 
         std::filesystem::path langscoreProjectPath;
         config::ProjectType projectType;
-        std::vector<config::Language> languages;
+        std::vector<config::Language> enableLanguages;
         std::string defaultLanguage;
         std::filesystem::path gameProjectPath;
         std::filesystem::path langscoreAnalyzeDirectorty;

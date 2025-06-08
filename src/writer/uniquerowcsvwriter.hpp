@@ -31,12 +31,12 @@ namespace langscore
             std::vector<TranslateText> result;
             result.reserve(std::max(sourceTranslates.size(), this->texts.size()));
 
-            utility::u8stringlist languages;
+            utility::u8stringlist enableLanguages;
             {
                 auto& list = this->texts.size() < sourceTranslates.size() ? sourceTranslates : this->texts;
                 if(list.empty() == false){
                     for(auto& pair : list[0].translates){
-                        languages.emplace_back(pair.first);
+                        enableLanguages.emplace_back(pair.first);
                     }
                 }
             }
@@ -68,7 +68,7 @@ namespace langscore
                 });
                 if(find_result == this->texts.end()){ continue; }
 
-                for(auto& l : languages){
+                for(auto& l : enableLanguages){
                     if(find_result->translates.find(l) == find_result->translates.end()){
                         find_result->translates[l] = u8"";
                         continue;
