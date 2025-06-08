@@ -1,26 +1,32 @@
 #---------------------------------------------------------------
 # 
 # Langscore CoreScript "Unison" 
-# Version 1.0.3
+# Version 1.0.4
 # Written by BreezeSinfonia 來奈津
 # 
 # 注意：このスクリプトは自動生成されました。編集は非推奨です。
 #---------------------------------------------------------------
 module Langscore
 
+  %{ALLOWED_LANGUAGE}%
   %{SUPPORT_LANGUAGE}%
   %{DEFAULT_LANGUAGE}%
 
   %{SUPPORT_FONTS}%
-  %{ENABLE_PATCH_MODE}%
 
   %{TRANSLATE_FOLDER}%
+  %{ENABLE_PATCH_MODE}%
+  ENABLE_TRANSLATION_FOR_DEFLANG = false
+  LANG_STATE_STARTVARIABLE = -1
 
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
   #ハッシュそのものからハッシュを格納するハッシュに変更。
   #イベント中にマップ移動が行われた場合、翻訳内容がクリアされる問題への対応のため。
   $ls_current_map = {}
   $ls_graphic_cache = {}
+
+  # クラス変数で利用可能な言語を保持
+  @@available_languages = nil
  
   Langscore::FILTER_OUTPUT_LOG_LEVEL = 1
 end
@@ -47,6 +53,54 @@ end
 #-----------------------------------------------------
 
 module Langscore
+
+  def self.is_valid_language_code(lang)
+    # 以下の言語のみを許容
+    return Langscore::STSTEM_ALLOWED_LANGUAGES.include?(lang)
+  end
+
+  def self.get_available_languages(force_reset = false)
+
+    if force_reset
+      @@available_languages = nil
+    end
+
+    if Langscore::ENABLE_PATCH_MODE == false
+      if @@available_languages.nil?
+        @@available_languages = Langscore::SUPPORT_LANGUAGE.dup
+      end
+      return @@available_languages
+    end
+      
+    # 初回のみフォルダを読み込み
+    if @@available_languages.nil?
+      @@available_languages = []
+      begin
+        Dir.entries(Langscore::TRANSLATE_FOLDER).each do |entry|
+          path = File.join(Langscore::TRANSLATE_FOLDER, entry)
+          if File.directory?(path) && entry != "." && entry != ".."
+            if is_valid_language_code(entry) == false
+              ls_output_log "Warning: Not Support Language: #{entry}", 3
+              next
+            end
+            @@available_languages << entry
+          end
+        end
+
+        if @@available_languages.include?($langscore_current_language) == false
+          ls_output_log "現在の言語 #{$langscore_current_language}のフォルダが見つかりません！ #{Langscore::DEFAULT_LANGUAGE}に設定し直します。", 3
+          $langscore_current_language = Langscore::DEFAULT_LANGUAGE
+        end
+
+        ls_output_log "Available languages loaded: #{@@available_languages.join(', ')}", 1
+      rescue => e
+        ls_output_log "Warning: Data/Translateフォルダの読み込みに失敗しました: #{e.message}", 3
+        @@available_languages = Langscore::SUPPORT_LANGUAGE.dup
+      end
+    end
+
+    return @@available_languages
+  end
 
   def self.get_translate_folder()
     if Langscore::ENABLE_PATCH_MODE
@@ -102,6 +156,10 @@ module Langscore
   
   def self.translate_list_reset
     return if $TEST == false
+
+    get_available_languages()
+
+
     $ls_actor_tr = nil
     $ls_system_tr = nil
     $ls_classes_tr = nil
@@ -126,10 +184,6 @@ module Langscore
     end
     
     $langscore_current_language = lang
-    
-    if Langscore::ENABLE_PATCH_MODE
-      translate_list_reset()
-    end
 
     Langscore.Translate_Script_Text
     Langscore.updateFont(lang)
@@ -161,6 +215,33 @@ module Langscore
     $ls_graphic_cache ||= {}
     $ls_graphic_cache.clear
     GC.start
+  end
+
+  def self.update_language_state_variables()
+    # $game_variablesの初期化後に実行したいため、新しいゲーム開始時に呼び出す
+    return if Langscore::LANG_STATE_STARTVARIABLE == -1
+    
+    start_var_id = Langscore::LANG_STATE_STARTVARIABLE
+    return if start_var_id <= 0
+    
+    # 各言語の状態を変数に格納
+    Langscore::STSTEM_ALLOWED_LANGUAGES.each_with_index do |lang, index|
+      var_id = start_var_id + index
+      is_available = 0 # デフォルトは利用不可
+      
+      # パッチモード時：フォルダが存在するかチェック
+      if Langscore::ENABLE_PATCH_MODE && @@available_languages && @@available_languages.include?(lang)
+        is_available = 1
+      # 非パッチモード時：サポート言語に含まれているかチェック
+      elsif !Langscore::ENABLE_PATCH_MODE && Langscore::SUPPORT_LANGUAGE.include?(lang)
+        is_available = 1
+      end
+      
+      # 変数に値を設定
+      if $game_variables && var_id < $data_system.variables.size
+        $game_variables[var_id] = is_available
+      end
+    end
   end
 
   private
@@ -407,15 +488,31 @@ end
 #シーン遷移に関わらない翻訳ファイルは初期化時に読み込み
 DataManager::module_eval <<-eval
   class << DataManager
+    alias ls_init init
+    alias ls_setup_new_game setup_new_game
     alias ls_base_load_normal_database load_normal_database
     alias ls_make_save_contents make_save_contents
     alias ls_extract_save_contents extract_save_contents
     alias ls_reload_map_if_updated reload_map_if_updated
   end
 
+  def self.init
+    ls_init
+    Langscore.get_available_languages(true)
+  end
+
+  def self.setup_new_game
+    ls_setup_new_game    
+    Langscore.update_language_state_variables()
+  end
+
   #戦闘テスト用は未対応
   def self.load_normal_database
     ls_base_load_normal_database
+
+    if Langscore::ENABLE_PATCH_MODE
+      Langscore.translate_list_reset()
+    end
     
     updateThreads = []
     
@@ -466,6 +563,8 @@ DataManager::module_eval <<-eval
   #これを省くと中国語で起動した際に、再度翻訳を適用するまで日本語のまま……といった事が起きる。
   def self.extract_save_contents(contents)
     ls_extract_save_contents(contents)
+
+    Langscore.update_language_state_variables()
 
     Langscore.changeLanguage($langscore_current_language, true)
   end
@@ -524,6 +623,10 @@ module Langscore
   %{SYSTEM1}%
   %{SYSTEM2}%
 
+  def self.display_language_menu
+    SceneManager.call(Langscore::UI::Scene_Language)
+  end
+
 module UI
 class Window_Langscore < Window_Command
 
@@ -535,7 +638,7 @@ class Window_Langscore < Window_Command
     self.y = (Graphics.height - self.window_height) / 2
     @_recreate = false
     
-    SUPPORT_LANGUAGE.each.with_index do |l, i|
+    Langscore::get_available_languages().each.with_index do |l, i|
       select(i) if $langscore_current_language == l
     end
 
@@ -547,7 +650,7 @@ class Window_Langscore < Window_Command
   end
 
   def make_command_list
-    SUPPORT_LANGUAGE.each.with_index do |l, i|
+    Langscore.get_available_languages().each.with_index do |l, i|
       add_command(SYSTEM2[l], l.to_sym)
     end
   end
@@ -647,7 +750,8 @@ class Scene_Language < Scene_MenuBase
 
   def select_lang
     return if @command_window.index == -1
-    $langscore_current_language = SUPPORT_LANGUAGE[@command_window.index]
+    available_langs = Langscore.get_available_languages()
+    $langscore_current_language = available_langs[@command_window.index]
     @help_window.set_text(Langscore.translate(SYSTEM1, $langscore_system))
     if Langscore.updateFont($langscore_current_language)
       @command_window.recreate = true

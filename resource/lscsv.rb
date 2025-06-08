@@ -7,11 +7,46 @@ class LSCSV
 
   $lscsv_resource_locker = Mutex::new
   def self.to_hash(file_name)
+    if Langscore::ENABLE_PATCH_MODE
+      return to_hash_patch_mode(file_name)
+    else
+      return to_hash_normal_mode(file_name)
+    end
+  end
+
+  def self.to_hash_normal_mode(file_name)
     $lscsv_resource_locker.lock
     file = open(Langscore::get_translate_folder + "/" + file_name)
     $lscsv_resource_locker.unlock
 
     return from_content(file, file_name, Langscore::SUPPORT_LANGUAGE)
+  end
+
+  def self.to_hash_patch_mode(file_name)
+    merged_result = {}
+    
+    # 利用可能な言語ごとにCSVを読み込み
+    Langscore.get_available_languages().each do |lang|
+      lang_folder = Langscore::TRANSLATE_FOLDER + "/" + lang
+      
+      $lscsv_resource_locker.lock
+      begin
+        file = open(lang_folder + "/" + file_name)
+        lang_hash = from_content(file, file_name, [lang])
+        
+        # 各文章キーに対して言語コードと翻訳文を追加
+        lang_hash.each do |text_key, trans_hash|
+          merged_result[text_key] ||= {}
+          merged_result[text_key].merge!(trans_hash)
+        end
+      rescue => e
+        ls_output_log "Warning: #{lang}用の翻訳ファイルが見つかりません。 #{lang_folder}/#{file_name}", 3
+      ensure
+        $lscsv_resource_locker.unlock
+      end
+    end
+    
+    return merged_result
   end
 
   def self.from_content(content, file_name = '', support_language = [])
