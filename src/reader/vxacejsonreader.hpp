@@ -38,16 +38,16 @@ namespace langscore
 		//特定のクラスに存在する、無視するキー
 		const std::map<std::u8string, std::vector<std::u8string>> ignoreForClassKeys = {
 			{u8"RPG::UsableItem::Damage", {u8"@formula"}},
-			{u8"RPG::Enemy",  {u8"@battler_name"}},
-			{u8"RPG::Event",  {u8"@name"}},
-			{u8"RPG::SE",     {u8"@name"}},
-			{u8"RPG::ME",     {u8"@name"}},
-			{u8"RPG::BGM",    {u8"@name"}},
-			{u8"RPG::BGS",    {u8"@name"}},
-			{u8"RPG::Map",    {u8"@battleback1_name", u8"@battleback2_name", u8"@parallax_name"}},
-			{u8"RPG::Troop",  {u8"@name"}},
-			{u8"RPG::Actor",  {u8"@face_name"}},
-			{u8"RPG::System",    {u8"@battleback1_name", u8"@battleback2_name"} },
+			{u8"RPG::Enemy",            {u8"@battler_name"}},
+			{u8"RPG::Event",            {u8"@name"}},
+			{u8"RPG::SE",               {u8"@name"}},
+			{u8"RPG::ME",               {u8"@name"}},
+			{u8"RPG::BGM",              {u8"@name"}},
+			{u8"RPG::BGS",              {u8"@name"}},
+			{u8"RPG::Map",              {u8"@battleback1_name", u8"@battleback2_name", u8"@parallax_name"}},
+			{u8"RPG::Troop",            {u8"@name"}},
+			{u8"RPG::Actor",            {u8"@face_name"}},
+			{u8"RPG::System",           {u8"@battleback1_name", u8"@battleback2_name"} }
 		};
 
 		void addText(const nlohmann::json& json, int code = 0)
@@ -195,6 +195,9 @@ namespace langscore
                         else {
                             addText(*s, code);
                         }
+                    }
+                    else {
+                        addText(*s, code);
                     }
 				}
 			}
