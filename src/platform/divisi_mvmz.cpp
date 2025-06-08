@@ -1004,6 +1004,15 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
             
             _line = utility::replace(_line, u8"%{SUPPORT_LANGUAGE_STR}%"s, std::move(langs));
         }
+        else if(findStr(_line, u8"%{ALLOWED_LANGUAGE}%"))
+        {
+            auto list = config.languages();
+            utility::u8stringlist langList;
+            for(auto& t : list) { langList.emplace_back(u8"\"" + utility::cnvStr<std::u8string>(t.name) + u8"\""); }
+            auto langs = utility::join(langList, u8","s);
+
+            _line = u8"Langscore.System_Allowed_Languages = [" + langs + u8"]";
+        }
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {
             auto fonts = config.languages();
