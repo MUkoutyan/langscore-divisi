@@ -140,11 +140,12 @@ class LSCSV
 
   def self.parse_row(csv_text)
     return nil if csv_text.length == 0
+
     return csv_text
   end
 
   def self.parse_col(header, rows)
-    return if rows == nil
+    return if rows == nil || header == nil
     result = []
     cols = []
     find_quote = false

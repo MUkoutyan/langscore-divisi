@@ -507,6 +507,10 @@ def fix_newlines_in_csv(input_texts)
   header = LSCSV.fetch_header(input_texts)
   rows = LSCSV.parse_col(header, LSCSV.parse_row(input_texts))
 
+  if rows == nil
+    return nil
+  end
+
   #""括りを行うかどうかの判定。
   rows[1...rows.size].each do |row|
     row.map! do |field|
@@ -611,6 +615,11 @@ if packing
         #その他のデータ内の文字列は改行文字が\r\nとなるため、
         #\nのみの改行だった場合は\r\nに修正して埋める。
         texts = fix_newlines_in_csv(texts)
+      end
+      if texts == nil
+        #内容の無いcsvであるため書き出しをスキップします。
+        p "Skip export since it is a csv with no content. #{input_folder_path + "/" + fileName}"
+        next
       end
       origin.data = texts
     end
