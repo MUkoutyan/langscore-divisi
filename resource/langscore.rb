@@ -16,7 +16,9 @@ module Langscore
 
   %{TRANSLATE_FOLDER}%
   %{ENABLE_PATCH_MODE}%
-  ENABLE_TRANSLATION_FOR_DEFLANG = false
+
+  #falseにすると、デフォルト言語を指定した際に翻訳処理をスキップします。
+  ENABLE_TRANSLATION_FOR_DEFLANG = true
   LANG_STATE_STARTVARIABLE = -1
 
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
@@ -446,6 +448,10 @@ class Window_Base < Window
   alias ls_base_convert_escape_characters convert_escape_characters
   def convert_escape_characters(text)
 
+    if $langscore_current_language == Langscore::DEFAULT_LANGUAGE && Langscore::ENABLE_TRANSLATION_FOR_DEFLANG == false
+      return ls_base_convert_escape_characters(text)
+    end
+
     if text.empty?
       return ls_base_convert_escape_characters(text)
     end
@@ -587,6 +593,10 @@ Cache::module_eval <<-eval
   end
   
   def self.load_bitmap(folder_name, filename, hue = 0)
+
+    if $langscore_current_language == Langscore::DEFAULT_LANGUAGE && Langscore::ENABLE_TRANSLATION_FOR_DEFLANG == false
+      return ls_base_load_bitmap(folder_name, filename, hue)
+    end
     
     path = folder_name+filename
     ts_path = Langscore.translate(path, $ls_graphics_tr)
