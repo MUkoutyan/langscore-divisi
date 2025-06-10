@@ -1,4 +1,4 @@
-#include "invoker.h"
+﻿#include "invoker.h"
 #include "utility.hpp"
 
 #include <iostream>
@@ -155,11 +155,33 @@ ErrorStatus langscore::invoker::recompressVXAce(){
     return exec({"-i", convertPath(_projectPath), "-c"});
 }
 
-ErrorStatus langscore::invoker::packingVXAce(std::filesystem::path destGameTranslateFolder, std::filesystem::path packingDir){
-    //config config;
-    //auto inputDir  = std::filesystem::path(config.packingInputDirectory());
-    //auto outputDir = std::filesystem::path(config.gameProjectPath()+u8"/Data/Translate");
-    return exec({"-i", convertPath(packingDir), "-o", convertPath(destGameTranslateFolder), "-p"});
+ErrorStatus langscore::invoker::packingVXAce(std::filesystem::path destGameTranslateFolder, std::filesystem::path packingDir)
+{
+    config config;
+    ErrorStatus result = Status_Success;
+    if(config.enableLanguagePatch()) 
+    {
+        auto allLanguage = config.allLanguages();
+        //patchPath内のディレクトリを検索
+        for(const auto& entry : std::filesystem::directory_iterator(packingDir)) {
+            if(entry.is_directory()) 
+            {
+                auto dirName = entry.path().filename().string();
+                if(std::ranges::find_if(allLanguage, [&](const auto& l){ return l.name == dirName; }) != allLanguage.end()) 
+                {
+                    if(exec({"-i", convertPath(entry), "-o", convertPath(destGameTranslateFolder / dirName), "-p"}) != Status_Success) 
+                    {
+                        return ErrorStatus(ErrorStatus::Module::INVOKER, 2);
+                    }
+                }
+            }
+        }
+        return Status_Success;
+
+    }
+    else {
+        return exec({"-i", convertPath(packingDir), "-o", convertPath(destGameTranslateFolder), "-p"});
+    }
 }
 
 ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
