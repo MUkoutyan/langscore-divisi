@@ -47,7 +47,7 @@ public:
 
 	~javascriptreader() override = default;
 
-	void applyIgnoreScripts(const std::vector<config::ScriptData>& scriptInfoList)
+	void applyIgnoreScriptsAndSwapLineInfo(const std::vector<config::ScriptData>& scriptInfoList)
 	{
         if(this->texts.empty()){ return; }
         using namespace std::string_literals;

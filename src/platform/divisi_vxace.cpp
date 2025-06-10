@@ -241,6 +241,8 @@ ErrorStatus langscore::divisi_vxace::updatePlugin()
 {
     std::cout << "Export langscore plugin files." << std::endl;
     bool replaceScript = true;
+    config config;
+    std::tie(this->scriptFileList, std::ignore, std::ignore) = fetchFilePathList(config.langscoreAnalyzeDirectorty());
     rewriteScriptList(replaceScript);
     std::cout << "Done." << std::endl;
 
@@ -253,7 +255,6 @@ ErrorStatus langscore::divisi_vxace::updatePlugin()
         std::cout << "Done." << std::endl;
     }
 
-    config config;
     std::cout << "Copy fonts" << std::endl;
     try {
         auto fontDestPath = this->getGameProjectFontDirectory();
@@ -539,64 +540,13 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
         scriptList.erase(result_without_langscore_scripts, scriptList.end());
     }
 
-    config config;
     //Rubyスクリプトを予め解析してテキストを生成しておく。
-    rubyreader reader({u8"scriptLineInfo"}, this->scriptFileList);
-    auto& transTexts = reader.currentTexts();
-
-    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-    for(auto& t : transTexts){
-        if(t.translates.find(def_lang) == t.translates.end()){ continue; }
-        t.translates[def_lang] = t.original;
-    }
-
-    //デフォルトスクリプトのVocab.rb内の文字列は予めScriptsの中に翻訳済みの内容を入れておく
-    auto resourceFolder = this->appPath.parent_path() / "resource";
-    auto vocabs = csvreader{{resourceFolder / "vocab.csv"}}.currentTexts();
-
-    auto& scriptTrans = reader.curerntScriptTransMap();
-
-    //Vocab.rbの内容を適用
-    for(auto& pathPair : scriptTrans)
-    {
-        auto scriptFileName = utility::removeExtension(std::get<0>(pathPair));
-        auto scriptName = GetScriptName(scriptFileName);
-        if(scriptName != u8"Vocab"s){ continue; }
-
-        const auto searchFunc = [&](const auto& x){
-            return x.scriptLineInfo.find(scriptFileName) != std::u8string::npos;
-        };
-        auto begin = std::find_if(transTexts.begin(),  transTexts.end(),  searchFunc);
-        auto end   = std::find_if(transTexts.rbegin(), transTexts.rend(), searchFunc).base();
-
-        std::for_each(begin, end, [&](auto& texts)
-        {
-            auto result = std::find_if(vocabs.begin(), vocabs.end(), [&texts](const auto& x){
-                return x.original == texts.original;
-            });
-            if(result == vocabs.end()){ return; }
-            for(const auto& key : this->supportLangs){
-                if(result->translates.find(key) != result->translates.end()){
-                    texts.translates[key] = result->translates[key];
-                }
-                else if(key == u8"ja"){
-                    texts.translates[key] = result->original;
-                }
-            }
-        });
-        break;
-    }
-    //=================================
+    rubyreader reader(this->supportLangs, scriptList);
 
     const auto deserializeOutPath = fs::path(baseDirectory);
     auto outputPath = deserializeOutPath / "Scripts";
     if(std::filesystem::exists(outputPath) == false){
         std::filesystem::create_directories(outputPath);
-    }
-
-    //memoに行数が格納されているため入れ替え
-    for(auto& t : transTexts){
-        t.translates[u8"scriptLineInfo"s] = t.scriptLineInfo;
     }
 
     std::cout << "Write Analyze JSON : " << outputPath << std::endl;
@@ -712,9 +662,58 @@ void langscore::divisi_vxace::writeFixedRvScript()
             });
         scriptList.erase(rm_result, scriptList.end());
     }
+    
+    auto scriptFileNameMap = plaincsvreader{config.langscoreAnalyzeDirectorty() + u8"/Scripts/_list.csv"s}.getPlainCsvTexts();
+    const auto GetScriptName = [&scriptFileNameMap](std::u8string scriptName)
+        {
+            for(const auto& row : scriptFileNameMap) {
+                if(row[0] == scriptName) { return row[1]; }
+            }
+            return u8""s;
+        };
+
+    const auto ApplyVocabText = [&](rubyreader& reader)
+    {
+        auto& scriptTrans = reader.curerntScriptTransMap();
+        auto& transTexts = reader.currentTexts();
+
+        auto resourceFolder = this->appPath.parent_path() / "resource";
+        auto vocabs = csvreader{{resourceFolder / "vocab.csv"}}.currentTexts();
+
+        //Vocab.rbの内容を適用
+        for(auto& pathPair : scriptTrans)
+        {
+            auto scriptFileName = utility::removeExtension(std::get<0>(pathPair));
+            auto scriptName = GetScriptName(scriptFileName);
+            if(scriptName != u8"Vocab"s) { continue; }
+
+            const auto searchFunc = [&](const auto& x) {
+                return x.scriptLineInfo.find(scriptFileName) != std::u8string::npos;
+            };
+            auto begin = std::find_if(transTexts.begin(), transTexts.end(), searchFunc);
+            auto end = std::find_if(transTexts.rbegin(), transTexts.rend(), searchFunc).base();
+
+            std::for_each(begin, end, [&](auto& texts)
+            {
+                auto result = std::find_if(vocabs.begin(), vocabs.end(), [&texts](const auto& x) {
+                    return x.original == texts.original;
+                });
+                if(result == vocabs.end()) { return; }
+                for(const auto& pair : texts.translates) {
+                    if(pair.first == u8"ja") {
+                        continue;
+                    }
+                    if(result->translates.find(pair.first) != result->translates.end()) {
+                        texts.original = result->translates[pair.first];
+                    }
+                }
+            });
+            break;
+        }
+    };
+
 
     std::u8string root;
-
     if(config.enableLanguagePatch())
     {
         // 言語パッチモードが有効な場合、言語ごとに分けて出力
@@ -725,7 +724,8 @@ void langscore::divisi_vxace::writeFixedRvScript()
         {
             // 各言語向けのreaderを作成
             rubyreader reader({lang}, scriptList);
-            reader.applyIgnoreScripts(scriptInfoList);
+            ApplyVocabText(reader);
+            reader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList, lang);
 
             auto outputPath = translateFolder / fs::path{"Scripts.csv"};
             std::cout << "Write Fix Script CSV : " << outputPath << std::endl;
@@ -739,7 +739,10 @@ void langscore::divisi_vxace::writeFixedRvScript()
 
         // スクリプトの翻訳を書き込むCSVの書き出し
         rubyreader reader(this->supportLangs, scriptList);
-        reader.applyIgnoreScripts(scriptInfoList);
+        ApplyVocabText(reader);
+
+        auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+        reader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList, def_lang);
 
         for(auto& translateFolder : translateFolderList) {
             std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
@@ -758,6 +761,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
     std::string _linTmp;
     utility::u8stringlist result;
     config config;
+    
     auto defLanguage = config.defaultLanguage();
 
     const auto findStr = [](const std::u8string& _line, std::u8string_view str){
@@ -787,8 +791,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
             _line = tab + u8"DEFAULT_LANGUAGE = \"" + utility::cnvStr<std::u8string>(defLanguage) + u8"\"";
         }
         else if(findStr(_line, u8"%{ENABLE_PATCH_MODE}%")){
-            // _line = tab + u8"ENABLE_PATCH_MODE = "s + (config.enableLanguagePatch() ? u8"true"s : u8"false"s);
-            _line = tab + u8"ENABLE_PATCH_MODE = false" + nl;
+            _line = tab + u8"ENABLE_PATCH_MODE = "s + (config.enableLanguagePatch() ? u8"true"s : u8"false"s);
         }
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {
@@ -957,8 +960,10 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
         }
 
         //スクリプトの翻訳を書き込むCSVの書き出し
+
+        auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
         rubyreader reader(this->supportLangs, scriptList);
-        reader.applyIgnoreScripts(scriptInfoList);
+        reader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList, def_lang);
 
         writeFixedTranslateText<rbscriptwriter>(reader, lsCustomScriptPath, this->defaultLanguage, this->supportLangs, langscore::MergeTextMode::AcceptTarget, true);
     }

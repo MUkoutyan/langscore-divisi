@@ -55,18 +55,15 @@ namespace langscore
 
         ~rubyreader() override = default;
 
-        void applyIgnoreScripts(const std::vector<config::ScriptData>& scriptInfoList)
+        void applyIgnoreScriptsAndSwapLineInfo(const std::vector<config::ScriptData>& scriptInfoList, std::u8string default_language)
         {
             if(this->texts.empty()) { return; }
             using namespace std::string_literals;
             namespace fs = std::filesystem;
 
-            config config;
-            auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
-
             for(auto& t : this->texts) {
-                if(t.translates.find(def_lang) == t.translates.end()) { continue; }
-                t.translates[def_lang] = t.original;
+                if(t.translates.find(default_language) == t.translates.end()) { continue; }
+                t.translates[default_language] = t.original;
                 t.scriptLineInfo.swap(t.original);
             }
 
@@ -480,6 +477,7 @@ namespace langscore
 
         std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path) const
         {
+            using namespace std::literals::string_literals;
             // Rubyファイルを読み込む
             std::ifstream input_file(path);
             if(!input_file.is_open()) {
@@ -555,6 +553,7 @@ namespace langscore
                 }
 
                 std::string text = file_contents.substr(start_byte, end_byte - start_byte);
+                text = utility::replace(text, "\\\\"s, "\\"s);
 
                 // 空文字列や意味のない文字列は無視
                 if(text.empty() || text == "\\n" || text == "\\r" || text == "\\t") {

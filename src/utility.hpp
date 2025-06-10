@@ -67,6 +67,7 @@ namespace utility
     }
 
     template<typename str_type>
+    [[nodiscard]]
     static str_type replace(str_type str, str_type old, str_type newStr)
     {
         for(auto begin = str.find(old); begin != str_type::npos; begin = str.find(old, begin)){

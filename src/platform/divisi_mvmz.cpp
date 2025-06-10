@@ -726,7 +726,7 @@ void langscore::divisi_mvmz::writeFixedScript()
         {
             // 各言語向けのJavaScriptReaderを作成
             javascriptreader scriptReader(def_lang, {lang}, pluginsPath, scriptList);
-            scriptReader.applyIgnoreScripts(scriptInfoList);
+            scriptReader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList);
 
             auto outputPath = translateFolder / fs::path{"Scripts.csv"};
             std::cout << "Write Fix Script CSV : " << outputPath << std::endl;
@@ -740,7 +740,7 @@ void langscore::divisi_mvmz::writeFixedScript()
 
         // 全言語に対応したJavaScriptReaderを使用
         javascriptreader scriptReader(def_lang, this->supportLangs, pluginsPath, scriptList);
-        scriptReader.applyIgnoreScripts(scriptInfoList);
+        scriptReader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList);
 
         for(auto& translateFolder : translateFolderList) {
             std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
