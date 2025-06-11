@@ -844,15 +844,19 @@ var $plugins =
     constexpr auto DefaultLanguage = "Default Language";
     constexpr auto MustBeIncludedImage = "Must Be Included Image";
     constexpr auto EnableLanguagePatch = "Enable Language Patch Mode";
+    constexpr auto EnableTranslationDefLang = "Enable Translation For Default Language";
+    constexpr auto LanguageStateVariable = "Language State Variable";
 
     int numPlugins = 0;
     const auto size = jsonObject.size();
     bool findPluginInfo = false;
     config config;
     const bool enableLangPatch = config.enableLanguagePatch();
+    const bool enableTransDefLang = config.enableTranslationDefLang();
 
     for(auto begin = jsonObject.begin(); begin != jsonObject.end(); ++begin)
     {
+        //Langscoreが導入済みならパラメータを更新
         if((*begin)["name"] == "Langscore") {
 
             findPluginInfo = true;
@@ -863,14 +867,15 @@ var $plugins =
             if(params[DefaultLanguage].empty() == false) {
                 params[DefaultLanguage] = utility::cnvStr<std::string>(this->defaultLanguage);
             }
-            // params[EnableLanguagePatch] = (enableLangPatch ? "true"s : "false"s);
-            params[EnableLanguagePatch] = "false";
+            params[EnableLanguagePatch] = (enableLangPatch ? "true"s : "false"s);
+            params[EnableTranslationDefLang] = (enableTransDefLang ? "true"s : "false"s);
             params[MustBeIncludedImage] = "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s;
         }
     }
 
     if(findPluginInfo == false)
     {
+        //Langscoreの新規追加。
         //他のプラグインがLangscoreのオブザーバーに追加できるようにするために、
         //必ず先頭に埋め込む。
         nlohmann::ordered_json newPlugin = {
@@ -880,8 +885,9 @@ var $plugins =
             {"parameters", {
                 {SupportLanguage,   langs},
                 {DefaultLanguage,   utility::cnvStr<std::string>(this->defaultLanguage)},
-                // {EnableLanguagePatch, (enableLangPatch ? "true"s : "false"s)},
-                {EnableLanguagePatch, "false"},
+                {EnableLanguagePatch, (enableLangPatch ? "true"s : "false"s)},
+                {EnableTranslationDefLang, (enableTransDefLang ? "true"s : "false"s)},
+                {LanguageStateVariable, -1},
                 {MustBeIncludedImage, "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s}
             }}
         };

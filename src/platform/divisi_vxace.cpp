@@ -793,6 +793,9 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
         else if(findStr(_line, u8"%{ENABLE_PATCH_MODE}%")){
             _line = tab + u8"ENABLE_PATCH_MODE = "s + (config.enableLanguagePatch() ? u8"true"s : u8"false"s);
         }
+        else if(findStr(_line, u8"%{ENABLE_TRANSLATION_FOR_DEFLANG}%")) {
+            _line = tab + u8"ENABLE_TRANSLATION_FOR_DEFLANG = "s + (config.enableTranslationDefLang() ? u8"true"s : u8"false"s);
+        }
         else if(findStr(_line, u8"%{SUPPORT_FONTS}%"))
         {
             auto fonts = config.enableLanguages();
@@ -856,6 +859,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
             }
             _line += u8"\t}";
         }
+
         result.emplace_back(std::move(_line));
     }
     inScriptFile.close();
@@ -965,7 +969,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
         rubyreader reader(this->supportLangs, scriptList);
         reader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList, def_lang);
 
-        writeFixedTranslateText<rbscriptwriter>(reader, lsCustomScriptPath, this->defaultLanguage, this->supportLangs, langscore::MergeTextMode::AcceptTarget, true);
+        writeFixedTranslateText<langscore_custom_rb_writer>(reader, lsCustomScriptPath, this->defaultLanguage, this->supportLangs, langscore::MergeTextMode::AcceptTarget, true);
     }
     else {
         std::cout << "not replace langscore_custom.rb. replace flag is false" << std::endl;
