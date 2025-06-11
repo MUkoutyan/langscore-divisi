@@ -553,7 +553,6 @@ namespace langscore
                 }
 
                 std::string text = file_contents.substr(start_byte, end_byte - start_byte);
-                text = utility::replace(text, "\\\\"s, "\\"s);
 
                 // 空文字列や意味のない文字列は無視
                 if(text.empty() || text == "\\n" || text == "\\r" || text == "\\t") {
@@ -595,5 +594,6 @@ namespace langscore
 
             return result;
         }
+
     };
 }
