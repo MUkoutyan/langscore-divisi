@@ -154,7 +154,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
         for(auto& sourceText : sourceTranslates)
         {
             auto r = std::find_if(this->texts.begin(), this->texts.end(), [&](const auto& x) {
-                return x.original == sourceText.original;
+                return CompareText(AdjustText(x.original), AdjustText(sourceText.original));
             });
             if(r == this->texts.end())
             {
@@ -169,7 +169,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
         for(auto& sourceText : sourceTranslates)
         {
             auto r = std::find_if(this->texts.begin(), this->texts.end(), [&](const auto& x) {
-                return x.original == sourceText.original;
+                return CompareText(AdjustText(x.original), AdjustText(sourceText.original));
             });
             if(r == this->texts.end()){
                 textTobeAdded.emplace_back(sourceText);
