@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <map>
 
 namespace langscore
@@ -55,6 +55,11 @@ namespace langscore
         ValidateTextCategory,
         ControlCharList,
 
+        EnableTranslationDefLang,
+
+        //=========================
+        //必ず末尾に追加すること
+        //=========================
         NumKeys,
     };
 
@@ -108,7 +113,8 @@ namespace langscore
         MAKE_KEYVALUE(ValidateTextWidth),
         MAKE_KEYVALUE(ValidateCSVList),
         MAKE_KEYVALUE(ValidateTextCategory),
-        MAKE_KEYVALUE(ControlCharList)
+        MAKE_KEYVALUE(ControlCharList),
+        MAKE_KEYVALUE(EnableTranslationDefLang)
     };
 
     static const char* configKey(JsonKey key)

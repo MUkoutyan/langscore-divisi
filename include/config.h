@@ -131,6 +131,7 @@ namespace langscore
 		std::string usScriptFuncComment();
 		utility::u8stringlist exportDirectory(std::u8string& root);
 		bool exportByLanguage();
+        bool enableTranslationDefLang();
 		bool overwriteLangscore();
 		bool overwriteLangscoreCustom();
 		std::u8string outputTranslateFilePathForRPGMaker();
