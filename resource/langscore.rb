@@ -1,7 +1,7 @@
 #---------------------------------------------------------------
 # 
 # Langscore CoreScript "Unison" 
-# Version 1.0.4
+# Version 1.1.0
 # Written by BreezeSinfonia 來奈津
 # 
 # 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -18,7 +18,7 @@ module Langscore
   %{ENABLE_PATCH_MODE}%
 
   #falseにすると、デフォルト言語を指定した際に翻訳処理をスキップします。
-  ENABLE_TRANSLATION_FOR_DEFLANG = true
+  %{ENABLE_TRANSLATION_FOR_DEFLANG}%
   LANG_STATE_STARTVARIABLE = -1
 
   $langscore_current_language = Langscore::DEFAULT_LANGUAGE
