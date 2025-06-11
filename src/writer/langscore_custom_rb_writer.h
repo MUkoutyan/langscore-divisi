@@ -1,4 +1,4 @@
-#ifndef RBSCRIPTWRITER_H
+ï»¿#ifndef RBSCRIPTWRITER_H
 #define RBSCRIPTWRITER_H
 
 #include "writerbase.h"
@@ -6,15 +6,15 @@
 
 namespace langscore
 {
-    //Langscore_Custom‚Æ‚È‚éRubyƒXƒNƒŠƒvƒg‚ğ‘‚«o‚·ƒNƒ‰ƒX
-    class rbscriptwriter: public writerbase
+    //Langscore_Customã¨ãªã‚‹Rubyã‚¹ã‚¯ãƒªãƒ—ãƒˆã‚’æ›¸ãå‡ºã™ã‚¯ãƒ©ã‚¹
+    class langscore_custom_rb_writer: public writerbase
     {
     public:
         template<typename Reader, typename = std::enable_if_t<!std::is_same_v<std::unique_ptr<readerbase>, std::decay_t<Reader>>>>
-        rbscriptwriter(Reader&& reader): writerbase(reader){
+        langscore_custom_rb_writer(Reader&& reader): writerbase(reader){
             pluginInfoList = reader.curerntPluginInfoList();
         }
-        rbscriptwriter(const std::unique_ptr<readerbase>& reader): rbscriptwriter(*reader) {}
+        langscore_custom_rb_writer(const std::unique_ptr<readerbase>& reader): langscore_custom_rb_writer(*reader) {}
         constexpr static const char* extension = "rb";
 
         bool merge(std::filesystem::path filePath) override;

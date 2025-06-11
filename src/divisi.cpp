@@ -5,7 +5,7 @@
 #include "config_writer.h"
 #include "nlohmann/json.hpp"
 
-#include "writer/rbscriptwriter.h"
+#include "writer/langscore_custom_rb_writer.h"
 #include "writer/csvwriter.h"
 #include "reader/csvreader.h"
 #include "platform/divisi_vxace.h"

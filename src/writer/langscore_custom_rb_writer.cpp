@@ -1,4 +1,4 @@
-﻿#include "rbscriptwriter.h"
+﻿#include "langscore_custom_rb_writer.h"
 #include "config.h"
 #include "utility.hpp"
 #include "scripttextparser.hpp"
@@ -28,7 +28,7 @@ namespace
 
 }
 
-bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
+bool langscore::langscore_custom_rb_writer::merge(std::filesystem::path filePath)
 {
     if(std::filesystem::exists(filePath) == false){ return true; }
 
@@ -41,7 +41,7 @@ bool langscore::rbscriptwriter::merge(std::filesystem::path filePath)
     return false;
 }
 
-ErrorStatus rbscriptwriter::write(std::filesystem::path filePath, std::u8string defaultLanguage, MergeTextMode overwriteMode)
+ErrorStatus langscore_custom_rb_writer::write(std::filesystem::path filePath, std::u8string defaultLanguage, MergeTextMode overwriteMode)
 {
     //langscore_customの書き出し
     using namespace std::literals::string_literals;
@@ -131,7 +131,7 @@ ErrorStatus rbscriptwriter::write(std::filesystem::path filePath, std::u8string 
 }
 
 
-void rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<TranslateText> texts)
+void langscore_custom_rb_writer::WriteVocab(std::ofstream& file, std::vector<TranslateText> texts)
 {
     std::vector<std::tuple<std::u8string, std::u8string, bool>> translates = {
         { u8"%s の経験値を獲得！", u8"ObtainExp", false },
@@ -212,7 +212,7 @@ void rbscriptwriter::WriteVocab(std::ofstream& file, std::vector<TranslateText> 
     }
 }
 
-std::u8string rbscriptwriter::GetScriptName(std::u8string fileName)
+std::u8string langscore_custom_rb_writer::GetScriptName(std::u8string fileName)
 {
     using namespace std::string_literals;
 

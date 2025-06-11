@@ -1,7 +1,7 @@
 ﻿#include "divisi_vxace.h"
 #include "config.h"
 
-#include "../writer/rbscriptwriter.h"
+#include "../writer/langscore_custom_rb_writer.h"
 #include "../writer/jsonwriter.h"
 #include "../writer/uniquerowcsvwriter.hpp"
 #include "../reader/vxacejsonreader.hpp"
