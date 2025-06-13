@@ -40,12 +40,12 @@ def run_command(command_path, args=None, **option):
         if args: command += args
         result = subprocess.run(command, 
             capture_output=True, text=True, shell=True, 
-            encoding='utf-8', timeout=180, **option
+            encoding=system_encoding, timeout=180, **option
         )
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run command: {e}")
-        return str(), str(e), False
+        return str(e), str(e.stdout), False
 
 def run_powershell_script(script_path, args=None, **option):
     try:
@@ -61,7 +61,7 @@ def run_powershell_script(script_path, args=None, **option):
                 '-Args', args
             ]
         result = subprocess.run(command, capture_output=True, text=True, 
-            encoding='utf-8', timeout=180, **option
+            encoding=system_encoding, timeout=180, **option
         )
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
