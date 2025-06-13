@@ -379,7 +379,7 @@ TEST_F(Langscore_VXAce_Divisi, WriteLangscoreCustom)
 
 	std::u8string fileName = u8"57856563";	//Cacheスクリプト
 	langscore::rubyreader rubyReader({u8"en", u8"ja"}, {u8"data/vxace/ソポァゼゾタダＡボマミ_langscore\\analyze\\Scripts\\"s + fileName + u8".rb"s});
-	langscore::rbscriptwriter scriptWriter(rubyReader);
+	langscore::langscore_custom_rb_writer scriptWriter(rubyReader);
 
 	const auto outputFileName = "./data/langscore_custom.rb"s;
 	auto result = scriptWriter.write(outputFileName, u8"ja");

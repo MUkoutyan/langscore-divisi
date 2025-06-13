@@ -847,7 +847,7 @@ TEST(Langscore_Platform_Base, WriteFixedGraphFileNameData_NormalMode)
 
     // ヘッダー行の列数が言語数+1であることを確認（original + 全言語）
     ASSERT_GE(csvData.size(), 1);
-    ASSERT_EQ(csvData[0].size(), config.languages().size() + 1);
+    ASSERT_EQ(csvData[0].size(), config.enableLanguages().size() + 1);
 
     // すべての言語列にデータがあることを確認（各行の列数チェック）
     for(size_t i = 1; i < csvData.size(); ++i) {
@@ -991,7 +991,7 @@ TEST(Langscore_MVMZ_Divisi, WriteFixedBasicData_NormalMode)
 
         // ヘッダー行の列数が言語数+1であることを確認
         ASSERT_GE(csvData.size(), 1);
-        ASSERT_EQ(csvData[0].size(), config.languages().size() + 1);
+        ASSERT_EQ(csvData[0].size(), config.enableLanguages().size() + 1);
 
         // すべての行が同じ列数を持つことを確認
         for(size_t i = 1; i < csvData.size(); ++i) {

@@ -59,7 +59,7 @@ TEST_F(Langscore_Config, LoadLanguages)
 {
 	langscore::config config(fs::path(this->build_folder) / u8"data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
-	auto expected = config.languages();
+	auto expected = config.enableLanguages();
 	utility::stringlist actual = {"en", "ja"};
 	ASSERT_TRUE(actual.size() == expected.size());
 	for(auto& elem : actual) {
@@ -74,7 +74,7 @@ TEST_F(Langscore_Config, CheckFontName)
 {
 	langscore::config config(fs::path(this->build_folder) / u8"data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
-	auto expected = config.languages();
+	auto expected = config.enableLanguages();
 	for(int i = 0; i < expected.size(); ++i)
 	{
 		if(expected[i].name == "ja") {

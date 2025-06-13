@@ -7,7 +7,7 @@
 
 #include "..\\src\\platform\\divisi_vxace.h"
 #include "..\\src\\writer\\csvwriter.h"
-#include "..\\src\\writer\\rbscriptwriter.h"
+#include "..\\src\\writer\\langscore_custom_rb_writer.h"
 #include "..\\src\\writer\\jsonwriter.h"
 #include "..\\src\\reader\\csvreader.h"
 #include "..\\src\\reader\\speciftranstext.hpp"
@@ -33,7 +33,8 @@ namespace fs = std::filesystem;
 class test_reader : public readerbase {
 public:
 	test_reader(std::vector<std::u8string> langs)
-		: readerbase(std::move(langs), {}) {
+		: readerbase({}) {
+        this->useLangList = std::move(langs);
 	}
 
 	void setTexts(std::vector<TranslateText> t) {
