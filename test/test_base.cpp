@@ -34,7 +34,7 @@ TEST(Langscore_Utility_Join, HandlesMixedEmptyAndNonEmptyElements) {
 class Langscore_Config : public ::testing::Test
 {
 public:
-    std::u8string build_folder = utility::cnvStr<std::u8string>(std::string{BINARYT_DIRECTORY});
+    std::u8string build_folder = utility::cnvStr<std::u8string>(std::string{BINARY_DIRECTORY});
 protected:
     void SetUp() override {
         //langscore::config::attachConfigFile(this->build_folder + u8".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
@@ -91,7 +91,7 @@ TEST_F(Langscore_Config, CheckProjectPath)
 	langscore::config config(fs::path(this->build_folder) / u8"data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
 
     auto expected = fs::path(config.gameProjectPath()).generic_string();
-    auto build_folder = utility::cnvStr<std::u8string>(std::string{BINARYT_DIRECTORY});
+    auto build_folder = utility::cnvStr<std::u8string>(std::string{BINARY_DIRECTORY});
     auto actual = fs::path(build_folder + u8"\\data\\vxace\\ソポァゼゾタダＡボマミ"s).generic_string();
     ASSERT_TRUE(expected == actual);
 }
@@ -99,7 +99,7 @@ TEST_F(Langscore_Config, CheckProjectPath)
 TEST(Langscore_Csv, parsePlain)
 {
 	{
-		auto targetCsvList = plaincsvreader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\parsePlain.csv"}.getPlainCsvTexts();
+		auto targetCsvList = plaincsvreader{fs::path(BINARY_DIRECTORY) / "data\\csv\\parsePlain.csv"}.getPlainCsvTexts();
 		ASSERT_TRUE(targetCsvList.empty() == false);
 
 		// 期待される解析結果を定義
@@ -126,7 +126,7 @@ TEST(Langscore_Csv, parsePlain)
 		}
 	}
 	{
-		auto targetCsvList = plaincsvreader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\plaincsvreader.csv"}.getPlainCsvTexts();
+		auto targetCsvList = plaincsvreader{fs::path(BINARY_DIRECTORY) / "data\\csv\\plaincsvreader.csv"}.getPlainCsvTexts();
 		ASSERT_TRUE(targetCsvList.empty() == false);
         EXPECT_EQ(6, targetCsvList.size());
 
@@ -150,14 +150,14 @@ TEST(Langscore_Csv, parsePlain)
 TEST(Langscore_Csv, merge)
 {
 	{
-		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
+		langscore::csvreader reader{fs::path(BINARY_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::AcceptSource;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\before.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARY_DIRECTORY) / u8"data\\csv\\before.csv"));
 
 		auto& merged = writer.currentTexts();
 
@@ -168,14 +168,14 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[1].translates[u8"ja"] == u8"");
 	}
 	{
-		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
+		langscore::csvreader reader{fs::path(BINARY_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::AcceptTarget;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\before.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARY_DIRECTORY) / u8"data\\csv\\before.csv"));
 
 		auto& merged = writer.currentTexts();
 
@@ -188,14 +188,14 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"さしすせそ");
 	}
 	{
-		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
+		langscore::csvreader reader{fs::path(BINARY_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepTarget;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\before.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARY_DIRECTORY) / u8"data\\csv\\before.csv"));
 
 		auto& merged = writer.currentTexts();
 
@@ -208,14 +208,14 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"さしすせそ");
 	}
 	{
-		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\before.csv"};
+		langscore::csvreader reader{fs::path(BINARY_DIRECTORY) / "data\\csv\\before.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepTarget;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\after.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARY_DIRECTORY) / u8"data\\csv\\after.csv"));
 
 		auto& merged = writer.currentTexts();
 
@@ -252,14 +252,14 @@ TEST(Langscore_Csv, merge)
 		//ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"");
 	}
 	{
-		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\after.csv"};
+		langscore::csvreader reader{fs::path(BINARY_DIRECTORY) / "data\\csv\\after.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepSource;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\before.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARY_DIRECTORY) / u8"data\\csv\\before.csv"));
 
 		auto& merged = writer.currentTexts();
 
@@ -272,14 +272,14 @@ TEST(Langscore_Csv, merge)
 		ASSERT_TRUE(merged[2].translates[u8"ja"] == u8"");
 	}
 	{
-		langscore::csvreader reader{fs::path(BINARYT_DIRECTORY) / "data\\csv\\before.csv"};
+		langscore::csvreader reader{fs::path(BINARY_DIRECTORY) / "data\\csv\\before.csv"};
 		auto& targetCsv = reader.currentTexts();
 		ASSERT_TRUE(targetCsv.empty() == false);
 
 		auto mode = langscore::MergeTextMode::MergeKeepSource;
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
-		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\after.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARY_DIRECTORY) / u8"data\\csv\\after.csv"));
 
         std::vector<TranslateText> actuals;
         {
@@ -327,7 +327,7 @@ TEST(Langscore_Csv, merge)
 		langscore::csvwriter writer(reader);
 		writer.setOverwriteMode(mode);
 
-		ASSERT_TRUE(writer.merge(fs::path(BINARYT_DIRECTORY) / u8"data\\csv\\add_lang.csv"));
+		ASSERT_TRUE(writer.merge(fs::path(BINARY_DIRECTORY) / u8"data\\csv\\add_lang.csv"));
 
 		auto& merged = writer.currentTexts();
 

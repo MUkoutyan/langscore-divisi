@@ -355,9 +355,8 @@ def run_cpp_test(mz_test_script_path, details_md_text, results_md_texts):
         "-G", 
         "Ninja",  
         "-DCMAKE_BUILD_TYPE:STRING=Test_Debug",
-        f"-DCMAKE_BINARY_DIR:STRING={test_build_directory}"
-        f"-DTEST_DATA_SRC:STRING={divisi_root}\\test\\data"
-        f"{divisi_root}"
+        f"-DCMAKE_BINARY_DIR:STRING={test_build_directory}",
+        f"-DTEST_DATA_SRC:STRING={divisi_root}\\test\\data",
         f"{test_build_directory}"
     ]
     if os.path.exists(test_build_directory):
@@ -418,7 +417,7 @@ def run_cpp_test(mz_test_script_path, details_md_text, results_md_texts):
             details_md_text.append(f"- {error}\n")
             details_md_text.append(f"```\n")
 
-        if 0 < len(output):
+        if output and 0 < len(output):
             details_md_text.append(f"## {TEST_NAME} Test Output\n\n")
             details_md_text.append("```\n" + output.rstrip() + "\n```\n\n")
         if not error is None and 0 < len(error):

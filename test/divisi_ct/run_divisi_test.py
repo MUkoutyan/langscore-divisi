@@ -6,6 +6,7 @@ import sys
 import shutil
 import stat
 import unittest
+import json
 import pprint
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -61,10 +62,10 @@ source_update_vxace_work_path         = os.path.join(test_root_dir, 'data\\Langs
 source_update_include_empty_work_path = os.path.join(test_root_dir, 'data\\vxace\\Include WhiteSpacePath Project_updated')
 
 analyze_expected_files = [
-    "System.csv","Troops.csv","Weapons.csv","Actors.csv",
-    "Armors.csv","Classes.csv","CommonEvents.csv",
-    "Enemies.csv","Items.csv","Map001.csv","Map002.csv","Map003.csv",
-    "Skills.csv","States.csv"
+    "System.lsjson","Troops.lsjson","Weapons.lsjson","Actors.lsjson",
+    "Armors.lsjson","Classes.lsjson","CommonEvents.lsjson",
+    "Enemies.lsjson","Items.lsjson","Map001.lsjson","Map002.lsjson","Map003.lsjson",
+    "Skills.lsjson","States.lsjson"
 ]
 write_expected_files = [
     "System.csv","Troops.csv","Weapons.csv","Actors.csv",
@@ -273,14 +274,20 @@ class TestUpdate(unittest.TestCase):
             run_divisi(work_ls_path + "\\config.json", "reanalysis")
             self.assertTrue(os.path.exists(work_ls_path + "\\update"))
 
-            for file in analyze_expected_files:
+            for file in write_expected_files:
                 file_path = os.path.join(work_ls_path + "\\data\\translate", file)
                 self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {work_ls_path}")
             
-            with open(work_ls_path + "\\update\\Map001.csv", 'r', encoding='utf-8') as csv_file:
-                contents = lscsv.LSCSV.to_map(csv_file.read())
+            with open(work_ls_path + "\\update\\Map001.lsjson", 'r', encoding='utf-8') as json_file:
+                contents = json.load(json_file)
                 for key in check_keys:
-                    self.assertIn(key, contents, f"not valid \"updated\" csv {work_ls_path}")
+                    found = False
+                    for item in contents:
+                        if isinstance(item, dict) and 'original' in item:
+                            if key in item['original']:
+                                found = True
+                                break
+                    self.assertTrue(found, f"not found key \"{key}\" in updated lsjson {work_ls_path}")
             
         check_mvmz_function(mv_work_path, mv_work_ls_path, source_update_mv_work_path)
         check_mvmz_function(mz_work_path, mz_work_ls_path, source_update_mz_work_path)
@@ -293,13 +300,19 @@ class TestUpdate(unittest.TestCase):
             actual_files = os.listdir(os.path.join(work_ls_path, "Data", "Translate"))
             run_divisi(work_ls_path + "\\config.json", "reanalysis")
             self.assertTrue(os.path.exists(work_ls_path + "\\update"))
-            for file in analyze_expected_files:
+            for file in write_expected_files:
                 self.assertIn(file, actual_files, f"{file} does not exist in {work_ls_path}")
 
-            with open(work_ls_path + "\\update\\Map001.csv", 'r', encoding='utf-8') as csv_file:
-                contents = lscsv.LSCSV.to_map(csv_file.read())
+            with open(work_ls_path + "\\update\\Map001.lsjson", 'r', encoding='utf-8') as json_file:
+                contents = json.load(json_file)
                 for key in check_keys:
-                    self.assertIn(key, contents, f"not valid \"updated\" csv {work_ls_path}")
+                    found = False
+                    for item in contents:
+                        if isinstance(item, dict) and 'original' in item:
+                            if key in item['original']:
+                                found = True
+                                break
+                    self.assertTrue(found, f"not found key \"{key}\" in updated lsjson {work_ls_path}")
 
         check_vxace_function(vxace_work_path, vxace_work_ls_path, source_update_vxace_work_path)
         check_vxace_function(include_empty_work_path, include_empty_work_ls_path, source_update_include_empty_work_path)

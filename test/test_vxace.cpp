@@ -47,7 +47,7 @@ protected:
 
     //void attachConfigFile(fs::path config_path) 
     //{
-    //    if(fs::exists(fs::path(BINARYT_DIRECTORY) / config_path) == false) 
+    //    if(fs::exists(fs::path(BINARY_DIRECTORY) / config_path) == false) 
     //    {
     //        std::string suffix = "_langscore";
 
@@ -68,11 +68,11 @@ protected:
     //        gamePath /= filename;
 
     //        langscore::divisi divisi("", "");
-    //        divisi.createConfig(fs::path(BINARYT_DIRECTORY) / gamePath);
+    //        divisi.createConfig(fs::path(BINARY_DIRECTORY) / gamePath);
     //    }
 
     //    langscore::config::detachConfigFile();
-    //    langscore::config::attachConfigFile(fs::path(BINARYT_DIRECTORY) / config_path);
+    //    langscore::config::attachConfigFile(fs::path(BINARY_DIRECTORY) / config_path);
 
     //}
 };
@@ -645,7 +645,7 @@ TEST(Langscore_VXAce_Divisi_Analyze, ValidateTexts)
     ClearGenerateFiles();
     //テキストが一致するかの整合性を確認するテスト
     langscore::config::detachConfigFile();
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 
     ASSERT_TRUE(divisi.analyze().valid());
     langscore::config config;
@@ -710,7 +710,7 @@ TEST(Langscore_VXAce_VXAceJsonReader, TextTypeForMaker)
     // 最初にdivisi.analyze()を実行してJSONファイルを生成
     ClearGenerateFiles();
     langscore::config::detachConfigFile();
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 
     ASSERT_TRUE(divisi.analyze().valid());
     langscore::config config;
@@ -764,7 +764,7 @@ TEST(Langscore_VXAce_VXAceJsonReader, DetectDataType)
     // 最初にdivisi.analyze()を実行してJSONファイルを生成
     ClearGenerateFiles();
     langscore::config::detachConfigFile();
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 
     ASSERT_TRUE(divisi.analyze().valid());
     langscore::config config;
@@ -815,7 +815,7 @@ TEST(Langscore_VXAce_VXAceJsonReader, StackTextProcessing)
     // 最初にdivisi.analyze()を実行してJSONファイルを生成
     ClearGenerateFiles();
     langscore::config::detachConfigFile();
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 
     ASSERT_TRUE(divisi.analyze().valid());
     langscore::config config;
@@ -874,7 +874,7 @@ TEST(Langscore_VXAce_VXAceJsonReader, TextTypeValidation)
     // 最初にdivisi.analyze()を実行してJSONファイルを生成
     ClearGenerateFiles();
     langscore::config::detachConfigFile();
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
 
     ASSERT_TRUE(divisi.analyze().valid());
     langscore::config config;

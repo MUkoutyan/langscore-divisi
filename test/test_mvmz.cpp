@@ -4,7 +4,7 @@ TEST(Langscore_MV_Divisi, CheckIncludeEmptyPath)
 	ClearGenerateFiles();
     checkAndCreateConfigFile("data/mv/Include WhiteSpacePath Project_langscore/config.json", "Game.rpgproject");
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/Include WhiteSpacePath Project_langscore/config.json");
+	langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/Include WhiteSpacePath Project_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
@@ -57,7 +57,7 @@ TEST(Langscore_MV_Divisi_Analyze, ValidateFiles)
 	ClearGenerateFiles();
     checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
+	langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
@@ -111,7 +111,7 @@ TEST(Langscore_MV_Divisi_Analyze, ValidateTexts)
     checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
+	langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	langscore::config config;
@@ -179,7 +179,7 @@ TEST(Langscore_MV_Divisi_Write, ValidateFiles)
     checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
+	langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 	
@@ -237,7 +237,7 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS)
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
     checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
-	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
+	langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 
@@ -281,7 +281,7 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
     checkAndCreateConfigFile("data/mv/LangscoreTest_NoPlugins_langscore/config.json", "Game.rpgproject");
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
-	langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_NoPlugins_langscore/config.json");
+	langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_NoPlugins_langscore/config.json");
 
 	ASSERT_TRUE(divisi.analyze().valid());
 
@@ -324,7 +324,7 @@ TEST(Langscore_MV_Divisi_Write, Multiple_Export)
     checkAndCreateConfigFile("data/mv/LangscoreTest_MultipleExport_langscore/config.json", "Game.rpgproject");
     //テキストが一致するかの整合性を確認するテスト
     langscore::config::detachConfigFile();
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json");
 
     ASSERT_TRUE(divisi.analyze().valid());
 
@@ -390,7 +390,7 @@ TEST(Langscore_MV_MVMZJsonReader, TextTypeForMaker)
 {
     // test/plugin/mv_test内のActors.jsonファイルを読み込む
     std::filesystem::path testPath = "Actors.json";
-    std::filesystem::path jsonFilePath = fs::path(BINARYT_DIRECTORY) / "data/LangscoreTestMV/data/Actors.json";
+    std::filesystem::path jsonFilePath = fs::path(BINARY_DIRECTORY) / "data/LangscoreTestMV/data/Actors.json";
     nlohmann::json jsonData = loadJsonFromFile(jsonFilePath);
     
     std::vector<std::u8string> useLangs = {u8"en", u8"ja"};
@@ -465,7 +465,7 @@ TEST(Langscore_MV_MVMZJsonReader, StackTextProcessing)
 {
     // test/plugin/mv_test内のMap001.jsonファイルを読み込む
     std::filesystem::path testPath = "Map001.json";
-    std::filesystem::path jsonFilePath = fs::path(BINARYT_DIRECTORY) / "data/LangscoreTestMV/data/Map001.json";
+    std::filesystem::path jsonFilePath = fs::path(BINARY_DIRECTORY) / "data/LangscoreTestMV/data/Map001.json";
     nlohmann::json jsonData = loadJsonFromFile(jsonFilePath);
 
     std::vector<std::u8string> useLangs = {u8"en", u8"ja"};
@@ -559,7 +559,7 @@ TEST(Langscore_MV_MVMZJsonReader, TextTypeValidation)
     for (const auto& testCase : testCases) {
         // JSONファイルを読み込む
         std::filesystem::path testPath = testCase.filename;
-        std::filesystem::path jsonFilePath = fs::path(BINARYT_DIRECTORY) / "data/LangscoreTestMV/data" / testCase.filename;
+        std::filesystem::path jsonFilePath = fs::path(BINARY_DIRECTORY) / "data/LangscoreTestMV/data" / testCase.filename;
         nlohmann::json jsonData = loadJsonFromFile(jsonFilePath);
         
         langscore::mvmz_jsonreader reader(testPath, useLangs, jsonData);
@@ -592,7 +592,7 @@ TEST(Langscore_MZ_MVMZJsonReader, TextTypeForMaker)
 {
     // test/plugin/mv_test内のActors.jsonファイルを読み込む
     std::filesystem::path testPath = "Actors.json";
-    std::filesystem::path jsonFilePath = fs::path(BINARYT_DIRECTORY) / "data/LangscoreTestMZ/data/Actors.json";
+    std::filesystem::path jsonFilePath = fs::path(BINARY_DIRECTORY) / "data/LangscoreTestMZ/data/Actors.json";
     nlohmann::json jsonData = loadJsonFromFile(jsonFilePath);
 
     std::vector<std::u8string> useLangs = {u8"en", u8"ja"};
@@ -667,7 +667,7 @@ TEST(Langscore_MZ_MVMZJsonReader, StackTextProcessing)
 {
     // test/plugin/mv_test内のMap001.jsonファイルを読み込む
     std::filesystem::path testPath = "Map001.json";
-    std::filesystem::path jsonFilePath = fs::path(BINARYT_DIRECTORY) / "data/LangscoreTestMZ/data/Map001.json";
+    std::filesystem::path jsonFilePath = fs::path(BINARY_DIRECTORY) / "data/LangscoreTestMZ/data/Map001.json";
     nlohmann::json jsonData = loadJsonFromFile(jsonFilePath);
 
     std::vector<std::u8string> useLangs = {u8"en", u8"ja"};
@@ -761,7 +761,7 @@ TEST(Langscore_MZ_MVMZJsonReader, TextTypeValidation)
     for(const auto& testCase : testCases) {
         // JSONファイルを読み込む
         std::filesystem::path testPath = testCase.filename;
-        std::filesystem::path jsonFilePath = fs::path(BINARYT_DIRECTORY) / "data/LangscoreTestMZ/data" / testCase.filename;
+        std::filesystem::path jsonFilePath = fs::path(BINARY_DIRECTORY) / "data/LangscoreTestMZ/data" / testCase.filename;
         nlohmann::json jsonData = loadJsonFromFile(jsonFilePath);
 
         langscore::mvmz_jsonreader reader(testPath, useLangs, jsonData);
@@ -802,7 +802,7 @@ TEST(Langscore_Platform_Base, WriteFixedGraphFileNameData_NormalMode)
     // 言語パッチモードが無効の設定ファイルを作成
     {
         langscore::config config;
-        auto configPath = fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json";
+        auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json";
         nlohmann::json json;
         std::ifstream file(configPath);
         file >> json;
@@ -825,7 +825,7 @@ TEST(Langscore_Platform_Base, WriteFixedGraphFileNameData_NormalMode)
     }
 
     // divisiを作成して実行
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
     // 解析とCSVエクスポート
     ASSERT_TRUE(divisi.analyze().valid());
@@ -867,7 +867,7 @@ TEST(Langscore_Platform_Base, WriteFixedGraphFileNameData_PatchMode)
     // 言語パッチモードが有効の設定ファイルを作成
     {
         langscore::config config;
-        auto configPath = fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json";
+        auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json";
         nlohmann::json json;
         std::ifstream file(configPath);
         file >> json;
@@ -889,7 +889,7 @@ TEST(Langscore_Platform_Base, WriteFixedGraphFileNameData_PatchMode)
     }
 
     // divisiを作成して実行
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json");
 
     // 解析とCSVエクスポート
     ASSERT_TRUE(divisi.analyze().valid());
@@ -939,7 +939,7 @@ TEST(Langscore_MVMZ_Divisi, WriteFixedBasicData_NormalMode)
 
     {
         langscore::config config;
-        auto configPath = fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json";
+        auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json";
         nlohmann::json json;
         std::ifstream file(configPath);
         file >> json;
@@ -963,7 +963,7 @@ TEST(Langscore_MVMZ_Divisi, WriteFixedBasicData_NormalMode)
     }
 
     // divisiを作成して実行
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
 
     // 解析とCSVエクスポート
     ASSERT_TRUE(divisi.analyze().valid());
@@ -1011,7 +1011,7 @@ TEST(Langscore_MVMZ_Divisi, WriteFixedBasicData_PatchMode)
 
     {
         langscore::config config;
-        auto configPath = fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json";
+        auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json";
         nlohmann::json json;
         std::ifstream file(configPath);
         file >> json;
@@ -1033,7 +1033,7 @@ TEST(Langscore_MVMZ_Divisi, WriteFixedBasicData_PatchMode)
     }
 
     // divisiを作成して実行
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json");
 
     // 解析とCSVエクスポート
     ASSERT_TRUE(divisi.analyze().valid());
@@ -1133,7 +1133,7 @@ TEST(Langscore_MVMZ_Divisi, WriteFixedScript_NormalMode) {
     // 言語パッチモードを無効化
     {
         langscore::config config;
-        auto configPath = fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json";
+        auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json";
         nlohmann::json json;
         std::ifstream file(configPath);
         file >> json;
@@ -1155,7 +1155,7 @@ TEST(Langscore_MVMZ_Divisi, WriteFixedScript_NormalMode) {
     }
 
     // divisiを作成して実行
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
     ASSERT_TRUE(divisi.analyze().valid());
     ASSERT_TRUE(divisi.exportCSV().valid());
 
@@ -1179,7 +1179,7 @@ TEST(Langscore_MVMZ_Divisi, WriteFixedScript_PatchMode) {
     // 言語パッチモードを有効化
     {
         langscore::config config;
-        auto configPath = fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json";
+        auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json";
         nlohmann::json json;
         std::ifstream file(configPath);
         file >> json;
@@ -1200,7 +1200,7 @@ TEST(Langscore_MVMZ_Divisi, WriteFixedScript_PatchMode) {
     }
 
     // divisiを作成して実行
-    langscore::divisi divisi("./", fs::path(BINARYT_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json");
+    langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_MultipleExport_langscore/config.json");
     ASSERT_TRUE(divisi.analyze().valid());
     ASSERT_TRUE(divisi.exportCSV().valid());
 

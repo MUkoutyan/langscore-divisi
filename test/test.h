@@ -110,7 +110,7 @@ void ClearGenerateFiles(langscore::config& config)
 
 static void checkAndCreateConfigFile(fs::path config_path, std::filesystem::path gameProjectFilename = "Game.rvproj2")
 {
-    if(fs::exists(fs::path(BINARYT_DIRECTORY) / config_path) == false)
+    if(fs::exists(fs::path(BINARY_DIRECTORY) / config_path) == false)
     {
         std::string suffix = "_langscore";
 
@@ -130,7 +130,7 @@ static void checkAndCreateConfigFile(fs::path config_path, std::filesystem::path
         gamePath /= gameProjectFilename;
 
         langscore::divisi divisi("", "");
-        divisi.createConfig(fs::path(BINARYT_DIRECTORY) / gamePath);
+        divisi.createConfig(fs::path(BINARY_DIRECTORY) / gamePath);
     }
 }
 
@@ -139,5 +139,5 @@ static void attachConfigFile(fs::path config_path)
     checkAndCreateConfigFile(config_path);
 
     langscore::config::detachConfigFile();
-    langscore::config::attachConfigFile(fs::path(BINARYT_DIRECTORY) / config_path);
+    langscore::config::attachConfigFile(fs::path(BINARY_DIRECTORY) / config_path);
 }

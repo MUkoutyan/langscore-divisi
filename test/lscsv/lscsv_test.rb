@@ -74,6 +74,15 @@ module Langscore
   SUPPORT_LANGUAGE = ["ja", "en"]
   Langscore::TRANSLATE_FOLDER = "."
   Langscore::FILTER_OUTPUT_LOG_LEVEL = 0
+  Langscore::ENABLE_PATCH_MODE = false
+
+  def self.get_translate_folder()
+    if Langscore::ENABLE_PATCH_MODE
+      return Langscore::TRANSLATE_FOLDER + "/" + $langscore_current_language
+    else
+      return Langscore::TRANSLATE_FOLDER
+    end
+  end
 end
 
 class TestLSCSV < Test::Unit::TestCase
@@ -278,5 +287,16 @@ class TestLSCSV < Test::Unit::TestCase
 
     converter_texts = fix_newlines_in_csv(origin_texts)
     assert_equal(converter_texts.include?("\r\r\n"), false)
+  end
+
+  def test_ls_bigger_file
+    open_file_time = Time.now
+    file = File.open("CommonEvents.csv", "rb:utf-8:utf-8")
+    open_file_time = (Time.now - open_file_time)
+    p "open_file_time: #{(open_file_time * 1000).round(2)}\n"
+
+    origin_texts = file.readlines().join()
+
+    converter_texts = LSCSV.from_content(origin_texts, "TestCSV", Langscore::SUPPORT_LANGUAGE)
   end
 end

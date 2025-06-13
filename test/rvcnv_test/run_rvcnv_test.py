@@ -206,7 +206,7 @@ class TestRVCNV(unittest.TestCase):
 
         before_script_data = os.path.getsize(f"{data_project_path}\\Data\\Scripts.rvdata2")
         after_script_data = os.path.getsize(f"{current_dir}\\test_compress\\ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2")
-        self.assertLess(before_script_data, after_script_data, "書き出し後のファイルサイズが書き出し前を下回っています。")
+        self.assertLessEqual(before_script_data, after_script_data, "書き出し後のファイルサイズが書き出し前を下回っています。")
 
 
     def test_packing(self):

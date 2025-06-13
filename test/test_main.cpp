@@ -11,9 +11,9 @@
 int main(int argc, char** argv)
 {
 	std::cout << TEST_DATA_SRC << std::endl;
-	if(fs::exists(std::string(BINARYT_DIRECTORY) + "/data") == false) 
+	if(fs::exists(std::string(BINARY_DIRECTORY) + "/data") == false) 
     {
-        auto destPath = fs::path(std::string(BINARYT_DIRECTORY) + "/data");
+        auto destPath = fs::path(std::string(BINARY_DIRECTORY) + "/data");
         try {
             std::cout << "Copying files..." << std::endl;
             fs::copy(TEST_DATA_SRC, destPath, fs::copy_options::recursive);

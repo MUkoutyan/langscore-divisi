@@ -4,7 +4,7 @@ protected:
     std::filesystem::path testDir;
     void SetUp() override {
         // テスト用の一時ディレクトリを作成
-        testDir = fs::path(BINARYT_DIRECTORY) / "test_rubyreader";
+        testDir = fs::path(BINARY_DIRECTORY) / "test_rubyreader";
         std::filesystem::create_directory(testDir);
     }
 

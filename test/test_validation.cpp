@@ -203,7 +203,7 @@ TEST_F(PlatformBaseTest, MeasureTextWidth_UnsupportedCharacters) {
 
 TEST_F(PlatformBaseTest, MeasureTextWidth_InvalidFontPath) {
     std::u8string text = u8"Test";
-    std::u8string invalidFontPath = u8"Invalid/Path/To/Font.ttf";
+    std::u8string invalidFontPath = u8"fonts/expected/missing-is-normal.ttf";
     int fontSize = 12;
     auto result = this->measureTextWidth(text, invalidFontPath, fontSize);
     EXPECT_TRUE(result.empty()); // フォントが無効な場合、空の結果が返ることを期待

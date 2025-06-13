@@ -112,6 +112,61 @@ def build_divisi_with_vs():
     except RuntimeError as e:
         print(f"Setup failed: {e}")
 
+        
+def build_divisi_test_with_vs():
+    print("build_test")
+    win_build_dir = os.path.abspath(f"{divisi_root}/build/Test")
+    linux_build_dir = os.path.abspath(f"{divisi_root}/build-linux-test")
+
+    # ディレクトリが存在しない場合は作成
+    if not os.path.exists(win_build_dir):
+        os.makedirs(win_build_dir)
+    else:
+        shutil.rmtree(win_build_dir)
+        os.makedirs(win_build_dir)
+
+    if not os.path.exists(linux_build_dir):
+        os.makedirs(linux_build_dir)
+    else:
+        shutil.rmtree(linux_build_dir)
+        os.makedirs(linux_build_dir)
+
+    win_cmake_args = [divisi_root, "-G", "Ninja", "-DCMAKE_BUILD_TYPE:STRING=Test", "-DTEST_DATA_SRC:STRING=D:\\Programming\\Github\\langscore-divisi\\test\\data"]
+    win_build_command = "ninja"
+    
+    linux_cmake_args = ["..", "-DCMAKE_BUILD_TYPE:STRING=Test", " -DLLVM_USE_LINKER=mold", "-DTEST_DATA_SRC:STRING=/mnt/d/Programming/Github/langscore-divisi/test/data"]
+    linux_build_command = f"{divisi_root}/build_linux.sh"
+
+    try:
+        # VS環境を設定
+        env = setup_vs_environment()
+
+        win_stdout, win_stderr, win_result = test_core.run_command("cmake", win_cmake_args, cwd=win_build_dir, check=True, env=env)
+        if win_result == False:
+            print(f"Error Windows CMake {win_stderr}")
+            exit(1)
+        win_stdout, win_stderr, win_result = test_core.run_command(win_build_command, cwd=win_build_dir, check=True, env=env)
+        if win_result == False:
+            print(f"Error Windows Build {win_stderr}")
+            exit(1)
+        print("Complete build divisi_test(win)")
+         
+        lx_stdout, lx_stderr, lx_result = test_core.run_wsl_script(linux_build_command, cwd=divisi_root, check=True)
+        if lx_result == False:
+            print(f"Error Linux Build {lx_stderr}")
+            exit(1)
+        print("Complete build divisi_test(linux)")
+
+        print("Build Test process completed successfully.")
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error occurred")
+        if e.stderr:
+            for line in e.stderr.splitlines():
+                if line: print(line)
+    except RuntimeError as e:
+        print(f"Setup failed: {e}")
+
 def update_test_projects():
     print("update")
     test_dir = os.path.dirname(os.path.abspath(__file__))
@@ -149,9 +204,11 @@ if __name__ == '__main__':
 
     if len(test_selection) == 0:
         build_divisi_with_vs()
+        build_divisi_test_with_vs()
         update_test_projects()
     elif test_selection[0] == "build":
         build_divisi_with_vs()
+        build_divisi_test_with_vs()
     elif test_selection[0] == "update":
         update_test_projects()
     
