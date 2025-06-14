@@ -109,7 +109,7 @@
  * 
  * @param Enable Language Patch Mode
  * @text 言語パッチモードを有効にする
- * @desc パッチモードは言語毎に翻訳CSVを用意する方法です。後からの追加
+ * @desc パッチモードは言語毎に翻訳CSVを用意する方法です。翻訳CSVの読み込み場所が変わるため注意して下さい。
  * @type boolean
  * @on 有効
  * @off 無効
@@ -916,7 +916,9 @@ var Langscore = class
 
   updateLanguageStateVariables()
   {
-    //$gameVariablesの初期化後に実行したいため、DataManager.setupNewGame内で呼び出す。
+    //$gameVariablesの初期化後に実行したいため、
+    //新規ゲーム時のDataManager.setupNewGame内または
+    //ロード直後のDataManager.extractSaveContentsで呼び出す。
     if(!Langscore.Language_StateStartVariable){
       return;
     }
@@ -1354,6 +1356,7 @@ else if(Langscore.isMZ())
 var DataManager_extractSaveContents = DataManager.extractSaveContents;
 DataManager.extractSaveContents = function(contents) {
   DataManager_extractSaveContents.call(this, contents);
+  _langscore.updateLanguageStateVariables();
   _langscore.changeLanguage(Langscore.langscore_current_language, true)
 };
 
