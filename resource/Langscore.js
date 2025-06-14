@@ -16,10 +16,28 @@
  * Note: This script is auto-generated, so editing is deprecated.
  * If you want to change supported languages.exe., please edit it using Langscore.exe.
  * 
- * [Instructions for MV]
+ * [description for MV]
+ * Plug-in commands
+ *
+ * [Change language].
+ * Specify language character for #lang. The character that can be specified is %{SUPPORT_LANGUAGE_STR}%.
+ * Do not include double quotation marks.
+ * Langscore changeLanguage #lang
+ *
+ * [Display language change menu]
+ * langscore displayLanguageMenu
+ *
+ * [Description for MZ] 
+ * langscore changeLanguage
  * Plugin commands
- * Specify language character for #lang. Possible characters are %{SUPPORT_LANGUAGE_STR}%.
- * Langscore changeLanguage #lang 
+ *
+ * [Change Language]
+ * Select the command name “Change Language” and specify the language character in the field for the language to be changed.
+ * The character that can be specified is %{SUPPORT_LANGUAGE_STR}%.
+ * Do not include double quotation marks.
+ *
+ * [Show language change menu item]
+ * Select the command name “Show Language Change Menu”.
  * 
  * @command changeLanguage
  * @text changeLanguage
@@ -72,15 +90,25 @@
  * 
  * [MV向けの説明]
  * プラグインコマンド
+ * 
+ * 【言語の変更】
  * #langに言語文字を指定します。指定可能な文字は%{SUPPORT_LANGUAGE_STR}%です。
  * ダブルクォーテーションは含まないで下さい。
  * Langscore changeLanguage #lang 
  * 
+ * 【言語変更メニューの表示】
+ * langscore displayLanguageMenu
+ * 
  * [MZ向けの説明]
  * プラグインコマンド
+ * 
+ * 【言語の変更】
  * コマンド名「言語の変更」を選び、変更する言語の項目に言語文字を指定します。
  * 指定可能な文字は%{SUPPORT_LANGUAGE_STR}%です。
  * ダブルクォーテーションは含まないで下さい。
+ * 
+ * 【言語変更メニューの表示】
+ * コマンド名「言語変更メニューの表示」を選びます。
  *  
  * @command changeLanguage
  * @text 言語の変更
