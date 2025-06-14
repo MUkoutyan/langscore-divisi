@@ -968,7 +968,7 @@ Langscore.isFirstLoaded = false;
 
 //MV向けのクラス変数定義
 Langscore.Langscore_Parameters = PluginManager.parameters('Langscore');
-%{ALLOWED_LANGUAGE}%;
+Langscore.System_Allowed_Languages = [%{ALLOWED_LANGUAGE}%];
 %{SUPPORT_LANGUAGE}%;
 Langscore.Default_Language = String(Langscore.Langscore_Parameters['Default Language']);
 Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters['Enable Language Patch Mode'] === "true");
