@@ -642,14 +642,14 @@ class Window_Langscore < Window_Command
 
   attr_accessor :recreate
 
-  def initialize
+  def initialize(lang)
     super(0,0)
     self.x = (Graphics.width - self.window_width ) / 2
     self.y = (Graphics.height - self.window_height) / 2
     @_recreate = false
-    
+
     Langscore::get_available_languages().each.with_index do |l, i|
-      select(i) if $langscore_current_language == l
+      select(i) if lang == l
     end
 
     open
@@ -665,13 +665,8 @@ class Window_Langscore < Window_Command
     end
   end
 
-  def cursor_up(wrap = false)
-    super wrap
-    call_handler(:ls_update)
-  end
-
-  def cursor_down(wrap = false)
-    super wrap
+  def select(index)
+    super index
     call_handler(:ls_update)
   end
 
@@ -722,9 +717,13 @@ class Scene_Language < Scene_MenuBase
   def start
     super
     @before_lang = $langscore_current_language
+    @selected_lang = @before_lang
+    available_langs = Langscore.get_available_languages()
     create_help_window
     create_lsmain_window
     create_ok_cancel_window
+
+    @command_window.index = available_langs.index(@selected_lang)
 
     @okcancel_window.deactivate
 
@@ -733,20 +732,20 @@ class Scene_Language < Scene_MenuBase
   def terminate
     super
     @command_window.dispose
-    Langscore.changeLanguage($langscore_current_language)
+    Langscore.changeLanguage(@selected_lang)
     LSSetting.save()
   end
   
 
   def create_lsmain_window    
     @command_window.dispose unless @command_window.nil?
-    @command_window = Window_Langscore.new
+    @command_window = Window_Langscore.new(@selected_lang)
     @command_window.viewport = @viewport
 
     @command_window.set_handler(:ok, method(:to_okcancel))
     @command_window.set_handler(:ls_update, method(:select_lang))
     @command_window.set_handler(:cancel, method(:return_scene))
-    @help_window.set_text(Langscore.translate(SYSTEM1, $langscore_system))
+    @help_window.set_text(SYSTEM1[@selected_lang])
   end
 
   def update_basic
@@ -759,12 +758,14 @@ class Scene_Language < Scene_MenuBase
   end
 
   def select_lang
-    return if @command_window.index == -1
-    available_langs = Langscore.get_available_languages()
-    $langscore_current_language = available_langs[@command_window.index]
-    @help_window.set_text(Langscore.translate(SYSTEM1, $langscore_system))
-    if Langscore.updateFont($langscore_current_language)
-      @command_window.recreate = true
+    if @command_window.class == Window_Langscore
+      return if @command_window.index == -1
+      available_langs = Langscore.get_available_languages()
+      @selected_lang = available_langs[@command_window.index]
+      @help_window.set_text(SYSTEM1[@selected_lang])
+      if Langscore.updateFont(@selected_lang)
+        @command_window.recreate = true
+      end
     end
   end
   
@@ -794,7 +795,6 @@ class Scene_Language < Scene_MenuBase
   end
 
   def reject
-    $langscore_current_language = @before_lang
     self.return_scene
   end
 end

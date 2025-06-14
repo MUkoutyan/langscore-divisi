@@ -827,9 +827,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
         }
         else if(findStr(_line, u8"%{SYSTEM1}%"))
         {
-            _line  = tab + u8"SYSTEM1 = \"" + Help_Text[u8"ja"] + u8"\"" + nl;
-            _line += tab + u8"$langscore_system = {" + nl;
-            _line += tab + tab + u8"SYSTEM1 => {" + nl;
+            _line += tab + u8"SYSTEM1 => {" + nl;
 
             auto list = config.allLanguages();
             utility::u8stringlist langList;
@@ -841,7 +839,6 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
                     _line += u8"\"" + l + u8"\" => \"" + Help_Text[l] + u8"\"," + nl;
                 }
             }
-            _line += tab + tab + u8"}" + nl;
             _line += tab + u8"}";
         }
         else if(findStr(_line, u8"%{SYSTEM2}%"))
