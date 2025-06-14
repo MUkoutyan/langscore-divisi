@@ -827,7 +827,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
         }
         else if(findStr(_line, u8"%{SYSTEM1}%"))
         {
-            _line = tab + u8"SYSTEM1 => {" + nl;
+            _line = tab + u8"SYSTEM1 = {" + nl;
 
             auto list = config.allLanguages();
             utility::u8stringlist langList;
