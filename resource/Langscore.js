@@ -357,6 +357,11 @@ var Langscore = class
 
   fetch_original_text(transed_text, langscore_map) 
   {
+    if(!transed_text){
+      //特に空文字の場合はCSVが不完全だと、最初に見つけた空文字を検出してしまい、
+      //異なる行の内容が返される問題がある。空文字は処理しない。
+      return transed_text;
+    }
     var origin = transed_text;
     for (const [originText, transMap] of langscore_map) {
       for (const [lang, transText] of transMap) {
