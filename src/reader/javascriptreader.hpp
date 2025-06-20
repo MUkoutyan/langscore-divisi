@@ -199,6 +199,7 @@ private:
         std::vector<PluginInfo> result;
         for(auto item = j.begin(); item != j.end(); ++item)
         {
+
             PluginInfo data;
             data.name = utility::cnvStr<std::u8string>((*item)["name"].get<std::string>());
             data.filename = data.name;
@@ -206,6 +207,8 @@ private:
             data.description = utility::cnvStr<std::u8string>((*item)["description"].get<std::string>());
 
             if(data.status == false) { continue; }
+
+            std::cout << "Check Plugin Info : " << (*item)["name"].get<std::string>() << std::endl;
 
             for(const auto& [key, value] : (*item)["parameters"].items()) 
             {
@@ -571,6 +574,7 @@ private:
     
     std::vector<TranslateText> convertScriptToCSV(std::filesystem::path path) const
     {
+        std::cout << "Parsing JavaScript file: " << path << std::endl;
         std::ifstream input_file(path);
         if(!input_file.is_open()) {
             std::cerr << "Could not open the file - '" << path << "'" << std::endl;

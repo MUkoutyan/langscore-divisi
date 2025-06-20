@@ -108,10 +108,13 @@ std::filesystem::path getFilePathFromArgs(int& i, const int argc, const char* ar
         }
     }
 
-    if(*(path.rbegin()) == '\\' || *(path.rbegin()) == '/') {
+    auto last_char = *(path.rbegin());
+    if(last_char == '\\' || last_char == '/') {
         path.erase(path.size() - 1, 1);
     }
-    path.erase(path.begin());
+    if(*(path.begin()) == '\"' && last_char == '\"') {
+        path = path.substr(1, path.size() - 2); // "で括られている場合は除去
+    }
     return path;
 }
 

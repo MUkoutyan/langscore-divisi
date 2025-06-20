@@ -252,10 +252,23 @@ ErrorStatus jsonwriter::writeForAnalyzeScript(std::filesystem::path path, std::u
 
         item["type"] = utility::cnvStr<std::string>(text.textType);
 
-        auto lineInfo = utility::split(text.scriptLineInfo, u8":"s);
-        item["file"] = utility::cnvStr<std::string>(lineInfo[0]);
-        item["row"] = atoll(utility::cnvStr<std::string>(lineInfo[1]).c_str());
-        item["col"] = atoll(utility::cnvStr<std::string>(lineInfo[2]).c_str());
+        auto lineInfo = utility::split(text.original, u8":"s);
+        if(2 < lineInfo.size()) {
+            item["file"] = utility::cnvStr<std::string>(lineInfo[0]);
+            item["row"] = atoll(utility::cnvStr<std::string>(lineInfo[1]).c_str());
+            item["col"] = atoll(utility::cnvStr<std::string>(lineInfo[2]).c_str());
+            if(text.translates.find(u8"scriptLineInfo") != text.translates.end()) {
+                item["value"] = utility::cnvStr<std::string>(text.translates.at(u8"scriptLineInfo"));
+            }
+            else {
+                item["value"] = "";
+            }
+        }
+        else if(lineInfo.size() == 2) {
+            item["file"] = utility::cnvStr<std::string>(lineInfo[0]);
+            item["parameterName"] = utility::cnvStr<std::string>(lineInfo[1]);
+            item["value"] = utility::cnvStr<std::string>(text.scriptLineInfo);
+        }
 
         outputJson.push_back(item);
     }
