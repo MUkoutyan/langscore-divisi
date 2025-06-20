@@ -1055,7 +1055,6 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
     for(auto& t : transTexts){
         if(t.translates.find(def_lang) == t.translates.end()){ continue; }
         t.translates[def_lang] = t.original;
-        //t.scriptLineInfo.swap(t.original);
     }
     //=================================
 

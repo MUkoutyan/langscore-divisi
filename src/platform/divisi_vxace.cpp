@@ -542,11 +542,25 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
 
     //Rubyスクリプトを予め解析してテキストを生成しておく。
     rubyreader reader(this->supportLangs, scriptList);
+    config config;
+    auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
+    auto& transTexts = reader.currentTexts();
+
+    for(auto& t : transTexts) {
+        if(t.translates.find(def_lang) == t.translates.end()) { continue; }
+        t.translates[def_lang] = t.original;
+    }
 
     const auto deserializeOutPath = fs::path(baseDirectory);
     auto outputPath = deserializeOutPath / "Scripts";
     if(std::filesystem::exists(outputPath) == false){
         std::filesystem::create_directories(outputPath);
+    }
+
+    //memoに行数が格納されているため入れ替え
+    for(auto& t : transTexts) {
+        t.scriptLineInfo.swap(t.original);
+        t.translates[u8"scriptLineInfo"s] = t.scriptLineInfo;
     }
 
     std::cout << "Write Analyze JSON : " << outputPath << std::endl;
