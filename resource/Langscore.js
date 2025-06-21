@@ -1,7 +1,7 @@
 //---------------------------------------------------------------
 //
 // Langscore CoreScript "Unison"
-// Version 0.10.0
+// Version 0.10.1
 // Written by BreezeSinfonia 來奈津
 //
 // 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -202,19 +202,19 @@ var Langscore = class
       { name: 'ls_common_event', src: 'CommonEvents.csv' },
     ];
     
-    this.ls_actors_tr = null;
-    this.ls_system_tr = null;
-    this.ls_classes_tr = null;
-    this.ls_skills_tr = null;
-    this.ls_states_tr = null;
-    this.ls_weapons_tr = null;
-    this.ls_armors_tr = null;
-    this.ls_items_tr = null;
-    this.ls_enemies_tr = null;
-    this.ls_graphics_tr = null;
-    this.ls_scripts_tr = null;
-    this.ls_troops_tr = null;
-    this.ls_common_event = null;
+    this.ls_actors_tr     = null;
+    this.ls_system_tr     = null;
+    this.ls_classes_tr    = null;
+    this.ls_skills_tr     = null;
+    this.ls_states_tr     = null;
+    this.ls_weapons_tr    = null;
+    this.ls_armors_tr     = null;
+    this.ls_items_tr      = null;
+    this.ls_enemies_tr    = null;
+    this.ls_graphics_tr   = null;
+    this.ls_scripts_tr    = null;
+    this.ls_troops_tr     = null;
+    this.ls_common_event  = null;
     
     this.ls_current_map = new Map;
     this.ls_graphic_cache = {};
@@ -223,15 +223,16 @@ var Langscore = class
 
     this.current_language_list = []
 
+    if(!this.fs) {this.fs = require('fs'); }
+    if(!this.path) {this.path = require('path'); }
+    if(!this.basePath) {this.basePath = this.path.dirname(process.mainModule.filename); }
+
     this.updateTranslateLanguageList();
   }
 
   updateTranslateLanguageList()
   {
     if(Langscore.EnablePathMode && StorageManager.isLocalMode()){
-        this.fs = require('fs');
-        this.path = require('path');
-        this.basePath = this.path.dirname(process.mainModule.filename);
 
       // セキュリティ強化: パスの正規化と検証
       const translatePath = this.path.resolve(this.path.join(this.basePath, 'data', 'translate'));
@@ -263,8 +264,16 @@ var Langscore = class
           }
         }
       } catch (error) {
-        console.error('Langscore Error: Failed to read translate folder:', error);
+        console.log('Langscore Error: Failed to read translate folder:', error);
       }
+
+      //this.current_language_listを空にするとcsvの読み込みリクエストすら送られない。
+      //そのため、ls_~系の変数がnullになり続けるため、起動チェックが常にfalseとなり初回ロード時に無限ループとなる。
+      //回避するためにcurrent_language_listはデフォルト言語を埋める。意味合いとしても問題はない。
+      if(!this.current_language_list.includes(Langscore.Default_Language)){
+        this.current_language_list.push(Langscore.Default_Language)
+      }
+
     }
     else{
       this.current_language_list = Langscore.Support_Language;
@@ -391,7 +400,7 @@ var Langscore = class
       return transed_text;
     }
     var origin = transed_text;
-    for (const [originText, transMap] of langscore_map) {
+    for (const [originText, transMap] of Object.entries(langscore_map)) {
       for (const [lang, transText] of transMap) {
         if (transText === transed_text) {
             return originText;
@@ -724,7 +733,7 @@ var Langscore = class
   {
     if(!this.ls_scripts_tr){ return; }
     var parent = this;
-    for (const [key, trans] of this.ls_scripts_tr) {
+    for (const [key, trans] of Object.entries(this.ls_scripts_tr)) {
       var infos = key.split(':');
       if(infos.length <= 1 || 2 < infos.length){ continue; }
       var params = PluginManager.parameters(infos[0]);
