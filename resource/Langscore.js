@@ -223,9 +223,11 @@ var Langscore = class
 
     this.current_language_list = []
 
-    if(!this.fs) {this.fs = require('fs'); }
-    if(!this.path) {this.path = require('path'); }
-    if(!this.basePath) {this.basePath = this.path.dirname(process.mainModule.filename); }
+    if(StorageManager.isLocalMode()){
+      if(!this.fs) {this.fs = require('fs'); }
+      if(!this.path) {this.path = require('path'); }
+      if(!this.basePath) {this.basePath = this.path.dirname(process.mainModule.filename); }
+    }
 
     this.updateTranslateLanguageList();
   }
