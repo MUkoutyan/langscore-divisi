@@ -1,7 +1,7 @@
 //---------------------------------------------------------------
 //
 // Langscore CoreScript "Unison"
-// Version 0.10.1
+// Version 0.10.2
 // Written by BreezeSinfonia 來奈津
 //
 // 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -401,11 +401,29 @@ var Langscore = class
       //異なる行の内容が返される問題がある。空文字は処理しない。
       return transed_text;
     }
-    var origin = transed_text;
-    for (const [originText, transMap] of Object.entries(langscore_map)) {
-      for (const [lang, transText] of transMap) {
-        if (transText === transed_text) {
-            return originText;
+
+    // Mapの場合
+    if (langscore_map instanceof Map) {
+      for (const [originText, transMap] of langscore_map.entries()) {
+        if (transMap instanceof Map) {
+          for (const [lang, transText] of transMap.entries()) {
+            if (transText === transed_text) {
+              return originText;
+            }
+          }
+        }
+      }
+    }
+    // Objectの場合
+    else if (typeof langscore_map === "object" && langscore_map !== null) {
+      for (const originText of Object.keys(langscore_map)) {
+        const transMap = langscore_map[originText];
+        if (typeof transMap === "object" && transMap !== null) {
+          for (const lang of Object.keys(transMap)) {
+            if (transMap[lang] === transed_text) {
+              return originText;
+            }
+          }
         }
       }
     }
