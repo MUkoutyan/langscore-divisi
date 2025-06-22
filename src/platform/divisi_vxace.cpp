@@ -478,10 +478,14 @@ std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::d
         if(f.is_directory()){ continue; }
         //パス区切り文字は\\ではなく/に統一(\\はRubyで読み取れない)
         const auto& path = f.path();
-        const auto ext = path.extension();
-        if(ext == ".jpg" || ext == ".png" || ext == ".bmp"){
+
+        const auto ext = path.extension().string();
+        auto ext_lower = ext | std::views::transform([](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        std::string ext_lower_str(ext_lower.begin(), ext_lower.end());
+
+        if(ext_lower_str == ".jpg" || ext_lower_str == ".png" || ext_lower_str == ".bmp"){
             auto relative_path = "Graphics" / path.lexically_relative(graphicsPath);
-            graphics.emplace_back(relative_path.parent_path() / ext);
+            graphics.emplace_back(relative_path.parent_path() / ext_lower_str);
         }
     }
 
