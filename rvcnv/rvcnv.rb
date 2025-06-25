@@ -554,7 +554,7 @@ end
 
 #================================================
 opt = OptionParser.new
-Version = "1.0.2"
+Version = "1.0.3"
 
 p "RVCNV Version #{Version}"
 
@@ -758,15 +758,9 @@ if File.exist?(data_folder)
   #Jsonは手間なのでCSVで直接出力する [マップID, オーダー, マップ名]
   File.open(data_folder+"/MapInfos.rvdata2", 'rb') do |info|
     begin 
-      csvData = []
-      data = Marshal.load(info.read).each do |id, mapInfo|
-        csvData.push([id, mapInfo.order, mapInfo.name])
-      end
-
-      CSV.open(output_folder+"/MapInfos.csv", 'w') do |file|
-        csvData.each do |r| 
-          file.puts([r[0],r[1],r[2]]) 
-        end
+      data = Marshal.load(info.read)
+      File.open(output_folder+"/MapInfos.json", 'wb') do |file|
+        file.write(data.to_json)
       end
     rescue => e
       p "Load : #{data_folder+"/"+rvdata}"
