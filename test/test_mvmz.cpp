@@ -267,9 +267,14 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS)
         GTEST_FAIL() << "Failure to load plugins.js" << std::endl;
 	}
 	
-	auto item = jsonStruct.begin();
-	auto firstScriptName = (*item)["name"].get<std::string>();
-	ASSERT_STREQ(firstScriptName.c_str(), "Langscore");
+    // 先頭がLangscore_ObserverBridge、末尾がLangscoreであることを検証
+    ASSERT_GE(jsonStruct.size(), 2);
+
+    auto firstScriptName = jsonStruct.front()["name"].get<std::string>();
+    auto lastScriptName = jsonStruct.back()["name"].get<std::string>();
+
+    ASSERT_STREQ(firstScriptName.c_str(), "Langscore_ObserverBridge");
+    ASSERT_STREQ(lastScriptName.c_str(), "Langscore");
 
 	GTEST_SUCCEED();
 }
@@ -311,9 +316,14 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS_WhenNoPlugins)
         GTEST_FAIL() << "Failure to load plugins.js" << std::endl;
 	}
 
-	auto item = jsonStruct.begin();
-	auto firstScriptName = (*item)["name"].get<std::string>();
-	ASSERT_STREQ(firstScriptName.c_str(), "Langscore");
+    // 先頭がLangscore_ObserverBridge、末尾がLangscoreであることを検証
+    ASSERT_GE(jsonStruct.size(), 2);
+
+    auto firstScriptName = jsonStruct.front()["name"].get<std::string>();
+    auto lastScriptName = jsonStruct.back()["name"].get<std::string>();
+
+    ASSERT_STREQ(firstScriptName.c_str(), "Langscore_ObserverBridge");
+    ASSERT_STREQ(lastScriptName.c_str(), "Langscore");
 
 	GTEST_SUCCEED();
 }

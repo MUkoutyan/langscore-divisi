@@ -493,8 +493,8 @@ var Langscore = class
       }
     }
 
-    this._updateMethods.forEach(function(method) {
-      method();
+    window._LangscoreObserverQueue.forEach(function(method) {
+      method(Langscore.langscore_current_language);
     });
     this.Langscore_PluginCustom();
     
@@ -1011,13 +1011,7 @@ var Langscore = class
       });
       }
   }
-
-  registerUpdateMethodAtLanguageUpdate(method) {
-    if (typeof method === "function") {
-        this._updateMethods.push(method);
-    }
-  }
-  
+ 
   Langscore_PluginCustom(){
     //Langscore_Customで上書きされるメソッド
   }
