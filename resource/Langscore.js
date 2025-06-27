@@ -1,7 +1,7 @@
 //---------------------------------------------------------------
 //
 // Langscore CoreScript "Unison"
-// Version 0.10.2
+// Version 0.10.3
 // Written by BreezeSinfonia 來奈津
 //
 // 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -636,10 +636,6 @@ var Langscore = class
 
   updateActor()
   {
-    const elm_trans =(el) => {
-      return this.translate(el, this.ls_actors_tr);
-    }
-
     if($dataActors === null){
       return;
     }
@@ -670,8 +666,6 @@ var Langscore = class
     
     //起動時の初回コールの場合はgameActorsがnullになっている。
     if($gameActors === null){
-      const endTime = performance.now();
-      const processingTime = endTime - startTime;
       return;
     }
     //既にGame_Actorが作成されている場合、インスタンス側も更新。
