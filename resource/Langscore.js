@@ -552,27 +552,86 @@ var Langscore = class
     }
   };
 
+  //原文取得用のキャッシュを追加
+  _reverseOriginalTextCache = new Map();
+  _createReverseMap(tr_list) 
+  {
+    if (this._reverseOriginalTextCache.has(tr_list)) {
+      return this._reverseOriginalTextCache.get(tr_list);
+    }
+    
+    const reverseMap = new Map();
+    // 逆引きマップを構築
+    for (const [originText, transMap] of tr_list.entries()) {
+      for (const [lang, transText] of transMap.entries()) {
+        if (transText) {
+          reverseMap.set(transText, originText);
+        }
+      }
+    }
+    
+    this._reverseOriginalTextCache.set(tr_list, reverseMap);
+    return reverseMap;
+  }
+
   updateForNameAndDesc(data_list, tr_list) 
   {
-    const elm_trans =(el) => {
-      return this.translate(el, tr_list);
+    if (!data_list || !tr_list){ return; }
+
+    // 処理時間計測開始
+    // const startTime = performance.now();
+    // console.log('[Langscore] updateForNameAndDesc 開始 - データ数:', data_list ? data_list.length : 0);
+
+    const reverseMap = this._createReverseMap(tr_list);
+    
+    for (let i = 0; i < data_list.length; i++) {
+      if (data_list[i] === null){ continue; }
+      
+      const obj = data_list[i];
+      
+      // 直接処理
+      if (obj.name) {
+        const originalName = reverseMap.get(obj.name) || obj.name;
+        obj.name = this.translate(originalName, tr_list);
+      }
+      
+      if (obj.description) {
+        const originalDesc = reverseMap.get(obj.description) || obj.description;
+        obj.description = this.translate(originalDesc, tr_list);
+      }
+      
+      if (obj.note) {
+        const originalNote = reverseMap.get(obj.note) || obj.note;
+        obj.note = this.translate(originalNote, tr_list);
+      }
     }
-    data_list.forEach(function(obj,i){
-      if(data_list[i] === null){ return; }
-      data_list[i].name        = elm_trans(_langscore.fetch_original_text(obj.name, tr_list));
-      data_list[i].description = elm_trans(_langscore.fetch_original_text(obj.description, tr_list));
-    });
+
+    this.updateMetaData(data_list);
+    
+    // 処理時間計測終了
+    // const endTime = performance.now();
+    // const processingTime = endTime - startTime;
+    // console.log('[Langscore] updateForNameAndDesc 完了 - 処理時間:', processingTime.toFixed(2), 'ms');
+
   };
 
   updateForName(data_list, tr_list) 
   {
-    const elm_trans =(el) => {
-      return this.translate(el, tr_list);
+    const reverseMap = this._createReverseMap(tr_list);
+    for (let i = 0; i < data_list.length; i++) 
+    {
+      if (data_list[i] === null){ continue; }
+      const obj = data_list[i];
+
+      if (obj.name) {
+        const originalName = reverseMap.get(obj.name) || obj.name;
+        obj.name = this.translate(originalName, tr_list);
+      }
+      if (obj.note) {
+        const originalNote = reverseMap.get(obj.note) || obj.note;
+        obj.note = this.translate(originalNote, tr_list);
+      }
     }
-    data_list.forEach(function(obj,i){
-      if (data_list[i] === null) { return; }
-      data_list[i].name = elm_trans(_langscore.fetch_original_text(obj.name, tr_list));
-    });
   };
 
   updateActor()
@@ -584,18 +643,35 @@ var Langscore = class
     if($dataActors === null){
       return;
     }
+    
+    const reverseMap = this._createReverseMap(this.ls_actors_tr);
+
     //大元のデータベースを更新。Game_Actor作成時に使用されるため必要。
-    var _this = this;
-    $dataActors.forEach(function(obj,i)
+    for (let i = 0; i < $dataActors.length; i++) 
     {
-      if($dataActors[i] === null){ return; }
-      $dataActors[i].name        = elm_trans(_langscore.fetch_original_text(obj.name, _this.ls_actors_tr));
-      $dataActors[i].nickname    = elm_trans(_langscore.fetch_original_text(obj.nickname, _this.ls_actors_tr));
-      $dataActors[i].profile     = elm_trans(_langscore.fetch_original_text(obj.profile, _this.ls_actors_tr));
-    });
+      if ($dataActors[i] === null){ continue; }
+      const obj = $dataActors[i];
+
+      if (obj.name) {
+        const originalName = reverseMap.get(obj.name) || obj.name;
+        obj.name = this.translate(originalName, this.ls_actors_tr);
+      }
+      
+      if (obj.nickname) {
+        const originalNickname = reverseMap.get(obj.nickname) || obj.nickname;
+        obj.nickname = this.translate(originalNickname, this.ls_actors_tr);
+      }
+      
+      if (obj.profile) {
+        const originalProfiler = reverseMap.get(obj.profile) || obj.profile;
+        obj.profile = this.translate(originalProfiler, this.ls_actors_tr);
+      }
+    }
     
     //起動時の初回コールの場合はgameActorsがnullになっている。
     if($gameActors === null){
+      const endTime = performance.now();
+      const processingTime = endTime - startTime;
       return;
     }
     //既にGame_Actorが作成されている場合、インスタンス側も更新。
@@ -604,17 +680,17 @@ var Langscore = class
       var actor = $gameActors.actor(i);
       if (!actor){ continue; }
 
-      let name = this.fetch_original_text(actor._name, this.ls_actors_tr);
+      let name = reverseMap.get(actor._name);
       if(name){
-        $gameActors.actor(i)._name     = elm_trans(name);
+        $gameActors.actor(i)._name = this.translate(name, this.ls_actors_tr);
       }
-      var nickname = this.fetch_original_text(actor._nickname, this.ls_actors_tr);
+      var nickname = reverseMap.get(actor._nickname);
       if(nickname){
-        $gameActors.actor(i)._nickname = elm_trans(nickname);
+        $gameActors.actor(i)._nickname = this.translate(nickname, this.ls_actors_tr);
       }
-      var profile = this.fetch_original_text(actor._profile, this.ls_actors_tr);
+      var profile = reverseMap.get(actor._profile);
       if(profile){
-        $gameActors.actor(i)._profile = elm_trans(profile);
+        $gameActors.actor(i)._profile = this.translate(profile, this.ls_actors_tr);
       }
     }
   };
@@ -658,33 +734,70 @@ var Langscore = class
     this.updateForName($dataClasses, this.ls_classes_tr);
   };
 
-  updateSkills(){
+  updateSkills()
+  {
+    const reverseMap = this._createReverseMap(this.ls_skills_tr);
+    for (let i = 0; i < $dataSkills.length; i++) 
+    {
+      if ($dataSkills[i] === null){ continue; }
+      const obj = $dataSkills[i];
 
-    const elm_trans =(el) => {
-      return this.translate(el, this.ls_skills_tr);
-    };
-    $dataSkills.forEach(function(skill,i){
-      if($dataSkills[i] === null){ return; }
-      $dataSkills[i].name        = elm_trans(_langscore.fetch_original_text(skill.name, _langscore.ls_skills_tr));
-      $dataSkills[i].description = elm_trans(_langscore.fetch_original_text(skill.description, _langscore.ls_skills_tr));
-      $dataSkills[i].message1    = elm_trans(_langscore.fetch_original_text(skill.message1, _langscore.ls_skills_tr));
-      $dataSkills[i].message2    = elm_trans(_langscore.fetch_original_text(skill.message2, _langscore.ls_skills_tr));
-    });
+      if (obj.name) {
+        const origin = reverseMap.get(obj.name) || obj.name;
+        obj.name = this.translate(origin, this.ls_skills_tr);
+      }
+      if (obj.description) {
+        const origin = reverseMap.get(obj.description) || obj.description;
+        obj.description = this.translate(origin, this.ls_skills_tr);
+      }
+      if (obj.message1) {
+        const origin = reverseMap.get(obj.message1) || obj.message1;
+        obj.message1 = this.translate(origin, this.ls_skills_tr);
+      }
+      if (obj.message2) {
+        const origin = reverseMap.get(obj.message2) || obj.message2;
+        obj.message2 = this.translate(origin, this.ls_skills_tr);
+      }
+      if (obj.note) {
+        const origin = reverseMap.get(obj.note) || obj.note;
+        obj.note = this.translate(origin, this.ls_skills_tr);
+      }
+    }
   };
 
-  updateStates(){
-    
-    const elm_trans =(el) => {
-      return this.translate(el, this.ls_states_tr);
-    };
-    $dataStates.forEach(function(state,i){
-      if($dataStates[i] === null){ return; }
-      $dataStates[i].name      = elm_trans(state.name);
-      $dataStates[i].message1  = elm_trans(state.message1);
-      $dataStates[i].message2  = elm_trans(state.message2);
-      $dataStates[i].message3  = elm_trans(state.message3);
-      $dataStates[i].message4  = elm_trans(state.message4);
-    });
+  updateStates()
+  {
+    const reverseMap = this._createReverseMap(this.ls_states_tr);
+    for (let i = 0; i < $dataStates.length; i++) 
+    {
+      if ($dataStates[i] === null){ continue; }
+      const obj = $dataStates[i];
+
+      if (obj.name) {
+        const origin = reverseMap.get(obj.name) || obj.name;
+        obj.name = this.translate(origin, this.ls_states_tr);
+      }
+      if (obj.message1) {
+        const origin = reverseMap.get(obj.message1) || obj.message1;
+        obj.message1 = this.translate(origin, this.ls_states_tr);
+      }
+      if (obj.message2) {
+        const origin = reverseMap.get(obj.message2) || obj.message2;
+        obj.message2 = this.translate(origin, this.ls_states_tr);
+      }
+      if (obj.message3) {
+        const origin = reverseMap.get(obj.message3) || obj.message3;
+        obj.message3 = this.translate(origin, this.ls_states_tr);
+      }
+      if (obj.message4) {
+        const origin = reverseMap.get(obj.message4) || obj.message4;
+        obj.message4 = this.translate(origin, this.ls_states_tr);
+      }
+      if (obj.note) {
+        const origin = reverseMap.get(obj.note) || obj.note;
+        obj.note = this.translate(origin, this.ls_states_tr);
+      }
+    }
   };
 
   updateWeapons(){
@@ -697,6 +810,27 @@ var Langscore = class
 
   updateItems(){
     this.updateForNameAndDesc($dataItems, this.ls_items_tr);
+  }
+
+  updateMetaData(object)
+  {
+    //DataManager.onLoadから抜粋
+    //一部の処理は不要なため除外
+    var array;
+    if (object === $dataMap) {
+        DataManager.extractMetadata(object);
+        array = object.events;
+    } else {
+        array = object;
+    }
+    if (Array.isArray(array)) {
+        for (var i = 0; i < array.length; i++) {
+            var data = array[i];
+            if (data && data.note !== undefined) {
+                DataManager.extractMetadata(data);
+            }
+        }
+    }
   }
 
   updateEnemies(){
