@@ -84,6 +84,7 @@ namespace langscore
         constexpr const char8_t* surprise = u8"surprise";
         constexpr const char8_t* useItem = u8"useItem";
         constexpr const char8_t* victory = u8"victory";
+        constexpr const char8_t* note = u8"note";
     }
 	class mvmz_jsonreader: public jsonreaderbase
 	{
@@ -197,6 +198,7 @@ namespace langscore
             {keys::surprise,            TranslateText::battleMessage},
             {keys::useItem,             TranslateText::battleMessage},
             {keys::victory,             TranslateText::battleMessage},
+            {keys::note,                TranslateText::note},
 
             {keys::partyName,           TranslateText::nameType},
 
@@ -386,6 +388,15 @@ namespace langscore
 			{
 				if(s->is_null()){ continue; }
 				auto key = utility::cnvStr<std::u8string>(s.key());
+
+                if(key == u8"note")
+                {
+                    //noteは無条件で追加
+                    textTypeForMaker = TranslateText::note;
+                    addText(*s, code);
+                    return;
+                }
+
 				for(auto& checkKey : mainClassKeys)
 				{
 					if(checkKey != key){ continue; }
@@ -487,7 +498,7 @@ namespace langscore
                             }
                             return; 
                         }
-					}
+					}//if(checkKey == u8"code")
 
 					const auto& val = s.value();
 					if(detectKeyInObject.find(checkKey) != detectKeyInObject.end())

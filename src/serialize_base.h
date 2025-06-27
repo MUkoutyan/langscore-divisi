@@ -39,6 +39,7 @@ namespace langscore
         constexpr static const char8_t* battleName = u8"battleName";
         constexpr static const char8_t* battleMessage = u8"battleMessage";
         constexpr static const char8_t* message = u8"message";
+        constexpr static const char8_t* note = u8"note";
         constexpr static const char8_t* other = u8"other";
 
         TranslateText():TranslateText(u8"", {}) {}
