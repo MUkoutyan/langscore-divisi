@@ -219,6 +219,7 @@ var Langscore = class
     this.ls_current_map = new Map;
     this.ls_graphic_cache = {};
 
+    this._reverseOriginalTextCache = new Map;
     this.ls_should_throw_for_debug = false;
 
     this.current_language_list = []
@@ -561,7 +562,6 @@ var Langscore = class
   };
 
   //原文取得用のキャッシュを追加
-  _reverseOriginalTextCache = new Map();
   _createReverseMap(tr_list) 
   {
     if (this._reverseOriginalTextCache.has(tr_list)) {
