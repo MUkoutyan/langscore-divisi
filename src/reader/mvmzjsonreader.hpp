@@ -394,7 +394,7 @@ namespace langscore
                     //noteは無条件で追加
                     textTypeForMaker = TranslateText::note;
                     addText(*s, code);
-                    return;
+                    continue;
                 }
 
 				for(auto& checkKey : mainClassKeys)
