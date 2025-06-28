@@ -261,8 +261,14 @@ var Langscore = class
             continue;
           }
           
-          if (this.fs.statSync(itemPath).isDirectory()) {
+          if (this.fs.statSync(itemPath).isDirectory() === false) {
+            continue;
+          }
+          if(Langscore.Support_Language.includes(item)){
             this.current_language_list.push(item);
+          }
+          else{
+            console.log('Langscore Warning: サポートされていない言語フォルダ' + item +'が含まれています。:');
           }
         }
       } catch (error) {
@@ -468,6 +474,8 @@ var Langscore = class
       }
     }
 
+    //未サポートの言語なら弾く。
+    //未サポートの言語はパッチモードを使用している場合に渡されうる。
     if(!Langscore.Support_Language.includes(lang)){
       return;
     }
