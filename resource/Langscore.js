@@ -2006,16 +2006,16 @@ ConfigManager.applyData = function(config)
   
   ConfigManager_applyData.apply(this, arguments);
   var lang = config["currentLanguage"];
-  if(lang !== undefined && Langscore.Support_Language.includes(lang)){
+  if(lang !== undefined && _langscore.current_language_list.includes(lang)){
     Langscore.langscore_current_language = lang;
   }
 
   //Support_Language以外の言語が指定されると、起動直後にisFirstLoadedがtrueにならずハングする。
   //対応言語を手動編集した場合に発生しうるので未想定の動作だが、念のためのチェック。
-  if(!Langscore.Support_Language.includes(Langscore.langscore_current_language)){
+  if(!_langscore.current_language_list.includes(Langscore.langscore_current_language)){
     Langscore.langscore_current_language = Langscore.Default_Language;
     //厳重にチェック
-    if(!Langscore.Support_Language.includes(Langscore.langscore_current_language)){
+    if(!_langscore.current_language_list.includes(Langscore.langscore_current_language)){
       //Support_Languageが空はヤバいのでクラッシュさせる。チェックしない。
       Langscore.langscore_current_language = Langscore.Support_Language[0];
     }
