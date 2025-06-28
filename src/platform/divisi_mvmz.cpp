@@ -137,18 +137,18 @@ ErrorStatus divisi_mvmz::reanalysis()
     auto [analyzeScripts, analyzeDataList, analyzeGraphics] = fetchFilePathList(analyzeDirPath);
 
     //ファイルのリストアップ
-    utility::filelist analyzeCsvList;
+    utility::filelist analyzeLsjsonList;
     for(const auto& f : fs::directory_iterator{analyzeDirPath}){
         auto extension = f.path().extension();
-        if(extension == ".csv"){
-            analyzeCsvList.emplace_back(f.path());
+        if(extension == ".csv" || extension == ".lsjson"){
+            analyzeLsjsonList.emplace_back(f.path());
         }
     }
-    utility::filelist updateCsvList;
+    utility::filelist updateLsjsonList;
     for(const auto& f : fs::directory_iterator{updateDirPath}){
         auto extension = f.path().extension();
-        if(extension == ".csv"){
-            updateCsvList.emplace_back(f.path());
+        if(extension == ".lsjson"){
+            updateLsjsonList.emplace_back(f.path());
         }
     }
 
@@ -157,20 +157,26 @@ ErrorStatus divisi_mvmz::reanalysis()
     utility::filelist throughCopyList;  //何もせずにコピーする
 
     //消されるファイルの列挙
-    for(const auto& s : analyzeCsvList){
-        auto result = std::find_if(updateCsvList.begin(), updateCsvList.end(), [&s](const auto& x){
+    for(const auto& s : analyzeLsjsonList)
+    {
+        if(s.extension() == ".csv") {
+            messageList.emplace_back(std::make_pair(s.filename(), Type::Delete));
+            continue;
+        }
+
+        auto result = std::find_if(updateLsjsonList.begin(), updateLsjsonList.end(), [&s](const auto& x){
             return x.filename() == s.filename();
         });
-        if(result == updateCsvList.end()){
+        if(result == updateLsjsonList.end()){
             messageList.emplace_back(std::make_pair(s.filename(), Type::Delete));
         }
     }
     //追加されるファイルの列挙
-    for(const auto& s : updateCsvList){
-        auto result = std::find_if(analyzeCsvList.begin(), analyzeCsvList.end(), [&s](const auto& x){
+    for(const auto& s : updateLsjsonList){
+        auto result = std::find_if(analyzeLsjsonList.begin(), analyzeLsjsonList.end(), [&s](const auto& x){
             return x.filename() == s.filename();
         });
-        if(result == analyzeCsvList.end()){
+        if(result == analyzeLsjsonList.end()){
             messageList.emplace_back(std::make_pair(s.filename(), Type::Add));
         }
     }
@@ -197,10 +203,10 @@ ErrorStatus divisi_mvmz::reanalysis()
             messageList.emplace_back(std::make_pair(path.filename(), Type::Update));
         }
     };
-    for(auto s : analyzeCsvList)
+    for(auto s : analyzeLsjsonList)
     {
-        if(s.extension() != ".csv"){ continue; }
-        CompareFileHash(std::move(s), updateCsvList);
+        if(s.extension() != ".lsjson"){ continue; }
+        CompareFileHash(std::move(s), updateLsjsonList);
     }
 
     //ファイルの並びが揃ってないので一旦揃える
@@ -222,6 +228,16 @@ ErrorStatus divisi_mvmz::reanalysis()
         else if(mes.second == Type::Update){
             std::cout << "Update : " << mes.first << std::endl;
             fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first, fs::copy_options::overwrite_existing);
+        }
+    }
+
+    //再解析に使用したjsonのコピー
+    for(const auto& f : fs::recursive_directory_iterator{updateDirPath}) {
+        auto extension = f.path().extension();
+        if(extension == ".json") {
+            auto filename = f.path().filename();
+            fs::copy(updateDirPath / filename, analyzeDirPath / filename, fs::copy_options::overwrite_existing);
+            fs::remove(f.path());
         }
     }
 
