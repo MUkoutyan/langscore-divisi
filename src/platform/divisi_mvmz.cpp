@@ -871,7 +871,7 @@ void divisi_mvmz::updatePluginInfo()
             params[EnableTranslationDefLang] = (enableTransDefLang ? "true"s : "false"s);
             params[MustBeIncludedImage] = "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s;
         }
-        else if(pluginName == "Langscore") {
+        else if(pluginName == "Langscore_ObserverBridge") {
 
             findLangscoreObserverPluginInfo = true;
         }
@@ -881,7 +881,6 @@ void divisi_mvmz::updatePluginInfo()
     if(findLangscorePluginInfo == false)
     {
         //Langscoreの新規追加。
-        //
         nlohmann::ordered_json newPlugin = {
             {"name", "Langscore"},
             {"status", true},
@@ -896,13 +895,6 @@ void divisi_mvmz::updatePluginInfo()
             }}
         };
         pluginList.emplace_back(std::move(newPlugin));
-
-        //if(size == 0) {
-        //    formattedJson << newPlugin.dump() << "\n";
-        //}
-        //else {
-        //    formattedJson << newPlugin.dump() << ",\n";
-        //}
     }
     
     if(findLangscoreObserverPluginInfo == false)
@@ -917,12 +909,6 @@ void divisi_mvmz::updatePluginInfo()
             {"parameters", {}}
         };
         pluginList.insert(pluginList.begin(), std::move(newPlugin));
-        //if(size == 0 || findLangscorePluginInfo) {
-        //    formattedJson << newObserverPlugin.dump() << "\n";
-        //}
-        //else {
-        //    formattedJson << newObserverPlugin.dump() << ",\n";
-        //}
     }
 
     std::stringstream formattedJson;
@@ -938,17 +924,6 @@ var $plugins =
         }
     }
     formattedJson << "\n];\n";
-    //for(auto begin = jsonObject.begin(); begin != jsonObject.end(); ++begin)
-    //{
-    //    // プラグインを整形して追加
-    //    numPlugins++;
-    //    formattedJson << (*begin).dump();
-    //    if(numPlugins < size) {
-    //        formattedJson << ",\n";
-    //    }
-    //}
-    //formattedJson << "\n];\n";
-
 
     // ファイルに書き戻す
     std::ofstream outFile(this->currentGameProjectPath / u8"js/plugins.js"s);
