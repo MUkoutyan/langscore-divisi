@@ -258,12 +258,22 @@ ErrorStatus langscore::divisi_mvmz::updatePlugin()
 {
     std::cout << "Update plugin..." << std::endl;
     config config;
-    auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore.js"s;
-    bool replaceLs = fs::exists(outputScriptFilePath) == false;
-    if(replaceLs == false) {
-        replaceLs = config.overwriteLangscore();
+    {
+        auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore.js"s;
+        bool replaceLs = fs::exists(outputScriptFilePath) == false;
+        if(replaceLs == false) {
+            replaceLs = config.overwriteLangscore();
+        }
+        writeLangscorePlugin("Langscore.js", replaceLs);
     }
-    writeLangscorePlugin(replaceLs);
+    {
+        auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore_ObserverBridge.js"s;
+        bool replaceLs = fs::exists(outputScriptFilePath) == false;
+        if(replaceLs == false) {
+            replaceLs = config.overwriteLangscore();
+        }
+        writeLangscorePlugin("Langscore_ObserverBridge.js", replaceLs);
+    }
     std::cout << "Update plugin done." << std::endl;
 
     std::cout << "Copy font file." << std::endl;
@@ -774,34 +784,37 @@ void langscore::divisi_mvmz::writeFixedScript()
 
 
 
-void langscore::divisi_mvmz::writeLangscorePlugin(bool replaceLs)
+void langscore::divisi_mvmz::writeLangscorePlugin(std::filesystem::path fileName, bool replaceLs)
 {
     config config;
     //Langscore.jsの出力
-    auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore.js"s;
+    auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/"s / fileName;
 
     if(replaceLs) {
-        std::cout << "output langscore.js" << std::endl;
+        std::cout << "output " << fileName.string() << std::endl;
         auto resourceFolder = this->appPath.parent_path() / "resource";
-        const auto langscoreScriptFilePath = resourceFolder / u8"Langscore.js"s;
+        const auto langscoreScriptFilePath = resourceFolder / fileName;
         std::cout << "Copy langscore : From " << langscoreScriptFilePath << " To : " << outputScriptFilePath << std::endl;
         fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing);
         std::cout << "Done." << std::endl;
 
-        //現在の設定を元にlangscore.jsのカスタマイズ
-        auto fileLines = this->formatSystemVariable(langscoreScriptFilePath);
+        if(fileName == "Langscore.js") {
+            //現在の設定を元にlangscore.jsのカスタマイズ
+            auto fileLines = this->formatSystemVariable(langscoreScriptFilePath);
 
-        if(fs::exists(outputScriptFilePath))
-        {
-            std::cout << "Replace langscore : " << outputScriptFilePath << std::endl;
-            std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
-            for(const auto& l : fileLines) {
-                outScriptFile << utility::toString(l) << "\n";
+            if(fs::exists(outputScriptFilePath))
+            {
+                std::cout << "Replace langscore : " << outputScriptFilePath << std::endl;
+                std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
+                for(const auto& l : fileLines) {
+                    outScriptFile << utility::toString(l) << "\n";
+                }
             }
         }
+
     }
     else {
-        std::cout << "not output langscore.js. replace flag is false" << std::endl;
+        std::cout << "not output " << fileName << ". replace flag is false" << std::endl;
     }
 
     //plugin.jsの更新
@@ -886,6 +899,14 @@ void divisi_mvmz::updatePluginInfo()
             params[EnableLanguagePatch] = (enableLangPatch ? "true"s : "false"s);
             params[EnableTranslationDefLang] = (enableTransDefLang ? "true"s : "false"s);
             params[MustBeIncludedImage] = "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s;
+
+            if(params.contains(LanguageStateVariable) == false) {
+                params[LanguageStateVariable] = "0";
+            }
+            //数値型で格納されている場合は文字列に変換
+            if(params[LanguageStateVariable].is_number_integer()) {
+                params[LanguageStateVariable] = std::to_string(params[LanguageStateVariable].get<int>());
+            }
         }
         else if(pluginName == "Langscore_ObserverBridge") {
 
@@ -907,7 +928,7 @@ void divisi_mvmz::updatePluginInfo()
                 {DefaultLanguage,   utility::cnvStr<std::string>(this->defaultLanguage)},
                 {EnableLanguagePatch, (enableLangPatch ? "true"s : "false"s)},
                 {EnableTranslationDefLang, (enableTransDefLang ? "true"s : "false"s)},
-                {LanguageStateVariable, "-1"},
+                {LanguageStateVariable, "0"},
                 {MustBeIncludedImage, "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s}
             }}
         };
@@ -1047,6 +1068,7 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
         }
         else if(findStr(_line, u8"%{REQUIRED_ASSETS}%"))
         {
+            //必要ないかも
             std::stringstream ss;
             for(const auto& file : this->basicDataFileList) {
                 ss << " * @requiredAssets data/translates/" << file.filename().stem().string()+".csv" << utility::cnvStr<std::string>(nl);

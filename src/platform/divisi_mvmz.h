@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "platform_base.h"
 
@@ -32,7 +32,7 @@ namespace langscore
 		void adjustCSV(const std::u8string& rewriteCSVFolder, const utility::filelist& list);
 		bool adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv);
 
-        void writeLangscorePlugin(bool replaceLs);
+        void writeLangscorePlugin(std::filesystem::path fileName, bool replaceLs);
 		void updatePluginInfo();
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 
