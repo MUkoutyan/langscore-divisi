@@ -564,11 +564,13 @@ var Langscore = class
   //原文取得用のキャッシュを追加
   _createReverseMap(tr_list) 
   {
+    const reverseMap = new Map();
+    if(!tr_list || !(tr_list instanceof Map)){ return reverseMap; }
+    
     if (this._reverseOriginalTextCache.has(tr_list)) {
       return this._reverseOriginalTextCache.get(tr_list);
     }
     
-    const reverseMap = new Map();
     // 逆引きマップを構築
     for (const [originText, transMap] of tr_list.entries()) {
       for (const [lang, transText] of transMap.entries()) {
