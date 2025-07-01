@@ -64,6 +64,17 @@ add_library (divisi_lib STATIC ${lib_files})
 if(MSVC)
 	set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
 	set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+	
+	# リリースビルドでもデバッグ情報を生成してバックトレースでシンボル名を表示
+	target_compile_options(divisi_lib PRIVATE 
+		$<$<CONFIG:Release>:/Zi>  # リリースビルドでもデバッグ情報を生成
+		$<$<CONFIG:RelWithDebInfo>:/Zi>
+	)
+	
+	target_link_options(divisi_lib PRIVATE 
+		$<$<CONFIG:Release>:/DEBUG>  # リリースビルドでもPDBファイルを生成
+		$<$<CONFIG:RelWithDebInfo>:/DEBUG>
+	)
 else()
     add_compile_options(-stdlib=libc++)
 	target_link_libraries(divisi_lib)
