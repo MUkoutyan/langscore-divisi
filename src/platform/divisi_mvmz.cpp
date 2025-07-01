@@ -844,10 +844,10 @@ void divisi_mvmz::updatePluginInfo()
     for(const auto& f : fs::recursive_directory_iterator(picturesPath)) {
 
         if(f.is_directory()) { continue; }
-        auto fileName = f.path().filename().u8string();
+        auto fileName = f.path().filename().stem().u8string();
         auto relativePath = f.path().lexically_relative(picturesPath);
         for(const auto& t : this->supportLangs) {
-            if(utility::includes(fileName, u8"_" + t)) {
+            if(fileName.ends_with(u8"_" + t)) {
                 pictureFiles.emplace_back(u8"\""s + (relativePath.parent_path() / relativePath.stem()).generic_u8string() + u8"\""s);
             }
         }
@@ -902,11 +902,12 @@ void divisi_mvmz::updatePluginInfo()
             {"status", true},
             {"description", cnvStr<std::string>(langscorePluginDescription)},
             {"parameters", {
+                //必ず文字列で含めること
                 {SupportLanguage,   langs},
                 {DefaultLanguage,   utility::cnvStr<std::string>(this->defaultLanguage)},
                 {EnableLanguagePatch, (enableLangPatch ? "true"s : "false"s)},
                 {EnableTranslationDefLang, (enableTransDefLang ? "true"s : "false"s)},
-                {LanguageStateVariable, -1},
+                {LanguageStateVariable, "-1"},
                 {MustBeIncludedImage, "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s}
             }}
         };
