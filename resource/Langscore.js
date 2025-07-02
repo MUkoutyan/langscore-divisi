@@ -230,6 +230,10 @@ var Langscore = class
       if(!this.basePath) {this.basePath = this.path.dirname(process.mainModule.filename); }
     }
 
+    if(!window._LangscoreObserverQueue){
+      console.warn("Langscore_ObserverBridgeプラグインが読み込まれていません。");
+    }
+
     this.updateTranslateLanguageList();
   }
 
@@ -502,9 +506,11 @@ var Langscore = class
       }
     }
 
-    window._LangscoreObserverQueue.forEach(function(method) {
-      method(Langscore.langscore_current_language);
-    });
+    if(window._LangscoreObserverQueue){
+      window._LangscoreObserverQueue.forEach(function(method) {
+        method(Langscore.langscore_current_language);
+      });
+    }
     this.Langscore_PluginCustom();
     
     this.ls_graphic_cache = {};
