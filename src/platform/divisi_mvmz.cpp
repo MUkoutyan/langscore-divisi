@@ -898,7 +898,34 @@ void divisi_mvmz::updatePluginInfo()
             }
             params[EnableLanguagePatch] = (enableLangPatch ? "true"s : "false"s);
             params[EnableTranslationDefLang] = (enableTransDefLang ? "true"s : "false"s);
-            params[MustBeIncludedImage] = "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s;
+
+            //MustBeIncludedImageのパラメータを更新
+            //MustBeIncludedImage内に既存の画像があれば残して追記
+            auto currentIncludedImages = utility::cnvStr<std::u8string>(params.value(MustBeIncludedImage, "[]"s));
+            if(currentIncludedImages.empty() || currentIncludedImages == u8"[]"s) {
+                params[MustBeIncludedImage] = "["s + utility::cnvStr<std::string>(utility::join(pictureFiles, u8","s)) + "]"s;
+            }
+            else {
+                //既存の画像と新規の画像をマージ
+                //plugins.js内の画像を取得
+                std::vector<std::u8string> existingImageList;
+                auto existingImages = nlohmann::json::parse(currentIncludedImages);
+                if(existingImages.is_array()) {
+                    for(const auto& img : existingImages) {
+                        if(img.is_string()) {
+                            //\"\"が消えているので追記する
+                            existingImageList.emplace_back(u8"\"" + utility::cnvStr<std::u8string>(img.get<std::string>()) + u8"\"");
+                        }
+                    }
+                }
+                //新規の画像を末尾に追加
+                for(auto&& img : pictureFiles) {
+                    if(std::ranges::find(existingImageList, img) == existingImageList.end()) {
+                        existingImageList.emplace_back(std::move(img));
+                    }
+                }
+                params[MustBeIncludedImage] = "["s + utility::cnvStr<std::string>(utility::join(existingImageList, u8","s)) + "]"s;
+            }
 
             if(params.contains(LanguageStateVariable) == false) {
                 params[LanguageStateVariable] = "0";
