@@ -194,6 +194,11 @@ int main(int argc, const char* argv[])
 
 	langscore::divisi divisi(args.appPath, args.configFile);
 
+    if(std::filesystem::exists(args.configFile) == false) {
+        std::cerr << "Config file does not exist: " << args.configFile << std::endl;
+        return -1;
+    }
+
 	ErrorStatus result;
     if(args.createConfigFile) {
         result = divisi.createConfig(args.gameProjectPath);
