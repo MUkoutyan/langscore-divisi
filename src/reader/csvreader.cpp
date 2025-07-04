@@ -73,7 +73,18 @@ plaincsvreader::~plaincsvreader()
 std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path path)
 {
 	std::ifstream file(path, std::ios::binary);
-	if(!file){ return {}; }
+	if(!file){ return {}; 
+    }
+    // BOMチェックとスキップ
+    if(file.peek() == 0xEF) {
+        unsigned char bom[3];
+        file.read(reinterpret_cast<char*>(bom), 3);
+        if(!(bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF)) {
+            // BOMでなければファイルポインタを先頭に戻す
+            file.seekg(0);
+        }
+    }
+
 
 	utility::u8stringlist rows;
 	std::u8string line_buffer;
