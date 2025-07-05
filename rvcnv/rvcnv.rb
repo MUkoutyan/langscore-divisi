@@ -606,6 +606,10 @@ if packing
     origin = LsDumpData.new
     File.open(input_folder_path + "/" + fileName, 'rb:utf-8:utf-8') do |file|
       texts = file.readlines().join()
+      
+      # BOM（Byte Order Mark）を削除
+      texts = texts.sub(/\A\uFEFF/, '')
+      
       if fileName.match?(/Map[0-9]{3}/)
         #Map系に\r\nが含まれていたら\nに変換
         texts = texts.gsub(/\r\n/, "\n")
