@@ -19,7 +19,11 @@ class LSCSV
     file = open(Langscore::get_translate_folder + "/" + file_name)
     $lscsv_resource_locker.unlock
 
-    return from_content(file, file_name, Langscore::SUPPORT_LANGUAGE)
+    begin
+      return from_content(file, file_name, Langscore::SUPPORT_LANGUAGE)
+    rescue => e
+      return {}
+    end
   end
 
   def self.to_hash_patch_mode(file_name)
