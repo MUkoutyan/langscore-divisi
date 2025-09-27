@@ -554,7 +554,7 @@ end
 
 #================================================
 opt = OptionParser.new
-Version = "1.0.3"
+Version = "1.0.4"
 
 p "RVCNV Version #{Version}"
 
@@ -610,8 +610,10 @@ if packing
       # BOM（Byte Order Mark）を削除
       texts = texts.sub(/\A\uFEFF/, '')
       
-      if fileName.match?(/Map[0-9]{3}/)
-        #Map系に\r\nが含まれていたら\nに変換
+      p fileName
+      if fileName.match?(/Map[0-9]{3}/) || fileName.include?("CommonEvents") || fileName.include?("Troops")
+        #メッセージテキストが含まれるデータコンテナに\r\nが含まれていたら\nに変換
+        p "change CRLF to LF"
         texts = texts.gsub(/\r\n/, "\n")
       elsif fileName.include?("Scripts")
         #スクリプト系は一旦無加工にする。
