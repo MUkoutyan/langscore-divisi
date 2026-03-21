@@ -184,7 +184,6 @@ var Langscore = class
   constructor()
   {
     this._lscsv = new LSCSV();
-    this._updateMethods = [];
 
     this._databaseFiles = [
       { name: 'ls_actors_tr', src: 'Actors.csv' },
@@ -453,10 +452,16 @@ var Langscore = class
     this.ls_armors_tr.clear();
     this.ls_items_tr.clear();
     this.ls_enemies_tr.clear();
-    this.ls_graphics_tr = this._lscsv.to_map("Graphics")
-    this.ls_scripts_tr = this._lscsv.to_map("Scripts")
-    this.ls_troops_tr = this._lscsv.to_map("Troops")
-    this.ls_common_event = this._lscsv.to_map("CommonEvents")
+    this.ls_graphics_tr = new Map();
+    this.ls_scripts_tr = new Map();
+    this.ls_troops_tr = new Map();
+    this.ls_common_event = new Map();
+    
+    // CSVファイルの読み込み。to_mapは内部で呼び出している。
+    this.loadSystemDataFile('ls_graphics_tr', 'Graphics.csv');
+    this.loadSystemDataFile('ls_scripts_tr', 'Scripts.csv');
+    this.loadSystemDataFile('ls_troops_tr', 'Troops.csv');
+    this.loadSystemDataFile('ls_common_event', 'CommonEvents.csv');
   
     changeLanguage(Langscore.langscore_current_language)
   }
@@ -897,7 +902,13 @@ var Langscore = class
   {
     if(!this.ls_scripts_tr){ return; }
     var parent = this;
-    for (const [key, trans] of Object.entries(this.ls_scripts_tr)) {
+    
+    // MapオブジェクトかObjectかに応じてイテレート方法を変更する。
+    const iterateEntries = this.ls_scripts_tr instanceof Map
+                         ? this.ls_scripts_tr
+                         : Object.entries(this.ls_scripts_tr);
+
+    for (const [key, trans] of iterateEntries) {
       var infos = key.split(':');
       if(infos.length <= 1 || 2 < infos.length){ continue; }
       var params = PluginManager.parameters(infos[0]);
@@ -906,7 +917,9 @@ var Langscore = class
       //パスの場合の処理
       if(infos[1].includes("/")){
         if(trans){
-            var text = trans.get(Langscore.langscore_current_language);
+            var text = this.ls_scripts_tr instanceof Map 
+              ? trans.get(Langscore.langscore_current_language)
+              : trans[Langscore.langscore_current_language];
             if(text){
                 // JSON文字列である可能性があるため、replaceNestedJSONを呼び出す
                 params = parent.replaceNestedJSON(params, infos[1], text);
@@ -919,7 +932,9 @@ var Langscore = class
         //通常の文字列の場合の処理
         var param = params[infos[1]];
         if(param && trans){
-          var text = trans.get(Langscore.langscore_current_language);
+          var text = this.ls_scripts_tr instanceof Map 
+            ? trans.get(Langscore.langscore_current_language)
+            : trans[Langscore.langscore_current_language];
           if(text){
             PluginManager._parameters[infos[0].toLowerCase()][infos[1]] = text;
           }
@@ -1154,6 +1169,10 @@ var Langscore = class
         }
       });
       }
+  }
+
+  registerUpdateMethodAtLanguageUpdate(method) {
+    window._registerLangscoreObserver(method);
   }
  
   Langscore_PluginCustom(){
