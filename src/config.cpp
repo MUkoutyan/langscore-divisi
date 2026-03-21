@@ -1,15 +1,4 @@
 #include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
-#include "config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
