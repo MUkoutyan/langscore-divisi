@@ -1,7 +1,7 @@
 #---------------------------------------------------------------
 # 
 # Langscore CoreScript "Unison" 
-# Version 1.1.0
+# Version 1.1.1
 # Written by BreezeSinfonia 來奈津
 # 
 # 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -123,6 +123,16 @@ module Langscore
       if translist.has_key?(lang)
         t = translist[lang]
         text = t unless t.empty?
+      end
+    else
+      # 末尾の改行文字を削除して再試行
+      key = key.chomp("\r\n")
+      if langscore_hash.has_key?(key)
+        translist = langscore_hash[key]
+        if translist.has_key?(lang)
+          t = translist[lang]
+          text = t unless t.empty?
+        end
       end
     end
     text
@@ -420,9 +430,6 @@ class Game_Map
 
     return if $ls_current_map.include?(@map_id)
     $ls_current_map[@map_id] = LSCSV.to_hash(file_name)
-    #メモリ節約のためファイナライズで翻訳内容を消す。GC頼りなのでおまじない程度の気持ち。
-    #会話中に何故かクラッシュした場合は真っ先に外す。
-    ObjectSpace.define_finalizer(self, Game_Map.ls_finalize)
   end
 end
 
