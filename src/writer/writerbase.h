@@ -17,7 +17,7 @@ namespace langscore
         writerbase(Reader&& reader)
             : useLangs(reader.curerntUseLangList()), texts(reader.currentTexts())
             , scriptTranslatesMap(reader.curerntScriptTransMap())
-            , overwriteMode(MergeTextMode::AcceptSource), fillDefaultLanguageColumn(false){
+            , overwriteMode(MergeTextMode::AcceptSource), isAddNewContentToEnd(false), fillDefaultLanguageColumn(false){
         }
         writerbase(const std::unique_ptr<readerbase>& reader): writerbase(*reader){}
         virtual ~writerbase();
@@ -27,6 +27,9 @@ namespace langscore
 
         void setOverwriteMode(MergeTextMode overwriteMode) noexcept {
             this->overwriteMode = overwriteMode;
+        }
+        void setAddNewContentToEnd(bool is) noexcept {
+            this->isAddNewContentToEnd = is;
         }
         void setFillDefLangCol(bool is) noexcept {
             this->fillDefaultLanguageColumn = is;
@@ -49,6 +52,7 @@ namespace langscore
         std::vector<TranslateText> texts;
         ScriptPackage scriptTranslatesMap;
         MergeTextMode overwriteMode;
+        bool isAddNewContentToEnd;
         bool fillDefaultLanguageColumn;
 
         static void writeU8String(std::ofstream& out, std::u8string text);

@@ -664,6 +664,9 @@ void langscore::divisi_mvmz::writeFixedBasicData()
     });
     dataFileList.erase(rm_result.begin(), rm_result.end());
 
+    const bool fillDefaultLanguageColumn = config.fillDefaultLanguageColumn();
+    const bool addNewContentToEnd = config.AddNewContentToEnd();
+
     if(config.enableLanguagePatch())
     {
         const auto pair = config.exportDirectoryWithLang(root);
@@ -681,7 +684,15 @@ void langscore::divisi_mvmz::writeFixedBasicData()
             {
                 auto outputPath = translateFolder / csvFilePath;
                 std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
-                writeFixedTranslateText<csvwriter>(outputPath, reader, this->defaultLanguage, {lang}, mergeTextMode);
+
+                WriteOptions options = {
+                    .defaultLanguage = this->defaultLanguage,
+                    .supportLangs    = {lang},
+                    .overwriteMode   = mergeTextMode,
+                    .isAddNewContentToEnd = addNewContentToEnd,
+                    .fillDefaultLanguageColumn = fillDefaultLanguageColumn
+                };
+                writeFixedTranslateText<csvwriter>(outputPath, reader, std::move(options));
 
                 this->fetchActorTextFromMap(translateFolder, dataFileList, jsonreader_map);
                 this->adjustCSV(translateFolder, dataFileList);
@@ -707,7 +718,14 @@ void langscore::divisi_mvmz::writeFixedBasicData()
             {
                 auto outputPath = translateFolder / csvFilePath;
                 std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
-                writeFixedTranslateText<csvwriter>(outputPath, reader, this->defaultLanguage, this->supportLangs, mergeTextMode);
+                WriteOptions options = {
+                    .defaultLanguage = this->defaultLanguage, 
+                    .supportLangs    = this->supportLangs,
+                    .overwriteMode   = mergeTextMode,
+                    .isAddNewContentToEnd = addNewContentToEnd,
+                    .fillDefaultLanguageColumn = fillDefaultLanguageColumn
+                };
+                writeFixedTranslateText<csvwriter>(outputPath, reader, std::move(options));
                 jsonreader_map[path.filename()] = std::move(reader);
             }
         }
@@ -748,6 +766,9 @@ void langscore::divisi_mvmz::writeFixedScript()
 
     std::u8string root;
 
+    const bool fillDefaultLanguageColumn = config.fillDefaultLanguageColumn();
+    const bool addNewContentToEnd = config.AddNewContentToEnd();
+
     if(config.enableLanguagePatch())
     {
         // 言語パッチモードが有効な場合、言語ごとに分けて出力
@@ -761,7 +782,14 @@ void langscore::divisi_mvmz::writeFixedScript()
 
             auto outputPath = translateFolder / fs::path{"Scripts.csv"};
             std::cout << "Write Fix Script CSV : " << outputPath << std::endl;
-            writeFixedTranslateText<csvwriter>(outputPath, scriptReader, this->defaultLanguage, {lang}, mergeTextMode, false);
+            WriteOptions options = {
+                .defaultLanguage = this->defaultLanguage,
+                .supportLangs = {lang},
+                .overwriteMode = mergeTextMode,
+                .isAddNewContentToEnd = addNewContentToEnd,
+                .fillDefaultLanguageColumn = fillDefaultLanguageColumn
+            };
+            writeFixedTranslateText<csvwriter>(outputPath, scriptReader, std::move(options));
         }
     }
     else
@@ -775,7 +803,14 @@ void langscore::divisi_mvmz::writeFixedScript()
 
         for(auto& translateFolder : translateFolderList) {
             std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-            writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, scriptReader, this->defaultLanguage, this->supportLangs, mergeTextMode, false);
+            WriteOptions options = {
+                .defaultLanguage = this->defaultLanguage,
+                .supportLangs    = this->supportLangs,
+                .overwriteMode   = mergeTextMode,
+                .isAddNewContentToEnd = addNewContentToEnd,
+                .fillDefaultLanguageColumn = fillDefaultLanguageColumn
+            };
+            writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, scriptReader, std::move(options));
         }
     }
 

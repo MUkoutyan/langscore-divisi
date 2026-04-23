@@ -75,20 +75,29 @@ namespace langscore
 
         virtual std::filesystem::path getGameProjectFontDirectory() const { return {}; }
 
+        struct WriteOptions {
+            std::u8string defaultLanguage;
+            utility::u8stringlist supportLangs;
+            MergeTextMode overwriteMode = MergeTextMode::AcceptSource;
+            bool isAddNewContentToEnd = false;
+            bool fillDefaultLanguageColumn = true;
+
+        };
 
 		template<class Writer, class Reader>
-		ErrorStatus writeFixedTranslateText(std::filesystem::path path, Reader&& reader, std::u8string defaultLanguage, utility::u8stringlist supportLangs, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool fillDefaultLanguageColumn = true) {
-			return writeFixedTranslateText(Writer{reader}, std::move(path), std::move(defaultLanguage), std::move(supportLangs), overwriteMode, fillDefaultLanguageColumn);
+		ErrorStatus writeFixedTranslateText(std::filesystem::path path, Reader&& reader, WriteOptions options) {
+			return writeFixedTranslateText(Writer{reader}, std::move(path), std::move(options));
 		}
 		template<class Writer>
-		ErrorStatus writeFixedTranslateText(std::filesystem::path path, const std::unique_ptr<readerbase>& json, std::u8string defaultLanguage, utility::u8stringlist supportLangs, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool fillDefaultLanguageColumn = true){
-			return writeFixedTranslateText(Writer{json}, std::move(path), std::move(defaultLanguage), std::move(supportLangs), overwriteMode, fillDefaultLanguageColumn);
+		ErrorStatus writeFixedTranslateText(std::filesystem::path path, const std::unique_ptr<readerbase>& json, WriteOptions options){
+			return writeFixedTranslateText(Writer{json}, std::move(path), std::move(options));
 		}
 
 		template<class Writer>
-		ErrorStatus writeFixedTranslateText(Writer writer, std::filesystem::path path, std::u8string defaultLanguage, utility::u8stringlist supportLangs, MergeTextMode overwriteMode, bool fillDefaultLanguageColumn){
+		ErrorStatus writeFixedTranslateText(Writer writer, std::filesystem::path path, WriteOptions options){
 
-			writer.setOverwriteMode(overwriteMode);
+			writer.setOverwriteMode(options.overwriteMode);
+            writer.setAddNewContentToEnd(options.isAddNewContentToEnd);
 			//既に編集済みのCSVがある場合はマージを行う。
 			if(std::filesystem::exists(path)) {
 				if(writer.merge(path) == false) {
@@ -96,10 +105,10 @@ namespace langscore
 				}
 			}
 
-			writer.setFillDefLangCol(fillDefaultLanguageColumn);
-            writer.setSupportLanguage(std::move(supportLangs));
+			writer.setFillDefLangCol(options.fillDefaultLanguageColumn);
+            writer.setSupportLanguage(std::move(options.supportLangs));
 
-			return writer.write(std::move(path), std::move(defaultLanguage), overwriteMode);
+			return writer.write(std::move(path), std::move(options.defaultLanguage), options.overwriteMode);
 		}
 
         struct ValidateTextInfo 

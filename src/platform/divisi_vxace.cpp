@@ -619,7 +619,15 @@ void langscore::divisi_vxace::writeFixedBasicData()
                 auto outputPath = translateFolder / csvFilePath;
                 std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
                 std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, json);
-                writeFixedTranslateText<csvwriter>(outputPath, reader, this->defaultLanguage, {lang}, mergeTextMode);
+
+                WriteOptions options = {
+                    .defaultLanguage = this->defaultLanguage,
+                    .supportLangs = {lang},
+                    .overwriteMode = mergeTextMode,
+                    .isAddNewContentToEnd = false,
+                    .fillDefaultLanguageColumn = false
+                };
+                writeFixedTranslateText<csvwriter>(outputPath, reader, std::move(options));
                 jsonreader_map[path.filename()] = std::move(reader);
 
                 // 言語ごとのフォルダに対して処理を行うため、u8stringlistに変換
@@ -645,7 +653,15 @@ void langscore::divisi_vxace::writeFixedBasicData()
                 auto outputPath = translateFolder / csvFilePath;
                 std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
                 std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, json);
-                writeFixedTranslateText<csvwriter>(outputPath, reader, this->defaultLanguage, this->supportLangs, mergeTextMode);
+
+                WriteOptions options = {
+                    .defaultLanguage = this->defaultLanguage,
+                    .supportLangs = this->supportLangs,
+                    .overwriteMode = mergeTextMode,
+                    .isAddNewContentToEnd = false,
+                    .fillDefaultLanguageColumn = false
+                };
+                writeFixedTranslateText<csvwriter>(outputPath, reader, std::move(options));
                 jsonreader_map[path.filename()] = std::move(reader);
             }
         }
@@ -747,7 +763,15 @@ void langscore::divisi_vxace::writeFixedRvScript()
 
             auto outputPath = translateFolder / fs::path{"Scripts.csv"};
             std::cout << "Write Fix Script CSV : " << outputPath << std::endl;
-            writeFixedTranslateText<csvwriter>(outputPath, reader, this->defaultLanguage, {lang}, mergeTextMode, false);
+
+            WriteOptions options = {
+                .defaultLanguage = this->defaultLanguage,
+                .supportLangs = {lang},
+                .overwriteMode = mergeTextMode,
+                .isAddNewContentToEnd = false,
+                .fillDefaultLanguageColumn = false
+            };
+            writeFixedTranslateText<csvwriter>(outputPath, reader, std::move(options));
         }
     }
     else
@@ -764,7 +788,15 @@ void langscore::divisi_vxace::writeFixedRvScript()
 
         for(auto& translateFolder : translateFolderList) {
             std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
-            writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, reader, this->defaultLanguage, this->supportLangs, mergeTextMode, false);
+
+            WriteOptions options = {
+                .defaultLanguage = this->defaultLanguage,
+                .supportLangs = this->supportLangs,
+                .overwriteMode = mergeTextMode,
+                .isAddNewContentToEnd = false,
+                .fillDefaultLanguageColumn = false
+            };
+            writeFixedTranslateText<csvwriter>(translateFolder / fs::path{"Scripts.csv"}, reader, std::move(options));
         }
     }
 
@@ -984,7 +1016,14 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
         rubyreader reader(this->supportLangs, scriptList);
         reader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList, def_lang);
 
-        writeFixedTranslateText<langscore_custom_rb_writer>(reader, lsCustomScriptPath, this->defaultLanguage, this->supportLangs, langscore::MergeTextMode::AcceptTarget, true);
+        WriteOptions options = {
+            .defaultLanguage = this->defaultLanguage,
+            .supportLangs = this->supportLangs,
+            .overwriteMode = MergeTextMode::AcceptTarget,
+            .isAddNewContentToEnd = false,
+            .fillDefaultLanguageColumn = true
+        };
+        writeFixedTranslateText<langscore_custom_rb_writer>(reader, lsCustomScriptPath, std::move(options));
     }
     else {
         std::cout << "not replace langscore_custom.rb. replace flag is false" << std::endl;

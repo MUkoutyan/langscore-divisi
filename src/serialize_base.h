@@ -57,6 +57,7 @@ namespace langscore
         std::u8string scriptParamType;  //(MV,MZ)プラグインのパラメータの型
         int code;   //RPGツクールでコマンドを検出した際に使用
         std::vector<std::u8string> textType; //ツクール内での種類(名前、説明、アイコン付きテキスト、テキスト等)
+        bool isNewText = false; //マージ時に使用。新規に追加される文章と判定されたらtrue
 
         bool operator==(const TranslateText& obj) const {
             return this->original == obj.original

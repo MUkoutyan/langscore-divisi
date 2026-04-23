@@ -27,6 +27,8 @@ namespace langscore
 		void writeFixedBasicData();
 		void writeFixedScript();
 
+        //アクター名や二つ名といったプレイヤーに関する内容を変えるイベントはマップに埋め込まれるため、
+        //Actorのデータと整合性を取るための処理。
 		void fetchActorTextFromMap(const std::u8string& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<readerbase>>&);
 
 		void adjustCSV(const std::u8string& rewriteCSVFolder, const utility::filelist& list);

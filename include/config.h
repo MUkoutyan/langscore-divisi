@@ -146,6 +146,8 @@ namespace langscore
         utility::u8stringlist extendControlCharList();
         char globalWriteMode();
         bool enableLanguagePatch();
+        bool fillDefaultLanguageColumn();
+        bool AddNewContentToEnd();
 
         //int validateTextMode();
         //std::vector<int> validateSizeList();

@@ -249,7 +249,14 @@ void platform_base::writeFixedGraphFileNameData()
 
             // 言語ごとの翻訳テキストを作成
             speciftranstext transText{transTextList};
-            writeFixedTranslateText<uniquerowcsvwriter>(outputPath, transText, this->defaultLanguage, std::vector<std::u8string>{lang}, mergeTextMode);
+            WriteOptions options = {
+                .defaultLanguage = this->defaultLanguage,
+                .supportLangs = {lang},
+                .overwriteMode = mergeTextMode,
+                .isAddNewContentToEnd = false,
+                .fillDefaultLanguageColumn = false
+            };
+            writeFixedTranslateText<uniquerowcsvwriter>(outputPath, transText, std::move(options));
         }
     }
     else
@@ -260,7 +267,14 @@ void platform_base::writeFixedGraphFileNameData()
 
         for(auto& csvPath : csvPathList) {
             std::cout << "Write Graphics : " << csvPath << std::endl;
-            writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transText, this->defaultLanguage, this->supportLangs, mergeTextMode);
+            WriteOptions options = {
+                .defaultLanguage = this->defaultLanguage,
+                .supportLangs = {this->supportLangs},
+                .overwriteMode = mergeTextMode,
+                .isAddNewContentToEnd = false,
+                .fillDefaultLanguageColumn = false
+            };
+            writeFixedTranslateText<uniquerowcsvwriter>(csvPath, transText, std::move(options));
         }
     }
 

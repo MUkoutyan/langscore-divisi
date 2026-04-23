@@ -56,6 +56,10 @@ namespace langscore
         ControlCharList,
 
         EnableTranslationDefLang,
+        ParameterText,
+
+        FillDefaultLanguageColumn,
+        AddNewContentToEnd,
 
         //=========================
         //必ず末尾に追加すること

@@ -67,101 +67,27 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 
     std::vector<TranslateText> textTobeAdded;
     std::unordered_map<MergeTextMode, std::vector<size_t>> mergeInfo;
-    //追加済のテキストは弾く。
- //   if(this->overwriteMode == MergeTextMode::MergeKeepSource)
- //   {
- //       for(auto begin = this->texts.begin(); begin != this->texts.end(); ++begin)
- //       {
- //           auto target = AdjustText(begin->original);
- //           if(target.empty()) { continue; }
- //           auto r = std::find_if(sourceTranslates.begin(), sourceTranslates.end(), [&](const auto& t) {
- //               auto source_origin = AdjustText(t.original);
- //               return CompareText(source_origin, target);
- //               });
- //           if(r != sourceTranslates.end()) {
- //               *begin = *r;
- //           }
- //           else {
- //               textTobeAdded.emplace_back(*begin);
- //           }
- //       }
- //   }
- //   else if(this->overwriteMode == MergeTextMode::MergeKeepTarget)
- //   {
- //       for(auto begin = sourceTranslates.begin(); begin != sourceTranslates.end(); ++begin)
- //       {
- //           auto target = AdjustText(begin->original);
- //           if(target.empty()) { continue; }
- //           auto r = std::find_if(this->texts.begin(), this->texts.end(), [&](const auto& t) {
- //               auto source_origin = AdjustText(t.original);
- //               return CompareText(source_origin, target);
- //           });
- //           if(r != this->texts.end()) {
- //               *begin = *r;
- //           }
- //           else {
- //               textTobeAdded.emplace_back(*begin);
- //           }
- //       }
- //   }
 
- //   if(textTobeAdded.empty()) {
- //       std::cout << "No merge required" << std::endl;
- //       return true;
- //   }
-
-	//auto source_i = sourceTranslates.begin();
-	//auto target_i = textTobeAdded.begin();
-	//std::u8string source_origin;
-	//std::u8string target_origin;
-
-	//std::unordered_map<MergeTextMode, std::vector<size_t>> mergeInfo;
-	//const auto AddForSource = [&]()
-	//{
-	//	if(source_i == sourceTranslates.end()){ return false; }
-	//	if(source_i->translates.size() != languages.size()) {
-	//		for (const auto& lang : languages) {
-	//			if (source_i->translates.find(lang) == source_i->translates.end()) {
-	//				source_i->translates[lang] = u8"";
-	//			}
-	//		}
-	//	}
-	//	result.emplace_back(*source_i);
-	//	source_origin.clear();
-	//	mergeInfo[MergeTextMode::MergeKeepTarget].emplace_back(result.size());
-	//	++source_i;
-	//	return true;
-	//};
-	//const auto AddForTarget = [&]()
-	//{
-	//	if(target_i == textTobeAdded.end()){ return false; }
-	//	if(target_i->translates.size() != languages.size()) {
-	//		for (const auto& lang : languages) {
-	//			if (target_i->translates.find(lang) == target_i->translates.end()) {
-	//				target_i->translates[lang] = u8"";
-	//			}
-	//		}
-	//	}
-	//	result.emplace_back(*target_i);
-	//	target_origin.clear();
-	//	++target_i;
-	//	return true;
-	//};
-
+    for(auto& text : this->texts) {
+        text.isNewText = true;
+    }
 
     if(this->overwriteMode == MergeTextMode::MergeKeepSource)
     {
         for(auto& sourceText : sourceTranslates)
         {
+            //source側に翻訳文があるケースが有るため、texts側をsourceで上書きする。
             auto r = std::find_if(this->texts.begin(), this->texts.end(), [&](const auto& x) {
                 return CompareText(AdjustText(x.original), AdjustText(sourceText.original));
             });
             if(r == this->texts.end())
             {
+                sourceText.isNewText = true;
                 textTobeAdded.emplace_back(sourceText);
                 continue;
             }
 
+            sourceText.isNewText = false;
             *r = sourceText;
         }
     }
@@ -172,98 +98,15 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
                 return CompareText(AdjustText(x.original), AdjustText(sourceText.original));
             });
             if(r == this->texts.end()){
+                sourceText.isNewText = true;
                 textTobeAdded.emplace_back(sourceText);
+            }
+            else {
+                sourceText.isNewText = false;
             }
         }
     }
-    
 
-	//while(target_i != textTobeAdded.end() || source_i != sourceTranslates.end())
-	//{
-    //  const bool validTarget = target_i != textTobeAdded.end();
-	//	const bool validSource = source_i != sourceTranslates.end();
-    //  if(validTarget) {
-    //      target_origin = AdjustText(target_i->original);
-    //  }
-	//	if(validSource){
-	//		source_origin = AdjustText(source_i->original);
-	//	}
-	//	//原文が一致した場合した場合、翻訳文が競合しているかで適宜マージを行う。
-	//	if(validSource && validTarget && CompareText(source_origin, target_origin))
-	//	{
-	//		if(source_origin.empty()){
-	//			++source_i;
-	//			++target_i;
-	//			continue;
-	//		}
-	//		auto trans_result = *target_i;
-	//		for(const auto& lang : languages)
-	//		{
-	//			//マージ元に言語列があるかをチェック
-	//			if(source_i->translates.find(lang) == source_i->translates.end()){
-	//				//無ければ何もしない(競合しないし結合も出来ないので)
-	//				continue;
-	//			}
-	//			auto sourceTransText = withoutQuote(source_i->translates[lang]);
-	//			auto targetTransText = withoutQuote(trans_result.translates[lang]);
-	//			//内容が異なる場合はマージモードに準拠して内容を入れ替える
-	//			if(sourceTransText != targetTransText)
-	//			{
-	//				if(overwriteMode == MergeTextMode::MergeKeepSource){
-	//					trans_result.translates[lang] = sourceTransText;
-	//					continue;
-	//				}
-	//				else if(overwriteMode == MergeTextMode::MergeKeepTarget){
-	//					//MergeKeepTargetは現在の内容を残すので、何もしない。
-	//					continue;
-	//				}
-	//				else if(overwriteMode == MergeTextMode::Both)
-	//				{
-	//					if(sourceTransText != u8""){ sourceTransText += u8"\n===\n"; }
-	//					sourceTransText += trans_result.translates[lang];
-	//					trans_result.translates[lang] = sourceTransText;
-	//				}
-	//				mergeInfo[static_cast<MergeTextMode>(overwriteMode)].emplace_back(result.size() + 1);
-	//			}
-	//			//内容が一致する場合は何もしない
-	//		}
-	//		result.emplace_back(trans_result);
-	//		source_origin.clear();
-	//		target_origin.clear();
-	//		++source_i;
-	//		++target_i;
-	//		continue;
-	//	}
-	//	//原文が競合している場合、現在のターゲット側の内容がソース側のどの行数と一致するかを検索。
-	//	auto find_result = std::find_if(source_i, sourceTranslates.end(), [&AdjustText, &target_origin, &CompareText](const auto& x){
-	//		return CompareText(AdjustText(x.original), target_origin);
-	//	});
-	//	//ソース側に見つからない場合(新規追加)はそのまま追加
-	//	if(find_result == sourceTranslates.end()){
-	//		if(AddForTarget() == false){
-    //          break;
-	//		}
-	//	}
-	//	//同じ行だった場合はソース側から追加(source_origin == target_originと等価なのであり得なそう？)
-	//	else if(source_i == find_result){
-	//		if(AddForSource() == false){
-	//			if(AddForTarget() == false){
-	//				break;
-	//			}
-	//		}
-	//	}
-	//	else
-	//	{
-	//		//ソース側で見つかった場合、先にソース側の検出行までの内容を挿入。
-	//		//次のループでターゲット行とソース行が一致するはず。
-	//		auto count = std::max(size_t(0ull), size_t(std::distance(source_i, find_result)));
-	//		for(auto i = 0; i < count; ++i){
-	//			AddForSource();
-	//		}
-	//	}
-	//}
-
-    //textTobeAdded = std::move(result);
 
 #if defined(_DEBUG)
 	//全ての列が検出した言語を含んでいるかをチェック(強制エラーなのでデバッグ時のみ使用)
@@ -306,6 +149,10 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 	}
 
     std::move(textTobeAdded.begin(), textTobeAdded.end(), std::back_inserter(this->texts));
+
+    if(this->isAddNewContentToEnd) {
+        std::stable_partition(this->texts.begin(), this->texts.end(), [](const auto& text) { return text.isNewText == false; });
+    }
 
 	return true;
 }

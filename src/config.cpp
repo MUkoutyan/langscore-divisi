@@ -510,8 +510,17 @@ char config::globalWriteMode()
 
 bool config::enableLanguagePatch()
 {
-    return pImpl->getNested(pImpl->json,
-        {key(JsonKey::Write), key(JsonKey::EnableLanguagePatch)}, false);
+    return pImpl->getNested(pImpl->json, {key(JsonKey::Write), key(JsonKey::EnableLanguagePatch)}, false);
+}
+
+bool langscore::config::fillDefaultLanguageColumn()
+{
+    return pImpl->getNested(pImpl->json, {key(JsonKey::Write), key(JsonKey::FillDefaultLanguageColumn)}, false);
+}
+
+bool langscore::config::AddNewContentToEnd()
+{
+    return pImpl->getNested(pImpl->json, {key(JsonKey::Write), key(JsonKey::AddNewContentToEnd)}, false);
 }
 
 //int config::validateTextMode()
