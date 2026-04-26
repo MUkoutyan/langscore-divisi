@@ -118,7 +118,10 @@ namespace langscore
         MAKE_KEYVALUE(ValidateCSVList),
         MAKE_KEYVALUE(ValidateTextCategory),
         MAKE_KEYVALUE(ControlCharList),
-        MAKE_KEYVALUE(EnableTranslationDefLang)
+        MAKE_KEYVALUE(EnableTranslationDefLang),
+        MAKE_KEYVALUE(ParameterText),
+        MAKE_KEYVALUE(FillDefaultLanguageColumn),
+        MAKE_KEYVALUE(AddNewContentToEnd),
     };
 
     static const char* configKey(JsonKey key)
