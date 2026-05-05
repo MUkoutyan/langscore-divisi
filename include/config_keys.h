@@ -51,7 +51,7 @@ namespace langscore
         ValidateSizeList,
         ValidateTextLength,
         ValidateTextWidth,
-        ValidateCSVList,
+        ValidateCSVNameList,
         ValidateTextCategory,
         ControlCharList,
 
@@ -115,7 +115,7 @@ namespace langscore
         MAKE_KEYVALUE(ValidateSizeList),
         MAKE_KEYVALUE(ValidateTextLength),
         MAKE_KEYVALUE(ValidateTextWidth),
-        MAKE_KEYVALUE(ValidateCSVList),
+        MAKE_KEYVALUE(ValidateCSVNameList),
         MAKE_KEYVALUE(ValidateTextCategory),
         MAKE_KEYVALUE(ControlCharList),
         MAKE_KEYVALUE(EnableTranslationDefLang)

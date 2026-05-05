@@ -306,23 +306,52 @@ ErrorStatus langscore::divisi_vxace::validate()
     auto basicData = config.rpgMakerBasicData();
 
     //検証する翻訳CSVを取得する。
-    const auto FetchCsvFileList = [&basicData, &csvPathList](const auto& path)
+    const auto FetchCsvFileList = [&config, &basicData, &csvPathList](const auto& path)
     {
-        for(const auto& f : fs::directory_iterator{path})
+        auto validateCSVList = config.validateCSVList();
+        if(validateCSVList.empty()) 
         {
-            auto extension = f.path().extension();
-            auto fileName = f.path().filename().stem();
-            if(extension != ".csv") { continue; }
+            //Validateするファイルの指定がない場合は対象のファイルを全て取得
+            for(const auto& f : fs::directory_iterator{path})
+            {
+                auto extension = f.path().extension();
+                auto fileName = f.path().filename().stem();
+                if(extension != ".csv") { continue; }
 
-            auto result = std::find_if(basicData.cbegin(), basicData.cend(), [&fileName](const auto& x) {
-                return fs::path(x.filename).filename().stem() == fileName;
-            });
-            if(result == basicData.cend()) { continue; }
+                auto result = std::find_if(basicData.cbegin(), basicData.cend(), [&fileName](const auto& x) {
+                    return fs::path(x.filename).filename().stem() == fileName;
+                });
+                if(result == basicData.cend()) { continue; }
 
-            csvPathList.emplace_back(ValidateFileInfo{
-                f.path(),
-                result->textValidateInfos
-            });
+                csvPathList.emplace_back(ValidateFileInfo{
+                    f.path(),
+                    result->textValidateInfos
+                });
+            }
+        }
+        else
+        {
+            for(const auto& f : fs::directory_iterator{path})
+            {
+                auto extension = f.path().extension();
+                auto fileName = f.path().filename().stem();
+                if(extension != ".csv") { continue; }
+
+                //Validateに指定されたファイル以外は無視する。
+                if(std::ranges::find(validateCSVList, fileName) == validateCSVList.end()) {
+                    continue;
+                }
+
+                auto result = std::find_if(basicData.cbegin(), basicData.cend(), [&fileName](const auto& x) {
+                    return fs::path(x.filename).filename().stem() == fileName;
+                });
+                if(result == basicData.cend()) { continue; }
+
+                csvPathList.emplace_back(ValidateFileInfo{
+                    f.path(),
+                    result->textValidateInfos
+                });
+            }
         }
     };
 

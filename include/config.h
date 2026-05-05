@@ -144,6 +144,7 @@ namespace langscore
 		utility::u8stringlist globalFontList();
 		utility::u8stringlist localFontList();
         utility::u8stringlist extendControlCharList();
+        utility::u8stringlist validateCSVList();
         char globalWriteMode();
         bool enableLanguagePatch();
         bool fillDefaultLanguageColumn();

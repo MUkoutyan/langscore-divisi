@@ -502,6 +502,17 @@ utility::u8stringlist config::extendControlCharList()
     return result;
 }
 
+utility::u8stringlist config::validateCSVList()
+{
+    auto validate = pImpl->get(pImpl->json, key(JsonKey::Validate), nlohmann::json::object());
+    auto list = pImpl->get(validate, key(JsonKey::ValidateCSVNameList), nlohmann::json::array());
+    utility::u8stringlist result;
+    for(auto s = list.begin(); s != list.end(); ++s) {
+        result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value() , ""s)));
+    }
+    return result;
+}
+
 char config::globalWriteMode()
 {
     auto write = pImpl->get(pImpl->json, key(JsonKey::Write), nlohmann::json::object());
