@@ -420,6 +420,7 @@ ErrorStatus divisi_mvmz::validate()
     std::vector<ValidateFileInfo> csvPathList;
 
     auto basicData = config.rpgMakerBasicData();
+    auto validateFiles = config.validateCSVList();
 
     const auto FetchCsvFileList = [&basicData, &csvPathList](const auto& path)
     {
@@ -441,16 +442,28 @@ ErrorStatus divisi_mvmz::validate()
         }
     };
 
-    if(config.enableLanguagePatch())
+    if(validateFiles.empty() == false)
     {
-        auto translateFolderList = config.exportDirectory(root);
-        for(const auto& tsFolder : translateFolderList){
-            FetchCsvFileList(tsFolder);
+        for(auto& f : validateFiles) {
+            csvPathList.emplace_back(ValidateFileInfo{
+                f,
+                {}
+            });
         }
     }
-    else
+    else 
     {
-        FetchCsvFileList(packingDirectory);
+        if(config.enableLanguagePatch())
+        {
+            auto translateFolderList = config.exportDirectory(root);
+            for(const auto& tsFolder : translateFolderList) {
+                FetchCsvFileList(tsFolder);
+            }
+        }
+        else
+        {
+            FetchCsvFileList(packingDirectory);
+        }
     }
 
     //整合性チェック
