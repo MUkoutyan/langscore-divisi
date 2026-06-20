@@ -13,7 +13,7 @@
     "license": "ISC",
     "dependencies": {
         "canvas": "^2.11.2",
-        "express": "^4.17.1",
+        "express": "^5.2.1",
         "fontkit": "^2.0.2",
         "worker": "^0.4.0"
     },
