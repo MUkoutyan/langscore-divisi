@@ -23,6 +23,8 @@ if(MSVC)
   add_executable (divisi "main.cpp" ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 	set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
 	set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+    
+    add_compile_options(/MP)
 
     # リリースビルドでもデバッグ情報を生成してバックトレースでシンボル名を表示
 	target_compile_options(divisi PRIVATE 
@@ -53,7 +55,13 @@ install(FILES ${PROJECT_BINARY_DIR}/divisi.exe
 install(FILES ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe DESTINATION ${PROJECT_SOURCE_DIR}/bin/)
 
 file(COPY ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe DESTINATION ${PROJECT_BINARY_DIR}/)
-file(COPY ${PROJECT_SOURCE_DIR}/resource/ DESTINATION ${PROJECT_BINARY_DIR}/resource/)
+
+add_custom_command(TARGET divisi POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${PROJECT_SOURCE_DIR}/resource"
+    "$<TARGET_FILE_DIR:divisi>/resource"    
+    COMMENT "Copying resource directory to output directory"
+)
 
 
 
@@ -65,7 +73,7 @@ foreach(DLL_FILE ${ICU_DLL_FILES})
     add_custom_command(TARGET divisi POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
         "${DLL_FILE}"
-        "${CMAKE_BINARY_DIR}"
+        $<TARGET_FILE_DIR:divisi>
     )
 endforeach()
 

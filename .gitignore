@@ -3,6 +3,12 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+
+CMakeFiles/
+3rdparty/tree-sitter/make
+test/test_data.zip
+*.cmake
+
 # User-specific files
 *.rsuser
 *.suo
@@ -372,3 +378,4 @@ test/plugin/mz_test
 test/plugin/vxace_test
 test/rvcnv_test/test_data
 example
+_deps
