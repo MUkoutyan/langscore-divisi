@@ -50,11 +50,13 @@ target_include_directories(divisi PUBLIC
 
 target_link_libraries(divisi divisi_lib)
 
-install(FILES ${PROJECT_BINARY_DIR}/divisi.exe
-        DESTINATION ${PROJECT_SOURCE_DIR}/bin/)
-install(FILES ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe DESTINATION ${PROJECT_SOURCE_DIR}/bin/)
-
-file(COPY ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe DESTINATION ${PROJECT_BINARY_DIR}/)
+add_custom_command(
+    TARGET divisi POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:divisi>/bin"
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe $<TARGET_FILE_DIR:divisi>/bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe ${PROJECT_SOURCE_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy  $<TARGET_FILE:divisi> ${PROJECT_SOURCE_DIR}/bin
+)
 
 add_custom_command(TARGET divisi POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

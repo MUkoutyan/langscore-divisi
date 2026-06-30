@@ -34,8 +34,9 @@ std::vector<TranslateText> csvreader::parse(std::filesystem::path path)
 	std::vector<TranslateText> result;
 	std::for_each(csv.cbegin() + 1, csv.cend(), [this, &header, &result](const auto& row){
 		TranslateText t{row[0], this->useLangList};
-		for(int i = 1; i < row.size(); ++i)
+		for(int64_t i = 1; i < row.size(); ++i)
 		{
+            t.row = i;
 			if (i < header.size())
 			{
 				t.translates[header[i]] = row[i];

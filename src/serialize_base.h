@@ -55,8 +55,9 @@ namespace langscore
         std::unordered_map<std::u8string, std::u8string> translates;  //各言語毎の文章。[言語コード, 文章]のマップ
         std::u8string scriptLineInfo;   //スクリプトでのオリジナルの文章の行情報
         std::u8string scriptParamType;  //(MV,MZ)プラグインのパラメータの型
-        int code;   //RPGツクールでコマンドを検出した際に使用
         std::vector<std::u8string> textType; //ツクール内での種類(名前、説明、アイコン付きテキスト、テキスト等)
+        int64_t row = -1;   //csvreaderで読み込んだ際に使用
+        int code;   //RPGツクールでコマンドを検出した際に使用
         bool isNewText = false; //マージ時に使用。新規に追加される文章と判定されたらtrue
 
         bool operator==(const TranslateText& obj) const {

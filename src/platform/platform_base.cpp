@@ -38,7 +38,7 @@ static std::u32string utf8ToUtf32(const std::u8string& utf8Text) {
     return utf32String;
 }
 
-static void OutputError(auto path, auto type, auto errorSummary, auto lang, auto str, size_t row) 
+static void OutputError(auto path, auto type, auto errorSummary, auto lang, auto str, int64_t row) 
 {
     nlohmann::json j;
     j["Type"] = type;             
@@ -51,7 +51,7 @@ static void OutputError(auto path, auto type, auto errorSummary, auto lang, auto
     std::cout << j.dump() << std::endl;
 }
 
-static void OutputErrorWithWidth(auto path, auto type, auto errorSummary, auto lang, auto str, auto width, size_t row)
+static void OutputErrorWithWidth(auto path, auto type, auto errorSummary, auto lang, auto str, auto width, int64_t row)
 {
     nlohmann::json j;
     j["Type"] = type;
@@ -421,7 +421,7 @@ bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, uti
             }
         }
 
-        int rowCount = 0;
+        int64_t rowCount = 0;
         for(auto& row : plainTexts)
         {
             if(rowCount == plainTexts.size() - 1) {
@@ -457,19 +457,23 @@ bool platform_base::validateTextFormat(const std::vector<ValidateTextInfo>& text
     //    auto result = utility::join({type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row)}, ","s);
     //    std::cout << result << std::endl;
     //};
-    size_t row = 1;
+    size_t id = 1;
     bool result = true;
     for(auto& textInfo : textsInfos)
     {
         //原文が空の場合はエラー(かなりやばい)
         if(textInfo.origin.original.empty()) {
-            OutputError(path, ValidateErrorType::Error, EmptyCol, "original"s, ""s, row);
+            OutputError(path, ValidateErrorType::Error, EmptyCol, "original"s, ""s, -1);
             result = false;
         }
 
         std::vector<std::string> emptyTextLangs;
         for(const auto& [lang, translatedText] : textInfo.origin.translates)
         {
+            if(std::ranges::find(this->supportLangs, lang) == this->supportLangs.end()) {
+                continue;
+            }
+
             if(translatedText.empty()) {
                 emptyTextLangs.emplace_back(utility::cnvStr<std::string>(lang));
                 result = false;
@@ -493,15 +497,15 @@ bool platform_base::validateTextFormat(const std::vector<ValidateTextInfo>& text
 
             //原文と比較したとき、制御文字が不足している文章はエラー
             if(escStr.empty() == false) {
-                OutputError(path, ValidateErrorType::Error, NotFoundEsc, utility::cnvStr<std::string>(lang), escStr, row);
+                OutputError(path, ValidateErrorType::Error, NotFoundEsc, utility::cnvStr<std::string>(lang), escStr, id);
             }
         }
 
         //翻訳文が空の言語がある場合は警告
         if(emptyTextLangs.empty() == false) {
-            OutputError(path, ValidateErrorType::Warning, EmptyCol, utility::join(emptyTextLangs, " "s), ""s, row);
+            OutputError(path, ValidateErrorType::Warning, EmptyCol, utility::join(emptyTextLangs, " "s), ""s, id);
         }
-        row++;
+        id++;
     }
 
     //Map以外はここで結果を返す
