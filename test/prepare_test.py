@@ -121,7 +121,7 @@ def build_divisi_test_with_vs():
         shutil.rmtree(linux_build_dir)
         os.makedirs(linux_build_dir)
 
-    test_data_dir = os.path.join(divisi_root, "test", "data")
+    test_data_dir = test_core.require_test_data("data")
     win_cmake_args = [divisi_root, "-G", "Ninja", "-DCMAKE_BUILD_TYPE:STRING=Test", f"-DTEST_DATA_SRC:STRING={test_data_dir}"]
     win_build_command = "ninja"
 
@@ -161,8 +161,8 @@ def build_divisi_test_with_vs():
 
 def update_test_projects():
     print("update")
-    test_dir = os.path.dirname(os.path.abspath(__file__))
-    plugin_dir = os.path.join(test_dir, "plugin")
+    # プラグイン用のゲームプロジェクトもリポジトリ外 (langscore-divisi-test-data/plugin)
+    plugin_dir = test_core.require_test_data("plugin")
 
     test_core.run_command(
         f"{divisi_root}/bin/divisi.exe", 
@@ -181,9 +181,12 @@ def update_test_projects():
         ["-c", f"{plugin_dir}/mz_test_langscore/config.json", "--write"]
     )
 
+    # decompress.rb はテストデータ側ではなくリポジトリで管理する
+    decompress = os.path.join(current_dir, "plugin", "vxace", "decompress.rb")
+    vxace_project = os.path.join(plugin_dir, "vxace_test")
     before_path = os.getcwd()
-    os.chdir(os.path.join(plugin_dir, "vxace_test"))
-    test_core.run_ruby_script(os.path.join(plugin_dir, "vxace_test\\decompress.rb"), cwd=os.path.join(plugin_dir, "vxace_test"), check=True)
+    os.chdir(vxace_project)
+    test_core.run_ruby_script(decompress, cwd=vxace_project, check=True)
     os.chdir(before_path)
 
     print("Update projects successfully.")

@@ -138,7 +138,7 @@ def check_files_in_directory(directory, filename_contains):
         print(f"An error occurred: {e}")
         return False
 
-data_project_path = f'{test_root_dir}\\data\\vxace\\ソポァゼゾタダＡボマミ'
+data_project_path = core.require_test_data('data', 'vxace', 'ソポァゼゾタダＡボマミ')
 class TestRVCNV(unittest.TestCase):
 
     @classmethod
@@ -219,7 +219,7 @@ class TestRVCNV(unittest.TestCase):
 
 
     def test_packing(self):
-        base_csv_folder = f"{test_root_dir}\\data\\vxace\\packing_test_translates"
+        base_csv_folder = core.require_test_data('data', 'vxace', 'packing_test_translates')
         packing_args = ['-p', '-i', base_csv_folder, '-o', f'{current_dir}\\test_packing']
         out, err, code = run_command(packing_args)
         

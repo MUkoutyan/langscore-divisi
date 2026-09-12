@@ -4,6 +4,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { pluginRoot, requirePluginProject } = require('./test_data_root');
+
 const RESOURCE = path.join(__dirname, '..', '..', 'resource');
 const PROJECT = 'vxace_test';
 
@@ -92,10 +94,15 @@ function render(template, config) {
     }).join('\n');
 }
 
+try {
 const template = fs.readFileSync(path.join(RESOURCE, 'langscore.rb'), 'utf-8');
-const configPath = path.join(__dirname, `${PROJECT}_langscore`, 'config.json');
+const configPath = path.join(pluginRoot, `${PROJECT}_langscore`, 'config.json');
 const config = JSON.parse(fs.readFileSync(configPath, 'utf-8').replace(/^﻿/, ''));
 
-const dest = path.join(__dirname, PROJECT, 'Scripts', 'langscore.rb');
+const dest = path.join(requirePluginProject(PROJECT), 'Scripts', 'langscore.rb');
 fs.writeFileSync(dest, render(template, config), 'utf-8');
 console.log(`rendered ${dest}`);
+} catch (e) {
+    console.error(e.message);
+    process.exit(1);
+}

@@ -1,17 +1,18 @@
 // Langscore.js (RPGツクールMV/MZ用プラグイン) の結合テスト。
 // 実行方法: test/plugin で `npm test` (MV/MZ × NW.js/ブラウザ の4パターンを順に実行)
-// 前提: test/test_data.zip を展開して mv_test / mz_test が存在すること。
+// 前提: langscore-divisi-test-data/plugin に mv_test / mz_test が存在すること。
 //       js/plugins/Langscore.js は pretest (sync_plugin.js) が resource/ から生成する。
 const { expect } = require('chai');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const { JSDOM } = require('jsdom');
+const { requirePluginProject } = require('./test_data_root');
 
 const IS_MV = process.env.IS_MV === 'true';
 const IS_MZ = process.env.IS_MZ === 'true';
 const IS_NWJS = process.env.IS_NWJS === 'true';
-const PROJ_ROOT = path.join(__dirname, process.env.PROJ_NAME || '');
+const PROJ_ROOT = requirePluginProject(process.env.PROJ_NAME || '');
 const PORT = 8180;
 
 if (!IS_MV && !IS_MZ) {

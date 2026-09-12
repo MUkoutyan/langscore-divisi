@@ -7,7 +7,6 @@
 CMakeFiles/
 3rdparty/*
 3rdparty/tree-sitter/make
-test/test_data.zip
 *.cmake
 
 # User-specific files
@@ -367,16 +366,11 @@ rvcnv/rvcnv_hash.cpp
 rvcnv/zlib.so
 rvcnv/fiber.so
 rvcnv/icon.ico
-test/plugin/*_test_langscore
 test/plugin/rvcnv_test/test_compress
 build-linux
 doxygen
 test/plugin/work
 test/divisi_ct/work
-test/data
-test/plugin/mv_test
-test/plugin/mz_test
-test/plugin/vxace_test
 test/rvcnv_test/test_data
 example
 _deps
@@ -386,3 +380,13 @@ test/test_config.h
 # テスト実行結果のログ
 test/test_log.md
 test/log.txt
+
+# テストデータ (ツクールのゲームプロジェクト) はリポジトリの外
+# (既定: 同階層の langscore-divisi-test-data) に置く。
+# 誤って中に復元された場合に備えて無視しておく。
+test/data
+test/plugin/mv_test
+test/plugin/mz_test
+test/plugin/vxace_test
+test/plugin/*_test_langscore
+test/test_data.zip

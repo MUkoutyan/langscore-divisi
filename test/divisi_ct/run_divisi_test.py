@@ -94,14 +94,17 @@ vxace_work_ls_path          = os.path.join(current_dir, 'work\\LangscoreTestVXAc
 include_empty_work_ls_path  = os.path.join(current_dir, 'work\\Include WhiteSpacePath Project_langscore')
 
 
-source_mv_work_path            = os.path.join(test_root_dir, 'data\\LangscoreTestMV')
-source_mz_work_path            = os.path.join(test_root_dir, 'data\\LangscoreTestMZ')
-source_vxace_work_path         = os.path.join(test_root_dir, 'data\\LangscoreTestVXAce')
-source_include_empty_work_path = os.path.join(test_root_dir, 'data\\vxace\\Include WhiteSpacePath Project')
-source_update_mv_work_path            = os.path.join(test_root_dir, 'data\\LangscoreTestMV_updated')
-source_update_mz_work_path            = os.path.join(test_root_dir, 'data\\LangscoreTestMZ_updated')
-source_update_vxace_work_path         = os.path.join(test_root_dir, 'data\\LangscoreTestVXAce_updated')
-source_update_include_empty_work_path = os.path.join(test_root_dir, 'data\\vxace\\Include WhiteSpacePath Project_updated')
+# テストデータはリポジトリ外 (langscore-divisi-test-data) を参照する
+test_data_dir = core.require_test_data('data')
+
+source_mv_work_path            = os.path.join(test_data_dir, 'LangscoreTestMV')
+source_mz_work_path            = os.path.join(test_data_dir, 'LangscoreTestMZ')
+source_vxace_work_path         = os.path.join(test_data_dir, 'LangscoreTestVXAce')
+source_include_empty_work_path = os.path.join(test_data_dir, 'vxace', 'Include WhiteSpacePath Project')
+source_update_mv_work_path            = os.path.join(test_data_dir, 'LangscoreTestMV_updated')
+source_update_mz_work_path            = os.path.join(test_data_dir, 'LangscoreTestMZ_updated')
+source_update_vxace_work_path         = os.path.join(test_data_dir, 'LangscoreTestVXAce_updated')
+source_update_include_empty_work_path = os.path.join(test_data_dir, 'vxace', 'Include WhiteSpacePath Project_updated')
 
 analyze_expected_files = [
     "System.lsjson","Troops.lsjson","Weapons.lsjson","Actors.lsjson",

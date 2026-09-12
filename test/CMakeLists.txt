@@ -14,10 +14,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
 
-# テストデータの場所。既定は test/data で、必要な場合のみ -DTEST_DATA_SRC で上書きする。
+# テストデータ (ツクールのゲームプロジェクト) はリポジトリに含めないため、
+# 既定ではリポジトリと同階層の langscore-divisi-test-data を参照する。
+# 環境変数 LANGSCORE_TEST_DATA または -DTEST_DATA_SRC で上書きできる。
 if(NOT DEFINED TEST_DATA_SRC OR TEST_DATA_SRC STREQUAL "")
-    set(TEST_DATA_SRC "${PROJECT_SOURCE_DIR}/data")
+    if(DEFINED ENV{LANGSCORE_TEST_DATA})
+        set(TEST_DATA_SRC "$ENV{LANGSCORE_TEST_DATA}/data")
+    else()
+        set(TEST_DATA_SRC "${PROJECT_SOURCE_DIR}/../../langscore-divisi-test-data/data")
+    endif()
 endif()
+get_filename_component(TEST_DATA_SRC "${TEST_DATA_SRC}" ABSOLUTE)
+if(NOT EXISTS "${TEST_DATA_SRC}")
+    message(FATAL_ERROR
+        "テストデータが見つかりません: ${TEST_DATA_SRC}\n"
+        "リポジトリと同階層に langscore-divisi-test-data を配置するか、"
+        "環境変数 LANGSCORE_TEST_DATA / -DTEST_DATA_SRC で場所を指定してください。")
+endif()
+message(STATUS "TEST_DATA_SRC : ${TEST_DATA_SRC}")
 
 # TODO: テストを追加し、必要な場合は、ターゲットをインストールします。
 # FetchContentを利用してGoogle Testを取得

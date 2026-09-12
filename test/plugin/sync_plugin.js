@@ -4,6 +4,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { pluginRoot, requirePluginProject } = require('./test_data_root');
+
 const RESOURCE = path.join(__dirname, '..', '..', 'resource');
 const PROJECTS = ['mv_test', 'mz_test'];
 
@@ -51,15 +53,19 @@ function render(template, config) {
     }).join('\n');
 }
 
+try {
 for (const proj of PROJECTS) {
-    const dest = path.join(__dirname, proj, 'js', 'plugins');
-    if (!fs.existsSync(dest)) {
-        console.log(`skip ${proj}: ${dest} not found (extract test_data.zip)`);
-        continue;
-    }
-    const config = JSON.parse(fs.readFileSync(path.join(__dirname, `${proj}_langscore`, 'config.json'), 'utf-8'));
+    const projectPath = requirePluginProject(proj);
+    const dest = path.join(projectPath, 'js', 'plugins');
+    const config = JSON.parse(fs.readFileSync(path.join(pluginRoot, `${proj}_langscore`, 'config.json'), 'utf-8'));
     const template = fs.readFileSync(path.join(RESOURCE, 'Langscore.js'), 'utf-8');
     fs.writeFileSync(path.join(dest, 'Langscore.js'), render(template, config));
     fs.copyFileSync(path.join(RESOURCE, 'Langscore_ObserverBridge.js'), path.join(dest, 'Langscore_ObserverBridge.js'));
+    // 画像・音声・フォントのロードを止めるテスト用スタブ。テストデータ側ではなくリポジトリで管理する。
+    fs.copyFileSync(path.join(__dirname, 'stubs', proj, 'Langscore_test.js'), path.join(dest, 'Langscore_test.js'));
     console.log(`synced Langscore.js -> ${proj} (${quoteList(config.Languages.filter(l => l.Enable).map(l => l.LanguageName))})`);
+}
+} catch (e) {
+    console.error(e.message);
+    process.exit(1);
 }

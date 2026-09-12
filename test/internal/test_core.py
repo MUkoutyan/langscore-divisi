@@ -2,6 +2,7 @@ import subprocess
 import re
 import os
 import stat
+import sys
 import locale
 import json
 
@@ -32,6 +33,34 @@ def edit_ls_config(config_path, edit_function):
     with open(config_path, 'w') as file:
         json.dump(data, file, indent=4)  
     
+TEST_DATA_DIR_NAME = "langscore-divisi-test-data"
+
+def test_data_root():
+    """テストデータ (ツクールのゲームプロジェクト) の置き場所を返す。
+
+    サイズと再配布の都合でリポジトリには含めないため、既定ではリポジトリと同階層の
+    langscore-divisi-test-data を参照する。環境変数 LANGSCORE_TEST_DATA で上書きできる。
+    """
+    env_path = os.environ.get("LANGSCORE_TEST_DATA")
+    if env_path:
+        return os.path.abspath(env_path)
+
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+    return os.path.abspath(os.path.join(repo_root, "..", TEST_DATA_DIR_NAME))
+
+
+def require_test_data(*sub_paths):
+    """テストデータ内のパスを返す。見つからない場合は理由を示して終了する。"""
+    root = test_data_root()
+    path = os.path.join(root, *sub_paths) if sub_paths else root
+    if not os.path.exists(root):
+        print(f"テストデータが見つかりません: {root}")
+        print(f"  リポジトリと同階層に {TEST_DATA_DIR_NAME} を配置するか、")
+        print(f"  環境変数 LANGSCORE_TEST_DATA で場所を指定してください。")
+        sys.exit(1)
+    return path
+
+
 def find_vcvars():
     """Visual Studio の vcvars64.bat を探す。バージョンは決め打ちにしない。"""
     program_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")

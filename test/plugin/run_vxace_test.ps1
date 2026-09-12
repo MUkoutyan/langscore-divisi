@@ -7,6 +7,16 @@ if (-not (Test-Path $rubyPath)) {
     exit 1
 }
 
+# テストデータはリポジトリ外に置く。既定はリポジトリと同階層の langscore-divisi-test-data。
+$testDataRoot = if ($env:LANGSCORE_TEST_DATA) { $env:LANGSCORE_TEST_DATA } else { Join-Path $PSScriptRoot "..\..\..\langscore-divisi-test-data" }
+$pluginRoot = Join-Path $testDataRoot "plugin"
+$vxaceProject = Join-Path $pluginRoot "vxace_test"
+if (-not (Test-Path $vxaceProject)) {
+    Write-Host "テストデータが見つかりません: $vxaceProject"
+    Write-Host "  リポジトリと同階層に langscore-divisi-test-data を配置するか、環境変数 LANGSCORE_TEST_DATA で場所を指定してください。"
+    exit 1
+}
+
 # resource/langscore.rb をテンプレート展開して vxace_test/Scripts へ反映する。
 # (MV/MZ の sync_plugin.js と同じ目的。テストが古いスクリプトを見ないようにする)
 node sync_vxace.js
@@ -15,23 +25,26 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# 実行する Ruby スクリプトのパスを変数に格納します
-$scriptPath = ".\Langscore_vxace_test.rb"
+# Langscore_vxace_test_prepare.rb が ./vxace_test/... を参照するため、
+# プロジェクトの親フォルダを作業ディレクトリにして実行する。
+$scriptPath = Join-Path $PSScriptRoot "Langscore_vxace_test.rb"
 
-Set-Location .\vxace_test
-& $rubyPath "compress.rb"
+# compress.rb はテストデータ側ではなくリポジトリで管理する (Scripts/ を rvdata2 に固める処理)
+Push-Location $vxaceProject
+& $rubyPath (Join-Path $PSScriptRoot "vxace\compress.rb")
+Pop-Location
 
 if ($LASTEXITCODE -ne 0) {
     $code = $LASTEXITCODE
     Write-Host "compress failed with exit code $LASTEXITCODE"
-    Set-Location ..
     exit $code
 }
-Set-Location ..
 
 # Ruby スクリプトを実行します
 $env:RUBYOPT="-KU"
+Push-Location $pluginRoot
 & $rubyPath $scriptPath
+Pop-Location
 if ($LASTEXITCODE -ne 0) {
     $code = $LASTEXITCODE
     Write-Host "vxace_test failed with exit code $LASTEXITCODE"

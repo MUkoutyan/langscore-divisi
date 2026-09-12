@@ -293,7 +293,7 @@ def run_cpp_test(details_md_text, results_md_texts):
         "-B", test_build_directory,
         "-G", "Ninja",
         "-DCMAKE_BUILD_TYPE:STRING=Test_Debug",
-        f"-DTEST_DATA_SRC:STRING={divisi_root}\\test\\data",
+        f"-DTEST_DATA_SRC:STRING={core.require_test_data('data')}",
     ]
     # ビルドディレクトリは削除しない。divisi_test は初回実行時に test/data (3.4GB) を
     # ここへコピーするため、消すと毎回コピーとgoogletestの取得が発生する。

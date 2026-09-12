@@ -9,8 +9,21 @@
 
 ## 準備
 
-1. `test/test_data.zip` を展開し、`mv_test/` `mz_test/` `vxace_test/` (RPGツクールのゲームプロジェクト) を配置する。
-   これらはランタイムを含むため git 管理外です。
+1. テストデータ (RPGツクールのゲームプロジェクト) を配置する。
+   サイズと再配布の都合でリポジトリには含めず、**リポジトリと同階層**に置きます。
+
+   ```
+   Github/
+     langscore-divisi/              <- このリポジトリ
+     langscore-divisi-test-data/
+       data/                        <- C++ / divisi_ct / rvcnv 用
+       plugin/
+         mv_test/  mv_test_langscore/
+         mz_test/  mz_test_langscore/
+         vxace_test/  vxace_test_langscore/
+   ```
+
+   別の場所に置く場合は環境変数 `LANGSCORE_TEST_DATA` でフォルダを指定してください。
 2. `npm install`
 
 ## MV/MZ
