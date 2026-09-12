@@ -50,7 +50,7 @@ public:
             case Module::DIVISI_VXACE:
                 return errorDivisiVxAce();
             case Module::DIVISI_MVMZ:
-                return errorDivisiVxAce();
+                return errorDivisiMVMZ();
             case Module::READERBASE:
                 return errorReaderBase();
             case Module::CSVREADER:
@@ -132,14 +132,14 @@ private:
         std::string base = "";
         switch(_code)
         {
-        case NoError: return "";
+        case NoError: return base;
         case 1: base = "error code 1 : validate error. Not Found Packing Input Directory.";
         }
 
         if(false == specMsg.empty()) {
             return std::format("{} ({})", base, specMsg);
         }
-        return "";
+        return base;
     }
     std::string errorReaderBase()
     {

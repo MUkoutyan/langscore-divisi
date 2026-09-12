@@ -4,6 +4,7 @@
 #include "test_vxace.cpp"
 #include "test_mvmz.cpp"
 #include "test_validation.cpp"
+#include "test_core.cpp"
 
 #include <gtest/gtest.h>
 

@@ -112,8 +112,96 @@ class LangscoreTest < Test::Unit::TestCase
   end
 
   def test_load_image_file_correctly
+    # デフォルト言語かつ ENABLE_TRANSLATION_FOR_DEFLANG が false の場合は
+    # 言語別画像の探索自体を行わないため、キャッシュは作られない。
+    Langscore.changeLanguage("ja", true)
     Cache.load_bitmap('img/pictures/', 'nantoka8')
-    assert_equal($ls_graphic_cache['nantoka8'], true)
+    assert_nil($ls_graphic_cache['nantoka8'])
+
+    # 既定言語以外では "<ファイル名>_<言語>" の有無を調べ、結果をキャッシュする。
+    Langscore.changeLanguage("en", true)
+    Cache.load_bitmap('img/pictures/', 'nantoka8')
+    assert_equal(true, $ls_graphic_cache['nantoka8'])
+  end
+
+  def test_is_valid_language_code
+    Langscore::STSTEM_ALLOWED_LANGUAGES.each do |lang|
+      assert(Langscore.is_valid_language_code(lang), lang)
+    end
+    ["xx", "", "JA", "../ja"].each do |lang|
+      assert_equal(false, Langscore.is_valid_language_code(lang), lang)
+    end
+  end
+
+  def test_get_available_languages
+    # パッチモードが無効な場合は SUPPORT_LANGUAGE がそのまま利用可能言語になる
+    assert_equal(false, Langscore::ENABLE_PATCH_MODE)
+    assert_equal(Langscore::SUPPORT_LANGUAGE, Langscore.get_available_languages(true))
+  end
+
+  def test_fetch_original_text
+    hash = {
+      "Hello" => {"ja" => "こんにちは", "en" => "Hello"},
+      "Goodbye" => {"ja" => "さようなら", "en" => "Goodbye"},
+    }
+    assert_equal("Hello", Langscore.fetch_original_text("こんにちは", hash))
+    assert_equal("Goodbye", Langscore.fetch_original_text("さようなら", hash))
+    # 見つからない場合は渡された文字列をそのまま返す
+    assert_equal("未知のテキスト", Langscore.fetch_original_text("未知のテキスト", hash))
+  end
+
+  def test_translate_returns_original_when_not_found
+    hash = {"Hello" => {"ja" => "こんにちは", "en" => "Hello"}}
+    assert_equal("Goodbye", Langscore.translate("Goodbye", hash, "ja"))
+    # 対応する言語列が無い場合も原文を返す
+    assert_equal("Hello", Langscore.translate("Hello", hash, "zh-cn"))
+  end
+
+  # 言語を切り替えてデータベースが翻訳され、戻した際に元へ復帰することを確認する
+  def assert_database_translated(label, &fetch)
+    Langscore.changeLanguage("ja", true)
+    ja_values = fetch.call
+
+    Langscore.changeLanguage("en", true)
+    en_values = fetch.call
+    assert_equal(ja_values.size, en_values.size, label)
+
+    changed = 0
+    ja_values.zip(en_values).each do |ja, en|
+      changed += 1 if ja != en
+    end
+    assert(changed > 0, "#{label} : 翻訳された項目がありません")
+
+    Langscore.changeLanguage("ja", true)
+    assert_equal(ja_values, fetch.call, "#{label} : 日本語へ戻せていません")
+  end
+
+  def test_items_updated_correctly
+    assert_database_translated("Items") { $data_items.compact.map{|x| [x.name, x.description] } }
+  end
+
+  def test_weapons_and_armors_updated_correctly
+    assert_database_translated("Weapons") { $data_weapons.compact.map{|x| [x.name, x.description] } }
+    assert_database_translated("Armors")  { $data_armors.compact.map{|x| [x.name, x.description] } }
+  end
+
+  def test_classes_and_enemies_updated_correctly
+    assert_database_translated("Classes") { $data_classes.compact.map{|x| x.name } }
+    assert_database_translated("Enemies") { $data_enemies.compact.map{|x| x.name } }
+  end
+
+  def test_states_updated_correctly
+    assert_database_translated("States") do
+      $data_states.compact.map{|x| [x.name, x.message1, x.message2, x.message3, x.message4] }
+    end
+  end
+
+  def test_system_terms_updated_correctly
+    assert_database_translated("System") do
+      $data_system.terms.basic + $data_system.terms.commands +
+        $data_system.terms.params + $data_system.terms.etypes +
+        $data_system.elements + $data_system.skill_types + [$data_system.currency_unit]
+    end
   end
 
   def test_save_data_correctly
