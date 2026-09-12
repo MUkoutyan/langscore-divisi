@@ -13,10 +13,13 @@ python run_test.py cpp      # 個別 (cpp, lscsv, rvcnv, vxace, mv, mz, divisi_c
 | divisi_ct | divisi.exe のコマンドライン | `bin/divisi.exe`、テストデータ |
 | rvcnv | rvcnv (VXAce の rvdata2 変換) | Ruby、テストデータ |
 | mv / mz | Langscore.js (mocha + jsdom) | Node.js、テストデータ |
-| vxace | langscore.rb (test/unit) | Ruby 1.9.2、テストデータ |
+| vxace | langscore.rb (RGSS3 実機) | Ruby、テストデータ、GUI セッション |
 | lscsv | lscsv.{js,rb,py} の CSV パーサ | Node.js / Ruby / Python |
 
 Visual Studio は vswhere で自動検出するため、開発者コマンドプロンプトである必要はありません。
+
+vxace はテストデータ内の `Game.exe` (RGSS3) を実際に起動して検証するため、GUI セッションが必要です。
+詳細は [plugin/README.md](plugin/README.md) を参照してください。
 
 ## テストデータ
 

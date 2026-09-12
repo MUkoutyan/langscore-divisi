@@ -46,6 +46,10 @@ function render(template, config) {
     const write = config.Write || {};
     const lscsv = fs.readFileSync(path.join(RESOURCE, 'lscsv.rb'), 'utf-8');
 
+    // config.json の値を既定とし、コマンドライン引数で上書きできるようにする。
+    // 実機テスト (run_vxace_test.py) が設定違いの langscore.rb を作り分けるために使う。
+    const pick = (key, flag) => (process.argv.includes(flag) ? true : !!write[key]);
+
     // config::outputTranslateFilePathForRPGMaker() はVXAceでは固定値を返す
     const translateFolder = 'Data/Translate';
 
@@ -76,10 +80,10 @@ function render(template, config) {
             return `\tTRANSLATE_FOLDER = "${translateFolder}"`;
         }
         if (line.includes('%{ENABLE_PATCH_MODE}%')) {
-            return `\tENABLE_PATCH_MODE = ${write.EnableLanguagePatch ? 'true' : 'false'}`;
+            return `\tENABLE_PATCH_MODE = ${pick('EnableLanguagePatch', '--patch-mode') ? 'true' : 'false'}`;
         }
         if (line.includes('%{ENABLE_TRANSLATION_FOR_DEFLANG}%')) {
-            return `\tENABLE_TRANSLATION_FOR_DEFLANG = ${write.EnableTranslationDefLang ? 'true' : 'false'}`;
+            return `\tENABLE_TRANSLATION_FOR_DEFLANG = ${pick('EnableTranslationDefLang', '--deflang') ? 'true' : 'false'}`;
         }
         if (line.includes('%{UNISON_LSCSV}%')) {
             return lscsv;

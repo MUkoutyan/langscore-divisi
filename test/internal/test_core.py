@@ -236,19 +236,11 @@ def analyze_python_test_result(output):
 
     return list(success_tests), failed_tests
 
-def analyze_ruby19_test_result(output):
-    # Ruby1.9.2でのテスト結果を解析
-    match = re.search(r'(\d+) tests, (\d+) assertions, (\d+) failures, (\d+) errors, (\d+) skips', output)
-    failures = []
-    if match:
-        failure_count = int(match.group(3))
-        error_count = int(match.group(4))
-        if failure_count > 0 or error_count > 0:
-            # 失敗したテストケースを抽出
-            failure_matches = re.findall(r'(\d+)\) Failure:\n(.+?) \[(.+?)\]:\n<.+?> expected but was\n<.+?>\.', output, re.DOTALL)
-            for index, test_case, location in failure_matches:
-                failures.append(f"{index}) {test_case.strip()} [{location.strip()}]")
-    return failures
+def analyze_vxace_test_result(output):
+    # run_vxace_test.py の出力から失敗したテストを抽出する
+    pattern = r'(\d+)\) Failure:\n(.+?) \[(.+?)\]:\n(.+)'
+    matches = re.findall(pattern, output)
+    return [f"{i}) {name} [{suite}] {message}" for i, name, suite, message in matches]
 
 def analyze_ruby_test_result(output):
     # Rubyのテスト結果を解析

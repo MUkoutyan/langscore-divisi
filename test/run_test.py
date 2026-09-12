@@ -193,9 +193,9 @@ def run_vxace_test(vxace_script_path, details_md_text, results_md_texts):
     
     start_date = datetime.now()
 
-    # VXAce test using PowerShell on Windows
-    output, error, result = core.run_powershell_script(vxace_script_path, cwd=test_plugin_path, encoding="utf-8")
-    failures = core.analyze_ruby19_test_result(output)
+    # VXAce は Game.exe (RGSS3) を起動して実機上でテストする
+    output, error, result = core.run_python_script(vxace_script_path, cwd=test_plugin_path)
+    failures = core.analyze_vxace_test_result(output)
     test_result = result and len(failures) == 0
 
     end_date = datetime.now()
@@ -374,7 +374,7 @@ def main():
     lscsv_script_path   = f'{test_root_dir}\\lscsv\\run_lscsv_test.ps1'
     rvcnv_test_path     = f'{test_root_dir}\\rvcnv_test'
     divisi_script_path  = f'{test_root_dir}\\divisi_ct\\run_divisi_test.py'
-    vxace_script_path   = f'{test_plugin_path}\\run_vxace_test.ps1'
+    vxace_script_path   = f'{test_plugin_path}\\run_vxace_test.py'
     # MV/MZ は test/plugin の npm scripts、C++ は build/Test_Debug を直接使う (引数不要)
 
     # ログファイルのパス

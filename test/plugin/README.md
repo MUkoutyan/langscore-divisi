@@ -5,7 +5,7 @@
 | 対象 | テスト | 実行 | 必要なもの |
 |------|--------|------|-----------|
 | Langscore.js (MV/MZ) | `Langscore_mvmz.test.js` (mocha + jsdom) | `npm test` | Node.js、`mv_test/` `mz_test/` |
-| langscore.rb (VXAce) | `Langscore_vxace_test.rb` (test/unit) | `run_vxace_test.ps1` | Ruby 1.9.2 (RGSS3 相当)、`vxace_test/` |
+| langscore.rb (VXAce) | `vxace/ls_realtest.rb` (RGSS3 実機) | `python run_vxace_test.py` | Ruby (圧縮用)、`vxace_test/` |
 
 ## 準備
 
@@ -45,13 +45,31 @@ npm run test-mv-nwjs     # 個別
 ## VXAce
 
 ```
-$env:LANGSCORE_RUBY19 = "C:\ruby-1.9.2\bin\ruby.exe"   # 既定値と異なる場合
-.\run_vxace_test.ps1
+python run_vxace_test.py            # 全設定
+python run_vxace_test.py default    # default / deflang / patch のいずれか
 ```
 
-- 実行時に `sync_vxace.js` が `resource/langscore.rb` (テンプレート) を divisi と同じ規則で展開し、
-  `vxace_test/Scripts/langscore.rb` へ書き出します (MV/MZ の `sync_plugin.js` と同じ役割)。
-  その後 `vxace_test/compress.rb` が `Data/Scripts.rvdata2` へ固めてから実行されます。
+**テストは実際の `Game.exe` (RGSS3) の中で動きます。** Bitmap・Font・Cache・Marshal はすべて本物で、
+RGSS3 のエミュレーションは行いません。手順は次の通りです。
+
+1. `sync_vxace.js` が `resource/langscore.rb` (テンプレート) を divisi と同じ規則で展開し、
+   `vxace_test/Scripts/langscore.rb` へ書き出す (MV/MZ の `sync_plugin.js` と同じ役割)。
+2. `vxace/compress.rb` が `Scripts/_list.csv` から `Data/Scripts.rvdata2` を組み立てる。
+   このとき `vxace/ls_realtest.rb` を **Main の直前** に挿入する。
+   `Main` の `rgss_main` は制御を返さないため、その前で実行して `exit` する必要があります。
+3. `Game.exe test` を起動する。`test` 引数は `$TEST` を true にするために必要です
+   (`Langscore.translate_list_reset` が参照します)。
+4. テストは結果を `ls_test_result.txt` に書いて終了し、runner がそれを読む。
+   最終行の `DONE` が無い場合は途中で異常終了したものとして失敗扱いにします。
+
+`langscore.rb` の設定 (`ENABLE_PATCH_MODE` など) はスクリプト内の定数のため、
+設定を変えるテストは `Game.exe` を起動し直します (`VARIANTS`)。
+
+`Game.exe` は `System/RGSS301.dll` を使うため、VX Ace のインストールは不要です。
+ただし GUI セッションが必要なので、この1件だけ CI では動きません。
+
+テスト中に書き換わるもの (`Game.ini` の言語設定、`Data/Scripts.rvdata2`、テスト用セーブ) は
+runner が終了時に元へ戻します。
 
 ## 全体
 

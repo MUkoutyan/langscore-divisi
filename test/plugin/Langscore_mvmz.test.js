@@ -270,6 +270,16 @@ describe('Langscore', function()
     }
   });
 
+  it('セーブデータの生成が元データを壊さないこと', function()
+  {
+    // セーブ用の内容を作る際に原文へ戻す処理が入るため、$gameActors 自体が壊れないことを確認する。
+    window._langscore.changeLanguage("ja", true);
+    const before = window.JsonEx.stringify(window.$gameActors);
+    const contents = window.DataManager.makeSaveContents();
+    expect(contents.actors.actor(1).name()).to.equal('エルーシェ');
+    expect(window.JsonEx.stringify(window.$gameActors)).to.equal(before);
+  });
+
   it('アクター名が正しく更新されること', function()
   {
     window._langscore.changeLanguage("ja", true);
@@ -784,6 +794,17 @@ describe('Language State Variable', function()
   });
 });
 
+describe('Language State Variable (未指定)', function()
+{
+  before(() => initializeRPGMaker());
+
+  it('開始変数が指定されていない場合は変数を書き換えないこと', function() {
+    window.$gameVariables.setValue(1, 99);
+    window._langscore.changeLanguage("en", true);
+    expect(window.$gameVariables.value(1)).to.equal(99);
+  });
+});
+
 describe('Enable Translation For Default Language', function()
 {
   // convertEscapeCharacters がデフォルト言語 (ja) でも翻訳処理を通すかどうか
@@ -817,6 +838,15 @@ describe('Enable Translation For Default Language', function()
 
 describe('Language Patch Mode', function()
 {
+  describe('無効時 (既定)', function() {
+    before(() => initializeRPGMaker());
+
+    it('Support_Language がそのまま利用可能言語になること', function() {
+      expect(window.Langscore.EnablePathMode).to.be.false;
+      expect(window._langscore.current_language_list).to.deep.equal(window.Langscore.Support_Language);
+    });
+  });
+
   // data/translate/<lang>/*.csv を言語ごとに読み込むモード。NW.js (ローカル実行) 専用。
   describe('NW.js', function() {
     before(async function() {
