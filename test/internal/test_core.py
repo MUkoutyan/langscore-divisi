@@ -32,26 +32,95 @@ def edit_ls_config(config_path, edit_function):
     with open(config_path, 'w') as file:
         json.dump(data, file, indent=4)  
     
+def find_vcvars():
+    """Visual Studio の vcvars64.bat を探す。バージョンは決め打ちにしない。"""
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
+    vswhere = os.path.join(program_files_x86, "Microsoft Visual Studio", "Installer", "vswhere.exe")
+    if os.path.exists(vswhere):
+        result = subprocess.run(
+            [vswhere, "-latest", "-products", "*",
+             "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+             "-property", "installationPath"],
+            capture_output=True, text=True, errors='replace'
+        )
+        for install_path in result.stdout.splitlines():
+            vcvars = os.path.join(install_path.strip(), "VC", "Auxiliary", "Build", "vcvars64.bat")
+            if os.path.exists(vcvars):
+                return vcvars
+
+    # vswhere が無い場合は既定の配置を新しいものから探す
+    program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+    for root in [program_files, program_files_x86]:
+        base = os.path.join(root, "Microsoft Visual Studio")
+        if not os.path.isdir(base):
+            continue
+        for version in sorted(os.listdir(base), reverse=True):
+            for edition in ("Community", "Professional", "Enterprise", "BuildTools"):
+                vcvars = os.path.join(base, version, edition, "VC", "Auxiliary", "Build", "vcvars64.bat")
+                if os.path.exists(vcvars):
+                    return vcvars
+    return None
+
+
+_vs_environment_cache = None
+
+def vs_environment():
+    """cl.exe / ninja を実行できる環境変数を返す。
+    開発者コマンドプロンプトから実行されている場合や、VSが見つからない場合はNone
+    (= 現在の環境をそのまま使う) を返す。"""
+    global _vs_environment_cache
+
+    if os.environ.get("VSCMD_ARG_TGT_ARCH"):
+        return None
+    if _vs_environment_cache is not None:
+        return _vs_environment_cache
+
+    vcvars = find_vcvars()
+    if vcvars is None:
+        print("Warning: vcvars64.bat not found. Run from a Developer Command Prompt if the build fails.")
+        return None
+
+    result = subprocess.run(f'"{vcvars}" >nul && set', shell=True,
+                            capture_output=True, text=True,
+                            encoding=locale.getpreferredencoding(), errors='replace')
+    if result.returncode != 0:
+        print(f"Warning: failed to run {vcvars}")
+        return None
+
+    env = dict(os.environ)
+    for line in result.stdout.splitlines():
+        if "=" in line:
+            key, value = line.split("=", 1)
+            env[key] = value
+    _vs_environment_cache = env
+    return env
+
+
+def _run(command, default_encoding=None, **option):
+    """subprocess.run の共通ラッパー。
+    encoding と timeout は呼び出し側で上書きできる。(二重指定でTypeErrorにならないようpopする)
+    復号できない文字があってもテストを落とさないよう errors='replace' を使う。"""
+    encoding = option.pop('encoding', default_encoding or locale.getpreferredencoding())
+    # ビルドやテストデータのコピーは既定の180秒では収まらないため、呼び出し側で上書きできる。
+    timeout = option.pop('timeout', 180)
+    return subprocess.run(command,
+        capture_output=True, text=True,
+        encoding=encoding, errors='replace', timeout=timeout, **option
+    )
+
 def run_command(command_path, args=None, **option):
     try:
-        system_encoding = locale.getpreferredencoding()
         command = []
         command.append(command_path)
         if args: command += args
-        # npm 等の UTF-8 出力は encoding='utf-8' を渡す。復号できない文字で落とさない。
-        encoding = option.pop('encoding', system_encoding)
-        result = subprocess.run(command, 
-            capture_output=True, text=True, shell=True, 
-            encoding=encoding, errors='replace', timeout=180, **option
-        )
+        result = _run(command, shell=True, **option)
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run command: {e}")
-        return str(e), str(e.stdout), False
+        return str(e), str(e), False
 
 def run_powershell_script(script_path, args=None, **option):
     try:
-        system_encoding = locale.getpreferredencoding()
         command = [
             'powershell.exe',
             '-ExecutionPolicy', 'Bypass',  # 一時的に実行ポリシーをバイパス
@@ -62,9 +131,7 @@ def run_powershell_script(script_path, args=None, **option):
             command += [
                 '-Args', args
             ]
-        result = subprocess.run(command, capture_output=True, text=True, 
-            encoding=system_encoding, timeout=180, **option
-        )
+        result = _run(command, **option)
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run PowerShell script: {e}")
@@ -76,11 +143,7 @@ def run_wsl_script(script_path, args=None, **option):
         command = ['wsl']
         command.append(wsl_path)
         if args: command += args
-        result = subprocess.run(
-            command,  # WSL上でスクリプトを直接実行
-            capture_output=True, text=True, 
-            encoding='utf-8', timeout=180, **option
-        )
+        result = _run(command, default_encoding='utf-8', **option)
         # print(f"WSL Bash Output: {result.stdout}")
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
@@ -93,11 +156,7 @@ def run_python_script(script_path, args=None, _timeout=180, **option):
         command.append(script_path)
         if args: command += args
         command.append('-v')
-        result = subprocess.run(
-            command,
-            capture_output=True, text=True,
-            encoding='utf-8', timeout=_timeout, **option
-        )
+        result = _run(command, default_encoding='utf-8', timeout=option.pop('timeout', _timeout), **option)
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run `Python` script: {e}")
@@ -109,11 +168,7 @@ def run_ruby_script(script_path, args=None, **option):
         command = ['ruby']
         command.append(script_path)
         if args: command += args
-        result = subprocess.run(
-            command,
-            capture_output=True, text=True,
-            encoding='utf-8', timeout=180, **option
-        )
+        result = _run(command, default_encoding='utf-8', **option)
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run `Ruby` script: {e}")

@@ -680,7 +680,9 @@ void langscore::divisi_mvmz::writeFixedBasicData()
     const bool fillDefaultLanguageColumn = config.fillDefaultLanguageColumn();
     const bool addNewContentToEnd = config.AddNewContentToEnd();
 
-    if(config.enableLanguagePatch())
+    //言語別出力 (ExportByLang) と言語パッチモードのどちらでも言語毎のフォルダへ出力する。
+    //出力先を決める exportDirectory() も同じ条件 (exportByLanguage) で分岐している。
+    if(config.exportByLanguage())
     {
         const auto pair = config.exportDirectoryWithLang(root);
         std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;

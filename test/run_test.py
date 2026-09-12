@@ -26,12 +26,16 @@ def extract_failed_tests(test_results):
     failed_tests = []
     for suite in test_results['testsuites']:
         for case in suite['testsuite']:
-            if case['result'] != 'COMPLETED':
-                failed_tests.append({
-                    'test_suite': suite['name'],
-                    'test_case': case['name'],
-                    'failure_message': case.get('failures', [{}])[0].get('message', 'No message')
-                })
+            # 失敗したテストも result は COMPLETED のままなので、failures の有無で判定する。
+            failures = case.get('failures', [])
+            if not failures and case.get('result') == 'COMPLETED':
+                continue
+            failed_tests.append({
+                'test_suite': suite['name'],
+                'test_case': case['name'],
+                # gtest の JSON はメッセージを 'failure' キーに入れる。
+                'failure_message': failures[0].get('failure', 'No message') if failures else case.get('result')
+            })
     return failed_tests
 
 def run_rvcnv_test(rvcnv_script_path, details_md_text, results_md_texts):
@@ -291,12 +295,15 @@ def run_cpp_test(details_md_text, results_md_texts):
         "-DCMAKE_BUILD_TYPE:STRING=Test_Debug",
         f"-DTEST_DATA_SRC:STRING={divisi_root}\\test\\data",
     ]
-    if os.path.exists(test_build_directory):
-        core.remove_read_only(test_build_directory)
-        shutil.rmtree(test_build_directory)
-    
-    os.makedirs(test_build_directory)
-    output, error, result = core.run_command("cmake.exe", cmake_args, cwd=test_build_directory)
+    # ビルドディレクトリは削除しない。divisi_test は初回実行時に test/data (3.4GB) を
+    # ここへコピーするため、消すと毎回コピーとgoogletestの取得が発生する。
+    os.makedirs(test_build_directory, exist_ok=True)
+
+    # cl.exe / ninja へパスを通す。開発者コマンドプロンプト以外からも実行できるようにする。
+    build_env = core.vs_environment()
+
+    output, error, result = core.run_command("cmake.exe", cmake_args, cwd=test_build_directory,
+                                             env=build_env, timeout=900)
     if result == False:
         results_md_texts.append(f"| {TEST_NAME} | Failed | CMake | --- |")
         details_md_text.append(f"```\n")
@@ -305,7 +312,8 @@ def run_cpp_test(details_md_text, results_md_texts):
         return False
 
     if result == True:
-        output, error, result = core.run_command("ninja", cwd=test_build_directory)
+        output, error, result = core.run_command("ninja", cwd=test_build_directory,
+                                                 env=build_env, timeout=1800)
         if result == False:
             results_md_texts.append(f"| {TEST_NAME} | Failed | Ninja | --- |")
             details_md_text.append(f"```\n")
@@ -315,8 +323,10 @@ def run_cpp_test(details_md_text, results_md_texts):
 
     # 実行に必要なDLLはtest/CMakeLists.txtのPOST_BUILDでコピーされる。
     # カレントディレクトリからは解決されない場合があるため絶対パスで実行する。
+    # 初回はtest/dataのコピーが走るため、タイムアウトを長めに取る。
     divisi_test_exe = os.path.join(test_build_directory, "divisi_test.exe")
-    output, error, result = core.run_command(divisi_test_exe, ["--gtest_output=json:cpp_test_results.json"], cwd=test_build_directory)
+    output, error, result = core.run_command(divisi_test_exe, ["--gtest_output=json:cpp_test_results.json"],
+                                             cwd=test_build_directory, timeout=1800)
     failures = []
     result_json = os.path.join(test_build_directory, 'cpp_test_results.json')
     if os.path.exists(result_json):
@@ -393,7 +403,7 @@ def main():
     if 'all' in test_selection or 'cpp' in test_selection:
         all_tests_passed &= run_cpp_test(details_md_text, results_md_texts)
 
-    if 'all' in test_selection or 'divisi' in test_selection:
+    if 'all' in test_selection or 'divisi' in test_selection or 'divisi_ct' in test_selection:
         all_tests_passed &= run_divisi_test(divisi_script_path, details_md_text, results_md_texts)
 
     end_date = datetime.now()
@@ -422,5 +432,8 @@ def main():
         # 詳細を書き出す
         log_file.write("\n".join(details_md_text))
 
+    return all_tests_passed
+
 if __name__ == '__main__':
-    main()
+    # CI やスクリプトから結果を判定できるよう、失敗時は終了コードを返す。
+    sys.exit(0 if main() else 1)

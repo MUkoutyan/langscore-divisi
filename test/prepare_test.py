@@ -4,22 +4,12 @@ import sys
 import shutil
 from internal import test_core
 
-def setup_vs_environment(vs_path="C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvarsall.bat"):
-    # vcvarsall.bat の実行
-    command = f'"{vs_path}" x64 && set'
-    
-    # subprocessでコマンドを実行して環境変数を取得
-    result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to set up Visual Studio environment: {result.stderr}")
-    
-    # 出力された環境変数を解析
-    env = {}
-    for line in result.stdout.splitlines():
-        if "=" in line:
-            key, value = line.split("=", 1)
-            env[key] = value
+def setup_vs_environment():
+    # Visual Studio のバージョンは決め打ちにせず、vswhere 等で検出する。
+    env = test_core.vs_environment()
+    if env is None:
+        # 開発者コマンドプロンプトから実行されている場合は現在の環境をそのまま使う
+        return os.environ.copy()
     return env
 
 
@@ -131,10 +121,12 @@ def build_divisi_test_with_vs():
         shutil.rmtree(linux_build_dir)
         os.makedirs(linux_build_dir)
 
-    win_cmake_args = [divisi_root, "-G", "Ninja", "-DCMAKE_BUILD_TYPE:STRING=Test", "-DTEST_DATA_SRC:STRING=D:\\Programming\\Github\\langscore-divisi\\test\\data"]
+    test_data_dir = os.path.join(divisi_root, "test", "data")
+    win_cmake_args = [divisi_root, "-G", "Ninja", "-DCMAKE_BUILD_TYPE:STRING=Test", f"-DTEST_DATA_SRC:STRING={test_data_dir}"]
     win_build_command = "ninja"
-    
-    linux_cmake_args = ["..", "-DCMAKE_BUILD_TYPE:STRING=Test", " -DLLVM_USE_LINKER=mold", "-DTEST_DATA_SRC:STRING=/mnt/d/Programming/Github/langscore-divisi/test/data"]
+
+    linux_cmake_args = ["..", "-DCMAKE_BUILD_TYPE:STRING=Test", " -DLLVM_USE_LINKER=mold",
+                        f"-DTEST_DATA_SRC:STRING={test_core.convert_path_for_wsl(test_data_dir)}"]
     linux_build_command = f"{divisi_root}/build_linux.sh"
 
     try:

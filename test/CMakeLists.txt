@@ -14,6 +14,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
 
+# テストデータの場所。既定は test/data で、必要な場合のみ -DTEST_DATA_SRC で上書きする。
+if(NOT DEFINED TEST_DATA_SRC OR TEST_DATA_SRC STREQUAL "")
+    set(TEST_DATA_SRC "${PROJECT_SOURCE_DIR}/data")
+endif()
+
 # TODO: テストを追加し、必要な場合は、ターゲットをインストールします。
 # FetchContentを利用してGoogle Testを取得
 include(FetchContent)
@@ -176,5 +181,7 @@ add_test(NAME test COMMAND ${CMAKE_BINARY_DIR}/divisi_test)
 set_tests_properties(test PROPERTIES COMMAND_EXPAND_LISTS TRUE)
 set_tests_properties(test PROPERTIES COMMAND "${CMAKE_BINARY_DIR}/divisi_test;--gtest_output=json:${CMAKE_BINARY_DIR}/cpp_test_results.json")
 
-message(${PROJECT_SOURCE_DIR})
-configure_file(${PROJECT_SOURCE_DIR}/test_config.h.in ${PROJECT_SOURCE_DIR}/test_config.h )
+# test_config.h はビルド構成毎に絶対パスが変わるため、ソースツリーではなく
+# ビルドディレクトリへ生成する。(#include "test_config.h" で解決できるようパスを追加)
+configure_file(${PROJECT_SOURCE_DIR}/test_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/test_config.h)
+target_include_directories(divisi_test PUBLIC ${CMAKE_CURRENT_BINARY_DIR})

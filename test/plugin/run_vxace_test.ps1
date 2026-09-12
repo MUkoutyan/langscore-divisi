@@ -1,4 +1,4 @@
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 # RGSS3 相当の Ruby 1.9.2 のパス。環境変数 LANGSCORE_RUBY19 で上書きできます。
 $rubyPath = if ($env:LANGSCORE_RUBY19) { $env:LANGSCORE_RUBY19 } else { "C:\ruby-1.9.2\bin\ruby.exe" }

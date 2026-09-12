@@ -5,6 +5,7 @@
 
 
 CMakeFiles/
+3rdparty/*
 3rdparty/tree-sitter/make
 test/test_data.zip
 *.cmake
@@ -379,3 +380,9 @@ test/plugin/vxace_test
 test/rvcnv_test/test_data
 example
 _deps
+
+# ビルド時に生成される (test/CMakeLists.txt の configure_file)
+test/test_config.h
+# テスト実行結果のログ
+test/test_log.md
+test/log.txt
