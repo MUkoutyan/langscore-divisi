@@ -5,6 +5,7 @@
 #include "test_mvmz.cpp"
 #include "test_validation.cpp"
 #include "test_core.cpp"
+#include "test_known_issues.cpp"
 
 #include <gtest/gtest.h>
 
