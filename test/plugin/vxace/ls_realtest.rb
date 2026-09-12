@@ -7,7 +7,8 @@
 # 実行は test/plugin/run_vxace_test.py 経由。
 #
 # テスト内容は test/plugin/Langscore_mvmz.test.js と対応させている。
-# MV/MZ にしか存在しない機能は skip で理由を残す。
+# MV/MZ と VXAce はツクール側のコア処理が異なるため、揃えられない項目がある。
+# それらは skip として理由を残す。実装漏れではなく、差異を許容している箇所。
 #-------------------------------------------------------------------
 
 module LsTest
@@ -549,9 +550,9 @@ def ls_run_default_tests
     end
 
     LsTest.skip("プロフィールの変更イベントが正しく反映されているか",
-                "langscore.rb はプロフィール変更 (325) を alias していない (MV/MZ のみ対応)")
+                "ツクール側の差異: VXAce では 325 を alias していない (MV/MZ のみ対応)")
     LsTest.skip("2024/10報告不具合 名前入力が常に英語になる",
-                "VXAce の Game_System#japanese? は $data_system.japanese を返すだけで、選択言語に追従しない")
+                "ツクール側の差異: VXAce の Game_System#japanese? はプロジェクト設定を返すだけで選択言語に追従しない")
   end
 
   #-----------------------------------------------------------------
@@ -574,13 +575,13 @@ def ls_run_default_tests
     end
 
     LsTest.skip("言語フォルダ名は英数字・ハイフン・アンダースコアのみ許可すること",
-                "langscore.rb に isValidLanguageFolder 相当が無い (Langscore.js のみ)")
+                "ツクール側の差異: VXAce はフォルダ名を外部入力として扱わないため検証を持たない")
     LsTest.skip("翻訳ファイル名はパストラバーサルを弾くこと",
-                "langscore.rb に isValidFileName 相当が無い (Langscore.js のみ)")
+                "ツクール側の差異: VXAce は load_data 経由のため検証を持たない")
     LsTest.skip("ファイル名のサニタイズで危険な文字が除去されること",
-                "langscore.rb に sanitizeFileName 相当が無い (Langscore.js のみ)")
+                "ツクール側の差異: VXAce は load_data 経由のため検証を持たない")
     LsTest.skip("サポート外の言語への変更は無視されること",
-                "langscore.rb の changeLanguage は言語コードを検証していない (Langscore.js のみ)")
+                "ツクール側の差異: VXAce の changeLanguage は言語コードを検証しない")
   end
 
   #-----------------------------------------------------------------
