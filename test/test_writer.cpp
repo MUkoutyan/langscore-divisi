@@ -368,16 +368,26 @@ TEST_F(Langscore_Writer, ConvertCsvText_ASCII)
 
     const fs::path filePath = "./langscore_write_test.csv";
 
+    //writePlainは常にUTF-8 BOMを付与する。(BOM自体の検証はWritePlain_OutputHasUtf8Bomで行う)
+    //このテストはCSVのクォート処理が対象なので、BOMを除いた本文で比較する。
+    const auto readBody = [&filePath]
+    {
+        std::ifstream file(filePath, std::ios::binary);
+        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        constexpr std::string_view bom = "\xEF\xBB\xBF";
+        if(contents.starts_with(bom)) {
+            contents.erase(0, bom.size());
+        }
+        return contents;
+    };
+
 	{
 		auto input = u8"Hello, World!"s;
         auto result = writer.writePlain(filePath, {{input}});
         ASSERT_EQ(result, Status_Success);
 
-        std::ifstream file(filePath);
-        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
         ASSERT_TRUE(fs::exists(filePath));
-        ASSERT_STREQ(contents.c_str(), "\"Hello, World!\"");
+        ASSERT_STREQ(readBody().c_str(), "\"Hello, World!\"");
 
 	}
 	{
@@ -385,33 +395,24 @@ TEST_F(Langscore_Writer, ConvertCsvText_ASCII)
         auto result = writer.writePlain(filePath, {{input}});
         ASSERT_EQ(result, Status_Success);
 
-        std::ifstream file(filePath);
-        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
         ASSERT_TRUE(fs::exists(filePath));
-        ASSERT_STREQ(contents.c_str(), utility::cnvStr<std::string>(u8"\"First line\nSecond line\""s).c_str());
+        ASSERT_STREQ(readBody().c_str(), utility::cnvStr<std::string>(u8"\"First line\nSecond line\""s).c_str());
 	}
 	{
 		auto input = u8"Quote \" in the text";
         auto result = writer.writePlain(filePath, {{input}});
         ASSERT_EQ(result, Status_Success);
 
-        std::ifstream file(filePath);
-        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
         ASSERT_TRUE(fs::exists(filePath));
-        ASSERT_STREQ(contents.c_str(), utility::cnvStr<std::string>(u8"\"Quote \"\" in the text\""s).c_str());
+        ASSERT_STREQ(readBody().c_str(), utility::cnvStr<std::string>(u8"\"Quote \"\" in the text\""s).c_str());
 	}
 	{
 		auto input = u8"Comma, and quote \"";
         auto result = writer.writePlain(filePath, {{input}});
         ASSERT_EQ(result, Status_Success);
 
-        std::ifstream file(filePath);
-        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
         ASSERT_TRUE(fs::exists(filePath));
-        ASSERT_STREQ(contents.c_str(), utility::cnvStr<std::string>(u8"\"Comma, and quote \"\"\""s).c_str());
+        ASSERT_STREQ(readBody().c_str(), utility::cnvStr<std::string>(u8"\"Comma, and quote \"\"\""s).c_str());
 	}
 }
 
@@ -465,4 +466,37 @@ TEST_F(Langscore_Writer, ConvertCsvText_Multibyte)
         ASSERT_EQ(texts.size(), 1); // コメントアウト部分がスペースに置き換えられる
         ASSERT_EQ(texts[0].original, u8"コンマ,\\\"と引用符");
     }
+}
+
+// ファイル先頭がUTF-8 BOMかどうかを判定する
+bool hasUtf8Bom(const std::filesystem::path& filePath) {
+    std::ifstream file(filePath, std::ios::binary);
+    if(!file) return false;
+    unsigned char bom[3] = {};
+    file.read(reinterpret_cast<char*>(bom), 3);
+    return bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF;
+}
+
+TEST_F(Langscore_Writer, WritePlain_OutputHasUtf8Bom)
+{
+    langscore::csvwriter writer(speciftranstext{{}});
+    const fs::path filePath = testDir / "writeplain_bom_test.csv";
+    // std::vector{u8stringlist{...}} はコピー推論ガイドが選ばれ u8stringlist に推論されるため、要素型を明示する
+    auto result = writer.writePlain(filePath, std::vector<utility::u8stringlist>{utility::u8stringlist{u8"テストBOM"}});
+    ASSERT_EQ(result, Status_Success);
+    ASSERT_TRUE(fs::exists(filePath));
+    ASSERT_TRUE(hasUtf8Bom(filePath));
+}
+
+TEST_F(Langscore_Writer, Write_OutputHasUtf8Bom)
+{
+    langscore::csvwriter writer(speciftranstext{
+        utility::u8stringlist{u8"ja"},
+        std::vector<TranslateText>{TranslateText{u8"ja", utility::u8stringlist{u8"テストBOM"}}}
+    });
+    const fs::path filePath = testDir / "write_bom_test.csv";
+    auto result = writer.write(filePath, u8"ja", MergeTextMode::AcceptSource);
+    ASSERT_EQ(result, Status_Success);
+    ASSERT_TRUE(fs::exists(filePath));
+    ASSERT_TRUE(hasUtf8Bom(filePath));
 }

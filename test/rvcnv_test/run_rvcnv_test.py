@@ -2,6 +2,7 @@ import subprocess
 import shutil
 import os
 import csv
+import re
 import sys
 import io
 import unittest
@@ -31,6 +32,7 @@ def run_command(args):
         out, err, code = core.run_ruby_script(RVCNV_PATH, args)
         
     if code == False:
+        global is_delete_files
         print(f"Error executing command: {RVCNV_PATH}, {args}")
         print(f"Standard Output:\n{out}")
         print(f"Standard Error:\n{err}")
@@ -67,17 +69,24 @@ def extract_script_data(project_path, output_path):
 def normalize_newlines(text, newline_type):
     return text.replace("\n", "").replace("\r", "")
 
-def validate_newlines_in_csv(file_path):
-    is_map = "Map" in file_path
-    with open(file_path, newline='', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            for cell in row:
-                if is_map and "\r\n" in cell:
-                    return False
-                if not is_map and "\n" in cell and "\r\n" not in cell:
-                    return False
-    return True
+def cell_newlines(file_path):
+    """セル内に現れる改行コードを出現順に並べて返す。
+    Ver.0.7.4からパッキング時にセル末尾の改行を削除するようになったため、末尾は比較対象外とする。"""
+    with open(file_path, newline='', encoding='utf-8-sig') as f:
+        return [m.group(0)
+                for row in csv.reader(f)
+                for cell in row
+                for m in re.finditer(r'\r\n|\r|\n', cell.rstrip('\r\n'))]
+
+def validate_newlines_in_csv(original_csv_path, packed_csv_path):
+    # Mapはセル内にCRLFが入るとツクール側で不具合が出るため、CRLFであってはならない。
+    # (同じ制約を divisi 側も platform_base::validateCsvFormat で検査している)
+    if "Map" in os.path.basename(packed_csv_path):
+        return "\r\n" not in cell_newlines(packed_csv_path)
+
+    # Map以外はrvcnvが元CSVの改行コードをそのまま往復することを確認する。
+    # CommonEvents等の入力CSV自体がLFを含むため、CRLFを要求してはいけない。
+    return cell_newlines(original_csv_path) == cell_newlines(packed_csv_path)
 
 def compare_csv_files(file1, file2):
     with open(file1, newline='', encoding='utf-8') as f1, open(file2, newline='', encoding='utf-8') as f2:
@@ -174,7 +183,7 @@ class TestRVCNV(unittest.TestCase):
         expected_files = [
             r"Actors.json", r"Armors.json", r"Classes.json",
             r"CommonEvents.json", r"Enemies.json",r"Items.json", r"Map001.json",
-            r"Map002.json",r"Map003.json",r"MapInfos.csv",r"Skills.json",
+            r"Map002.json",r"Map003.json",r"MapInfos.json",r"Skills.json",
             r"States.json",r"System.json",r"Troops.json",r"Weapons.json",
         ]
         
@@ -232,7 +241,7 @@ class TestRVCNV(unittest.TestCase):
             convert_rvdata2_to_csv(rvdata_path, extracted_csv_path)
 
             # 生成されたCSVファイルの改行コードの検証
-            self.assertTrue(validate_newlines_in_csv(extracted_csv_path), "Newline characters in the packed CSV are not correctly set.")
+            self.assertTrue(validate_newlines_in_csv(original_csv_path, extracted_csv_path), f"Newline characters in the packed CSV are not correctly set. | {file_path}")
 
             # 変換されたCSVファイルの内容を元のCSVファイルと比較
             self.assertTrue(compare_csv_files(original_csv_path, extracted_csv_path), f"The content of the packed CSV does not match the original CSV. | {file_path}")
@@ -247,6 +256,8 @@ if __name__ == '__main__':
         suite = unittest.TestLoader().loadTestsFromTestCase(TestRVCNV)
         runner = unittest.TextTestRunner(verbosity=2)
         result = runner.run(suite)
+        sys.exit(0 if result.wasSuccessful() else 1)
     except Exception as e:
         print(f"Failed to run command: {e}")
+        sys.exit(1)
 

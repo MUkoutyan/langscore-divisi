@@ -234,10 +234,49 @@ TEST(Langscore_MV_Divisi_Write, ValidateFiles)
 TEST(Langscore_MV_Divisi_Write, WritePluginJS)
 {
 	ClearGenerateFiles();
+    //updatePluginはplugins.jsを直接書き換えるため、初回実行時の内容をplugins_origin.jsへ退避し、
+    //2回目以降はそこから復元して毎回同じ入力でテストする。
+    {
+        auto src = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins/js/plugins_origin.js";
+        auto dst = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins/js/plugins.js";
+        ASSERT_TRUE(fs::exists(src) || fs::exists(dst)) << "plugins.js not found : " << dst.string();
+        if(fs::exists(src) == false) {
+            fs::copy(dst, src);
+        }
+        fs::copy(src, dst, fs::copy_options::overwrite_existing);
+    }
+
+
 	//テキストが一致するかの整合性を確認するテスト
 	langscore::config::detachConfigFile();
-    checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
-	langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json");
+    checkAndCreateConfigFile("data/mv/LangscoreTest_ManyPlugins_langscore/config.json", "Game.rpgproject");
+
+    // 言語パッチモードが有効の設定ファイルを作成
+    {
+        langscore::config config;
+        auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins_langscore/config.json";
+        nlohmann::json json;
+        std::ifstream file(configPath);
+        file >> json;
+        file.close();
+
+        // 言語パッチモードを有効化
+        json["Write"]["EnableLanguagePatch"] = true;
+
+        // "Languages" 配列を操作
+        for(auto& lang : json["Languages"]) {
+            if(lang["LanguageName"] == "en" || lang["LanguageName"] == "zh-cn") {
+                lang["Enable"] = true;
+            }
+        }
+
+        std::ofstream outFile(configPath);
+        outFile << json.dump(2);
+        outFile.close();
+    }
+
+	langscore::divisi divisi("./", fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins_langscore/config.json");
+
 
 	ASSERT_TRUE(divisi.analyze().valid());
 
@@ -275,6 +314,47 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS)
 
     ASSERT_STREQ(firstScriptName.c_str(), "Langscore_ObserverBridge");
     ASSERT_STREQ(lastScriptName.c_str(), "Langscore");
+
+    // plugins.jsに書き込まれた内容のうち、すべてのparametersの値が文字列になっているかをチェック
+    for(const auto& plugin : jsonStruct) {
+        if(!plugin.contains("parameters")) continue;
+        const auto& params = plugin["parameters"];
+        for(auto it = params.begin(); it != params.end(); ++it) {
+            ASSERT_TRUE(it.value().is_string())
+                << "Plugin: " << plugin["name"].get<std::string>()
+                << ", Parameter: " << it.key()
+                << " is not a string (value: " << it.value() << ")";
+        }
+
+        // LangscoreプラグインのMust Be Included Imageの内容を検証
+        if(plugin["name"] == "Langscore" && params.contains("Must Be Included Image")) {
+            std::string mustBeIncluded = params["Must Be Included Image"].get<std::string>();
+            // JSON配列としてパース
+            nlohmann::json imgArray = nlohmann::json::parse(mustBeIncluded, nullptr, false);
+            ASSERT_TRUE(imgArray.is_array()) << "Must Be Included Image is not a valid array: " << mustBeIncluded;
+
+            //img配下を再帰的に走査し、ファイル名が "_<有効な言語名>" で終わる画像だけが列挙される。
+            //(このプロジェクトで有効な言語は en / zh-cn)
+            const std::vector<std::string> langSuffixes = {"_en", "_zh-cn"};
+            std::vector<std::string> images;
+            for(const auto& img : imgArray)
+            {
+                ASSERT_TRUE(img.is_string()) << "Must Be Included Image should contain only strings";
+                auto str = img.get<std::string>();
+                const bool hasLangSuffix = std::any_of(langSuffixes.begin(), langSuffixes.end(),
+                    [&str](const auto& suffix) { return str.ends_with(suffix); });
+                ASSERT_TRUE(hasLangSuffix) << "Image without language suffix should not be included : " << str;
+                images.emplace_back(std::move(str));
+            }
+
+            //拡張子を除いたimgからの相対パスで格納される。
+            //このフィクスチャで該当するのは img/pictures/nantoka8_en.png のみ。
+            ASSERT_NE(std::find(images.begin(), images.end(), "pictures/nantoka8_en"), images.end())
+                << "pictures/nantoka8_en is not included in Must Be Included Image";
+            ASSERT_EQ(images.size(), 1u) << "Must Be Included Image should contain only language variants under img/";
+        }
+    }
+
 
 	GTEST_SUCCEED();
 }
