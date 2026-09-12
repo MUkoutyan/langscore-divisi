@@ -5,9 +5,9 @@
             "name": "windows-base",
             "description": "Visual Studio 開発環境のある Windows をターゲットにします。",
             "hidden": true,
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/out/build/${presetName}",
-            "installDir": "${sourceDir}/out/install/${presetName}",
+            "generator": "Visual Studio 18 2026",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "installDir": "${sourceDir}/bin/${presetName}",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "cl.exe",
                 "CMAKE_CXX_COMPILER": "cl.exe"
@@ -41,41 +41,21 @@
             "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
         },
         {
-            "name": "x64-debug-with-example",
-            "displayName": "x64 Debug With Example",
-            "inherits": "x64-debug",
-            "cacheVariables": {
-                "DIVISI_BUILD_EXAMPLE": true
-            }
-        },
-        {
-            "name": "x64-release-with-example",
-            "displayName": "x64 Release With Example",
-            "inherits": "x64-release",
-            "cacheVariables": {
-                "DIVISI_BUILD_EXAMPLE": true
-            }
-        },
-        {
             "displayName": "Test",
             "inherits": "x64-release",
             "name": "Test",
             "cacheVariables": {
-                "ENABLE_TEST":  true,
-                "CMAKE_BUILD_TYPE": "Test"
+                "CMAKE_BUILD_TYPE": "Test",
+                "TEST_DATA_SRC": "${sourceDir}/test/data"
             } 
         },
         {
             "displayName": "Test_Debug",
-            "inherits": "windows-base",
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
-            },
+            "inherits": "x64-debug",
             "name": "Test_Debug",
             "cacheVariables": {
-                "ENABLE_TEST": true,
-                "CMAKE_BUILD_TYPE": "Test_Debug"
+                "CMAKE_BUILD_TYPE": "Test_Debug",
+                "TEST_DATA_SRC": "${sourceDir}/test/data"
             }
         }
     ]
