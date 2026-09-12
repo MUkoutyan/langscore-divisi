@@ -61,7 +61,10 @@ add_custom_command(
 add_custom_command(TARGET divisi POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${PROJECT_SOURCE_DIR}/resource"
-    "$<TARGET_FILE_DIR:divisi>/resource"    
+    "$<TARGET_FILE_DIR:divisi>/resource"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${PROJECT_SOURCE_DIR}/resource"
+    "${PROJECT_SOURCE_DIR}/bin/resource"
     COMMENT "Copying resource directory to output directory"
 )
 
@@ -73,9 +76,14 @@ file(GLOB ICU_DLL_FILES "${PROJECT_SOURCE_DIR}/3rdparty/icu/bin/*.dll")
 
 foreach(DLL_FILE ${ICU_DLL_FILES})
     add_custom_command(TARGET divisi POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${DLL_FILE}"
         $<TARGET_FILE_DIR:divisi>
+        # bin/ にも配置する。bin/divisi.exe は test/divisi_ct 等がそのまま実行するため、
+        # ICUのランタイムDLLが揃っていないと起動できない。
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${DLL_FILE}"
+        "${PROJECT_SOURCE_DIR}/bin"
     )
 endforeach()
 

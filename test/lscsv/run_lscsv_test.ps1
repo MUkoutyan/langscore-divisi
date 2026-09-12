@@ -30,10 +30,9 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# WSL経由でnpmテストの実行
-Write-And-Capture "Running npm test in WSL..."
-$wslPath = "/mnt/d/Programming/Github/langscore-divisi/test/lscsv"
-wsl -e bash -c "cd $wslPath && npm test"
+# npmテストの実行
+Write-And-Capture "Running npm test..."
+npm test
 if ($LASTEXITCODE -ne 0) {
     Write-And-Capture "npm test failed with exit code $LASTEXITCODE"
     $output | Write-Error

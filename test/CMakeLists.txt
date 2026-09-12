@@ -137,21 +137,39 @@ endif()
 #debug ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitterD.lib
 #optimized ${PROJECT_SOURCE_DIR}/../3rdparty/tree-sitter/tree-sitter.lib
 
-file(GLOB GTEST_DLL_FILES "${CMAKE_BINARY_DIR}/bin/*.dll")
+# divisi_test.exe の実行に必要なDLLを出力先へコピーする。
+# ICUはdivisi本体と同様 (exec/CMakeLists.txt) にランタイムDLLが必要。
+# GoogleTestは静的ライブラリとしてビルドされるためDLLは生成されず、存在する場合のみコピーする。
+if(MSVC)
+    file(GLOB ICU_DLL_FILES "${PROJECT_SOURCE_DIR}/../3rdparty/icu/bin/*.dll")
+    foreach(DLL_FILE ${ICU_DLL_FILES})
+        add_custom_command(TARGET divisi_test POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${DLL_FILE}"
+            "$<TARGET_FILE_DIR:divisi_test>"
+        )
+    endforeach()
+endif()
 
-foreach(DLL_FILE ${GTEST_DLL_FILES})
-    add_custom_command(TARGET divisi_test POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        "${DLL_FILE}"
-        "${CMAKE_BINARY_DIR}"
-    )
-endforeach()
+add_custom_command(TARGET divisi_test POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+    "$<TARGET_FILE_DIR:gtest>"
+    "$<TARGET_FILE_DIR:divisi_test>"
+)
 
-# gmock.dll をコピーする処理を追加
+# VXAceのテストはinvoker経由でrvcnv.exeを実行する。
+# invoker::exec はappPathが空の場合 "./rvcnv.exe" を探すため、実行ファイルと同じ場所に必要。
 add_custom_command(TARGET divisi_test POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_BINARY_DIR}/bin/gmock.dll"
-    "${CMAKE_BINARY_DIR}"
+    "${PROJECT_SOURCE_DIR}/../rvcnv/rvcnv.exe"
+    "$<TARGET_FILE_DIR:divisi_test>"
+)
+
+# langscore.rb / Langscore.js 等のテンプレートも "./resource" から参照される。
+add_custom_command(TARGET divisi_test POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+    "${PROJECT_SOURCE_DIR}/../resource"
+    "$<TARGET_FILE_DIR:divisi_test>/resource"
 )
 
 add_test(NAME test COMMAND ${CMAKE_BINARY_DIR}/divisi_test)

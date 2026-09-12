@@ -38,9 +38,11 @@ def run_command(command_path, args=None, **option):
         command = []
         command.append(command_path)
         if args: command += args
+        # npm 等の UTF-8 出力は encoding='utf-8' を渡す。復号できない文字で落とさない。
+        encoding = option.pop('encoding', system_encoding)
         result = subprocess.run(command, 
             capture_output=True, text=True, shell=True, 
-            encoding=system_encoding, timeout=180, **option
+            encoding=encoding, errors='replace', timeout=180, **option
         )
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
@@ -200,10 +202,11 @@ def analyze_ruby_test_result(output):
 
 
 def analyze_jest_test_result(output, is_nwjs):
-    # Jestのテスト結果を解析
+    # mocha の出力から失敗したテストケースを抽出する。
+    # 末尾の "N failing" 以降はスイート名付きの再掲なので、それより前 (テスト一覧) だけを見る。
     failures = []
-    # 失敗したテストケースを抽出する正規表現
-    failing_tests = re.findall(r'^\s*\d+\) (.+)\n', output, re.MULTILINE)
+    listing = re.split(r'^\s*\d+ failing', output or '', maxsplit=1, flags=re.MULTILINE)[0]
+    failing_tests = re.findall(r'^\s*\d+\) (.+)$', listing, re.MULTILINE)
     for test_case in failing_tests:
         failures.append((test_case.strip(), is_nwjs))
     return [], failures, []
