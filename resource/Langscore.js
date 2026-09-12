@@ -741,7 +741,12 @@ var Langscore = class
 
     this.internal_modifyArray($dataSystem.skillTypes, (el) => el = this.translate(el, this.ls_system_tr) )
 
-    $dataSystem.currencyUnit = this.translate($dataSystem.currencyUnit, this.ls_system_tr);
+    //他の項目と同様、現在の表示文から原文を引き直してから翻訳する。
+    //そうしないと一度切り替えた後に元の言語へ戻せない。
+    var currencyUnitOrigin = this.fetch_original_text($dataSystem.currencyUnit, this.ls_system_tr);
+    if(currencyUnitOrigin){
+      $dataSystem.currencyUnit = this.translate(currencyUnitOrigin, this.ls_system_tr);
+    }
 
   };
 
@@ -1195,7 +1200,8 @@ Langscore.EnablePathMode   = Boolean(Langscore.Langscore_Parameters['Enable Lang
 %{SUPPORT_FONTS}%;
 
 Langscore.Language_StateStartVariable = Langscore.Langscore_Parameters['Language State Variable']
-Langscore.Enable_Translation_For_DefLang = Langscore.Langscore_Parameters['Enable Translation For Default Language']
+//プラグインパラメータは文字列で渡るため、真偽値に変換する。("false" は truthy なので比較が成立しない)
+Langscore.Enable_Translation_For_DefLang = String(Langscore.Langscore_Parameters['Enable Translation For Default Language']) === 'true'
 
 Langscore.langscore_current_language = String(Langscore.Langscore_Parameters['Default Language']);
 Langscore.currentFont = Langscore.FontList[Langscore.langscore_current_language];

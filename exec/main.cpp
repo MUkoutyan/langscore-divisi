@@ -194,7 +194,10 @@ int main(int argc, const char* argv[])
 
 	langscore::divisi divisi(args.appPath, args.configFile);
 
-    if(std::filesystem::exists(args.configFile) == false) {
+    //--createConfigFile / --convertPatchCSV / --convertBoundCSV は -c を取らないため、
+    //設定ファイルを必要とするオプションの時だけ存在チェックを行う。
+    const bool requireConfigFile = !(args.createConfigFile || args.convertPatchCSV || args.convertBoundCSV);
+    if(requireConfigFile && std::filesystem::exists(args.configFile) == false) {
         std::cerr << "Config file does not exist: " << args.configFile << std::endl;
         return -1;
     }

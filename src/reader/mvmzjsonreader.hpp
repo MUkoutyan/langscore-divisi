@@ -6,7 +6,23 @@
 namespace langscore
 {
 
-    namespace keys
+    namespace mvmz_eventcode
+    {
+        constexpr static int MessageParameter = 101;
+        constexpr static int ShowChoices = 102;
+        constexpr static int InputNumber = 103;
+        constexpr static int SelectItem = 104;
+        constexpr static int ScrollMessageParameter = 105;
+        constexpr static int CommonEvent = 117;
+        constexpr static int ChangeActorName = 320;
+        constexpr static int ChangeActorImage = 322;
+        constexpr static int ChangeActorNickname = 324;
+        constexpr static int ChangeActorProfile = 325;
+        constexpr static int ShowText = 401;
+        constexpr static int ShowScrollingText = 405;
+    }
+
+    namespace mvmz_keys
     {
         constexpr const char8_t* name = u8"name";
         constexpr const char8_t* nickname = u8"nickname";
@@ -103,13 +119,14 @@ namespace langscore
 	private:
 		void json2tt() override
 		{
+            AuxiliaryNodeInfo auxInfo = {u8"", u8"/", AuxiliaryNodeInfo::Array};
 			if(json.is_array())
 			{
-				convertJArray(json, 0);
+                convertArrayNode(json, 0, auxInfo);
 			}
 			else if(json.is_object())
 			{
-				convertJsonObject(json, 0);
+				convertObjectNode(json, 0, auxInfo);
 			}
 		}
 
@@ -121,103 +138,104 @@ namespace langscore
 
         //特定のデータタイプで検出するキー
         const std::map<DataType, std::vector<std::u8string>> detectClassKeys = {
-            {DataType::Actors,			{keys::name, keys::nickname, keys::profile}},
-            {DataType::Armors,			{keys::name, keys::description}},
-            {DataType::Classes,			{keys::name}},
+            {DataType::Actors,			{mvmz_keys::name, mvmz_keys::nickname, mvmz_keys::profile}},
+            {DataType::Armors,			{mvmz_keys::name, mvmz_keys::description}},
+            {DataType::Classes,			{mvmz_keys::name}},
             //CommonEventsはlist内のオブジェクトに対してcodeの値を調べる必要がある。
-            {DataType::CommonEvents,    {keys::list}},
-            {DataType::Enemies,			{keys::name}},
-            {DataType::Items,			{keys::name, keys::description}},
-            {DataType::Map,				{keys::events}},
-            {DataType::Skills,			{keys::name, keys::description, keys::message1, keys::message2}},
-            {DataType::States,			{keys::name, keys::description, keys::message1, keys::message2, keys::message3, keys::message4}},
-            {DataType::System,			{keys::armorTypes, keys::currencyUnit, keys::elements, keys::equipTypes,
-                                         keys::gameTitle, keys::skillTypes, keys::terms, keys::weaponTypes}},
-            {DataType::Troops,			{keys::pages}},
-            {DataType::Weapons,			{keys::name, keys::description}},
+            {DataType::CommonEvents,    {mvmz_keys::list}},
+            {DataType::Enemies,			{mvmz_keys::name}},
+            {DataType::Items,			{mvmz_keys::name, mvmz_keys::description}},
+            {DataType::Map,				{mvmz_keys::events}},
+            {DataType::Skills,			{mvmz_keys::name, mvmz_keys::description, mvmz_keys::message1, mvmz_keys::message2}},
+            {DataType::States,			{mvmz_keys::name, mvmz_keys::description, mvmz_keys::message1, mvmz_keys::message2, mvmz_keys::message3, mvmz_keys::message4}},
+            {DataType::System,			{mvmz_keys::armorTypes, mvmz_keys::currencyUnit, mvmz_keys::elements, mvmz_keys::equipTypes,
+                                         mvmz_keys::gameTitle, mvmz_keys::skillTypes, mvmz_keys::terms, mvmz_keys::weaponTypes}},
+            {DataType::Troops,			{mvmz_keys::pages}},
+            {DataType::Weapons,			{mvmz_keys::name, mvmz_keys::description}},
         };
         //データタイプ内で検出するキー detectClassKeysで検出されたキーは、この中に含まれているかをまず調べる。
         //検出した場合はこの中のキーを検出する。これはdetectKeyInObjectの値も、再帰的にdetectKeyInObjectで検索されなければいけない。
         const std::unordered_map<std::u8string, std::vector<std::u8string>> detectKeyInObject = {
-            {keys::events,		{keys::pages}},
-            {keys::pages,		{keys::list}},
-            {keys::list,		{keys::code, keys::parameters}},
-            {keys::terms,		{keys::basic, keys::commands, keys::params, keys::messages}},
-            {keys::messages,	{keys::actionFailure, keys::actorDamage, keys::actorDrain, keys::actorGain,
-                                 keys::actorLoss, keys::actorNoDamage, keys::actorNoHit, keys::actorRecovery,
-                                 keys::alwaysDash, keys::bgmVolume, keys::bgsVolume, keys::buffAdd, keys::buffRemove,
-                                 keys::commandRemember, keys::counterAttack, keys::criticalToActor, keys::criticalToEnemy,
-                                 keys::debuffAdd, keys::defeat, keys::emerge, keys::enemyDamage, keys::enemyDrain,
-                                 keys::enemyGain, keys::enemyLoss, keys::enemyNoDamage, keys::enemyNoHit,
-                                 keys::enemyRecovery, keys::escapeFailure, keys::escapeStart, keys::evasion,
-                                 keys::expNext, keys::expTotal, keys::file, keys::levelUp, keys::loadMessage,
-                                 keys::magicEvasion, keys::magicReflection, keys::meVolume, keys::obtainExp,
-                                 keys::obtainGold, keys::obtainItem, keys::obtainSkill, keys::partyName, keys::possession,
-                                 keys::preemptive, keys::saveMessage, keys::seVolume, keys::substitute, keys::surprise,
-                                 keys::useItem, keys::victory}}
+            {mvmz_keys::events,		{mvmz_keys::pages}},
+            {mvmz_keys::pages,		{mvmz_keys::list}},
+            {mvmz_keys::list,		{mvmz_keys::code, mvmz_keys::parameters}},
+            {mvmz_keys::terms,		{mvmz_keys::basic, mvmz_keys::commands, mvmz_keys::params, mvmz_keys::messages}},
+            {mvmz_keys::messages,	{mvmz_keys::actionFailure, mvmz_keys::actorDamage, mvmz_keys::actorDrain, mvmz_keys::actorGain,
+                                     mvmz_keys::actorLoss, mvmz_keys::actorNoDamage, mvmz_keys::actorNoHit, mvmz_keys::actorRecovery,
+                                     mvmz_keys::alwaysDash, mvmz_keys::bgmVolume, mvmz_keys::bgsVolume, mvmz_keys::buffAdd, mvmz_keys::buffRemove,
+                                     mvmz_keys::commandRemember, mvmz_keys::counterAttack, mvmz_keys::criticalToActor, mvmz_keys::criticalToEnemy,
+                                     mvmz_keys::debuffAdd, mvmz_keys::defeat, mvmz_keys::emerge, mvmz_keys::enemyDamage, mvmz_keys::enemyDrain,
+                                     mvmz_keys::enemyGain, mvmz_keys::enemyLoss, mvmz_keys::enemyNoDamage, mvmz_keys::enemyNoHit,
+                                     mvmz_keys::enemyRecovery, mvmz_keys::escapeFailure, mvmz_keys::escapeStart, mvmz_keys::evasion,
+                                     mvmz_keys::expNext, mvmz_keys::expTotal, mvmz_keys::file, mvmz_keys::levelUp, mvmz_keys::loadMessage,
+                                     mvmz_keys::magicEvasion, mvmz_keys::magicReflection, mvmz_keys::meVolume, mvmz_keys::obtainExp,
+                                     mvmz_keys::obtainGold, mvmz_keys::obtainItem, mvmz_keys::obtainSkill, mvmz_keys::partyName, mvmz_keys::possession,
+                                     mvmz_keys::preemptive, mvmz_keys::saveMessage, mvmz_keys::seVolume, mvmz_keys::substitute, mvmz_keys::surprise,
+                                     mvmz_keys::useItem, mvmz_keys::victory}}
         };
 
         const std::unordered_map<std::u8string, const char8_t*> keyToTextType = {
             // battleMessage 系
-            {keys::actionFailure,       TranslateText::battleMessage},
-            {keys::actorDamage,         TranslateText::battleMessage},
-            {keys::actorDrain,          TranslateText::battleMessage},
-            {keys::actorGain,           TranslateText::battleMessage},
-            {keys::actorLoss,           TranslateText::battleMessage},
-            {keys::actorNoDamage,       TranslateText::battleMessage},
-            {keys::actorNoHit,          TranslateText::battleMessage},
-            {keys::actorRecovery,       TranslateText::battleMessage},
-            {keys::buffAdd,             TranslateText::battleMessage},
-            {keys::buffRemove,          TranslateText::battleMessage},
-            {keys::commandRemember,     TranslateText::battleMessage},
-            {keys::counterAttack,       TranslateText::battleMessage},
-            {keys::criticalToActor,     TranslateText::battleMessage},
-            {keys::criticalToEnemy,     TranslateText::battleMessage},
-            {keys::debuffAdd,           TranslateText::battleMessage},
-            {keys::defeat,              TranslateText::battleMessage},
-            {keys::emerge,              TranslateText::battleMessage},
-            {keys::enemyDamage,         TranslateText::battleMessage},
-            {keys::enemyDrain,          TranslateText::battleMessage},
-            {keys::enemyGain,           TranslateText::battleMessage},
-            {keys::enemyLoss,           TranslateText::battleMessage},
-            {keys::enemyNoDamage,       TranslateText::battleMessage},
-            {keys::enemyNoHit,          TranslateText::battleMessage},
-            {keys::enemyRecovery,       TranslateText::battleMessage},
-            {keys::escapeFailure,       TranslateText::battleMessage},
-            {keys::escapeStart,         TranslateText::battleMessage},
-            {keys::evasion,             TranslateText::battleMessage},
-            {keys::levelUp,             TranslateText::battleMessage},
-            {keys::magicEvasion,        TranslateText::battleMessage},
-            {keys::magicReflection,     TranslateText::battleMessage},
-            {keys::obtainExp,           TranslateText::battleMessage},
-            {keys::obtainGold,          TranslateText::battleMessage},
-            {keys::obtainItem,          TranslateText::battleMessage},
-            {keys::obtainSkill,         TranslateText::battleMessage},
-            {keys::preemptive,          TranslateText::battleMessage},
-            {keys::substitute,          TranslateText::battleMessage},
-            {keys::surprise,            TranslateText::battleMessage},
-            {keys::useItem,             TranslateText::battleMessage},
-            {keys::victory,             TranslateText::battleMessage},
-            {keys::note,                TranslateText::note},
+            {mvmz_keys::actionFailure,       TranslateText::battleMessage},
+            {mvmz_keys::actorDamage,         TranslateText::battleMessage},
+            {mvmz_keys::actorDrain,          TranslateText::battleMessage},
+            {mvmz_keys::actorGain,           TranslateText::battleMessage},
+            {mvmz_keys::actorLoss,           TranslateText::battleMessage},
+            {mvmz_keys::actorNoDamage,       TranslateText::battleMessage},
+            {mvmz_keys::actorNoHit,          TranslateText::battleMessage},
+            {mvmz_keys::actorRecovery,       TranslateText::battleMessage},
+            {mvmz_keys::buffAdd,             TranslateText::battleMessage},
+            {mvmz_keys::buffRemove,          TranslateText::battleMessage},
+            {mvmz_keys::commandRemember,     TranslateText::battleMessage},
+            {mvmz_keys::counterAttack,       TranslateText::battleMessage},
+            {mvmz_keys::criticalToActor,     TranslateText::battleMessage},
+            {mvmz_keys::criticalToEnemy,     TranslateText::battleMessage},
+            {mvmz_keys::debuffAdd,           TranslateText::battleMessage},
+            {mvmz_keys::defeat,              TranslateText::battleMessage},
+            {mvmz_keys::emerge,              TranslateText::battleMessage},
+            {mvmz_keys::enemyDamage,         TranslateText::battleMessage},
+            {mvmz_keys::enemyDrain,          TranslateText::battleMessage},
+            {mvmz_keys::enemyGain,           TranslateText::battleMessage},
+            {mvmz_keys::enemyLoss,           TranslateText::battleMessage},
+            {mvmz_keys::enemyNoDamage,       TranslateText::battleMessage},
+            {mvmz_keys::enemyNoHit,          TranslateText::battleMessage},
+            {mvmz_keys::enemyRecovery,       TranslateText::battleMessage},
+            {mvmz_keys::escapeFailure,       TranslateText::battleMessage},
+            {mvmz_keys::escapeStart,         TranslateText::battleMessage},
+            {mvmz_keys::evasion,             TranslateText::battleMessage},
+            {mvmz_keys::levelUp,             TranslateText::battleMessage},
+            {mvmz_keys::magicEvasion,        TranslateText::battleMessage},
+            {mvmz_keys::magicReflection,     TranslateText::battleMessage},
+            {mvmz_keys::obtainExp,           TranslateText::battleMessage},
+            {mvmz_keys::obtainGold,          TranslateText::battleMessage},
+            {mvmz_keys::obtainItem,          TranslateText::battleMessage},
+            {mvmz_keys::obtainSkill,         TranslateText::battleMessage},
+            {mvmz_keys::preemptive,          TranslateText::battleMessage},
+            {mvmz_keys::substitute,          TranslateText::battleMessage},
+            {mvmz_keys::surprise,            TranslateText::battleMessage},
+            {mvmz_keys::useItem,             TranslateText::battleMessage},
+            {mvmz_keys::victory,             TranslateText::battleMessage},
+            {mvmz_keys::note,                TranslateText::note},
 
-            {keys::partyName,           TranslateText::nameType},
+            {mvmz_keys::partyName,           TranslateText::nameType},
 
-            {keys::alwaysDash,          TranslateText::other},
-            {keys::bgmVolume,           TranslateText::other},
-            {keys::bgsVolume,           TranslateText::other},
-            {keys::meVolume,            TranslateText::other},
-            {keys::seVolume,            TranslateText::other},
-            {keys::possession,          TranslateText::other},
-            {keys::saveMessage,         TranslateText::message},
-            {keys::loadMessage,         TranslateText::message},
-            {keys::file,                TranslateText::other},
+            {mvmz_keys::alwaysDash,          TranslateText::other},
+            {mvmz_keys::bgmVolume,           TranslateText::other},
+            {mvmz_keys::bgsVolume,           TranslateText::other},
+            {mvmz_keys::meVolume,            TranslateText::other},
+            {mvmz_keys::seVolume,            TranslateText::other},
+            {mvmz_keys::possession,          TranslateText::other},
+            {mvmz_keys::saveMessage,         TranslateText::message},
+            {mvmz_keys::loadMessage,         TranslateText::message},
+            {mvmz_keys::file,                TranslateText::other},
 
-            {keys::expNext,             TranslateText::other},
-            {keys::expTotal,            TranslateText::other}
+            {mvmz_keys::expNext,             TranslateText::other},
+            {mvmz_keys::expTotal,            TranslateText::other}
         };
 
 		bool stackText;
 		std::u8string stackTextStr;
+        std::u8string currentEventName;
 		DataType currentDataType;
 
 		void addText(const nlohmann::json& json, int code = 0)
@@ -231,6 +249,7 @@ namespace langscore
 			std::u8string original(valStr.begin(), valStr.end());
 			addText(std::move(original), code);
 		}
+
 		void addText(std::u8string text, int code = 0)
 		{
 			if(stackText){
@@ -240,7 +259,7 @@ namespace langscore
 			}
 			else
 			{
-				if(code == 401)
+				if(code == mvmz_eventcode::ShowText)
                 {
 					if(0 < text.size() && *(text.rbegin()) == u8'\n') {
 						text.erase((text.rbegin().base())-1);
@@ -259,6 +278,7 @@ namespace langscore
 
 			TranslateText t(std::move(text), useLangList);
 			t.code = code;
+            t.eventLabel = currentEventName;
 
             t.textType.emplace_back(textTypeForMaker);
             textTypeForMaker = TranslateText::other;
@@ -269,7 +289,7 @@ namespace langscore
 			if(result == texts.end()){
 				texts.emplace_back(std::move(t));
 			}
-            else if((code == 320 || code == 324) && result->code == 102) {
+            else if((code == mvmz_eventcode::ChangeActorName || code == mvmz_eventcode::ChangeActorNickname) && result->code == mvmz_eventcode::ShowChoices) {
                 //名前の変更・二つ名の変更の場合、選択肢の文章がある場合はcodeを上書きする。
                 result->code = code;
                 result->textType = t.textType;
@@ -304,14 +324,15 @@ namespace langscore
 					//許可するコード
 					s->get_to(code);
 					switch(code){
-                        case 101: [[fallthrough]]; //メッセージのパラメータ(401の前に来る)
-						case 102: [[fallthrough]]; //選択肢
-						case 401: [[fallthrough]]; //文章の表示
-						case 405: [[fallthrough]]; //スクロールの文章の表示
-						case 320: [[fallthrough]]; //アクター名の変更
-						case 324: [[fallthrough]]; //二つ名の変更
-						case 325: //プロフィールの変更
-							//case 231: //画像の表示
+                        case mvmz_eventcode::MessageParameter: [[fallthrough]]; //メッセージのパラメータ(401の前に来る)
+						case mvmz_eventcode::ShowChoices: [[fallthrough]]; //選択肢
+						case mvmz_eventcode::ShowText: [[fallthrough]]; //文章の表示
+						case mvmz_eventcode::ShowScrollingText: [[fallthrough]]; //スクロールの文章の表示
+						case mvmz_eventcode::ChangeActorImage: [[fallthrough]]; //アクター名の変更
+						case mvmz_eventcode::ChangeActorName: [[fallthrough]]; //アクター名の変更
+						case mvmz_eventcode::ChangeActorNickname: [[fallthrough]]; //二つ名の変更
+						case mvmz_eventcode::ChangeActorProfile: //プロフィールの変更
+							//case mvmz_eventcode::ShowImage: //画像の表示
 							result = true;
 							break;
 						default:
@@ -323,69 +344,113 @@ namespace langscore
 			}
 			return std::forward_as_tuple(result, code);
 		}
-		void convertJArray(const nlohmann::json& arr, int code, std::u8string parentClass = u8"")
+		void convertArrayNode(const nlohmann::json& arr, int code, const AuxiliaryNodeInfo& auxInfo)
 		{
-			if(detectKeyInObject.find(parentClass) != detectKeyInObject.end())
+			if(detectKeyInObject.find(auxInfo.key) != detectKeyInObject.end())
 			{
-				const auto& recursiveDetects = detectKeyInObject.at(parentClass);
+				const auto& recursiveDetects = detectKeyInObject.at(auxInfo.key);
+                int index = 0;
 				for(auto s = arr.begin(); s != arr.end(); ++s)
 				{
-					if(s->is_array()){
-						convertJArray(*s, code, parentClass);
+					if(s->is_array())
+                    {
+                        AuxiliaryNodeInfo auxInfo2 = auxInfo;
+                        auxInfo2.type  = AuxiliaryNodeInfo::Array;
+                        auxInfo2.key.clear();
+                        auxInfo2.path += utility::cnvStr<std::u8string>(std::format("[{}]/", index));
+                        auxInfo2.index = index;
+                        auxInfo2.depth++;
+
+						convertArrayNode(*s, code, auxInfo2);
 						continue;
 					}
 					else if(s->is_object())
 					{
-						convertJObjectInKey(parentClass, *s, code);
+                        AuxiliaryNodeInfo auxInfo2 = auxInfo;
+                        auxInfo2.type  = AuxiliaryNodeInfo::Object;
+                        auxInfo2.key.clear();
+                        auxInfo2.path += utility::cnvStr<std::u8string>(std::format("[{}]/", index));
+                        auxInfo2.index = index;
+                        auxInfo2.depth++;
+
+						convertNodeContainKey(auxInfo.key, *s, code, auxInfo2);
 					}
 					else if(s->is_string()){
 						addText(*s, code);
 					}
+                    index++;
 				}
 			}
 			else
 			{
+                int index = 0;
 				for(auto s = arr.begin(); s != arr.end(); ++s)
 				{
-					if(s->is_array()){
-						convertJArray(*s, code, parentClass);
+					if(s->is_array())
+                    {
+                        AuxiliaryNodeInfo auxInfo2 = auxInfo;
+                        auxInfo2.type  = AuxiliaryNodeInfo::Array;
+                        auxInfo2.key.clear();
+                        auxInfo2.path += utility::cnvStr<std::u8string>(std::format("[{}]/", index));
+                        auxInfo2.index = index;
+                        auxInfo2.depth++;
+
+						convertArrayNode(*s, code, auxInfo2);
 					}
-					else if(s->is_object()){
-						convertJsonObject(*s, code);
+					else if(s->is_object())
+                    {
+                        AuxiliaryNodeInfo auxInfo2 = auxInfo;
+                        auxInfo2.type  = AuxiliaryNodeInfo::Array;
+                        auxInfo2.key.clear();
+                        auxInfo2.path += utility::cnvStr<std::u8string>(std::format("[{}]/", index));
+                        auxInfo2.index = index;
+                        auxInfo2.depth++;
+
+                        convertNodeContainKey(auxInfo.key, *s, code, auxInfo2);
 					}
 					else if(s->is_string())
 					{
 						addText(*s, code);
 					}
+                    index++;
 				}
 			}
 		}
 
-		void convertJsonObject(const nlohmann::json& root, int code)
+		void convertObjectNode(const nlohmann::json& root, int code, const AuxiliaryNodeInfo& auxInfo)
 		{
 			if(root.empty()){ return; }
 
 			const auto& mainClassKeys = detectClassKeys.at(currentDataType);
-			convertJObjectCore(mainClassKeys, root, code);
+			convertObjectNodeCore(mainClassKeys, root, code, auxInfo);
 		}
 
-		void convertJObjectInKey(std::u8string rootKey, const nlohmann::json& root, int code)
+		void convertNodeContainKey(std::u8string rootKey, const nlohmann::json& root, int code, const AuxiliaryNodeInfo& auxInfo)
 		{
 			if(root.empty()){ return; }
 
 			if(currentDataType == DataType::System && rootKey == u8"messages"){
 				spetializeSystemMessage(root);
+				return;
 			}
-			else{
-				const auto& mainClassKeys = detectKeyInObject.at(rootKey);
-				convertJObjectCore(mainClassKeys, root, code);
+
+			//convertArrayNodeはキーがdetectKeyInObjectに無い場合もここへ来るため、
+			//その場合は通常のオブジェクトとして走査する。
+			const auto detectKeys = detectKeyInObject.find(rootKey);
+			if(detectKeys == detectKeyInObject.end()){
+				convertObjectNode(root, code, auxInfo);
+				return;
 			}
+
+			convertObjectNodeCore(detectKeys->second, root, code, auxInfo);
 		}
 
-		void convertJObjectCore(utility::u8stringlist mainClassKeys, const nlohmann::json& root, int code)
+		void convertObjectNodeCore(const utility::u8stringlist& detectKeys, const nlohmann::json& node, int code, const AuxiliaryNodeInfo& auxInfo)
 		{
-			for(auto s = root.begin(); s != root.end(); ++s)
+            int index = -1;
+			for(auto s = node.begin(); s != node.end(); ++s)
 			{
+                index++;
 				if(s->is_null()){ continue; }
 				auto key = utility::cnvStr<std::u8string>(s.key());
 
@@ -397,21 +462,21 @@ namespace langscore
                     continue;
                 }
 
-				for(auto& checkKey : mainClassKeys)
+				for(const auto& checkKey : detectKeys)
 				{
 					if(checkKey != key){ continue; }
 
 					if(checkKey == u8"code")
                     {
                         std::u8string textTypeForMakerTmp;
-						auto [isCheckParameters, _code] = checkEventCommandCode(root);
+						auto [isCheckParameters, _code] = checkEventCommandCode(node);
 						code = _code;
 
-                        if(code == 101)
+                        if(code == mvmz_eventcode::MessageParameter)
                         {
                             //顔グラフィックが指定されているかのチェック。
                             //@parameter(valueは配列)の第一要素が空でなければ顔グラ有り。
-                            for(auto s = root.begin(); s != root.end(); ++s)
+                            for(auto s = node.begin(); s != node.end(); ++s)
                             {
                                 if(s.key() != "parameters") {
                                     continue;
@@ -432,13 +497,13 @@ namespace langscore
                                 }
                             }
                         }
-                        else if(code == 105)
+                        else if(code == mvmz_eventcode::ScrollMessageParameter)
                         {
                             textTypeForMakerTmp = TranslateText::message;
                         }
-                        else if(code == 320 || code == 324)
+                        else if(code == mvmz_eventcode::ChangeActorName || code == mvmz_eventcode::ChangeActorImage || code == mvmz_eventcode::ChangeActorNickname)
                         {
-                            for(auto s = root.begin(); s != root.end(); ++s)
+                            for(auto s = node.begin(); s != node.end(); ++s)
                             {
                                 if(s.key() != "parameters") {
                                     continue;
@@ -459,9 +524,9 @@ namespace langscore
                                 }
                             }
                         }
-                        else if(code == 325)
+                        else if(code == mvmz_eventcode::ChangeActorProfile)
                         {
-                            for(auto s = root.begin(); s != root.end(); ++s)
+                            for(auto s = node.begin(); s != node.end(); ++s)
                             {
                                 if(s.key() != "parameters") {
                                     continue;
@@ -476,14 +541,14 @@ namespace langscore
                             }
                         }
 
-						if(stackText == false && (code == 401 || code == 405)){
+						if(stackText == false && (code == mvmz_eventcode::ShowText || code == mvmz_eventcode::ShowScrollingText)){
 							stackText = true;
 						}
-						else if(stackText && (code != 401 && code != 405)){
+						else if(stackText && (code != mvmz_eventcode::ShowText && code != mvmz_eventcode::ShowScrollingText)){
 							stackText = false;
-							addText(stackTextStr, 401);
+							addText(stackTextStr, mvmz_eventcode::ShowText);
 							stackTextStr.clear();
-                            //401 -> 401 -> 101等で先にtextTypeForMakerを設定すると
+                            //401 -> 401 -> MessageParameter等で先にtextTypeForMakerを設定すると
                             //先の文章のタイプが埋められてしまうためここで設定する。
                             if(textTypeForMakerTmp.empty() == false) {
                                 textTypeForMaker = std::move(textTypeForMakerTmp);
@@ -491,7 +556,7 @@ namespace langscore
 						}
 
 						if(isCheckParameters == false){
-                            //401 -> 401 -> 101等で先にtextTypeForMakerを設定すると
+                            //401 -> 401 -> MessageParameter等で先にtextTypeForMakerを設定すると
                             //先の文章のタイプが埋められてしまうためここで設定する。
                             if(textTypeForMakerTmp.empty() == false) {
                                 textTypeForMaker = std::move(textTypeForMakerTmp);
@@ -504,20 +569,53 @@ namespace langscore
 					if(detectKeyInObject.find(checkKey) != detectKeyInObject.end())
 					{
 						if(val.is_array()){
-							convertJArray(val, code, key);
+
+                            AuxiliaryNodeInfo auxInfo2 = auxInfo;
+                            auxInfo2.type  = AuxiliaryNodeInfo::Array;
+                            auxInfo2.key   = key;
+                            auxInfo2.path += auxInfo2.key;
+                            auxInfo2.index = index;
+                            auxInfo2.depth++;
+
+							convertArrayNode(val, code, auxInfo2);
 						}
-						else if(val.is_object()){
-							convertJObjectInKey(key, val, code);
+						else if(val.is_object())
+                        {
+                            AuxiliaryNodeInfo auxInfo2 = auxInfo;
+                            auxInfo2.type = AuxiliaryNodeInfo::Object;
+                            auxInfo2.key = key;
+                            auxInfo2.path += auxInfo2.key + u8"/";
+                            auxInfo2.index = index;
+                            auxInfo2.depth++;
+
+							convertNodeContainKey(key, val, code, auxInfo2);
 						}
 						continue;
 					}
 
-					if(val.is_array()){
-						convertJArray(val, code, key);
+					if(val.is_array())
+                    {
+                        AuxiliaryNodeInfo auxInfo2 = auxInfo;
+                        auxInfo2.type = AuxiliaryNodeInfo::Array;
+                        auxInfo2.key = key;
+                        auxInfo2.path += auxInfo2.key;
+                        auxInfo2.index = index;
+                        auxInfo2.depth++;
+
+						convertArrayNode(val, code, auxInfo2);
 						continue;
 					}
-					else if(val.is_object()){
-						convertJsonObject(val, code);
+					else if(val.is_object())
+                    {
+
+                        AuxiliaryNodeInfo auxInfo2 = auxInfo;
+                        auxInfo2.type = AuxiliaryNodeInfo::Array;
+                        auxInfo2.key = key;
+                        auxInfo2.path += auxInfo2.key + u8"/";
+                        auxInfo2.index = index;
+                        auxInfo2.depth++;
+
+						convertObjectNode(val, code, auxInfo2);
 						continue;
 					}
 					else if(val.is_string() == false){ continue; }
