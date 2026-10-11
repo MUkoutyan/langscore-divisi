@@ -1,4 +1,4 @@
-# CMakeList.txt : divisi の CMake プロジェクト。ソースを含めて、次を定義します:
+﻿# CMakeList.txt : divisi の CMake プロジェクト。ソースを含めて、次を定義します:
 # プロジェクト専用ロジックはこちらです。
 #
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
@@ -11,12 +11,6 @@ elseif()
 	set(CMAKE_C_COMPILER clang)
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-if(CMAKE_BUILD_TYPE MATCHES "Test" OR CMAKE_BUILD_TYPE MATCHES "Test_Debug")
-include_directories(
-	"../3rdparty/iutest/include"
-)
-endif()
 
 include_directories(
 	"./"

@@ -15,6 +15,7 @@ CMakeFiles/
 *.user
 *.userosscache
 *.sln.docstates
+*.lib
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -358,7 +359,13 @@ MigrationBackup/
 out
 rvdata2json
 ruby
-.vscode
+
+# VSCode 設定のうち、ビルド設定の共通化に必要なものだけ共有する。
+# (実際のビルド設定は CMakePresets.json 側にある)
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
 
 build/*
 test/data/ソポァゼゾタダＡボマミ_langscore
@@ -390,3 +397,4 @@ test/plugin/mz_test
 test/plugin/vxace_test
 test/plugin/*_test_langscore
 test/test_data.zip
+.vscode
