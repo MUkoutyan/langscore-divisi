@@ -12,6 +12,15 @@
 
 int main(int argc, char** argv)
 {
+    // GoogleTestの初期化
+    ::testing::InitGoogleTest(&argc, argv);
+
+    // Visual Studio のテストエクスプローラー等は --gtest_list_tests の標準出力を解析して
+    // テストを列挙するため、一覧表示のときは余計な出力や前処理を挟まない。
+    if(::testing::GTEST_FLAG(list_tests)) {
+        return RUN_ALL_TESTS();
+    }
+
 	std::cout << TEST_DATA_SRC << std::endl;
 	if(fs::exists(std::string(BINARY_DIRECTORY) + "/data") == false) 
     {
@@ -28,9 +37,6 @@ int main(int argc, char** argv)
 	}
 
 	langscore::config::attachConfigFile(".\\data\\vxace\\ソポァゼゾタダＡボマミ_langscore\\config.json");
-	
-    // GoogleTestの初期化
-    ::testing::InitGoogleTest(&argc, argv);
 
     // Google Test の出力を確認
     std::cout << "Running tests with arguments: ";

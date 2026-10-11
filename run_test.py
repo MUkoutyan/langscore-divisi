@@ -51,15 +51,23 @@ def elapsed_time(seconds):
     return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 
+def fix_encoding(text):
+    """gtest は失敗メッセージをプロセスの narrow encoding のまま書くため、
+    日本語環境では UTF-8 の JSON に CP932 のバイトが混ざる。混ざっていたら CP932 として読み直す。"""
+    try:
+        return text.encode('utf-8', 'surrogateescape').decode('utf-8')
+    except UnicodeDecodeError:
+        return text.encode('utf-8', 'surrogateescape').decode('cp932', 'replace')
+
+
 def gtest_failures(build_dir):
-    """gtest の JSON から失敗したテストケース名を拾う。ctest からは cpp 1件にしか
-    見えないため、C++ だけは内訳をこちらで補う。"""
+    """gtest の JSON から (テスト総数, 失敗したテストケース) を拾う。ctest からは cpp 1件にしか
+    見えないため、C++ だけは内訳をこちらで補う。
+    失敗したテストケースは (名前, [失敗メッセージ, ...]) のリスト。"""
     path = os.path.join(build_dir, 'cpp_test_results.json')
     if not os.path.exists(path):
-        return []
-    # gtest は失敗メッセージをプロセスの narrow encoding のまま書くため、
-    # 日本語環境では CP932 のバイトが混ざる。レポート生成を落とさないよう置換して読む。
-    with open(path, 'r', encoding='utf-8', errors='replace') as f:
+        return 0, []
+    with open(path, 'r', encoding='utf-8', errors='surrogateescape') as f:
         results = json.load(f)
 
     failed = []
@@ -69,9 +77,9 @@ def gtest_failures(build_dir):
             failures = case.get('failures', [])
             if not failures and case.get('result') == 'COMPLETED':
                 continue
-            message = failures[0].get('failure', 'No message') if failures else case.get('result')
-            failed.append((f"{suite['name']}.{case['name']}", message))
-    return failed
+            messages = [fix_encoding(f.get('failure', 'No message')).strip() for f in failures]
+            failed.append((f"{suite['name']}.{case['name']}", messages or [case.get('result')]))
+    return results.get('tests', 0), failed
 
 
 def parse_junit(junit_path):
@@ -94,42 +102,83 @@ def parse_junit(junit_path):
     return cases
 
 
-def write_report(log_path, cases, cpp_failures, start_date, end_date):
+def output_before_failure(output, test_name, limit=8):
+    """gtest の出力から、失敗したテストが失敗する直前に出していた行を拾う。
+    クラッシュ (SEH例外) は失敗メッセージに手掛かりが無いため、これを添える。"""
+    lines = output.splitlines()
+    try:
+        begin = lines.index(f"[ RUN      ] {test_name}")
+    except ValueError:
+        return []
+    block = []
+    for line in lines[begin + 1:]:
+        if ': error: ' in line or line.startswith('[  FAILED  ]'):
+            break
+        if line.strip():
+            block.append(line)
+    return block[-limit:]
+
+
+def write_report(log_path, cases, cpp_total, cpp_failures, start_date, end_date):
     all_passed = all(c['passed'] or c['skipped'] for c in cases)
+    failed_cases = [c for c in cases if not c['passed'] and not c['skipped']]
+    skipped = sum(c['skipped'] for c in cases)
+
+    def short(text):
+        return text.replace(divisi_root + os.sep, '')
+
+    def cell(text):
+        return short(text).replace('|', '\\|')
 
     with open(log_path, 'w', encoding='utf-8') as log:
-        log.write(f"\n## Overall Result: {'Passed' if all_passed else 'Failed'}\n")
-        log.write("| Test Suite | Result | Failures | Time |\n")
-        log.write("|------------|--------|----------|------|\n")
+        log.write(f"# Test Report: {'✅ Passed' if all_passed else '❌ Failed'}\n\n")
+        log.write(f"- Suites : {len(cases)} total / {len(cases) - len(failed_cases) - skipped} passed"
+                  f" / {len(failed_cases)} failed / {skipped} skipped\n")
+        log.write(f'- Start : {start_date.strftime("%Y-%m-%d %H:%M:%S")}\n')
+        log.write(f'- Elapsed : {elapsed_time((end_date - start_date).total_seconds())}\n\n')
 
+        # スイートごとに1行。失敗の内訳は下の節に分ける。
+        log.write("| Test Suite | Result | Failed | Time |\n")
+        log.write("|------------|--------|--------|------|\n")
         for case in cases:
             name, took = case['name'], elapsed_time(case['time'])
             if case['skipped']:
-                log.write(f"| {name} | Skipped | | {took} |\n")
+                log.write(f"| {name} | ⏭ Skipped | | {took} |\n")
             elif case['passed']:
-                log.write(f"| {name} | Passed | None | {took} |\n")
+                log.write(f"| {name} | ✅ Passed | | {took} |\n")
             elif name == 'cpp' and cpp_failures:
-                # C++ は失敗したテストケースを1行ずつ出す。
-                for test_case, _ in cpp_failures:
-                    log.write(f"| {name} | Failed | {test_case} | {took} |\n")
+                log.write(f"| {name} | ❌ Failed | {len(cpp_failures)} / {cpp_total} | {took} |\n")
             else:
-                log.write(f"| {name} | Failed | | {took} |\n")
+                log.write(f"| {name} | ❌ Failed | | {took} |\n")
+        log.write('\n')
 
-        log.write('\n\n')
-        log.write(f'* Start Time : {start_date.strftime("%Y-%m-%d %H:%M:%S")}\n')
-        log.write(f'* End Time : {end_date.strftime("%Y-%m-%d %H:%M:%S")}\n')
-        log.write(f'* Elapsed : {elapsed_time((end_date - start_date).total_seconds())}\n\n\n')
+        for case in failed_cases:
+            if case['name'] == 'cpp' and cpp_failures:
+                log.write(f"## cpp: {len(cpp_failures)} failed\n\n")
+                # 失敗メッセージは「場所 \n 内容...」の形。一覧には内容の1行目だけ出す。
+                log.write("| Test | Location | Message |\n")
+                log.write("|------|----------|---------|\n")
+                for test_case, messages in cpp_failures:
+                    location, _, body = messages[0].partition('\n')
+                    more = f" (+{len(messages) - 1})" if len(messages) > 1 else ""
+                    log.write(f"| {test_case} | {cell(location)} "
+                              f"| {cell(body.split(chr(10))[0][:100])}{more} |\n")
+                log.write('\n')
 
-        for case in cases:
-            if case['passed'] or case['skipped']:
-                continue
-            log.write(f"### Failures in {case['name']} Test\n\n")
-            if case['name'] == 'cpp':
-                for test_case, message in cpp_failures:
-                    log.write(f"- **{test_case}**\n\n```\n{message.rstrip()}\n```\n\n")
+                for test_case, messages in cpp_failures:
+                    log.write(f"### {test_case}\n\n")
+                    for message in messages:
+                        log.write(f"```\n{short(message)}\n```\n\n")
+                    before = output_before_failure(case['output'], test_case)
+                    if before:
+                        log.write("Output before failure:\n\n```\n" + '\n'.join(before) + "\n```\n\n")
+            else:
+                log.write(f"## {case['name']}: failed\n\n")
+
             if case['output'].strip():
-                log.write(f"## {case['name']} Test Output\n\n")
-                log.write("```\n" + case['output'].rstrip() + "\n```\n\n")
+                # 全出力は長いので畳んでおく。
+                log.write(f"<details>\n<summary>{case['name']} full output</summary>\n\n")
+                log.write("```\n" + case['output'].rstrip() + "\n```\n\n</details>\n\n")
 
     return all_passed
 
@@ -200,7 +249,8 @@ def main():
               f"(DIVISI_BUILD_TESTS=ON か) 確認してください。")
         return False
 
-    all_passed = write_report(log_file_path, cases, gtest_failures(build_dir),
+    cpp_total, cpp_failures = gtest_failures(build_dir)
+    all_passed = write_report(log_file_path, cases, cpp_total, cpp_failures,
                               start_date, end_date)
 
     # ctest の終了コードと結果が食い違う場合 (JUnitに残らない形で落ちた等) は失敗扱いにする。
