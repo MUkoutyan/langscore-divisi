@@ -73,5 +73,7 @@ runner が終了時に元へ戻します。
 
 ## 全体
 
-`test/run_test.py` から `python run_test.py plugin` (または `mv` / `mz` / `vxace` / `lscsv`) で
-まとめて実行でき、結果は `test/test_log.md` に書き出されます。
+これらは CTest に `plugin_mv_*` / `plugin_mz_*` / `vxace_*` として登録されています。
+リポジトリルートの `run_test.py` から `python run_test.py plugin`
+(または `mv` / `mz` / `vxace` / `lscsv`) でまとめて実行でき、
+結果は `test/test_log.md` に書き出されます。

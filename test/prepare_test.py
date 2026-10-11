@@ -1,209 +1,80 @@
-import subprocess
+"""テスト用のゲームプロジェクト (テストデータ側) を divisi で作り直す。
+
+通常のテスト実行では不要。resource/ のテンプレートや翻訳CSVの出力内容を変えたときに、
+フィクスチャ側を追従させるために使う。
+
+ビルドは CMake プリセットで行うため、このスクリプトはビルドを行わない。
+事前に divisi をビルドして <repo>/bin/divisi.exe を用意しておくこと。
+
+    cmake --preset x64-release
+    cmake --build --preset x64-release
+    python test/prepare_test.py
+
+書き換え対象は langscore-divisi-test-data/plugin 以下のゲームプロジェクトで、
+リポジトリの外にある。実行すると元に戻せないため注意。
+"""
 import os
 import sys
-import shutil
-from internal import test_core
 
-def setup_vs_environment():
-    # Visual Studio のバージョンは決め打ちにせず、vswhere 等で検出する。
-    env = test_core.vs_environment()
-    if env is None:
-        # 開発者コマンドプロンプトから実行されている場合は現在の環境をそのまま使う
-        return os.environ.copy()
-    return env
+test_root_dir = os.path.dirname(os.path.abspath(__file__))
+divisi_root = os.path.abspath(os.path.join(test_root_dir, ".."))
+sys.path.append(test_root_dir)
+from internal import test_core as core
+
+DIVISI_EXE = os.path.join(divisi_root, "bin", "divisi.exe")
+
+# (プロジェクト名, divisi に渡すオプション)
+# --analyze で解析結果を作り、--exportCSV で翻訳CSVを書き出す。
+# VXAce は --packing で CSV を Data/Translate の rvdata2 へ変換する。
+PROJECTS = [
+    ("mv_test",    ["--analyze", "--exportCSV"]),
+    ("mz_test",    ["--analyze", "--exportCSV"]),
+    ("vxace_test", ["--analyze", "--exportCSV", "--packing"]),
+]
 
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-divisi_root = os.path.abspath(f"{current_dir}/..")
+def run_divisi(config_path, options):
+    for option in options:
+        print(f"  divisi {option}")
+        output, error, ok = core.run_command(DIVISI_EXE, ["-c", config_path, option], timeout=900)
+        if not ok:
+            print(output)
+            print(f"divisi {option} が失敗しました: {config_path}\n{error}")
+            return False
+    return True
 
-def build_divisi_with_vs():
-    print("build")
-    win_build_dir = os.path.abspath(f"{divisi_root}/build/x64-release")
-    linux_build_dir = os.path.abspath(f"{divisi_root}/build-linux")
-
-    # ディレクトリが存在しない場合は作成
-    if not os.path.exists(win_build_dir):
-        os.makedirs(win_build_dir)
-    else:
-        shutil.rmtree(win_build_dir)
-        os.makedirs(win_build_dir)
-
-    if not os.path.exists(linux_build_dir):
-        os.makedirs(linux_build_dir)
-    else:
-        shutil.rmtree(linux_build_dir)
-        os.makedirs(linux_build_dir)
-
-    win_cmake_args = [divisi_root, "-G", "Ninja", "-DCMAKE_BUILD_TYPE:STRING=Release"]
-    win_build_command = "ninja"
-    
-    linux_cmake_args = ["..", "-DCMAKE_BUILD_TYPE:STRING=Release", " -DLLVM_USE_LINKER=mold"]
-    linux_build_command = f"{divisi_root}/build_linux.sh"
-
-    try:
-        rv_stdout, rv_stderr, rv_result = test_core.run_powershell_script("build.ps1", cwd=f"{divisi_root}/rvcnv")
-        if rv_result == False:
-            print(f"Error RVCNV Build {rv_stderr}")
-            exit(1)
-        print("Complete build rvcnv")
-
-        # VS環境を設定
-        env = setup_vs_environment()
-
-        win_stdout, win_stderr, win_result = test_core.run_command("cmake", win_cmake_args, cwd=win_build_dir, check=True, env=env)
-        if win_result == False:
-            print(f"Error Windows CMake {win_stderr}")
-            exit(1)
-        win_stdout, win_stderr, win_result = test_core.run_command(win_build_command, cwd=win_build_dir, check=True, env=env)
-        if win_result == False:
-            print(f"Error Windows Build {win_stderr}")
-            exit(1)
-        print("Complete build divisi(win)")
-         
-        lx_stdout, lx_stderr, lx_result = test_core.run_wsl_script(linux_build_command, cwd=divisi_root, check=True)
-        if lx_result == False:
-            print(f"Error Linux Build {lx_stderr}")
-            exit(1)
-        print("Complete build divisi(linux)")
-
-        copy_files = [
-		    f"{divisi_root}/resource/Langscore.js",
-		    f"{divisi_root}/resource/Langscore.rb",
-		    f"{divisi_root}/resource/lscsv.js",
-		    f"{divisi_root}/resource/lscsv.rb",
-		    f"{divisi_root}/resource/vocab.csv",
-            f"{divisi_root}/rvcnv/rvcnv.exe",
-            f"{win_build_dir}/divisi.exe",
-            f"{linux_build_dir}/divisi"
-        ]
-
-        if not os.path.exists(f"{divisi_root}/bin"):
-            os.mkdir(f"{divisi_root}/bin")
-            
-        if not os.path.exists(f"{divisi_root}/bin/resource"):
-            os.mkdir(f"{divisi_root}/bin/resource")
-
-        for f in copy_files:
-            file_name, ext = os.path.splitext(f)
-            if ext == ".exe" or ext == "":
-                dest = os.path.abspath(os.path.join(f"{divisi_root}/bin", os.path.basename(f)))
-            else:
-                dest = os.path.abspath(os.path.join(f"{divisi_root}/bin/resource", os.path.basename(f)))
-            
-            shutil.copyfile(f, dest)
-
-        print("Build process completed successfully.")
-
-    except subprocess.CalledProcessError as e:
-        print(f"Error occurred")
-        if e.stderr:
-            for line in e.stderr.splitlines():
-                if line: print(line)
-    except RuntimeError as e:
-        print(f"Setup failed: {e}")
-
-        
-def build_divisi_test_with_vs():
-    print("build_test")
-    win_build_dir = os.path.abspath(f"{divisi_root}/build/Test")
-    linux_build_dir = os.path.abspath(f"{divisi_root}/build-linux-test")
-
-    # ディレクトリが存在しない場合は作成
-    if not os.path.exists(win_build_dir):
-        os.makedirs(win_build_dir)
-    else:
-        shutil.rmtree(win_build_dir)
-        os.makedirs(win_build_dir)
-
-    if not os.path.exists(linux_build_dir):
-        os.makedirs(linux_build_dir)
-    else:
-        shutil.rmtree(linux_build_dir)
-        os.makedirs(linux_build_dir)
-
-    test_data_dir = test_core.require_test_data("data")
-    win_cmake_args = [divisi_root, "-G", "Ninja", "-DCMAKE_BUILD_TYPE:STRING=Test", f"-DTEST_DATA_SRC:STRING={test_data_dir}"]
-    win_build_command = "ninja"
-
-    linux_cmake_args = ["..", "-DCMAKE_BUILD_TYPE:STRING=Test", " -DLLVM_USE_LINKER=mold",
-                        f"-DTEST_DATA_SRC:STRING={test_core.convert_path_for_wsl(test_data_dir)}"]
-    linux_build_command = f"{divisi_root}/build_linux.sh"
-
-    try:
-        # VS環境を設定
-        env = setup_vs_environment()
-
-        win_stdout, win_stderr, win_result = test_core.run_command("cmake", win_cmake_args, cwd=win_build_dir, check=True, env=env)
-        if win_result == False:
-            print(f"Error Windows CMake {win_stderr}")
-            exit(1)
-        win_stdout, win_stderr, win_result = test_core.run_command(win_build_command, cwd=win_build_dir, check=True, env=env)
-        if win_result == False:
-            print(f"Error Windows Build {win_stderr}")
-            exit(1)
-        print("Complete build divisi_test(win)")
-         
-        lx_stdout, lx_stderr, lx_result = test_core.run_wsl_script(linux_build_command, cwd=divisi_root, check=True)
-        if lx_result == False:
-            print(f"Error Linux Build {lx_stderr}")
-            exit(1)
-        print("Complete build divisi_test(linux)")
-
-        print("Build Test process completed successfully.")
-
-    except subprocess.CalledProcessError as e:
-        print(f"Error occurred")
-        if e.stderr:
-            for line in e.stderr.splitlines():
-                if line: print(line)
-    except RuntimeError as e:
-        print(f"Setup failed: {e}")
 
 def update_test_projects():
-    print("update")
-    # プラグイン用のゲームプロジェクトもリポジトリ外 (langscore-divisi-test-data/plugin)
-    plugin_dir = test_core.require_test_data("plugin")
+    if not os.path.exists(DIVISI_EXE):
+        print(f"divisi.exe がありません: {DIVISI_EXE}")
+        print("  cmake --build --preset x64-release でビルドしてください。")
+        return False
 
-    test_core.run_command(
-        f"{divisi_root}/bin/divisi.exe", 
-        ["-c", f"{plugin_dir}/vxace_test_langscore/config.json", "--write"]
-    )   
-    test_core.run_command(
-        f"{divisi_root}/bin/divisi.exe", 
-        ["-c", f"{plugin_dir}/vxace_test_langscore/config.json", "--packing"]
-    )
-    test_core.run_command(
-        f"{divisi_root}/bin/divisi.exe", 
-        ["-c", f"{plugin_dir}/mv_test_langscore/config.json", "--write"]
-    )
-    test_core.run_command(
-        f"{divisi_root}/bin/divisi.exe", 
-        ["-c", f"{plugin_dir}/mz_test_langscore/config.json", "--write"]
-    )
+    plugin_dir = core.require_test_data("plugin")
 
-    # decompress.rb はテストデータ側ではなくリポジトリで管理する
-    decompress = os.path.join(current_dir, "plugin", "vxace", "decompress.rb")
+    for name, options in PROJECTS:
+        config_path = os.path.join(plugin_dir, f"{name}_langscore", "config.json")
+        if not os.path.exists(config_path):
+            print(f"設定ファイルがありません: {config_path}")
+            return False
+        print(f"[{name}]")
+        if not run_divisi(config_path, options):
+            return False
+
+    # VXAce の Scripts フォルダは Data/Scripts.rvdata2 から展開する。
+    # decompress.rb はテストデータ側ではなくリポジトリで管理している。
+    print("[vxace_test] decompress")
+    decompress = os.path.join(test_root_dir, "plugin", "vxace", "decompress.rb")
     vxace_project = os.path.join(plugin_dir, "vxace_test")
-    before_path = os.getcwd()
-    os.chdir(vxace_project)
-    test_core.run_ruby_script(decompress, cwd=vxace_project, check=True)
-    os.chdir(before_path)
+    output, error, ok = core.run_ruby_script(decompress, cwd=vxace_project, timeout=300)
+    if not ok:
+        print(output)
+        print(f"decompress.rb が失敗しました:\n{error}")
+        return False
 
     print("Update projects successfully.")
+    return True
 
 
 if __name__ == '__main__':
-    test_selection = []
-    if 1 < len(sys.argv):
-        test_selection = sys.argv[1:]
-
-    if len(test_selection) == 0:
-        build_divisi_with_vs()
-        build_divisi_test_with_vs()
-        update_test_projects()
-    elif test_selection[0] == "build":
-        build_divisi_with_vs()
-        build_divisi_test_with_vs()
-    elif test_selection[0] == "update":
-        update_test_projects()
-    
+    sys.exit(0 if update_test_projects() else 1)

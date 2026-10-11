@@ -1,20 +1,45 @@
 # テスト
 
+テストは全て CTest に登録されています。C++ (gtest)、Ruby、JavaScript (mocha)、Python が
+同じ 1 つのテストリストに並びます。
+
 ```
-python run_test.py all      # 全スイート (lscsv / rvcnv / vxace / MV / MZ / C++ / divisi_ct)
-python run_test.py cpp      # 個別 (cpp, lscsv, rvcnv, vxace, mv, mz, divisi_ct)
+cmake --preset x64-debug-test        # 構成 (DIVISI_BUILD_TESTS=ON)
+cmake --build --preset x64-debug-test
+ctest --preset x64-debug-test        # 全テスト
 ```
 
-結果は `test_log.md` に書き出されます。失敗時は終了コード 1 を返します。
+VSCode / Visual Studio からは、プリセットを選べば IDE のテストエクスプローラに一覧が出ます。
 
-| スイート | 対象 | 必要なもの |
+Markdown のレポートが必要な場合は、上記をまとめて実行するラッパーを使います。
+スクリプトは**リポジトリのルート**にあり、ルートから実行します。
+
+```
+python run_test.py all       # 構成 → ビルド → ctest → test/test_log.md
+python run_test.py cpp       # 個別 (cpp, lscsv, rvcnv, vxace, mv, mz, plugin, divisi)
+python run_test.py --preset x64-release-test all
+```
+
+結果は `test/test_log.md` に書き出されます。失敗時は終了コード 1 を返します。
+CI 等で JUnit XML がそのまま欲しい場合は `ctest --output-junit <path>` を使ってください。
+
+| テスト名 | 対象 | 必要なもの |
 |---------|------|-----------|
-| cpp | divisi 本体 (gtest) | Visual Studio、CMake、Ninja、テストデータ |
-| divisi_ct | divisi.exe のコマンドライン | `bin/divisi.exe`、テストデータ |
-| rvcnv | rvcnv (VXAce の rvdata2 変換) | Ruby、テストデータ |
-| mv / mz | Langscore.js (mocha + jsdom) | Node.js、テストデータ |
-| vxace | langscore.rb (RGSS3 実機) | Ruby、テストデータ、GUI セッション |
-| lscsv | lscsv.{js,rb,py} の CSV パーサ | Node.js / Ruby / Python |
+| `cpp` | divisi 本体 (gtest) | Visual Studio、CMake、Ninja、テストデータ |
+| `divisi_ct` | divisi.exe のコマンドライン | `bin/divisi.exe`、Python、テストデータ |
+| `rvcnv` | rvcnv (VXAce の rvdata2 変換) | Python、Ruby、テストデータ |
+| `plugin_mv_*` / `plugin_mz_*` | Langscore.js (mocha + jsdom) | Node.js、テストデータ |
+| `vxace_*` | langscore.rb (RGSS3 実機) | Python、テストデータ、GUI セッション |
+| `lscsv_js` / `lscsv_rb` / `lscsv_py` | lscsv.{js,rb,py} の CSV パーサ | Node.js / Ruby / Python |
+
+処理系が見つからない言語のテストは登録されません。テストデータが無い場合は
+`lscsv_js` / `lscsv_py` だけが登録され、構成自体は成功します。
+
+`plugin_sync` は mocha テストの前処理 (`sync_plugin.js`) で、CTest のフィクスチャとして
+`plugin_mv_*` / `plugin_mz_*` の実行前に自動で走ります。個別に呼ぶ必要はありません。
+
+`vxace_*` の 3 つは同じゲームプロジェクトの `Game.ini` を書き換えるため、
+`RESOURCE_LOCK` で直列に実行されます。
 
 Visual Studio は vswhere で自動検出するため、開発者コマンドプロンプトである必要はありません。
 
@@ -31,22 +56,29 @@ Github/
   langscore-divisi/              <- このリポジトリ
   langscore-divisi-test-data/
     data/                        <- cpp / divisi_ct / rvcnv 用
+    lscsv/                       <- lscsv_rb 用 (Skills.csv / CommonEvents.csv)
     plugin/
       mv_test/  mv_test_langscore/
       mz_test/  mz_test_langscore/
       vxace_test/  vxace_test_langscore/
 ```
 
-別の場所に置く場合は環境変数 `LANGSCORE_TEST_DATA` でフォルダを指定してください。
-見つからない場合は、各スクリプトが配置場所を示して停止します。
+別の場所に置く場合は環境変数 `LANGSCORE_TEST_DATA` でフォルダを指定してください
+(`-DTEST_DATA_SRC` で `data` ディレクトリを直接指定することもできます)。
+CMake が解決した場所は各テストに `LANGSCORE_TEST_DATA` として渡されるため、
+CMake 側とランナースクリプト側で参照先がずれません。
 
 `compress_data.ps1` でテストデータ一式を zip とその SHA256 にまとめられます。
 別マシンへ持っていく場合やバックアップに使ってください。
 
+`resource/` のテンプレートや翻訳CSVの出力内容を変えてフィクスチャ側を追従させたい場合は
+`python test/prepare_test.py` を使います (divisi で各テストプロジェクトを作り直します)。
+テストデータを直接書き換えて元に戻せないため、通常のテスト実行では不要です。
+
 ## 既知の不具合のテスト
 
-`test_known_issues.cpp` の `Langscore_KnownIssue_*` は、**報告済みで未修正の不具合によって失敗します。**
-あるべき動作を書いてあるので、不具合が直れば通ります。
+`test_known_issues.cpp` の `Langscore_KnownIssue_*` は、報告済みの不具合に対して
+**あるべき動作**を書いたテストです。不具合が残っている間は失敗し、直れば通ります。
 
 | テスト | 対象 |
 |--------|------|
@@ -58,7 +90,7 @@ Github/
 これらを除いて実行する場合:
 
 ```
-build/Test_Debug/divisi_test.exe --gtest_filter=-Langscore_KnownIssue_*
+build/x64-debug-test/divisi_test.exe --gtest_filter=-Langscore_KnownIssue_*
 ```
 
 ゲームプロジェクトのJSONやCSVを書き換えるテストが含まれますが、
@@ -68,4 +100,4 @@ build/Test_Debug/divisi_test.exe --gtest_filter=-Langscore_KnownIssue_*
 
 - `test_config.h` と `test_log.md` はビルド・実行時に生成されるため git 管理外です。
 - C++ テストは初回実行時にテストデータをビルドディレクトリへコピーします。
-  `build/Test_Debug` を消すとコピーからやり直しになります。
+  `build/x64-debug-test` を消すとコピーからやり直しになります。

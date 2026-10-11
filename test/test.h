@@ -21,6 +21,8 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <thread>
+#include <chrono>
 
 #include "test_config.h"
 
@@ -57,21 +59,32 @@ public:
 	}
 	std::vector<TranslateText>& getTexts() { return this->texts; }
 };
+//生成物の削除。
+//テストがクラッシュしてファイルハンドルを漏らすと削除に失敗するが、
+//ここで例外を投げると後続のテストが全部「使用中」で失敗し、
+//本来の失敗原因が見えなくなる。そこで例外にせず、警告だけを出す。
+static void DeleteGeneratedPath(const std::filesystem::path& path)
+{
+	std::error_code ec;
+	if(fs::exists(path, ec) == false) { return; }
+
+	//ハンドルが閉じるまで少し待つ。
+	for(int i = 0; i < 10; ++i)
+	{
+		ec.clear();
+		if(fs::is_directory(path, ec)) { fs::remove_all(path, ec); }
+		else                           { fs::remove(path, ec); }
+		if(ec == std::error_code{}) { return; }
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
+
+	std::cerr << "Warning: 生成ファイルを削除できません: "
+	          << path.string() << " (" << ec.message() << ")" << std::endl;
+}
 
 void ClearGenerateFiles()
 {
-	const auto Delete = [](auto path)
-		{
-			if(fs::exists(path))
-			{
-				if(fs::is_directory(path)) {
-					fs::remove_all(path);
-				}
-				else {
-					fs::remove(path);
-				}
-			}
-		};
+	const auto Delete = [](const auto& path) { DeleteGeneratedPath(path); };
 	Delete(".\\data\\mv\\LangscoreTest\\data\\translate");
 	Delete(".\\data\\mv\\LangscoreTest\\js\\plugins\\Langscore.js");
 	Delete(".\\data\\mv\\LangscoreTest_langscore\\analyze");
@@ -90,18 +103,7 @@ void ClearGenerateFiles()
 
 void ClearGenerateFiles(langscore::config& config)
 {
-	const auto Delete = [](auto path) 
-	{
-		if(fs::exists(path))
-		{
-			if(fs::is_directory(path)) {
-				fs::remove_all(path);
-			}
-			else {
-				fs::remove(path);
-			}
-		}
-	};
+	const auto Delete = [](const auto& path) { DeleteGeneratedPath(path); };
 	ClearGenerateFiles();
 
 	Delete(config.langscoreAnalyzeDirectorty());
