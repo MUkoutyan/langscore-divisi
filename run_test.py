@@ -13,6 +13,7 @@
 import os
 import sys
 import json
+import subprocess
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
@@ -183,6 +184,17 @@ def write_report(log_path, cases, cpp_total, cpp_failures, start_date, end_date)
     return all_passed
 
 
+def run_live(command, timeout, **option):
+    """出力をキャプチャせずコンソールへそのまま流す。(ビルドの進行や ctest の n/m がその場で見える)"""
+    print(f"\n=== {' '.join(command)}", flush=True)
+    try:
+        # shell=True: env の PATH で実行ファイルを探させるため。(core.run_command と同じ)
+        return subprocess.run(command, shell=True, timeout=timeout, **option).returncode == 0
+    except subprocess.TimeoutExpired:
+        print(f"timeout ({timeout}s): {command[0]}")
+        return False
+
+
 def main():
     args = [a for a in sys.argv[1:] if a]
     preset = DEFAULT_PRESET
@@ -205,16 +217,12 @@ def main():
     # cl.exe / ninja へパスを通す。開発者コマンドプロンプト以外からも実行できるようにする。
     build_env = core.vs_environment()
 
-    _, error, ok = core.run_command("cmake.exe", ["--preset", preset], cwd=divisi_root,
-                                    env=build_env, timeout=900)
-    if not ok:
-        print(f"CMake configure failed:\n{error}")
+    if not run_live(["cmake.exe", "--preset", preset], 900, cwd=divisi_root, env=build_env):
+        print("CMake configure failed")
         return False
 
-    _, error, ok = core.run_command("cmake.exe", ["--build", "--preset", preset], cwd=divisi_root,
-                                    env=build_env, timeout=3600)
-    if not ok:
-        print(f"Build failed:\n{error}")
+    if not run_live(["cmake.exe", "--build", "--preset", preset], 3600, cwd=divisi_root, env=build_env):
+        print("Build failed")
         return False
 
     ctest_args = ["--test-dir", build_dir, "--output-on-failure",
@@ -233,13 +241,11 @@ def main():
             os.remove(stale)
 
     start_date = datetime.now()
-    output, error, ctest_ok = core.run_command("ctest.exe", ctest_args, cwd=divisi_root,
-                                               env=build_env, timeout=7200)
+    ctest_ok = run_live(["ctest.exe"] + ctest_args, 7200, cwd=divisi_root, env=build_env)
     end_date = datetime.now()
-    print(output)
 
     if not os.path.exists(junit_path):
-        print(f"ctest の結果が出力されませんでした:\n{error}")
+        print("ctest の結果が出力されませんでした")
         return False
 
     cases = parse_junit(junit_path)
