@@ -228,6 +228,7 @@ ErrorStatus langscore::divisi_vxace::reanalysis()
     //展開したスクリプトのコピー。サブフォルダも含めてまとめてコピーする
     fs::path updateScriptPath = updateDirPath + u8"/Scripts"s;
     fs::path analyzeScriptPath = (analyzeDirPath + u8"/Scripts"s);
+    fs::remove_all(analyzeScriptPath);
     fs::copy(updateScriptPath, analyzeScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
     fs::remove_all(updateScriptPath);
 
