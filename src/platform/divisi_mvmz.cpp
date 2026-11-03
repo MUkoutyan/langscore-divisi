@@ -218,15 +218,15 @@ ErrorStatus divisi_mvmz::reanalysis()
 
     for(auto& mes : messageList){
         if(mes.second == Type::Add){
-            std::cout << "Add : " << mes.first << std::endl;
+            std::cout << "Add : " << utility::toUtf8(mes.first) << std::endl;
             fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first);
         }
         else if(mes.second == Type::Delete){
-            std::cout << "Delete : " << mes.first << std::endl;
+            std::cout << "Delete : " << utility::toUtf8(mes.first) << std::endl;
             fs::remove(analyzeDirPath / mes.first);
         }
         else if(mes.second == Type::Update){
-            std::cout << "Update : " << mes.first << std::endl;
+            std::cout << "Update : " << utility::toUtf8(mes.first) << std::endl;
             fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first, fs::copy_options::overwrite_existing);
         }
     }
@@ -305,7 +305,7 @@ ErrorStatus divisi_mvmz::exportCSV()
     return Status_Success;
 }
 
-void langscore::divisi_mvmz::fetchActorTextFromMap(const std::u8string& csvWriteFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<readerbase>>& jsonreader_map)
+void langscore::divisi_mvmz::fetchActorTextFromMap(const std::filesystem::path& csvWriteFolder, const utility::filelist& list, const std::unordered_map<std::filesystem::path, std::unique_ptr<readerbase>>& jsonreader_map)
 {
     if(list.empty()){ return; }
     //アクター名の変更・二つ名の変更・ニックネームの変更　の抽出
@@ -347,7 +347,7 @@ void langscore::divisi_mvmz::fetchActorTextFromMap(const std::u8string& csvWrite
             auto result = std::find_if(plain_csv.cbegin(), plain_csv.cend(), [&](const auto& row){
                 return row[0] == name;
             });
-            if(result != plain_csv.cend()){ return; }
+            if(result != plain_csv.cend()){ continue; }
 
             utility::u8stringlist row;
             row.reserve(this->supportLangs.size() + 1);
@@ -444,15 +444,13 @@ ErrorStatus divisi_mvmz::validate()
 
     if(validateFiles.empty() == false)
     {
-        for(auto& f : validateFiles) {
-            csvPathList.emplace_back(ValidateFileInfo{
-                f,
-                {}
-            });
-        }
+        //検証するファイルが指定されている。
+        //指定されたファイルはそのまま、フォルダはその中のCSVをすべて検証する
+        csvPathList = this->collectValidateCsvList(validateFiles, basicData);
     }
-    else 
+    else
     {
+        //指定が無い場合は、書き出し先（またはパッキング元）にある基本データのCSVを検証する
         if(config.enableLanguagePatch())
         {
             auto translateFolderList = config.exportDirectory(root);
@@ -638,7 +636,7 @@ void divisi_mvmz::writeAnalyzedBasicData()
 
         auto jsonFilePath = path;
         jsonFilePath.make_preferred().replace_extension(".lsjson");
-        std::cout << "Write JSON : " << jsonFilePath << std::endl;
+        std::cout << "Write JSON : " << utility::toUtf8(jsonFilePath) << std::endl;
 
         std::unique_ptr<readerbase> reader = std::make_unique<mvmz_jsonreader>(path, this->supportLangs, std::move(json));
         jsonwriter writer(reader);
@@ -683,38 +681,43 @@ void langscore::divisi_mvmz::writeFixedBasicData()
     //言語別出力 (ExportByLang) と言語パッチモードのどちらでも言語毎のフォルダへ出力する。
     //出力先を決める exportDirectory() も同じ条件 (exportByLanguage) で分岐している。
     if(config.exportByLanguage())
-    {
+    {        
         const auto pair = config.exportDirectoryWithLang(root);
-        std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
-        for(auto& path : dataFileList)
+        for(auto& [lang, translateFolder] : pair)
         {
-            std::ifstream loadFile(path);
-            nlohmann::json json;
-            loadFile >> json;
-
-            auto csvFilePath = path.filename();
-            csvFilePath.make_preferred().replace_extension(".csv");
-            std::unique_ptr<readerbase> reader = std::make_unique<mvmz_jsonreader>(path, this->supportLangs, json);
-            for(auto& [lang, translateFolder] : pair)
+            std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
+            for(auto& path : dataFileList)
             {
-                auto outputPath = translateFolder / csvFilePath;
-                std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
+                std::ifstream loadFile(path);
+                nlohmann::json json;
+                loadFile >> json;
+
+                auto csvFileName = path.filename();
+                csvFileName.make_preferred().replace_extension(".csv");
+                std::unique_ptr<readerbase> reader = std::make_unique<mvmz_jsonreader>(path, this->supportLangs, json);
+
+                auto outputPath = translateFolder / csvFileName;
+                std::cout << "Write Fix Data CSV : " << utility::toUtf8(outputPath) << std::endl;
 
                 WriteOptions options = {
                     .defaultLanguage = this->defaultLanguage,
-                    .supportLangs    = {lang},
-                    .overwriteMode   = mergeTextMode,
+                    .supportLangs = {lang},
+                    .overwriteMode = mergeTextMode,
                     .isAddNewContentToEnd = addNewContentToEnd,
                     .fillDefaultLanguageColumn = fillDefaultLanguageColumn
                 };
                 writeFixedTranslateText<csvwriter>(outputPath, reader, std::move(options));
 
-                this->fetchActorTextFromMap(translateFolder, dataFileList, jsonreader_map);
-                this->adjustCSV(translateFolder, dataFileList);
-            }                
+                //※fetchActorTextFromMapは.json(dataFileListと同じ内容)を期待するため
+                //  .jsonとなるpath.filenameを使用すること。
+                jsonreader_map[path.filename()] = std::move(reader);
+            }
 
-            jsonreader_map[path.filename()] = std::move(reader);
+            this->fetchActorTextFromMap(translateFolder, dataFileList, jsonreader_map);
+            this->adjustCSV(translateFolder, dataFileList);
         }
+
+
     }
     else 
     {
@@ -732,7 +735,7 @@ void langscore::divisi_mvmz::writeFixedBasicData()
             
             {
                 auto outputPath = translateFolder / csvFilePath;
-                std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
+                std::cout << "Write Fix Data CSV : " << utility::toUtf8(outputPath) << std::endl;
                 WriteOptions options = {
                     .defaultLanguage = this->defaultLanguage, 
                     .supportLangs    = this->supportLangs,
@@ -796,7 +799,7 @@ void langscore::divisi_mvmz::writeFixedScript()
             scriptReader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList);
 
             auto outputPath = translateFolder / fs::path{"Scripts.csv"};
-            std::cout << "Write Fix Script CSV : " << outputPath << std::endl;
+            std::cout << "Write Fix Script CSV : " << utility::toUtf8(outputPath) << std::endl;
             WriteOptions options = {
                 .defaultLanguage = this->defaultLanguage,
                 .supportLangs = {lang},
@@ -817,7 +820,7 @@ void langscore::divisi_mvmz::writeFixedScript()
         scriptReader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList);
 
         for(auto& translateFolder : translateFolderList) {
-            std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
+            std::cout << "Write Fix Script CSV : " << utility::toUtf8(translateFolder / fs::path{"Scripts.csv"}) << std::endl;
             WriteOptions options = {
                 .defaultLanguage = this->defaultLanguage,
                 .supportLangs    = this->supportLangs,
@@ -841,10 +844,10 @@ void langscore::divisi_mvmz::writeLangscorePlugin(std::filesystem::path fileName
     auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/"s / fileName;
 
     if(replaceLs) {
-        std::cout << "output " << fileName.string() << std::endl;
+        std::cout << "output " << utility::toUtf8(fileName) << std::endl;
         auto resourceFolder = this->appPath.parent_path() / "resource";
         const auto langscoreScriptFilePath = resourceFolder / fileName;
-        std::cout << "Copy langscore : From " << langscoreScriptFilePath << " To : " << outputScriptFilePath << std::endl;
+        std::cout << "Copy langscore : From " << utility::toUtf8(langscoreScriptFilePath) << " To : " << utility::toUtf8(outputScriptFilePath) << std::endl;
         fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing);
         std::cout << "Done." << std::endl;
 
@@ -854,7 +857,7 @@ void langscore::divisi_mvmz::writeLangscorePlugin(std::filesystem::path fileName
 
             if(fs::exists(outputScriptFilePath))
             {
-                std::cout << "Replace langscore : " << outputScriptFilePath << std::endl;
+                std::cout << "Replace langscore : " << utility::toUtf8(outputScriptFilePath) << std::endl;
                 std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
                 for(const auto& l : fileLines) {
                     outScriptFile << utility::toString(l) << "\n";
@@ -1126,7 +1129,7 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
         {
             auto resourceFolder = this->appPath.parent_path() / "resource";
             std::stringstream ss;
-            std::cout << "Include LSCSV : " << resourceFolder / "lscsv.js" << std::endl;
+            std::cout << "Include LSCSV : " << utility::toUtf8(resourceFolder / "lscsv.js") << std::endl;
             std::ifstream lscsv(resourceFolder / "lscsv.js");
             assert(lscsv.good());
             std::vector<std::string> lscsvTexts;
@@ -1199,7 +1202,7 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
         t.translates[u8"scriptLineInfo"s] = t.scriptLineInfo;
     }
 
-    std::cout << "Write Analyze JSON : " << outputPath << std::endl;
+    std::cout << "Write Analyze JSON : " << utility::toUtf8(outputPath) << std::endl;
     jsonwriter writer(scriptReader);
     writer.writeForAnalyzeScript(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
 

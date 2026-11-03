@@ -170,5 +170,10 @@ namespace utility
 		return str;
 	}
 
+    //ログ出力用。std::filesystem::pathをそのまま出力するとANSIコードページに変換されるため、UTF-8 にする
+    inline std::string toUtf8(const std::filesystem::path& path) {
+        return cnvStr<std::string>(path.u8string());
+    }
+
 }
 

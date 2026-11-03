@@ -82,26 +82,26 @@ struct ARGS
     langscore::config::ProjectType projectType = langscore::config::ProjectType::None;
 };
 
-std::filesystem::path getFilePathFromArgs(int& i, const int argc, const char* argv[])
+std::filesystem::path getFilePathFromArgs(int& i, const std::vector<std::string>& argList)
 {
-    std::string path = argv[i];
+    std::string path = argList[i];
 
     if(path.empty()) { return ""; }
     //"で括られていなければそのまま解釈。
     if(path[0] != '\"') {
-        return path;
+        return std::filesystem::path(utility::cnvStr<std::u8string>(path));
     }
     //"で括られている場合でも、取得した文字列が"で終わるなら
     //空白文字が無いパターンなので、そのまま解釈。
     if(*(path.rbegin()) == '\"') {
         path.erase(path.size() - 1, 1);
         path.erase(path.begin());
-        return path;
+        return std::filesystem::path(utility::cnvStr<std::u8string>(path));
     }
 
     i += 1;
-    for(; i < argc; ++i) {
-        std::string nextPath = argv[i];
+    for(; i < argList.size(); ++i) {
+        std::string nextPath = argList[i];
         path += " " + nextPath;
         if(*(nextPath.rbegin()) == '\"') {
             break;
@@ -115,22 +115,22 @@ std::filesystem::path getFilePathFromArgs(int& i, const int argc, const char* ar
     if(*(path.begin()) == '\"' && last_char == '\"') {
         path = path.substr(1, path.size() - 2); // "で括られている場合は除去
     }
-    return path;
+    return std::filesystem::path(utility::cnvStr<std::u8string>(path));
 }
 
-ARGS analyzeOption(int argc, const char* argv[])
+ARGS analyzeOption(const std::vector<std::string>& argList)
 {
 	ARGS args;
-	args.appPath = argv[0];
+	args.appPath = argList[0];
 	std::cout << "Options : ";
-	for(int i = 1; i < argc; ++i)
+	for(int i = 1; i < argList.size(); ++i)
 	{
-		std::string_view str = argv[i];
+		std::string_view str = argList[i];
 		std::cout << str << " ";
 		if(str == "-c"){
 			++i;	//次の要素を読み込む
-            args.configFile = getFilePathFromArgs(i, argc, argv);
-			std::cout << args.configFile << " ";
+            args.configFile = getFilePathFromArgs(i, argList);
+			std::cout << utility::toUtf8(args.configFile) << " ";
 
 		}
 		else if(str.find("--analyze") != std::string_view::npos){
@@ -155,21 +155,21 @@ ARGS analyzeOption(int argc, const char* argv[])
         {
             args.convertPatchCSV = true;
             ++i;	//次の要素を読み込む
-            args.convetCsvFolderPath = getFilePathFromArgs(i, argc, argv);
-            std::cout << args.convetCsvFolderPath << " ";
+            args.convetCsvFolderPath = getFilePathFromArgs(i, argList);
+            std::cout << utility::toUtf8(args.convetCsvFolderPath) << " ";
         }
         else if(str.find("--convertBoundCSV") != std::string_view::npos)
         {
             args.convertBoundCSV = true;
             ++i;	//次の要素を読み込む
-            args.convetCsvFolderPath = getFilePathFromArgs(i, argc, argv);
-            std::cout << args.convetCsvFolderPath << " ";
+            args.convetCsvFolderPath = getFilePathFromArgs(i, argList);
+            std::cout << utility::toUtf8(args.convetCsvFolderPath) << " ";
         }
         else if(str.find("--createConfigFile") != std::string_view::npos) {
             args.createConfigFile = true;
             ++i;	//次の要素を読み込む
-            args.gameProjectPath = getFilePathFromArgs(i, argc, argv);
-			std::cout << args.gameProjectPath << " ";
+            args.gameProjectPath = getFilePathFromArgs(i, argList);
+			std::cout << utility::toUtf8(args.gameProjectPath) << " ";
         }
         
 	}
@@ -177,7 +177,11 @@ ARGS analyzeOption(int argc, const char* argv[])
 	return args;
 }
 
+#if defined(_MSC_VER)
+int wmain(int argc, const wchar_t* argv[])
+#else
 int main(int argc, const char* argv[])
+#endif
 {
     setup_crash_handlers();
 	std::cout << "Langscore Divisi Version " << VER_FILEVERSION_STR << std::endl;
@@ -189,8 +193,12 @@ int main(int argc, const char* argv[])
 		return -1;
 	}
 
-
-	const auto args = analyzeOption(argc, argv);
+    //引数は std::filesystem::path を通して UTF-8 にそろえる。Windows でも ANSI コードページを通らない
+    std::vector<std::string> utf8Args;
+    for(int i = 0; i < argc; ++i) {
+        utf8Args.emplace_back(utility::cnvStr<std::string>(std::filesystem::path(argv[i]).u8string()));
+    }
+    const auto args = analyzeOption(utf8Args);
 
 	langscore::divisi divisi(args.appPath, args.configFile);
 
@@ -198,8 +206,17 @@ int main(int argc, const char* argv[])
     //設定ファイルを必要とするオプションの時だけ存在チェックを行う。
     const bool requireConfigFile = !(args.createConfigFile || args.convertPatchCSV || args.convertBoundCSV);
     if(requireConfigFile && std::filesystem::exists(args.configFile) == false) {
-        std::cerr << "Config file does not exist: " << args.configFile << std::endl;
+        std::cerr << "Config file does not exist: " << utility::toUtf8(args.configFile) << std::endl;
         return -1;
+    }
+
+    if(args.convertPatchCSV || args.convertBoundCSV)
+    {
+        //変換するフォルダが無いと directory_iterator が例外を投げて abort するため、先に確認する
+        if(std::filesystem::is_directory(args.convetCsvFolderPath) == false) {
+            std::cerr << "CSV folder does not exist: " << utility::toUtf8(args.convetCsvFolderPath) << std::endl;
+            return -1;
+        }
     }
 
 	ErrorStatus result;

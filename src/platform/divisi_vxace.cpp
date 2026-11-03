@@ -202,15 +202,15 @@ ErrorStatus langscore::divisi_vxace::reanalysis()
 
     for(auto& mes : messageList){
         if(mes.second == Type::Add){
-            std::cout << "Add : " << mes.first << std::endl;
+            std::cout << "Add : " << utility::toUtf8(mes.first) << std::endl;
             fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first);
         }
         else if(mes.second == Type::Delete){
-            std::cout << "Delete : " << mes.first << std::endl;
+            std::cout << "Delete : " << utility::toUtf8(mes.first) << std::endl;
             fs::remove(analyzeDirPath / mes.first);
         }
         else if(mes.second == Type::Update){
-            std::cout << "Update : " << mes.first << std::endl;
+            std::cout << "Update : " << utility::toUtf8(mes.first) << std::endl;
             fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first, fs::copy_options::overwrite_existing);
         }
     }
@@ -295,23 +295,26 @@ ErrorStatus langscore::divisi_vxace::validate()
 {
     std::cout << "Validate..." << std::endl;
     config config;
-    std::u8string root;
     fs::path packingDirectory = config.packingInputDirectory();
     std::vector<ValidateFileInfo> csvPathList;
 
-    if (fs::exists(packingDirectory) == false) {
-        return ErrorStatus(ErrorStatus::Module::DIVISI_VXACE, 1);
-    }
-
     auto basicData = config.rpgMakerBasicData();
+    auto validateCSVList = config.validateCSVList();
 
-    //検証する翻訳CSVを取得する。
-    const auto FetchCsvFileList = [&config, &basicData, &csvPathList](const auto& path)
+    if(validateCSVList.empty() == false)
     {
-        auto validateCSVList = config.validateCSVList();
-        if(validateCSVList.empty()) 
+        //指定されたファイルはそのまま、フォルダはその中の CSV をすべて検証する
+        csvPathList = this->collectValidateCsvList(validateCSVList, basicData);
+    }
+    else
+    {
+        //指定が無い場合は、パッキング元にある基本データの CSV を検証する
+        if(fs::exists(packingDirectory) == false) {
+            return ErrorStatus(ErrorStatus::Module::DIVISI_VXACE, 1);
+        }
+
+        const auto FetchCsvFileList = [&basicData, &csvPathList](const auto& path)
         {
-            //Validateするファイルの指定がない場合は対象のファイルを全て取得
             for(const auto& f : fs::directory_iterator{path})
             {
                 auto extension = f.path().extension();
@@ -327,44 +330,20 @@ ErrorStatus langscore::divisi_vxace::validate()
                     f.path(),
                     result->textValidateInfos
                 });
+            }
+        };
+
+        if(config.enableLanguagePatch())
+        {
+            // 言語パッチモードが有効な場合、言語フォルダ毎に探査。
+            for(const auto& tsFolderName : this->supportLangs) {
+                FetchCsvFileList(packingDirectory / tsFolderName);
             }
         }
         else
         {
-            for(const auto& f : fs::directory_iterator{path})
-            {
-                auto extension = f.path().extension();
-                auto fileName = f.path().filename().stem();
-                if(extension != ".csv") { continue; }
-
-                //Validateに指定されたファイル以外は無視する。
-                if(std::ranges::find(validateCSVList, fileName) == validateCSVList.end()) {
-                    continue;
-                }
-
-                auto result = std::find_if(basicData.cbegin(), basicData.cend(), [&fileName](const auto& x) {
-                    return fs::path(x.filename).filename().stem() == fileName;
-                });
-                if(result == basicData.cend()) { continue; }
-
-                csvPathList.emplace_back(ValidateFileInfo{
-                    f.path(),
-                    result->textValidateInfos
-                });
-            }
+            FetchCsvFileList(packingDirectory);
         }
-    };
-
-    if(config.enableLanguagePatch())
-    {
-        // 言語パッチモードが有効な場合、言語フォルダ事に探査。
-        for(const auto& tsFolderName : this->supportLangs) {
-            FetchCsvFileList(packingDirectory / tsFolderName);
-        }
-    }
-    else
-    {
-        FetchCsvFileList(packingDirectory);
     }
 
     this->validateTranslateFileList(std::move(csvPathList));
@@ -514,7 +493,7 @@ std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::d
 
         if(ext_lower_str == ".jpg" || ext_lower_str == ".png" || ext_lower_str == ".bmp"){
             auto relative_path = "Graphics" / path.lexically_relative(graphicsPath);
-            graphics.emplace_back(relative_path.parent_path() / ext_lower_str);
+            graphics.emplace_back(relative_path.parent_path() / path.stem());
         }
     }
 
@@ -534,7 +513,7 @@ void divisi_vxace::writeAnalyzedBasicData()
         auto jsonFilePath = path;
         jsonFilePath.make_preferred().replace_extension(".lsjson");
         auto fileName = jsonFilePath.filename();
-        std::cout << "Write JSON : " << jsonFilePath << std::endl;
+        std::cout << "Write JSON : " << utility::toUtf8(jsonFilePath) << std::endl;
 
         std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, std::move(json));
         jsonwriter writer(reader);
@@ -596,7 +575,7 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
         t.translates[u8"scriptLineInfo"s] = t.scriptLineInfo;
     }
 
-    std::cout << "Write Analyze JSON : " << outputPath << std::endl;
+    std::cout << "Write Analyze JSON : " << utility::toUtf8(outputPath) << std::endl;
     jsonwriter writer(reader);
     writer.writeForAnalyzeScript(outputPath, this->defaultLanguage, MergeTextMode::AcceptTarget);
 
@@ -646,7 +625,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
             for(auto& [lang, translateFolder] : pair)
             {
                 auto outputPath = translateFolder / csvFilePath;
-                std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
+                std::cout << "Write Fix Data CSV : " << utility::toUtf8(outputPath) << std::endl;
                 std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, json);
 
                 WriteOptions options = {
@@ -680,7 +659,7 @@ void langscore::divisi_vxace::writeFixedBasicData()
             csvFilePath.make_preferred().replace_extension(".csv");
             for(auto& translateFolder : translateFolderList) {
                 auto outputPath = translateFolder / csvFilePath;
-                std::cout << "Write Fix Data CSV : " << outputPath << std::endl;
+                std::cout << "Write Fix Data CSV : " << utility::toUtf8(outputPath) << std::endl;
                 std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, json);
 
                 WriteOptions options = {
@@ -791,7 +770,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
             reader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList, lang);
 
             auto outputPath = translateFolder / fs::path{"Scripts.csv"};
-            std::cout << "Write Fix Script CSV : " << outputPath << std::endl;
+            std::cout << "Write Fix Script CSV : " << utility::toUtf8(outputPath) << std::endl;
 
             WriteOptions options = {
                 .defaultLanguage = this->defaultLanguage,
@@ -816,7 +795,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
         reader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList, def_lang);
 
         for(auto& translateFolder : translateFolderList) {
-            std::cout << "Write Fix Script CSV : " << translateFolder / fs::path{"Scripts.csv"} << std::endl;
+            std::cout << "Write Fix Script CSV : " << utility::toUtf8(translateFolder / fs::path{"Scripts.csv"}) << std::endl;
 
             WriteOptions options = {
                 .defaultLanguage = this->defaultLanguage,
@@ -897,7 +876,7 @@ utility::u8stringlist divisi_vxace::formatSystemVariable(std::filesystem::path p
         {
             auto resourceFolder = this->appPath.parent_path() / "resource";
             std::stringstream ss;
-            std::cout << "Include LSCSV : " << resourceFolder / "lscsv.rb" << std::endl;
+            std::cout << "Include LSCSV : " << utility::toUtf8(resourceFolder / "lscsv.rb") << std::endl;
             std::ifstream lscsv(resourceFolder / "lscsv.rb");
             assert(lscsv.good());
             ss << lscsv.rdbuf();
@@ -1025,7 +1004,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
     }
     if(replaceLsCustom || forceUpdate)
     {
-        std::cout << "Write langscore_custom : " << outputPath / scriptFileNameList[1] << std::endl;
+        std::cout << "Write langscore_custom : " << utility::toUtf8(outputPath / scriptFileNameList[1]) << std::endl;
         auto scriptInfoList = config.rpgMakerScripts();
         auto scriptList = scriptFileList;
         {
@@ -1068,7 +1047,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
     {
         auto resourceFolder = this->appPath.parent_path() / "resource";
         const auto langscoreScriptFilePath = resourceFolder / (Script_File_Name + u8".rb"s);
-        std::cout << "Copy langscore : From " << langscoreScriptFilePath << " To : " << outputScriptFilePath << std::endl;
+        std::cout << "Copy langscore : From " << utility::toUtf8(langscoreScriptFilePath) << " To : " << utility::toUtf8(outputScriptFilePath) << std::endl;
         fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing);
         std::cout << "Done." << std::endl;
 
@@ -1077,7 +1056,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
 
         if(fs::exists(outputScriptFilePath))
         {
-            std::cout << "Replace langscore : " << outputScriptFilePath << std::endl;
+            std::cout << "Replace langscore : " << utility::toUtf8(outputScriptFilePath) << std::endl;
             std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
             for(const auto& l : fileLines){
                 outScriptFile << utility::toString(l) << "\n";

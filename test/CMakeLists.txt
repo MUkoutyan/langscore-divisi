@@ -119,8 +119,14 @@ add_custom_command(TARGET divisi_test POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
     "${PROJECT_SOURCE_DIR}/resource" "$<TARGET_FILE_DIR:divisi_test>/resource")
 
-# test_config.h はビルド構成毎に絶対パスが変わるため、ソースツリーではなくビルドツリーへ生成する。
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/test_config.h)
+# 実行ファイルの場所は構成（Debug/Release）ごとに変わるため、構成ごとに test_config.h を生成する。
+# テストデータは BINARY_DIRECTORY/data にコピーされ、テストは実行ファイルのフォルダを作業フォルダにして読む
+file(GENERATE
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/test_config.h
+    CONTENT "#define TEST_DATA_SRC R\"(${TEST_DATA_SRC})\"\n#define BINARY_DIRECTORY R\"($<TARGET_FILE_DIR:divisi_test>)\"\n"
+)
+target_include_directories(divisi_test PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
+
 
 # ---------------------------------------------------------------------------
 # テストランナーの検出

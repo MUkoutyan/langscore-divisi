@@ -10,9 +10,26 @@
 //       csvwriter.cpp:189,214 行のセルを unordered_map の列挙順で並べている
 //   Langscore_KnownIssue_MV.ActorNameFromMapEventIsAppendedForEachLanguage
 //       divisi_mvmz.cpp:712 jsonreader_map が揃う前に fetchActorTextFromMap を呼んでいる
-//   Langscore_KnownIssue_MV.ValidateCSVNameListSelectsRealFile
-//       divisi_mvmz.cpp:438 ValidateCSVNameList をファイル名ではなくパスとして扱っている
+//   Langscore_KnownIssue_MV.ValidateCSVNameListFilePath
+//   Langscore_KnownIssue_MV.ValidateCSVNameListFolderPath
+//       divisi_mvmz.cpp:449 ValidateCSVNameList の指定に .csv を付けて開いている
+//   Langscore_KnownIssue_VXAce.GraphicsCsvKeepsFileName
+//       divisi_vxace.cpp:517 画像のパスにファイル名ではなく拡張子を付けている
+//   Langscore_KnownIssue_Script.IgnorePluginParameter
+//       config.cpp:442 IgnorePoints の ParameterText を読んでいない
+//   Langscore_KnownIssue_Script.IgnorePluginDoesNotAffectPrefixNamedPlugin
+//       javascriptreader.hpp:85 無視するプラグインを名前の部分一致で探している
+//   Langscore_KnownIssue_Config.FontPathKeepsNonAsciiCharacters
+//       config.cpp:164 UTF-8 の std::string をそのまま std::filesystem::path にしている
+//   Langscore_KnownIssue_MV_Reanalysis.PluginSubFolder
+//       divisi_mvmz.cpp:250 Scripts のサブフォルダを、中身があるまま fs::remove している
+//   Langscore_KnownIssue_MV_Reanalysis.ReadOnlyGameData
+//       divisi_mvmz.cpp:239 読み取り専用の属性ごとコピーした解析ファイルを上書きできない
+//   Langscore_KnownIssue_MV_Reanalysis.RemovedPluginIsRemovedFromAnalyze
+//       divisi_mvmz.cpp:247 ゲームから削除したプラグインが解析フォルダに残る
 //-------------------------------------------------------------------
+
+#include <sstream>
 
 namespace
 {
@@ -247,72 +264,430 @@ TEST(Langscore_KnownIssue_CsvWriter, ColumnOrderFollowsHeader)
 }
 
 //-------------------------------------------------------------------
-// divisi_mvmz.cpp:438
-// Validate.ValidateCSVNameList はファイル名の指定。
-// 指定した場合、そのCSVが実際に検証されなければならない。
+// divisi_mvmz.cpp:449
+// Validate.ValidateCSVNameList には、検証する CSV ファイルかフォルダのパスを指定する。
+// ファイルならそのファイルを、フォルダならその中の CSV を検証しなければならない。
+// langscore-app は CSV エディターの検証で、editing フォルダの CSV のフルパスを指定する。
 //-------------------------------------------------------------------
-TEST(Langscore_KnownIssue_MV, ValidateCSVNameListSelectsRealFile)
+namespace
+{
+    //列数が合わない行を混ぜた CSV。正しく検証されていれば InvalidCSV が報告される。
+    constexpr char8_t BrokenActorsCsv[] =
+        u8"original,ja,en\n"
+        u8"Hello,こんにちは,Hello\n"
+        u8"Broken,足りない列\n"
+        u8"Tail,末尾,tail\n";
+
+    //ValidateCSVNameList に target を指定して検証し、標準出力を返す。
+    //editing フォルダに BrokenActorsCsv を置いてから呼ぶ。
+    std::string ValidateWithNameList(const fs::path& configPath, const fs::path& target)
+    {
+        ScopedFilePatch configPatch(configPath);
+        if(configPatch.valid() == false) {
+            ADD_FAILURE() << "config.json を読めません : " << configPath;
+            return {};
+        }
+        {
+            auto configJson = configPatch.loadJson();
+            configJson["Validate"]["ValidateCSVNameList"] = nlohmann::json::array({utility::cnvStr<std::string>(target.u8string())});
+            configPatch.saveJson(configJson);
+        }
+
+        langscore::config::detachConfigFile();
+        langscore::config::attachConfigFile(configPath);
+
+        langscore::divisi divisi("./", configPath);
+        ::testing::internal::CaptureStdout();
+        const auto status = divisi.validate();
+        const auto output = ::testing::internal::GetCapturedStdout();
+        EXPECT_TRUE(status.valid());
+        return output;
+    }
+
+    //editing フォルダを作って壊れた Actors.csv を置き、終了時にフォルダごと消す。
+    class ScopedEditingFolder
+    {
+    public:
+        explicit ScopedEditingFolder(fs::path directory)
+            : directory(std::move(directory))
+        {
+            fs::create_directories(this->directory);
+            std::ofstream out(this->directory / "Actors.csv", std::ios::binary | std::ios::trunc);
+            const std::u8string_view text = BrokenActorsCsv;
+            out.write(reinterpret_cast<const char*>(text.data()), static_cast<std::streamsize>(text.size()));
+        }
+
+        ~ScopedEditingFolder()
+        {
+            std::error_code error;
+            fs::remove_all(directory, error);
+        }
+
+        ScopedEditingFolder(const ScopedEditingFolder&) = delete;
+        ScopedEditingFolder& operator=(const ScopedEditingFolder&) = delete;
+
+        const fs::path& path() const { return directory; }
+
+    private:
+        fs::path directory;
+    };
+
+    //出力された検証結果のうち、指定した CSV に InvalidCSV が報告されているかを確認する。
+    //".csv" を付けて別のパスを開いていると、File が一致しない。
+    void ExpectInvalidCsvReported(const std::string& output, const fs::path& expectedCsv)
+    {
+        const auto invalidCsvSummary = static_cast<int>(platform_base::ValidateSummary::InvalidCSV);
+        const auto expected = fs::path(expectedCsv).make_preferred().lexically_normal();
+        bool found = false;
+        std::istringstream lines(output);
+        for(std::string line; std::getline(lines, line);)
+        {
+            if(line.starts_with("{") == false) { continue; }
+            const auto json = nlohmann::json::parse(line, nullptr, false);
+            if(json.is_discarded() || json.contains("File") == false) { continue; }
+            auto file = fs::path(utility::cnvStr<std::u8string>(json["File"].get<std::string>())).make_preferred().lexically_normal();
+            if(file == expected && json.value("Summary", -1) == invalidCsvSummary) {
+                found = true;
+                break;
+            }
+        }
+        EXPECT_TRUE(found) << "指定した CSV で列数の不一致が報告されていません : " << expected << "\n出力:\n" << output;
+    }
+}
+
+TEST(Langscore_KnownIssue_MV, ValidateCSVNameListFilePath)
 {
     ClearGenerateFiles();
     checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
-
     const auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json";
 
-    //まずCSVを出力する。
+    ScopedEditingFolder editing(configPath.parent_path() / "editing");
+    const auto output = ValidateWithNameList(configPath, editing.path() / "Actors.csv");
+    ExpectInvalidCsvReported(output, editing.path() / "Actors.csv");
+}
+
+TEST(Langscore_KnownIssue_MV, ValidateCSVNameListFolderPath)
+{
+    ClearGenerateFiles();
+    checkAndCreateConfigFile("data/mv/LangscoreTest_langscore/config.json", "Game.rpgproject");
+    const auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_langscore/config.json";
+
+    ScopedEditingFolder editing(configPath.parent_path() / "editing");
+    const auto output = ValidateWithNameList(configPath, editing.path());
+    ExpectInvalidCsvReported(output, editing.path() / "Actors.csv");
+}
+
+namespace
+{
+    //langscore-app が書き出す形式の config.json を一時フォルダに置き、読み込ませる。
+    //終了時に config を外し、フォルダを消す。
+    class ScopedConfig
+    {
+    public:
+        explicit ScopedConfig(const nlohmann::json& json)
+            : directory(fs::temp_directory_path() / "divisi_known_issue_config")
+        {
+            fs::create_directories(directory);
+            const auto path = directory / "config.json";
+            {
+                std::ofstream out(path);
+                out << json.dump();
+            }
+            langscore::config::detachConfigFile();
+            langscore::config::attachConfigFile(path);
+        }
+
+        ~ScopedConfig()
+        {
+            langscore::config::detachConfigFile();
+            std::error_code error;
+            fs::remove_all(directory, error);
+        }
+
+        ScopedConfig(const ScopedConfig&) = delete;
+        ScopedConfig& operator=(const ScopedConfig&) = delete;
+
+    private:
+        fs::path directory;
+    };
+
+    //プラグインのパラメータから抽出したテキストを作る（javascriptreader::parse と同じ行情報）
+    TranslateText MakePluginParameterText(std::u8string value, std::u8string lineInfo)
+    {
+        TranslateText text{std::move(value), {u8"ja"}};
+        text.scriptLineInfo = std::move(lineInfo);
+        return text;
+    }
+
+    bool ContainsLineInfo(const std::vector<TranslateText>& texts, std::u8string_view lineInfo)
+    {
+        //applyIgnoreScriptsAndSwapLineInfo の後は original に行情報が入っている
+        return std::ranges::any_of(texts, [lineInfo](const auto& text) { return text.original == lineInfo; });
+    }
+}
+
+//-------------------------------------------------------------------
+// divisi_vxace.cpp:517
+// VXAce の Graphics.csv には、画像ごとにフォルダ付きのファイル名（拡張子なし）が出力されなければならない。
+//-------------------------------------------------------------------
+TEST(Langscore_KnownIssue_VXAce, GraphicsCsvKeepsFileName)
+{
+    ClearGenerateFiles();
+    const auto configPath = fs::path(BINARY_DIRECTORY) / "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json";
+    checkAndCreateConfigFile("data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json");
+
     {
         langscore::config::detachConfigFile();
         langscore::divisi divisi("./", configPath);
         ASSERT_TRUE(divisi.analyze().valid());
+    }
+    {
+        //analyze と exportCSV は別のインスタンスで呼ぶ（CheckLangscoreRubyScript と同じ）
+        langscore::config::detachConfigFile();
+        langscore::divisi divisi("./", configPath);
         ASSERT_TRUE(divisi.exportCSV().valid());
     }
 
-    fs::path actorsCsv;
+    langscore::config config;
+    std::u8string root;
+    const auto exportDirs = config.exportDirectory(root);
+    ASSERT_FALSE(exportDirs.empty());
+    const auto graphicsCsv = fs::path(exportDirs[0]) / "Graphics.csv";
+    ASSERT_TRUE(fs::exists(graphicsCsv)) << graphicsCsv;
+
+    //テストデータには Graphics/Pictures/Actor1-1.png がある
+    EXPECT_TRUE(CsvContainsOriginal(graphicsCsv, u8"Graphics/Pictures/Actor1-1"))
+        << "画像のファイル名が Graphics.csv に出力されていません : " << graphicsCsv;
+}
+
+//-------------------------------------------------------------------
+// config.cpp:442
+// langscore-app はプラグインのパラメータを無視するとき、IgnorePoints に ParameterText を書く。
+// そのパラメータのテキストは Scripts.csv から除外されなければならない。
+//-------------------------------------------------------------------
+TEST(Langscore_KnownIssue_Script, IgnorePluginParameter)
+{
+    //langscore-app の settings_io.cpp serializeScripts と同じ形式
+    ScopedConfig scopedConfig(nlohmann::json::parse(R"({"Write": {"RPGMakerScripts": [
+        {"Name": "Foo.js", "Ignore": false, "IgnorePoints": [{"ParameterText": "Message", "Disable": false}]}
+    ]}})"));
+    langscore::config config;
+
+    javascriptreader reader(u8"ja", {u8"ja"}, "", {});
+    auto& texts = reader.currentTexts();
+    texts.emplace_back(MakePluginParameterText(u8"こんにちは", u8"Foo:Message"));
+    texts.emplace_back(MakePluginParameterText(u8"さようなら", u8"Foo:Other"));
+
+    reader.applyIgnoreScriptsAndSwapLineInfo(config.rpgMakerScripts());
+
+    EXPECT_FALSE(ContainsLineInfo(reader.currentTexts(), u8"Foo:Message")) << "無視したパラメータが残っています";
+    EXPECT_TRUE(ContainsLineInfo(reader.currentTexts(), u8"Foo:Other")) << "無視していないパラメータが消えています";
+}
+
+//-------------------------------------------------------------------
+// javascriptreader.hpp:85
+// プラグイン Foo を無視しても、名前が Foo で始まる別のプラグイン FooBar のテキストは残らなければならない。
+//-------------------------------------------------------------------
+TEST(Langscore_KnownIssue_Script, IgnorePluginDoesNotAffectPrefixNamedPlugin)
+{
+    ScopedConfig scopedConfig(nlohmann::json::parse(R"({"Write": {"RPGMakerScripts": [
+        {"Name": "Foo.js", "Ignore": true, "IgnorePoints": []}
+    ]}})"));
+    langscore::config config;
+
+    javascriptreader reader(u8"ja", {u8"ja"}, "", {});
+    auto& texts = reader.currentTexts();
+    texts.emplace_back(MakePluginParameterText(u8"こんにちは", u8"Foo:Message"));
+    texts.emplace_back(MakePluginParameterText(u8"さようなら", u8"FooBar:Message"));
+
+    reader.applyIgnoreScriptsAndSwapLineInfo(config.rpgMakerScripts());
+
+    EXPECT_FALSE(ContainsLineInfo(reader.currentTexts(), u8"Foo:Message")) << "無視したプラグインのテキストが残っています";
+    EXPECT_TRUE(ContainsLineInfo(reader.currentTexts(), u8"FooBar:Message")) << "別のプラグインのテキストが消えています";
+}
+
+//-------------------------------------------------------------------
+// config.cpp:164
+// config.json の文字列は UTF-8。std::string のまま std::filesystem::path にすると
+// Windows では ANSI コードページとして解釈され、日本語のフォントパスが化ける。
+//-------------------------------------------------------------------
+TEST(Langscore_KnownIssue_Config, FontPathKeepsNonAsciiCharacters)
+{
+    nlohmann::json json;
+    json["Languages"] = nlohmann::json::array({
+        {
+            {"LanguageName", "ja"},
+            {"Enable", true},
+            {"FontName", "Test Font"},
+            {"FontPath", utility::cnvStr<std::string>(std::u8string(u8"Fonts/日本語フォント.ttf"))},
+            {"FontSize", 22}
+        }
+    });
+    ScopedConfig scopedConfig(json);
+    langscore::config config;
+
+    const auto languages = config.allLanguages();
+    ASSERT_EQ(languages.size(), 1u);
+    EXPECT_EQ(languages[0].font.file.generic_u8string(), std::u8string(u8"Fonts/日本語フォント.ttf"))
+        << "フォントのパスが変わっています";
+}
+
+//-------------------------------------------------------------------
+// MV/MZ の再解析（プロジェクトの更新）
+// テストの間だけゲームプロジェクトにファイルやフォルダを足し、終了時に消す。
+//-------------------------------------------------------------------
+namespace
+{
+    constexpr char MvReanalysisConfig[] = "data/mv/LangscoreTest_langscore/config.json";
+
+    class ScopedGamePath
     {
+    public:
+        explicit ScopedGamePath(fs::path path)
+            : path(std::move(path))
+        {}
+
+        ~ScopedGamePath()
+        {
+            std::error_code error;
+            fs::remove_all(path, error);
+        }
+
+        ScopedGamePath(const ScopedGamePath&) = delete;
+        ScopedGamePath& operator=(const ScopedGamePath&) = delete;
+
+    private:
+        fs::path path;
+    };
+
+    //ファイルを読み取り専用にし、終了時に書き込みできる状態へ戻す
+    class ScopedReadOnly
+    {
+    public:
+        explicit ScopedReadOnly(fs::path path)
+            : path(std::move(path))
+        {
+            fs::permissions(this->path, fs::perms::owner_write | fs::perms::group_write | fs::perms::others_write, fs::perm_options::remove);
+        }
+
+        ~ScopedReadOnly()
+        {
+            std::error_code error;
+            fs::permissions(path, fs::perms::owner_write, fs::perm_options::add, error);
+        }
+
+        ScopedReadOnly(const ScopedReadOnly&) = delete;
+        ScopedReadOnly& operator=(const ScopedReadOnly&) = delete;
+
+    private:
+        fs::path path;
+    };
+
+    fs::path MvGameDirectory()
+    {
+        return fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest";
+    }
+
+    fs::path MvConfigPath()
+    {
+        return fs::path(BINARY_DIRECTORY) / MvReanalysisConfig;
+    }
+
+    //前回の解析結果を消してから解析する
+    void AnalyzeMvProject()
+    {
+        ClearGenerateFiles();
+        checkAndCreateConfigFile(MvReanalysisConfig, "Game.rpgproject");
+        langscore::config::detachConfigFile();
+        langscore::config::attachConfigFile(MvConfigPath());
+        {
+            langscore::config config;
+            ClearGenerateFiles(config);
+        }
+        langscore::config::detachConfigFile();
+        langscore::divisi divisi("./", MvConfigPath());
+        ASSERT_TRUE(divisi.analyze().valid());
+    }
+
+    //再解析する。例外が出た場合はテストの失敗として報告する（divisi.exe では abort になる）
+    void ReanalyzeMvProject()
+    {
+        langscore::config::detachConfigFile();
+        langscore::divisi divisi("./", MvConfigPath());
+        try {
+            EXPECT_TRUE(divisi.reanalysis().valid());
+        }
+        catch(const std::exception& e) {
+            ADD_FAILURE() << "再解析で例外が出ました（divisi.exe では abort になります）: " << e.what();
+        }
+    }
+
+    fs::path MvAnalyzeDirectory()
+    {
+        langscore::config::detachConfigFile();
+        langscore::config::attachConfigFile(MvConfigPath());
         langscore::config config;
-        std::u8string root;
-        const auto exportDirs = config.exportDirectory(root);
-        ASSERT_FALSE(exportDirs.empty());
-        actorsCsv = fs::path(exportDirs[0]) / "Actors.csv";
+        return fs::path(config.langscoreAnalyzeDirectorty());
     }
-    ASSERT_TRUE(fs::exists(actorsCsv)) << actorsCsv;
+}
 
-    ScopedFilePatch configPatch(configPath);
-    ScopedFilePatch csvPatch(actorsCsv);
-    ASSERT_TRUE(configPatch.valid());
-    ASSERT_TRUE(csvPatch.valid());
+//-------------------------------------------------------------------
+// divisi_mvmz.cpp:250
+// js/plugins にサブフォルダがあっても、再解析は失敗せずに終わらなければならない。
+//-------------------------------------------------------------------
+TEST(Langscore_KnownIssue_MV_Reanalysis, PluginSubFolder)
+{
+    const auto subFolder = MvGameDirectory() / "js/plugins/SubFolder";
+    ScopedGamePath scopedSubFolder(subFolder);
 
-    //Actors.csvだけを検証対象に指定する。
+    AnalyzeMvProject();
+
+    fs::create_directories(subFolder);
     {
-        auto configJson = configPatch.loadJson();
-        configJson["Validate"]["ValidateCSVNameList"] = nlohmann::json::array({"Actors"});
-        configPatch.saveJson(configJson);
+        std::ofstream out(subFolder / "Inner.js");
+        out << "var text = 'inner';";
+    }
+    ReanalyzeMvProject();
+}
+
+//-------------------------------------------------------------------
+// divisi_mvmz.cpp:239
+// ゲームのデータが読み取り専用でも、2回目以降の再解析は失敗せずに終わらなければならない。
+// 解析で読み取り専用の属性ごとコピーされた解析ファイルを、再解析で上書きできないことが原因。
+//-------------------------------------------------------------------
+TEST(Langscore_KnownIssue_MV_Reanalysis, ReadOnlyGameData)
+{
+    const auto actorsJson = MvGameDirectory() / "data/Actors.json";
+    ASSERT_TRUE(fs::exists(actorsJson)) << actorsJson;
+    ScopedReadOnly readOnly(actorsJson);
+
+    AnalyzeMvProject();
+    ReanalyzeMvProject();
+
+    //解析フォルダにコピーされた読み取り専用のファイルを、後片付けで消せるようにする
+    std::error_code error;
+    fs::permissions(MvAnalyzeDirectory() / "Actors.json", fs::perms::owner_write, fs::perm_options::add, error);
+}
+
+//-------------------------------------------------------------------
+// divisi_mvmz.cpp:247
+// ゲームから削除したプラグインは、再解析で解析フォルダからも消えなければならない。
+//-------------------------------------------------------------------
+TEST(Langscore_KnownIssue_MV_Reanalysis, RemovedPluginIsRemovedFromAnalyze)
+{
+    const auto extraPlugin = MvGameDirectory() / "js/plugins/Extra.js";
+    ScopedGamePath scopedPlugin(extraPlugin);
+    {
+        std::ofstream out(extraPlugin);
+        out << "var text = 'extra';";
     }
 
-    //列数が合わない行を混ぜる。正しく検証されていれば InvalidCSV が報告される。
-    csvPatch.saveText(
-        u8"original,ja,en\n"
-        u8"Hello,こんにちは,Hello\n"
-        u8"Broken,足りない列\n"
-        u8"Tail,末尾,tail\n"
-    );
+    AnalyzeMvProject();
+    const auto analyzedPlugin = MvAnalyzeDirectory() / "Scripts/Extra.js";
+    ASSERT_TRUE(fs::exists(analyzedPlugin)) << "解析フォルダにプラグインがコピーされていません: " << analyzedPlugin;
 
-    langscore::config::detachConfigFile();
-    langscore::config::attachConfigFile(configPath);
+    fs::remove(extraPlugin);
+    ReanalyzeMvProject();
 
-    langscore::divisi divisi("./", configPath);
-    ::testing::internal::CaptureStdout();
-    const auto status = divisi.validate();
-    const auto output = ::testing::internal::GetCapturedStdout();
-
-    EXPECT_TRUE(status.valid());
-
-    //出力されたJSONのうち、Actors.csvを対象としたものがあるかを確認する。
-    //ValidateCSVNameListがパスとして扱われていると、拡張子の無い "Actors" が報告される。
-    EXPECT_NE(output.find("Actors.csv"), std::string::npos)
-        << "ValidateCSVNameList で指定した Actors.csv が検証されていません。出力:\n" << output;
-
-    //列数が合わない行があるため、InvalidCSV (ValidateSummary の 8) が報告されるはず。
-    const auto invalidCsvSummary = "\"Summary\":" + std::to_string(static_cast<int>(platform_base::ValidateSummary::InvalidCSV));
-    EXPECT_NE(output.find(invalidCsvSummary), std::string::npos)
-        << "列数が一致しない行が検出されていません。出力:\n" << output;
+    EXPECT_FALSE(fs::exists(analyzedPlugin)) << "削除したプラグインが解析フォルダに残っています: " << analyzedPlugin;
 }

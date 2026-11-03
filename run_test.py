@@ -225,7 +225,8 @@ def main():
         print("Build failed")
         return False
 
-    ctest_args = ["--test-dir", build_dir, "--output-on-failure",
+    # Visual Studio (複数構成) では構成の指定が要るため、構成を持つテストプリセットで実行する
+    ctest_args = ["--preset", preset, "--output-on-failure",
                   "--output-junit", junit_path]
     if 'all' not in selection:
         unknown = [s for s in selection if s not in TEST_FILTERS]

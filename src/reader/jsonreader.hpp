@@ -15,9 +15,24 @@ public:
 	virtual void json2tt() = 0;
 
 protected:
+
+    struct AuxiliaryNodeInfo
+    {
+        enum NodeType {
+            Array,
+            Object
+        };
+        std::u8string key;
+        std::u8string path = u8"/";
+        NodeType type = NodeType::Object;
+        int index = -1; //NodeTypeがArrayの際に、どのインデックスで呼び出されたか
+        int depth = 0;
+    };
+
 	nlohmann::json json;
 };
 
+//langscoreで解析結果をシリアライズしたlsjsonファイルを読み込むクラス
 class analyzejsonreader : public readerbase
 {
 public:
@@ -68,7 +83,7 @@ private:
             file >> jsonData;
         }
         catch(const std::exception& e) {
-            std::cerr << "JSON parse error: " << e.what() << " in file: " << path.string() << std::endl;
+            std::cerr << "JSON parse error: " << e.what() << " in file: " << utility::toUtf8(path) << std::endl;
             return result;
         }
 

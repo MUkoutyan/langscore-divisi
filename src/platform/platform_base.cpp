@@ -154,7 +154,7 @@ void langscore::platform_base::copyFonts(fs::path fontDestPath)
         {
             auto path = globalFontFolder / relativePath;
             if(fs::exists(path) == false) {
-                std::cerr << "Warning! : not found global font file : " << path << std::endl;
+                std::cerr << "Warning! : not found global font file : " << utility::toUtf8(path) << std::endl;
                 continue;
             }
             fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
@@ -164,7 +164,7 @@ void langscore::platform_base::copyFonts(fs::path fontDestPath)
         {
             auto path = localFontFolder / relativePath;
             if(fs::exists(path) == false) {
-                std::cerr << "Warning! : not found local font file : " << path << std::endl;
+                std::cerr << "Warning! : not found local font file : " << utility::toUtf8(path) << std::endl;
                 continue;
             }
             fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
@@ -245,7 +245,7 @@ void platform_base::writeFixedGraphFileNameData()
         for(auto& [lang, translateFolder] : pair)
         {
             auto outputPath = fs::path(translateFolder) / "Graphics.csv";
-            std::cout << "Write Graphics : " << outputPath << std::endl;
+            std::cout << "Write Graphics : " << utility::toUtf8(outputPath) << std::endl;
 
             // 言語ごとの翻訳テキストを作成
             speciftranstext transText{transTextList};
@@ -266,7 +266,7 @@ void platform_base::writeFixedGraphFileNameData()
         speciftranstext transText{std::move(transTextList)};
 
         for(auto& csvPath : csvPathList) {
-            std::cout << "Write Graphics : " << csvPath << std::endl;
+            std::cout << "Write Graphics : " << utility::toUtf8(csvPath) << std::endl;
             WriteOptions options = {
                 .defaultLanguage = this->defaultLanguage,
                 .supportLangs = {this->supportLangs},
@@ -698,6 +698,34 @@ void langscore::platform_base::detectConstrolChar(ValidateTextInfo& validateInfo
             }
         }
     }
+}
+
+std::vector<platform_base::ValidateFileInfo> platform_base::collectValidateCsvList(
+    const utility::u8stringlist& targets, const std::vector<config::BasicData>& basicData) const
+{
+    std::vector<ValidateFileInfo> result;
+    const auto Add = [&basicData, &result](const fs::path& csvPath)
+    {
+        auto info = std::ranges::find_if(basicData, [stem = csvPath.stem()](const auto& x) {
+            return fs::path(x.filename).stem() == stem;
+        });
+        result.emplace_back(ValidateFileInfo{csvPath, info != basicData.cend() ? info->textValidateInfos : config::TextValidateTypeMap{}});
+    };
+
+    for(const auto& target : targets)
+    {
+        const fs::path targetPath(target);
+        if(fs::is_directory(targetPath))
+        {
+            for(const auto& entry : fs::recursive_directory_iterator{targetPath}) {
+                if(entry.path().extension() == ".csv") { Add(entry.path()); }
+            }
+        }
+        else if(fs::exists(targetPath)) {
+            Add(targetPath);
+        }
+    }
+    return result;
 }
 
 std::uint64_t langscore::platform_base::countNumTexts(const std::u8string& multilineText) const

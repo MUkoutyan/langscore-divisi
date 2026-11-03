@@ -74,8 +74,7 @@ plaincsvreader::~plaincsvreader()
 std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path path)
 {
 	std::ifstream file(path, std::ios::binary);
-	if(!file){ return {}; 
-    }
+	if(!file){ return {};  }
     // BOMチェックとスキップ
     if(file.peek() == 0xEF) {
         unsigned char bom[3];

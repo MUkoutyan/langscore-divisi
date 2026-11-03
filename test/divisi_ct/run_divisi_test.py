@@ -1264,17 +1264,24 @@ class TestCSVConversion(unittest.TestCase):
         
         # 存在しないディレクトリでのテスト
         invalid_dir = os.path.join(current_dir, 'work\\nonexistent_csv_dir')
-        
+
         def run_convertPatchCSV_invalid(csv_folder_path):
             DIVISI_PATH = divisi_root_dir + '\\bin\\divisi.exe'
             args = ['--convertPatchCSV', csv_folder_path]
             return core.run_command(DIVISI_PATH, args)
-            
-        out, err, result = run_convertPatchCSV_invalid(invalid_dir)
-        # エラーハンドリングのテストなので、失敗することを期待する場合もある
-        print(f"Invalid directory test result: {result}")
-        print(f"Error output: {err}" if err else "No error output")
-        
+
+        # 存在しないフォルダを指定したら、abort せずにエラー終了（-1）すること。
+        # abort でも「失敗」になるため、終了コードと標準エラー出力で abort していないことを確かめる
+        DIVISI_PATH = os.path.join(divisi_root_dir, 'bin', 'divisi.exe')
+        for option in ['--convertPatchCSV', '--convertBoundCSV']:
+            with self.subTest(option=option):
+                result = core._run([DIVISI_PATH, option, invalid_dir], default_encoding='utf-8')
+                print(f"Invalid directory test ({option}) exit code: {result.returncode}")
+                self.assertNotIn("terminate", result.stderr, f"{option} が abort しました: {result.stderr}")
+                #Windows の終了コードは符号なしで返るため、-1 は 0xFFFFFFFF になる
+                self.assertEqual(result.returncode & 0xFFFFFFFF, 0xFFFFFFFF,
+                    f"{option} がエラー終了（-1）しませんでした: {result.stderr}")
+
         # 空のディレクトリでのテスト
         empty_dir = os.path.join(current_dir, 'work\\empty_csv_dir')
         os.makedirs(empty_dir, exist_ok=True)
@@ -1309,6 +1316,24 @@ class TestErrorHandling(unittest.TestCase):
         out, err, result = core.run_command(DIVISI_PATH, ['--invalidoption'])
         # 無効なオプションは無視される可能性があるため、引数不足エラーになることを期待
         self.assertFalse(result, "Should fail with invalid option")
+
+    def test_config_path_outside_ansi_codepage(self):
+        """ANSI コードページで表せない文字を含むパスの config.json を読めること（既知の不具合）
+
+        exec/main.cpp は main(int, const char* argv[]) で引数を受け取るため、
+        日本語環境では한글などが ? に置き換わり、config.json が見つからない。"""
+        config_dir = os.path.join(current_dir, 'work', '한글_é')
+        os.makedirs(config_dir, exist_ok=True)
+        try:
+            config_file = os.path.join(config_dir, 'config.json')
+            with open(config_file, 'w', encoding='utf-8') as f:
+                f.write('{}')
+            DIVISI_PATH = os.path.join(divisi_root_dir, 'bin', 'divisi.exe')
+            #langscore-app (invoker.cpp) と同じく、パスを " で括って渡す。処理のオプションは付けない
+            result = core._run([DIVISI_PATH, '-c', f'"{config_file}"'], default_encoding='utf-8')
+            self.assertEqual(result.returncode, 0, f"config.json を開けませんでした: {result.stderr}")
+        finally:
+            shutil.rmtree(config_dir, onerror=force_remove_readonly)
 
 
 class TestVersionInfo(unittest.TestCase):

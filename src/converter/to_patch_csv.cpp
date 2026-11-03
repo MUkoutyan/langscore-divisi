@@ -21,7 +21,7 @@ convert_patch_csv::convert_patch_csv(std::filesystem::path directory_path)
     utility::u8stringlist useLangs = {};
     for(const auto& csv_file : csv_files)
     {
-        std::cout << "Reading CSV file: " << csv_file << std::endl;
+        std::cout << "Reading CSV file: " << utility::toUtf8(csv_file) << std::endl;
         auto&& reader = langscore::csvreader{csv_file};
         const auto& useLangs = reader.curerntUseLangList();
         const auto& readTexts = reader.currentTexts();
@@ -54,7 +54,7 @@ convert_patch_csv::convert_patch_csv(std::filesystem::path directory_path)
 
 
             auto output_file = output_path / csv_file.filename();
-            std::cout << "Writing to: " << output_file << std::endl;
+            std::cout << "Writing to: " << utility::toUtf8(output_file) << std::endl;
             csvwriter{speciftranstext{{lang}, std::move(transTexts)}}.write(output_file, u8"", MergeTextMode::AcceptTarget);
         }
     }
@@ -78,7 +78,7 @@ convert_bound_csv::convert_bound_csv(std::filesystem::path directory_path)
 
     if(lang_dirs.empty())
     {
-        std::cout << "No language directories found in: " << directory_path << std::endl;
+        std::cout << "No language directories found in: " << utility::toUtf8(directory_path) << std::endl;
         return;
     }
 
@@ -110,7 +110,7 @@ convert_bound_csv::convert_bound_csv(std::filesystem::path directory_path)
         // 各言語のファイルからテキストを読み込んで結合
         for(const auto& [lang, file_path] : lang_paths)
         {
-            std::cout << "Reading language file: " << file_path << " (Language: " << utility::cnvStr<std::string>(lang) << ")" << std::endl;
+            std::cout << "Reading language file: " << utility::toUtf8(file_path) << " (Language: " << utility::cnvStr<std::string>(lang) << ")" << std::endl;
 
             auto&& reader = langscore::csvreader{file_path};
             const auto& texts = reader.currentTexts();
@@ -134,7 +134,7 @@ convert_bound_csv::convert_bound_csv(std::filesystem::path directory_path)
 
         // 結合したデータを出力
         auto output_file = directory_path / filename;
-        std::cout << "Writing combined file to: " << output_file << std::endl;
+        std::cout << "Writing combined file to: " << utility::toUtf8(output_file) << std::endl;
         csvwriter{speciftranstext{enableLanguages, std::move(combined_texts)}}.write(output_file, u8"", MergeTextMode::AcceptTarget);
     }
 }

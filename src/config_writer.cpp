@@ -161,7 +161,7 @@ bool langscore::config_writer::write()
     this->rpgMakerBasicData = ::fetchBasicDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
     this->rpgMakerScripts = ::fetchScriptDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
 
-    std::cout << "output folder " << this->langscoreProjectPath << std::endl;
+    std::cout << "output folder " << utility::toUtf8(this->langscoreProjectPath) << std::endl;
     std::vector<std::string> enableLanguages = {
         "ja","en","zh-cn","zh-tw","ko","es","de","fr","it","ru"
     };

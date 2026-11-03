@@ -130,6 +130,11 @@ namespace langscore
         std::vector<ValidateTextInfo> convertValidateTextInfo(std::string fileName, const std::vector<TranslateText>& texts) const;
         void detectConstrolChar(ValidateTextInfo& validateInfo) const;
 
+        std::vector<ValidateFileInfo> collectValidateCsvList(
+            const utility::u8stringlist& targets,
+            const std::vector<config::BasicData>& basicData
+        ) const;
+
 		bool validateTranslateFileList(std::vector<ValidateFileInfo> csvPathList) const;
         
         //翻訳CSVのフォーマットを検証
