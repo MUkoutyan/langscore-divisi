@@ -77,14 +77,18 @@ ErrorStatus divisi_mvmz::analyze()
         fs::create_directories(baseDirectory);
     }
 
+    utility::removeReadOnly(baseDirectory);
     fs::copy(gameProjPath, baseDirectory, fs::copy_options::overwrite_existing);
+    utility::removeReadOnly(baseDirectory);
 
     auto scriptProjPath = this->currentGameProjectPath / u8"js" / u8"plugins";
     auto destScriptPath = baseDirectory+u8"\\Scripts";
     if(std::filesystem::exists(destScriptPath) == false){
         std::filesystem::create_directories(destScriptPath);
     }
+    utility::removeReadOnly(destScriptPath);
     fs::copy(scriptProjPath, destScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+    utility::removeReadOnly(destScriptPath);
 
 
     //解析では言語を使用しない。 書き出されるCSVはオリジナル文のみを表示させる。
@@ -123,6 +127,7 @@ ErrorStatus divisi_mvmz::reanalysis()
         std::filesystem::create_directories(destScriptPath);
     }
     fs::copy(scriptProjPath, destScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+    utility::removeReadOnly(destScriptPath);
 
 
     //アップデートでも言語を使用しない。 書き出されるCSVはオリジナル文のみを表示させる。
@@ -215,7 +220,7 @@ ErrorStatus divisi_mvmz::reanalysis()
     });
 
     //メッセージを出しつつ、ファイルの移動
-
+    utility::removeReadOnly(analyzeDirPath);
     for(auto& mes : messageList){
         if(mes.second == Type::Add){
             std::cout << "Add : " << utility::toUtf8(mes.first) << std::endl;
@@ -237,18 +242,17 @@ ErrorStatus divisi_mvmz::reanalysis()
         if(extension == ".json") {
             auto filename = f.path().filename();
             fs::copy(updateDirPath / filename, analyzeDirPath / filename, fs::copy_options::overwrite_existing);
+            fs::permissions(analyzeDirPath / filename, fs::perms::owner_write, fs::perm_options::add);
             fs::remove(f.path());
         }
     }
 
-    //展開したスクリプトのコピー
+    //展開したスクリプトのコピー。サブフォルダも含めてまとめてコピーする
     fs::path updateScriptPath = updateDirPath + u8"/Scripts"s;
     fs::path analyzeScriptPath = (analyzeDirPath + u8"/Scripts"s);
-    for(const auto& f : fs::recursive_directory_iterator{updateScriptPath}){
-        auto filename = f.path().filename();
-        fs::copy(updateScriptPath / filename, analyzeScriptPath / filename, fs::copy_options::overwrite_existing);
-        fs::remove(f.path());
-    }
+    fs::remove_all(analyzeScriptPath);
+    fs::copy(updateScriptPath, analyzeScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+    fs::remove_all(updateScriptPath);
 
     std::cout << "UpdateProject Done." << std::endl;
     return Status_Success;
@@ -848,7 +852,10 @@ void langscore::divisi_mvmz::writeLangscorePlugin(std::filesystem::path fileName
         auto resourceFolder = this->appPath.parent_path() / "resource";
         const auto langscoreScriptFilePath = resourceFolder / fileName;
         std::cout << "Copy langscore : From " << utility::toUtf8(langscoreScriptFilePath) << " To : " << utility::toUtf8(outputScriptFilePath) << std::endl;
+        //上書きしてよいかはアプリが確認済みのため、読み取り専用でも上書きする
+        utility::removeReadOnly(outputScriptFilePath);
         fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing);
+        utility::removeReadOnly(outputScriptFilePath);
         std::cout << "Done." << std::endl;
 
         if(fileName == "Langscore.js") {

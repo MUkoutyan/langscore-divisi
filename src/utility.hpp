@@ -170,6 +170,23 @@ namespace utility
 		return str;
 	}
 
+    inline void removeReadOnly(const std::filesystem::path& path)
+    {
+        namespace fs = std::filesystem;
+        
+        if(fs::exists(path) == false) { return; }
+        fs::permissions(path, fs::perms::owner_write, fs::perm_options::add);
+
+        if(fs::is_directory(path) == false) { return; }
+
+        for(const auto& entry : fs::recursive_directory_iterator{path})
+        {
+            if(entry.is_directory()) { continue; }
+            fs::permissions(entry.path(), fs::perms::owner_write, fs::perm_options::add);
+        }
+    }
+
+
     //ログ出力用。std::filesystem::pathをそのまま出力するとANSIコードページに変換されるため、UTF-8 にする
     inline std::string toUtf8(const std::filesystem::path& path) {
         return cnvStr<std::string>(path.u8string());

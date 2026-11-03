@@ -6,6 +6,7 @@
 #include "test_validation.cpp"
 #include "test_core.cpp"
 #include "test_known_issues.cpp"
+#include "test_commands.cpp"
 
 #include <gtest/gtest.h>
 

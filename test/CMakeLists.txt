@@ -28,7 +28,7 @@ else()
     set(HAVE_TEST_DATA FALSE)
     message(WARNING
         "テストデータが見つかりません: ${TEST_DATA_ROOT}\n"
-        "  データを必要とするテスト (cpp / vxace / mv / mz / rvcnv / divisi_ct / lscsv_rb) は登録しません。\n"
+        "  データを必要とするテスト (cpp / vxace / mv / mz / rvcnv / lscsv_rb) は登録しません。\n"
         "  リポジトリと同階層に langscore-divisi-test-data を配置するか、"
         "環境変数 LANGSCORE_TEST_DATA / -DTEST_DATA_SRC で場所を指定してください。")
 endif()
@@ -221,14 +221,15 @@ if(NPM_EXECUTABLE AND HAVE_TEST_DATA)
 endif()
 
 # --- divisi 結合テスト (bin/divisi.exe を叩く) ------------------------------
-if(Python3_Interpreter_FOUND AND HAVE_TEST_DATA)
+# 引数の解釈や終了コードのように、divisi.exe でしか確認できないものだけを扱う。テストデータは使わない。
+# 各コマンドの処理は gtest (test_commands.cpp) で確認する。
+if(Python3_Interpreter_FOUND)
     # run_divisi_test.py は <repo>/bin/divisi.exe を実行する。exec/CMakeLists.txt の
     # POST_BUILD でコピーされるため、ctest の前に divisi をビルドしておく必要がある。
     add_test(NAME divisi_ct
         COMMAND ${Python3_EXECUTABLE} run_divisi_test.py
         WORKING_DIRECTORY ${TEST_DIR}/divisi_ct)
-    set_tests_properties(divisi_ct PROPERTIES TIMEOUT 3000)
-    list(APPEND DATA_TESTS divisi_ct)
+    set_tests_properties(divisi_ct PROPERTIES TIMEOUT 300 ENVIRONMENT "PYTHONIOENCODING=utf-8")
 endif()
 
 # ---------------------------------------------------------------------------

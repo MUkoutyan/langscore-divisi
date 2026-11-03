@@ -133,10 +133,19 @@ def ls_reset_database
 end
 
 def ls_new_game
+  ls_end_scene
   DataManager.init
   DataManager.setup_new_game
   SceneManager.goto(Scene_Map)
   SceneManager.scene.start
+  $ls_started_scene = SceneManager.scene
+end
+
+# ls_new_game で開始したシーンを終了し、スプライトやウィンドウを解放する。
+# 解放しないまま GC に回収させると、RGSS3 が解放順の違いで落ちることがある。
+def ls_end_scene
+  scene, $ls_started_scene = $ls_started_scene, nil
+  scene.terminate if scene
 end
 
 def ls_map_event(map_event_id)
@@ -754,6 +763,7 @@ begin
   else
     ls_run_default_tests
   end
+  ls_end_scene
 rescue Exception => e
   LsTest.fatal(e)
 end

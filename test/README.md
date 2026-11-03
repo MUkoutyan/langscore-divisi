@@ -26,7 +26,7 @@ CI 等で JUnit XML がそのまま欲しい場合は `ctest --output-junit <pat
 | テスト名 | 対象 | 必要なもの |
 |---------|------|-----------|
 | `cpp` | divisi 本体 (gtest) | Visual Studio、CMake、Ninja、テストデータ |
-| `divisi_ct` | divisi.exe のコマンドライン | `bin/divisi.exe`、Python、テストデータ |
+| `divisi_ct` | divisi.exe の引数の解釈と終了コード | `bin/divisi.exe`、Python |
 | `rvcnv` | rvcnv (VXAce の rvdata2 変換) | Python、Ruby、テストデータ |
 | `plugin_mv_*` / `plugin_mz_*` | Langscore.js (mocha + jsdom) | Node.js、テストデータ |
 | `vxace_*` | langscore.rb (RGSS3 実機) | Python、テストデータ、GUI セッション |
@@ -55,7 +55,7 @@ RPGツクールのゲームプロジェクトを含み、サイズと再配布�
 Github/
   langscore-divisi/              <- このリポジトリ
   langscore-divisi-test-data/
-    data/                        <- cpp / divisi_ct / rvcnv 用
+    data/                        <- cpp / rvcnv 用
     lscsv/                       <- lscsv_rb 用 (Skills.csv / CommonEvents.csv)
     plugin/
       mv_test/  mv_test_langscore/

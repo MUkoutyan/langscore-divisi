@@ -224,14 +224,12 @@ ErrorStatus langscore::divisi_vxace::reanalysis()
             fs::remove(f.path());
         }
     }
-    //展開したスクリプトのコピー
+
+    //展開したスクリプトのコピー。サブフォルダも含めてまとめてコピーする
     fs::path updateScriptPath = updateDirPath + u8"/Scripts"s;
     fs::path analyzeScriptPath = (analyzeDirPath + u8"/Scripts"s);
-    for(const auto& f : fs::recursive_directory_iterator{updateScriptPath}){
-        auto filename = f.path().filename();
-        fs::copy(updateScriptPath / filename, analyzeScriptPath / filename, fs::copy_options::overwrite_existing);
-        fs::remove(f.path());
-    }
+    fs::copy(updateScriptPath, analyzeScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+    fs::remove_all(updateScriptPath);
 
     std::cout << "Reanalysis Project Done." << std::endl;
     return Status_Success;
