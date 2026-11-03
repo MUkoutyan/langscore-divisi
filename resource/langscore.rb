@@ -153,6 +153,74 @@ module Langscore
     result
   end
 
+  def self.find_similar_keys(target_text, hash_list, limit = 3)
+    # すべてのハッシュからキーを収集（どのハッシュかも記録）
+    all_keys = []
+    hash_list.each_with_index do |hash, hash_index|
+      next if hash.nil?
+      
+      # ハッシュの種類を判定
+      hash_type = case hash
+      when hash_list[0] # $ls_current_map
+        "Map"
+      when hash_list[1] # $ls_troop_tr
+        "Troop"
+      when hash_list[2] # $ls_common_event
+        "CommonEvent"
+      else
+        "Unknown"
+      end
+      
+      if hash.is_a?(Hash) && hash_type != "Map"
+        # 通常のハッシュ（$ls_troop_tr, $ls_common_event）
+        hash.keys.each do |key|
+          all_keys << { key: key, source: hash_type }
+        end
+      elsif hash_type == "Map"
+        # $ls_current_mapの場合は値がハッシュの配列
+        hash.each_value do |sub_hash|
+          if sub_hash.is_a?(Hash)
+            sub_hash.keys.each do |key|
+              all_keys << { key: key, source: hash_type }
+            end
+          end
+        end
+      end
+    end
+    
+    # 重複除去（同じキーでも異なるソースなら別として扱う）
+    all_keys.uniq! { |item| [item[:key], item[:source]] }
+    
+    # 類似度計算（レーベンシュタイン距離の簡易版）
+    similarities = []
+    all_keys.each do |item|
+      key = item[:key]
+      next if key == target_text
+      
+      # 部分一致チェック
+      if key.include?(target_text) || target_text.include?(key)
+        similarities << { key: key, source: item[:source], score: 0.8 }
+      else
+        # 文字の共通度をチェック
+        common_chars = 0
+        target_text.each_char do |char|
+          common_chars += 1 if key.include?(char)
+        end
+        
+        if common_chars > 0
+          score = common_chars.to_f / [target_text.length, key.length].max
+          if score > 0.3
+            similarities << { key: key, source: item[:source], score: score }
+          end
+        end
+      end
+    end
+    
+    # スコア順でソートして上位を返す
+    similarities.sort_by! { |item| -item[:score] }
+    similarities.take(limit)
+  end
+
   def self.fetch_original_text(transed_text, langscore_hash)
 
     origin = transed_text
@@ -213,15 +281,8 @@ module Langscore
       lambda{Langscore.updateWeapons},
       lambda{Langscore.updateSystem},
     ]
-    updateThreads = []
-    functions.each do |f|
-      updateThreads << Thread.new do
-        f.call
-      end
-    end
-    updateThreads.each do |t| t.join end
+    functions.each { |f| f.call }
 
-    #Game_Actors.newをしているため並列処理から除外
     Langscore.updateActor
     
     $ls_graphic_cache ||= {}
@@ -467,26 +528,41 @@ class Window_Base < Window
     
     #マップ・バトル・コモンイベントかを判別できないので苦肉の策
     result_text = [text, text, text]
-    updateThreads = []
-    if $ls_current_map
-      updateThreads << Thread.new do
-        result_text[0] = Langscore.translate_for_map(key)
-      end
-    end
-    updateThreads << Thread.new do
-      result_text[1] = Langscore.translate(key, $ls_troop_tr)
-    end
-    updateThreads << Thread.new do
-      result_text[2] = Langscore.translate(key, $ls_common_event)
-    end
-
-    updateThreads.each { |t| t.join }
+    result_text[0] = Langscore.translate_for_map(key) if $ls_current_map
+    result_text[1] = Langscore.translate(key, $ls_troop_tr)
+    result_text[2] = Langscore.translate(key, $ls_common_event)
 
     result = result_text.select do |t|
       t != key
     end
 
     if result.empty? 
+      if $TEST 
+        # 日本語が含まれているかをチェック
+        has_japanese = text =~ /[あ-んア-ン一-龯]/
+        
+        if has_japanese
+          p "日本語テキストが検出されました: #{text}"
+          p "check text : #{text}"
+          p "check key  : #{key}"
+          p "result     : #{result_text}"
+          
+          # 類似するキーを検索
+          search_hashes = []
+          search_hashes << $ls_current_map if $ls_current_map
+          search_hashes << $ls_troop_tr if $ls_troop_tr
+          search_hashes << $ls_common_event if $ls_common_event
+          
+          similar_keys = Langscore.find_similar_keys(key, search_hashes)
+          if similar_keys.any?
+            p "もしかして："
+            similar_keys.each_with_index do |item, index|
+              p "  #{index + 1}. [#{item[:source]}] #{item[:key]}"
+            end
+          end
+        end
+      end
+
       return ls_base_convert_escape_characters(text)
     end
     
@@ -527,25 +603,10 @@ DataManager::module_eval <<-eval
       Langscore.translate_list_reset()
     end
     
-    updateThreads = []
-    
-    updateThreads << Thread.new do
-      $ls_graphics_tr ||= LSCSV.to_hash("Graphics")
-    end
-
-    updateThreads << Thread.new do
-      $ls_scripts_tr ||= LSCSV.to_hash("Scripts")
-    end
-    
-    updateThreads << Thread.new do
-      $ls_troop_tr ||= LSCSV.to_hash("Troops")
-    end
-    
-    updateThreads << Thread.new do
-      $ls_common_event ||= LSCSV.to_hash("CommonEvents")
-    end
-
-    updateThreads.each { |t| t.join }
+    $ls_graphics_tr  ||= LSCSV.to_hash("Graphics")
+    $ls_scripts_tr   ||= LSCSV.to_hash("Scripts")
+    $ls_troop_tr     ||= LSCSV.to_hash("Troops")
+    $ls_common_event ||= LSCSV.to_hash("CommonEvents")
 
     Langscore.changeLanguage($langscore_current_language, true)
   end
