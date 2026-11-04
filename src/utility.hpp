@@ -5,6 +5,9 @@
 #include <fstream>
 #include <filesystem>
 #include <cassert>
+#include <iostream>
+#include <string_view>
+#include <system_error>
 
 namespace utility
 {
@@ -134,11 +137,15 @@ namespace utility
     }
 
 
+    //ファイルの内容をそのまま読む。開けない場合は空を返す
     static std::vector<std::uint8_t> getFileData(std::filesystem::path path){
-        std::ifstream f(path);
+        //テキストモードは改行の変換や 0x1A で読み込みが止まるため、バイナリで読む
+        std::ifstream f(path, std::ios::binary);
+        if(f.is_open() == false) { return {}; }
         f.seekg(0, std::ios_base::end);
         auto size = f.tellg();
         f.seekg(0, std::ios_base::beg);
+        if(size <= 0) { return {}; }
 
         std::vector<std::uint8_t> result(size, 0);
         f.read(reinterpret_cast<char*>(&result[0]), size);
@@ -170,26 +177,51 @@ namespace utility
 		return str;
 	}
 
+//ログ出力用。std::filesystem::pathをそのまま出力するとANSIコードページに変換されるため、UTF-8 にする
+    inline std::string toUtf8(const std::filesystem::path& path) {
+        return cnvStr<std::string>(path.u8string());
+    }
+
+    //std::filesystem の処理に失敗していれば、内容を標準エラーに出して true を返す
+    inline bool FileSystemFailed(const std::error_code& errorCode, std::string_view operation, const std::filesystem::path& path)
+    {
+        if(static_cast<bool>(errorCode) == false) { return false; }
+        //message() は ANSI コードページの文字列になり UTF-8 のログで化けるため、番号を出す
+        std::cerr << "File system error : " << operation << " : " << toUtf8(path) << " (" << errorCode.value() << ")" << std::endl;
+        return true;
+    }
+
+    //フォルダ内の項目を、例外を投げずに一覧にする。
+    //失敗した場合は標準エラーに出し、それまでに取れた分を返す。先に一覧にするため、走査中にファイルを消しても問題ない
+    template<class DirectoryIterator = std::filesystem::directory_iterator>
+    std::vector<std::filesystem::directory_entry> ListDirectory(const std::filesystem::path& path)
+    {
+        std::vector<std::filesystem::directory_entry> entries;
+        std::error_code errorCode;
+        for(auto it = DirectoryIterator(path, errorCode); it != DirectoryIterator(); it.increment(errorCode)) {
+            entries.emplace_back(*it);
+        }
+        FileSystemFailed(errorCode, "list directory", path);
+        return entries;
+    }
+
     inline void removeReadOnly(const std::filesystem::path& path)
     {
         namespace fs = std::filesystem;
-        
-        if(fs::exists(path) == false) { return; }
-        fs::permissions(path, fs::perms::owner_write, fs::perm_options::add);
 
-        if(fs::is_directory(path) == false) { return; }
+        std::error_code errorCode;
+        if(fs::exists(path, errorCode) == false) { return; }
+        fs::permissions(path, fs::perms::owner_write, fs::perm_options::add, errorCode);
+        FileSystemFailed(errorCode, "permissions", path);
 
-        for(const auto& entry : fs::recursive_directory_iterator{path})
+        if(fs::is_directory(path, errorCode) == false) { return; }
+
+        for(const auto& entry : ListDirectory<fs::recursive_directory_iterator>(path))
         {
-            if(entry.is_directory()) { continue; }
-            fs::permissions(entry.path(), fs::perms::owner_write, fs::perm_options::add);
+            if(entry.is_directory(errorCode)) { continue; }
+            fs::permissions(entry.path(), fs::perms::owner_write, fs::perm_options::add, errorCode);
+            FileSystemFailed(errorCode, "permissions", entry.path());
         }
-    }
-
-
-    //ログ出力用。std::filesystem::pathをそのまま出力するとANSIコードページに変換されるため、UTF-8 にする
-    inline std::string toUtf8(const std::filesystem::path& path) {
-        return cnvStr<std::string>(path.u8string());
     }
 
 }

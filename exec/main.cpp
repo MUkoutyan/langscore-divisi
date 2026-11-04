@@ -205,7 +205,8 @@ int main(int argc, const char* argv[])
     //--createConfigFile / --convertPatchCSV / --convertBoundCSV は -c を取らないため、
     //設定ファイルを必要とするオプションの時だけ存在チェックを行う。
     const bool requireConfigFile = !(args.createConfigFile || args.convertPatchCSV || args.convertBoundCSV);
-    if(requireConfigFile && std::filesystem::exists(args.configFile) == false) {
+    std::error_code errorCode;
+    if(requireConfigFile && std::filesystem::exists(args.configFile, errorCode) == false) {
         std::cerr << "Config file does not exist: " << utility::toUtf8(args.configFile) << std::endl;
         return -1;
     }
@@ -213,7 +214,7 @@ int main(int argc, const char* argv[])
     if(args.convertPatchCSV || args.convertBoundCSV)
     {
         //変換するフォルダが無いと directory_iterator が例外を投げて abort するため、先に確認する
-        if(std::filesystem::is_directory(args.convetCsvFolderPath) == false) {
+        if(std::filesystem::is_directory(args.convetCsvFolderPath, errorCode) == false) {
             std::cerr << "CSV folder does not exist: " << utility::toUtf8(args.convetCsvFolderPath) << std::endl;
             return -1;
         }

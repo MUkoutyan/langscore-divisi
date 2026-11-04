@@ -9,18 +9,40 @@
 
 using namespace langscore;
 
-static std::string convertPath(std::filesystem::path path) {
-    auto result = path.string();
-    if(result.find(' ') != std::string::npos) {
-        return "\"" + result + "\"";
+namespace
+{
+    //OS のパスの文字列型（Windows は std::wstring、それ以外は UTF-8 の std::string）
+    using NativeString = std::filesystem::path::string_type;
+
+    //プロセスを起動する直前に、引数を OS のコマンドラインにする。
+    //path::string() は ANSI コードページに変換するため、その文字コードに無い文字を含むパスを渡せない。native() をそのまま使う
+    NativeString ToCommandLine(const std::vector<std::filesystem::path>& args)
+    {
+        using Char = std::filesystem::path::value_type;
+        NativeString commandLine;
+        for(const auto& arg : args)
+        {
+            if(commandLine.empty() == false) { commandLine += Char(' '); }
+            const auto& text = arg.native();
+            if(text.find(Char(' ')) == NativeString::npos)
+            {
+                commandLine += text;
+                continue;
+            }
+            //空白を含む引数は " で囲む。閉じの " の直前の \ は " のエスケープと解釈されるため 2 つにする
+            commandLine += Char('"');
+            commandLine += text;
+            if(text.ends_with(Char('\\'))) { commandLine += Char('\\'); }
+            commandLine += Char('"');
+        }
+        return commandLine;
     }
-    return result;
 }
 
 #ifdef WIN32
 #include <process.h>
 #include <Windows.h>
-static int execProcess(const char* cmd) 
+static int execProcess(NativeString commandLine)
 {
     SECURITY_ATTRIBUTES securityAttributes;
     ZeroMemory(&securityAttributes, sizeof(securityAttributes));
@@ -41,7 +63,7 @@ static int execProcess(const char* cmd)
         return -1;
     }
 
-    STARTUPINFOA startupInfo;
+    STARTUPINFOW startupInfo;
     ZeroMemory(&startupInfo, sizeof(startupInfo));
     startupInfo.cb = sizeof(startupInfo);
     startupInfo.dwFlags |= STARTF_USESTDHANDLES;
@@ -50,7 +72,8 @@ static int execProcess(const char* cmd)
 
     PROCESS_INFORMATION processInfo;
     ZeroMemory(&processInfo, sizeof(processInfo));
-    if(!CreateProcessA(NULL, (LPSTR)cmd, NULL, NULL,TRUE, 0, NULL, NULL, &startupInfo, &processInfo))               
+    //CreateProcessW はコマンドラインの文字列を書き換えることがあるため、書き込める領域を渡す
+    if(CreateProcessW(NULL, commandLine.data(), NULL, NULL, TRUE, 0, NULL, NULL, &startupInfo, &processInfo) == FALSE)
     {
         std::cerr << "CreateProcess failed (" << GetLastError() << ")" << std::endl;
         CloseHandle(readPipe);
@@ -84,9 +107,9 @@ static int execProcess(const char* cmd)
 
 #include <unistd.h>
 #include <sys/wait.h>
-static int execProcess(const char* cmd) {
+static int execProcess(NativeString commandLine) {
     std::array<char, 128> buffer;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(commandLine.c_str(), "r"), pclose);
     if(!pipe) {
         throw std::runtime_error("popen() failed!");
     }
@@ -114,7 +137,8 @@ void invoker::setApplicationFolder(std::filesystem::path path){
 
 void invoker::setProjectPath(std::filesystem::path path)
 {
-    if(std::filesystem::is_directory(path) == false) {
+    std::error_code errorCode;
+    if(std::filesystem::is_directory(path, errorCode) == false) {
         path = path.parent_path();
     }
     this->_projectPath = std::move(path);
@@ -127,13 +151,12 @@ ErrorStatus invoker::analyze(std::filesystem::path analyzeDir)
     //auto tempPath = std::filesystem::path(config.langscoreAnalyzeDirectorty());
     auto tempPath = analyzeDir;
     tempPath.make_preferred();
-    if(std::filesystem::exists(tempPath) == false){
-        if(std::filesystem::create_directories(tempPath) == false){
-            return ErrorStatus(ErrorStatus::Module::INVOKER, 6);
-        }
+    std::error_code errorCode;
+    std::filesystem::create_directories(tempPath, errorCode);
+    if(utility::FileSystemFailed(errorCode, "create_directories", tempPath)){
+        return ErrorStatus(ErrorStatus::Module::INVOKER, 6);
     }
-    //return exec({"-i", "\"" + _projectPath.string() + "\"", "-o", "\"" + tempPath.string() + "\""});
-    return exec({"-i", convertPath(_projectPath), "-o", convertPath(tempPath)});
+    return exec({"-i", _projectPath, "-o", tempPath});
 }
 
 ErrorStatus langscore::invoker::reanalysis(std::filesystem::path updateDir)
@@ -142,17 +165,16 @@ ErrorStatus langscore::invoker::reanalysis(std::filesystem::path updateDir)
     //auto tempPath = std::filesystem::path(config.langscoreUpdateDirectorty());
     auto tempPath = updateDir;
     tempPath.make_preferred();
-    if(std::filesystem::exists(tempPath) == false){
-        if(std::filesystem::create_directories(tempPath) == false){
-            return ErrorStatus(ErrorStatus::Module::INVOKER, 7);
-        }
+    std::error_code errorCode;
+    std::filesystem::create_directories(tempPath, errorCode);
+    if(utility::FileSystemFailed(errorCode, "create_directories", tempPath)){
+        return ErrorStatus(ErrorStatus::Module::INVOKER, 7);
     }
-    //return exec({"-i", "\""+_projectPath.string()+"\"", "-o", "\""+tempPath.string()+"\""});
-    return exec({"-i", convertPath(_projectPath), "-o", convertPath(tempPath)});
+    return exec({"-i", _projectPath, "-o", tempPath});
 }
 
 ErrorStatus langscore::invoker::recompressVXAce(){
-    return exec({"-i", convertPath(_projectPath), "-c"});
+    return exec({"-i", _projectPath, "-c"});
 }
 
 ErrorStatus langscore::invoker::packingVXAce(std::filesystem::path destGameTranslateFolder, std::filesystem::path packingDir)
@@ -163,13 +185,19 @@ ErrorStatus langscore::invoker::packingVXAce(std::filesystem::path destGameTrans
     {
         auto allLanguage = config.allLanguages();
         //patchPath内のディレクトリを検索
-        for(const auto& entry : std::filesystem::directory_iterator(packingDir)) {
-            if(entry.is_directory()) 
+        std::error_code errorCode;
+        const auto entries = utility::ListDirectory(packingDir);
+        if(entries.empty() && std::filesystem::is_directory(packingDir, errorCode) == false) {
+            return ErrorStatus(ErrorStatus::Module::INVOKER, 9);
+        }
+        for(const auto& entry : entries) {
+            if(entry.is_directory(errorCode))
             {
-                auto dirName = entry.path().filename().string();
-                if(std::ranges::find_if(allLanguage, [&](const auto& l){ return l.name == dirName; }) != allLanguage.end()) 
+                const auto dirName = entry.path().filename();
+                const auto languageName = utility::toUtf8(dirName);
+                if(std::ranges::find_if(allLanguage, [&](const auto& l){ return l.name == languageName; }) != allLanguage.end())
                 {
-                    if(exec({"-i", convertPath(entry), "-o", convertPath(destGameTranslateFolder / dirName), "-p"}) != Status_Success) 
+                    if(exec({"-i", entry.path(), "-o", destGameTranslateFolder / dirName, "-p"}) != Status_Success)
                     {
                         return ErrorStatus(ErrorStatus::Module::INVOKER, 2);
                     }
@@ -180,11 +208,11 @@ ErrorStatus langscore::invoker::packingVXAce(std::filesystem::path destGameTrans
 
     }
     else {
-        return exec({"-i", convertPath(packingDir), "-o", convertPath(destGameTranslateFolder), "-p"});
+        return exec({"-i", packingDir, "-o", destGameTranslateFolder, "-p"});
     }
 }
 
-ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
+ErrorStatus langscore::invoker::exec(std::vector<std::filesystem::path> args)
 {
     auto basePath = appPath.empty() ? "./" : appPath;
     if(projectType == config::VXAce)
@@ -192,7 +220,8 @@ ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
         auto rvcnvPath = (basePath / "rvcnv.exe");
 
         rvcnvPath.make_preferred();
-        if(std::filesystem::exists(rvcnvPath) == false){
+        std::error_code errorCode;
+        if(std::filesystem::exists(rvcnvPath, errorCode) == false){
             return ErrorStatus(ErrorStatus::Module::INVOKER, 3);
         }
 
@@ -213,9 +242,8 @@ ErrorStatus langscore::invoker::exec(std::vector<std::string> args)
         }
 #endif
 
-        auto process = "\"" + rvcnvPath.string() + "\"" + " " + utility::join(args, std::string(" "));
-
-        auto ret = execProcess(process.c_str());
+        args.insert(args.begin(), rvcnvPath);
+        auto ret = execProcess(ToCommandLine(args));
         if(ret == -1){
             return ErrorStatus(ErrorStatus::Module::INVOKER, 4);
         }

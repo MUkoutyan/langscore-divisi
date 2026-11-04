@@ -9,10 +9,11 @@ using namespace langscore;
 
 convert_patch_csv::convert_patch_csv(std::filesystem::path directory_path)
 {
+    std::error_code errorCode;
     std::vector<std::filesystem::path> csv_files;
-    for(const auto& entry : std::filesystem::directory_iterator{directory_path})
+    for(const auto& entry : utility::ListDirectory(directory_path))
     {
-        if(entry.is_regular_file() && entry.path().extension() == ".csv")
+        if(entry.is_regular_file(errorCode) && entry.path().extension() == ".csv")
         {
             csv_files.push_back(entry.path());
         }
@@ -29,10 +30,8 @@ convert_patch_csv::convert_patch_csv(std::filesystem::path directory_path)
         for(const auto& lang : useLangs)
         {
             auto output_path = csv_file.parent_path() / lang;
-            if(false == std::filesystem::exists(output_path))
-            {
-                std::filesystem::create_directories(output_path);
-            }
+            std::filesystem::create_directories(output_path, errorCode);
+            if(utility::FileSystemFailed(errorCode, "create_directories", output_path)) { continue; }
 
             auto transTexts = readTexts;
             for(auto& t : transTexts)
@@ -67,9 +66,10 @@ convert_bound_csv::convert_bound_csv(std::filesystem::path directory_path)
     std::vector<std::filesystem::path> lang_dirs;
     utility::u8stringlist enableLanguages;
 
-    for(const auto& entry : std::filesystem::directory_iterator{directory_path})
+    std::error_code errorCode;
+    for(const auto& entry : utility::ListDirectory(directory_path))
     {
-        if(entry.is_directory())
+        if(entry.is_directory(errorCode))
         {
             lang_dirs.push_back(entry.path());
             enableLanguages.push_back(entry.path().filename().u8string());
@@ -89,9 +89,9 @@ convert_bound_csv::convert_bound_csv(std::filesystem::path directory_path)
     {
         auto lang = lang_dir.filename().u8string(); // Œ¾Œê–¼
 
-        for(const auto& entry : std::filesystem::directory_iterator{lang_dir})
+        for(const auto& entry : utility::ListDirectory(lang_dir))
         {
-            if(entry.is_regular_file() && entry.path().extension() == ".csv")
+            if(entry.is_regular_file(errorCode) && entry.path().extension() == ".csv")
             {
                 auto filename = entry.path().filename().u8string();
                 file_lang_map[filename].emplace_back(lang, entry.path());

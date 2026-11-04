@@ -179,7 +179,7 @@ private:
         using namespace std::string_literals;
         //config config;
         //auto pluginsPath = std::filesystem::path(config.gameProjectPath()) / u8"js/plugins.js"s;
-        std::ifstream input_file(pluginsPath.generic_string());
+        std::ifstream input_file(pluginsPath);
         if(!input_file.is_open()) {
             return {};
         }

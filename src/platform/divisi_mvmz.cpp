@@ -17,6 +17,15 @@ using namespace utility;
 using namespace std::literals::string_literals;
 namespace fs = std::filesystem;
 
+namespace
+{
+    //ファイル操作に失敗した場合のエラー
+    ErrorStatus FileSystemError(const std::filesystem::path& path)
+    {
+        return {ErrorStatus::Module::DIVISI_MVMZ, 2, utility::toUtf8(path)};
+    }
+}
+
 const static std::u8string nl = u8"\n"s;
 const static std::u8string tab = u8"\t"s;
 
@@ -72,22 +81,25 @@ ErrorStatus divisi_mvmz::analyze()
     config config;
     auto gameProjPath = this->currentGameProjectPath / u8"data";
     const auto baseDirectory = config.langscoreAnalyzeDirectorty();
-    if(fs::exists(baseDirectory) == false) {
+    std::error_code errorCode;
+    if(fs::exists(baseDirectory, errorCode) == false) {
         std::cout << "Create Langscore Project Folder... : " << utility::cnvStr<std::string>(baseDirectory) << std::endl;
-        fs::create_directories(baseDirectory);
+        fs::create_directories(baseDirectory, errorCode);
+        if(utility::FileSystemFailed(errorCode, "create_directories", baseDirectory)) { return FileSystemError(baseDirectory); }
     }
 
     utility::removeReadOnly(baseDirectory);
-    fs::copy(gameProjPath, baseDirectory, fs::copy_options::overwrite_existing);
+    fs::copy(gameProjPath, baseDirectory, fs::copy_options::overwrite_existing, errorCode);
+    if(utility::FileSystemFailed(errorCode, "copy", gameProjPath)) { return FileSystemError(gameProjPath); }
     utility::removeReadOnly(baseDirectory);
 
     auto scriptProjPath = this->currentGameProjectPath / u8"js" / u8"plugins";
     auto destScriptPath = baseDirectory+u8"\\Scripts";
-    if(std::filesystem::exists(destScriptPath) == false){
-        std::filesystem::create_directories(destScriptPath);
-    }
+    std::filesystem::create_directories(destScriptPath, errorCode);
+    if(utility::FileSystemFailed(errorCode, "create_directories", destScriptPath)) { return FileSystemError(destScriptPath); }
     utility::removeReadOnly(destScriptPath);
-    fs::copy(scriptProjPath, destScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+    fs::copy(scriptProjPath, destScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive, errorCode);
+    if(utility::FileSystemFailed(errorCode, "copy", scriptProjPath)) { return FileSystemError(scriptProjPath); }
     utility::removeReadOnly(destScriptPath);
 
 
@@ -109,24 +121,27 @@ ErrorStatus divisi_mvmz::reanalysis()
     config config;
 
     const auto analyzeDirPath = config.langscoreAnalyzeDirectorty();
-    if(fs::exists(analyzeDirPath) == false) {
+    std::error_code errorCode;
+    if(fs::exists(analyzeDirPath, errorCode) == false) {
         return {ErrorStatus::Module::DIVISI_MVMZ, 1, utility::cnvStr<std::string>(analyzeDirPath)};
     }
 
     //変にマージしないように一旦全削除
     const auto updateDirPath = config.langscoreUpdateDirectorty();
-    fs::remove_all(updateDirPath);
+    fs::remove_all(updateDirPath, errorCode);
+    if(utility::FileSystemFailed(errorCode, "remove_all", updateDirPath)) { return FileSystemError(updateDirPath); }
 
     //ベースデータのコピー
     auto gameProjPath = this->currentGameProjectPath / u8"data";
-    fs::copy(gameProjPath, updateDirPath, fs::copy_options::overwrite_existing);
+    fs::copy(gameProjPath, updateDirPath, fs::copy_options::overwrite_existing, errorCode);
+    if(utility::FileSystemFailed(errorCode, "copy", gameProjPath)) { return FileSystemError(gameProjPath); }
     //スクリプトのコピー
     auto scriptProjPath = this->currentGameProjectPath / u8"js\\plugins";
     auto destScriptPath = updateDirPath + u8"\\Scripts";
-    if(std::filesystem::exists(destScriptPath) == false){
-        std::filesystem::create_directories(destScriptPath);
-    }
-    fs::copy(scriptProjPath, destScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+    std::filesystem::create_directories(destScriptPath, errorCode);
+    if(utility::FileSystemFailed(errorCode, "create_directories", destScriptPath)) { return FileSystemError(destScriptPath); }
+    fs::copy(scriptProjPath, destScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive, errorCode);
+    if(utility::FileSystemFailed(errorCode, "copy", scriptProjPath)) { return FileSystemError(scriptProjPath); }
     utility::removeReadOnly(destScriptPath);
 
 
@@ -143,14 +158,14 @@ ErrorStatus divisi_mvmz::reanalysis()
 
     //ファイルのリストアップ
     utility::filelist analyzeLsjsonList;
-    for(const auto& f : fs::directory_iterator{analyzeDirPath}){
+    for(const auto& f : utility::ListDirectory(analyzeDirPath)){
         auto extension = f.path().extension();
         if(extension == ".csv" || extension == ".lsjson"){
             analyzeLsjsonList.emplace_back(f.path());
         }
     }
     utility::filelist updateLsjsonList;
-    for(const auto& f : fs::directory_iterator{updateDirPath}){
+    for(const auto& f : utility::ListDirectory(updateDirPath)){
         auto extension = f.path().extension();
         if(extension == ".lsjson"){
             updateLsjsonList.emplace_back(f.path());
@@ -224,35 +239,44 @@ ErrorStatus divisi_mvmz::reanalysis()
     for(auto& mes : messageList){
         if(mes.second == Type::Add){
             std::cout << "Add : " << utility::toUtf8(mes.first) << std::endl;
-            fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first);
+            fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first, errorCode);
+            if(utility::FileSystemFailed(errorCode, "copy", updateDirPath / mes.first)) { return FileSystemError(updateDirPath / mes.first); }
         }
         else if(mes.second == Type::Delete){
             std::cout << "Delete : " << utility::toUtf8(mes.first) << std::endl;
-            fs::remove(analyzeDirPath / mes.first);
+            fs::remove(analyzeDirPath / mes.first, errorCode);
+            if(utility::FileSystemFailed(errorCode, "remove", analyzeDirPath / mes.first)) { return FileSystemError(analyzeDirPath / mes.first); }
         }
         else if(mes.second == Type::Update){
             std::cout << "Update : " << utility::toUtf8(mes.first) << std::endl;
-            fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first, fs::copy_options::overwrite_existing);
+            fs::copy(updateDirPath / mes.first, analyzeDirPath / mes.first, fs::copy_options::overwrite_existing, errorCode);
+            if(utility::FileSystemFailed(errorCode, "copy", updateDirPath / mes.first)) { return FileSystemError(updateDirPath / mes.first); }
         }
     }
 
     //再解析に使用したjsonのコピー
-    for(const auto& f : fs::recursive_directory_iterator{updateDirPath}) {
+    for(const auto& f : utility::ListDirectory<fs::recursive_directory_iterator>(updateDirPath)) {
         auto extension = f.path().extension();
         if(extension == ".json") {
             auto filename = f.path().filename();
-            fs::copy(updateDirPath / filename, analyzeDirPath / filename, fs::copy_options::overwrite_existing);
-            fs::permissions(analyzeDirPath / filename, fs::perms::owner_write, fs::perm_options::add);
-            fs::remove(f.path());
+            fs::copy(updateDirPath / filename, analyzeDirPath / filename, fs::copy_options::overwrite_existing, errorCode);
+            if(utility::FileSystemFailed(errorCode, "copy", updateDirPath / filename)) { return FileSystemError(updateDirPath / filename); }
+            fs::permissions(analyzeDirPath / filename, fs::perms::owner_write, fs::perm_options::add, errorCode);
+            utility::FileSystemFailed(errorCode, "permissions", analyzeDirPath / filename);
+            fs::remove(f.path(), errorCode);
+            utility::FileSystemFailed(errorCode, "remove", f.path());
         }
     }
 
     //展開したスクリプトのコピー。サブフォルダも含めてまとめてコピーする
     fs::path updateScriptPath = updateDirPath + u8"/Scripts"s;
     fs::path analyzeScriptPath = (analyzeDirPath + u8"/Scripts"s);
-    fs::remove_all(analyzeScriptPath);
-    fs::copy(updateScriptPath, analyzeScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
-    fs::remove_all(updateScriptPath);
+    fs::remove_all(analyzeScriptPath, errorCode);
+    if(utility::FileSystemFailed(errorCode, "remove_all", analyzeScriptPath)) { return FileSystemError(analyzeScriptPath); }
+    fs::copy(updateScriptPath, analyzeScriptPath, fs::copy_options::overwrite_existing | fs::copy_options::recursive, errorCode);
+    if(utility::FileSystemFailed(errorCode, "copy", updateScriptPath)) { return FileSystemError(updateScriptPath); }
+    fs::remove_all(updateScriptPath, errorCode);
+    utility::FileSystemFailed(errorCode, "remove_all", updateScriptPath);
 
     std::cout << "UpdateProject Done." << std::endl;
     return Status_Success;
@@ -262,9 +286,10 @@ ErrorStatus langscore::divisi_mvmz::updatePlugin()
 {
     std::cout << "Update plugin..." << std::endl;
     config config;
+    std::error_code errorCode;
     {
         auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore.js"s;
-        bool replaceLs = fs::exists(outputScriptFilePath) == false;
+        bool replaceLs = fs::exists(outputScriptFilePath, errorCode) == false;
         if(replaceLs == false) {
             replaceLs = config.overwriteLangscore();
         }
@@ -272,7 +297,7 @@ ErrorStatus langscore::divisi_mvmz::updatePlugin()
     }
     {
         auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore_ObserverBridge.js"s;
-        bool replaceLs = fs::exists(outputScriptFilePath) == false;
+        bool replaceLs = fs::exists(outputScriptFilePath, errorCode) == false;
         if(replaceLs == false) {
             replaceLs = config.overwriteLangscore();
         }
@@ -293,10 +318,11 @@ ErrorStatus divisi_mvmz::exportCSV()
     config config;
     std::u8string rootPath;
     auto exportFolderList = config.exportDirectory(rootPath);
+    std::error_code errorCode;
     for(auto& folder : exportFolderList)
     {
-        if(fs::exists(folder)){ continue; }
-        fs::create_directories(folder);
+        fs::create_directories(folder, errorCode);
+        if(utility::FileSystemFailed(errorCode, "create_directories", folder)) { return FileSystemError(folder); }
     }
 
     std::tie(this->scriptFileList, this->basicDataFileList, this->graphicFileList) = fetchFilePathList(config.langscoreAnalyzeDirectorty());
@@ -319,11 +345,11 @@ void langscore::divisi_mvmz::fetchActorTextFromMap(const std::filesystem::path& 
     for(const auto& path : list)
     {
         auto filename = path.filename();
-        if(filename.string().find("Actors") != std::string::npos){
+        if(filename.u8string().find(u8"Actors") != std::u8string::npos){
             actor_path = path;
             continue;
         }
-        if(filename.string().find("Map") == std::string::npos){ continue; }
+        if(filename.u8string().find(u8"Map") == std::u8string::npos){ continue; }
 
         if(jsonreader_map.find(filename) == jsonreader_map.end()) { continue; }
         const auto& json_reader = jsonreader_map.at(filename);
@@ -342,7 +368,8 @@ void langscore::divisi_mvmz::fetchActorTextFromMap(const std::filesystem::path& 
 
     {
         auto actor_csv_filepath = csvWriteFolder / actor_filename;
-        if(fs::exists(actor_csv_filepath) == false){ return; }
+        std::error_code errorCode;
+        if(fs::exists(actor_csv_filepath, errorCode) == false){ return; }
 
         auto plain_csv = plaincsvreader{actor_csv_filepath.replace_extension(".csv")}.getPlainCsvTexts();
 
@@ -373,7 +400,8 @@ void divisi_mvmz::adjustCSV(const std::u8string& writeFolder, const utility::fil
     for(const auto& path : list)
     {
         auto csvPath = writeFolder / path.filename().replace_extension(".csv");
-        if(fs::exists(csvPath) == false){ continue; }
+        std::error_code errorCode;
+        if(fs::exists(csvPath, errorCode) == false){ continue; }
         auto plain_csv = plaincsvreader{csvPath}.getPlainCsvTexts();
 
         auto csvFileName = csvPath.filename();
@@ -428,7 +456,7 @@ ErrorStatus divisi_mvmz::validate()
 
     const auto FetchCsvFileList = [&basicData, &csvPathList](const auto& path)
     {
-        for(const auto& f : fs::directory_iterator{path})
+        for(const auto& f : utility::ListDirectory(path))
         {
             auto extension = f.path().extension();
             auto fileName = f.path().filename().stem();
@@ -497,17 +525,16 @@ ErrorStatus divisi_mvmz::packing()
             this->supportLangs = {lang};
             this->defaultLanguage = lang;
             this->currentGameProjectPath = (outputFolder / lang / gameProjectFolderName).make_preferred();
-            if(fs::exists(this->currentGameProjectPath) == false) {
-                fs::create_directories(this->currentGameProjectPath);
-            }
             std::error_code ec;
+            fs::create_directories(this->currentGameProjectPath, ec);
+            if(utility::FileSystemFailed(ec, "create_directories", this->currentGameProjectPath)) { return FileSystemError(this->currentGameProjectPath); }
             fs::copy(srcPath, this->currentGameProjectPath, std::filesystem::copy_options::recursive, ec);
             if(ec) {
                 std::cout << "Packing Error: " << ec.message() << std::endl;
             }
 
             auto translateFolder = inputGameProjectFolder / "data" / "translate";
-            for(auto& csvPath : fs::recursive_directory_iterator{translateFolder})
+            for(auto& csvPath : utility::ListDirectory<fs::recursive_directory_iterator>(translateFolder))
             {
                 auto csvReader = csvreader{csvPath};
                 auto transMap = csvReader.currentTexts();
@@ -526,7 +553,7 @@ ErrorStatus divisi_mvmz::packing()
                 {
                     fileName.replace_extension(".json");
                     auto jsonPath = this->currentGameProjectPath / "data" / fileName;
-                    if(fs::exists(jsonPath))
+                    if(fs::exists(jsonPath, ec))
                     {
                         nlohmann::json jsonData;
                         {
@@ -561,7 +588,7 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
 {
     size_t numScripts = 0;
     const auto& scriptFolderPath = deserializeOutPath + u8"/Scripts";
-    for(const auto& f : fs::recursive_directory_iterator{scriptFolderPath}){
+    for(const auto& f : utility::ListDirectory<fs::recursive_directory_iterator>(scriptFolderPath)){
         auto extension = f.path().extension();
         if(extension == ".json"){ numScripts++; }
     }
@@ -570,7 +597,7 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
     filelist basicDataList;
 
     auto scriptCsv = plaincsvreader{scriptFolderPath + u8"/_list.csv"s}.getPlainCsvTexts();
-    for(auto& f : fs::directory_iterator{deserializeOutPath})
+    for(auto& f : utility::ListDirectory(deserializeOutPath))
     {
         //Basic
         auto extension = f.path().extension();
@@ -579,7 +606,7 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
         }
     }
 
-    for(auto& f : fs::directory_iterator{scriptFolderPath})
+    for(auto& f : utility::ListDirectory(scriptFolderPath))
     {
         //Script
         auto fileName = f.path().filename();
@@ -607,13 +634,13 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
     filelist graphics;
     config config;
     auto graphicsPath = this->currentGameProjectPath / "img";
-    fs::recursive_directory_iterator graphItr(graphicsPath);
-    for(auto& f : graphItr)
+    std::error_code errorCode;
+    for(const auto& f : utility::ListDirectory<fs::recursive_directory_iterator>(graphicsPath))
     {
-        if(f.is_directory()){ continue; }
+        if(f.is_directory(errorCode)){ continue; }
         const auto& path = f.path();
 
-        const auto ext = path.extension().string();
+        const auto ext = utility::toUtf8(path.extension());
         auto ext_lower = ext | std::views::transform([](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         std::string ext_lower_str(ext_lower.begin(), ext_lower.end());
 
@@ -854,7 +881,9 @@ void langscore::divisi_mvmz::writeLangscorePlugin(std::filesystem::path fileName
         std::cout << "Copy langscore : From " << utility::toUtf8(langscoreScriptFilePath) << " To : " << utility::toUtf8(outputScriptFilePath) << std::endl;
         //上書きしてよいかはアプリが確認済みのため、読み取り専用でも上書きする
         utility::removeReadOnly(outputScriptFilePath);
-        fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing);
+        std::error_code errorCode;
+        fs::copy(langscoreScriptFilePath, outputScriptFilePath, fs::copy_options::overwrite_existing, errorCode);
+        utility::FileSystemFailed(errorCode, "copy", langscoreScriptFilePath);
         utility::removeReadOnly(outputScriptFilePath);
         std::cout << "Done." << std::endl;
 
@@ -862,7 +891,7 @@ void langscore::divisi_mvmz::writeLangscorePlugin(std::filesystem::path fileName
             //現在の設定を元にlangscore.jsのカスタマイズ
             auto fileLines = this->formatSystemVariable(langscoreScriptFilePath);
 
-            if(fs::exists(outputScriptFilePath))
+            if(fs::exists(outputScriptFilePath, errorCode))
             {
                 std::cout << "Replace langscore : " << utility::toUtf8(outputScriptFilePath) << std::endl;
                 std::ofstream outScriptFile(outputScriptFilePath, std::ios_base::trunc);
@@ -887,7 +916,7 @@ void divisi_mvmz::updatePluginInfo()
     
     //plugin.jsに対してLangscoreを追加
     auto pluginsPath = this->currentGameProjectPath / u8"js"s / u8"plugins.js"s;
-    std::ifstream input_file(pluginsPath.generic_string());
+    std::ifstream input_file(pluginsPath);
     std::string content((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
     input_file.close();
 
@@ -914,9 +943,10 @@ void divisi_mvmz::updatePluginInfo()
     //MustBeIncludedImageに埋めるパラメータの作成
     auto picturesPath = this->currentGameProjectPath / u8"img";
     utility::u8stringlist pictureFiles;
-    for(const auto& f : fs::recursive_directory_iterator(picturesPath)) {
+    std::error_code errorCode;
+    for(const auto& f : utility::ListDirectory<fs::recursive_directory_iterator>(picturesPath)) {
 
-        if(f.is_directory()) { continue; }
+        if(f.is_directory(errorCode)) { continue; }
         auto fileName = f.path().filename().stem().u8string();
         auto relativePath = f.path().lexically_relative(picturesPath);
         for(const auto& t : this->supportLangs) {
@@ -1158,7 +1188,7 @@ utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path pa
             //必要ないかも
             std::stringstream ss;
             for(const auto& file : this->basicDataFileList) {
-                ss << " * @requiredAssets data/translates/" << file.filename().stem().string()+".csv" << utility::cnvStr<std::string>(nl);
+                ss << " * @requiredAssets data/translates/" << utility::toUtf8(file.filename().stem()) + ".csv" << utility::cnvStr<std::string>(nl);
             }
             ss << " * @requiredAssets data/translates/Graphics.csv" << utility::cnvStr<std::string>(nl);
             ss << " * @requiredAssets data/translates/Scripts.csv";
@@ -1199,9 +1229,9 @@ void divisi_mvmz::writeAnalyzedScript(std::u8string baseDirectory)
 
     const auto deserializeOutPath = fs::path(baseDirectory);
     auto outputPath = deserializeOutPath / "Scripts";
-    if(std::filesystem::exists(outputPath) == false){
-        std::filesystem::create_directories(outputPath);
-    }
+    std::error_code errorCode;
+    std::filesystem::create_directories(outputPath, errorCode);
+    utility::FileSystemFailed(errorCode, "create_directories", outputPath);
 
     //memoに行数が格納されているため入れ替え
     for(auto& t : transTexts){

@@ -40,7 +40,8 @@ public:
     analyzejsonreader(std::filesystem::path jsonPath)
         : readerbase({}) // 言語リストとスクリプトリストは空で初期化
     {
-        if(std::filesystem::exists(jsonPath)) {
+        std::error_code errorCode;
+        if(std::filesystem::exists(jsonPath, errorCode)) {
             jsonFiles.push_back(jsonPath);
             plainJsonTexts = parse(jsonPath);
         }
@@ -50,8 +51,9 @@ public:
     analyzejsonreader(std::vector<std::filesystem::path> jsonPaths)
         : readerbase({}) // 言語リストとスクリプトリストは空で初期化
     {
+        std::error_code errorCode;
         for(const auto& path : jsonPaths) {
-            if(std::filesystem::exists(path)) {
+            if(std::filesystem::exists(path, errorCode)) {
                 jsonFiles.push_back(path);
                 auto fileTexts = parse(path);
                 std::move(fileTexts.begin(), fileTexts.end(), std::back_inserter(plainJsonTexts));

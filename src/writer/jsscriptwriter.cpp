@@ -36,7 +36,8 @@ namespace
 
 bool langscore::jsscriptwriter::merge(std::filesystem::path filePath)
 {
-    if(std::filesystem::exists(filePath) == false){ return true; }
+    std::error_code errorCode;
+    if(std::filesystem::exists(filePath, errorCode) == false){ return true; }
 
     switch(overwriteMode)
     {

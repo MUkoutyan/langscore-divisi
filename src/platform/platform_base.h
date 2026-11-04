@@ -99,7 +99,8 @@ namespace langscore
 			writer.setOverwriteMode(options.overwriteMode);
             writer.setAddNewContentToEnd(options.isAddNewContentToEnd);
 			//既に編集済みのCSVがある場合はマージを行う。
-			if(std::filesystem::exists(path)) {
+			std::error_code errorCode;
+			if(std::filesystem::exists(path, errorCode)) {
 				if(writer.merge(path) == false) {
 					return ErrorStatus(ErrorStatus::Module::PLATFORM_BASE, 1);
 				}
@@ -148,7 +149,7 @@ namespace langscore
 
         //テキストの幅を計測する。戻り値:{textの1文字, {左座標, 右の座標}}
         struct TextHorizontalLength { int left; int right; };
-        std::vector<std::pair<std::u8string, TextHorizontalLength>> measureTextWidth(std::u8string text, std::u8string fontPath, int fontSize) const;
+        std::vector<std::pair<std::u8string, TextHorizontalLength>> measureTextWidth(std::u8string text, const std::filesystem::path& fontPath, int fontSize) const;
 
 	};
 }

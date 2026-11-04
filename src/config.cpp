@@ -84,7 +84,11 @@ public:
 	{
 		if(p.is_relative()){
 			auto joinPath = this->path.parent_path() / p;
-			p = std::filesystem::weakly_canonical(joinPath);
+			std::error_code errorCode;
+			p = std::filesystem::weakly_canonical(joinPath, errorCode);
+			if(utility::FileSystemFailed(errorCode, "weakly_canonical", joinPath)) {
+				p = joinPath.lexically_normal();
+			}
 		}
 		return p;
 	}
@@ -92,7 +96,11 @@ public:
 	{
 		if(p.is_relative()){
 			auto joinPath = this->path.parent_path() / p;
-			p = std::filesystem::canonical(joinPath);
+			std::error_code errorCode;
+			p = std::filesystem::canonical(joinPath, errorCode);
+			if(utility::FileSystemFailed(errorCode, "canonical", joinPath)) {
+				p = joinPath.lexically_normal();
+			}
 		}
 		return p;
 	}
@@ -189,7 +197,8 @@ std::u8string config::gameProjectPath()
     auto path = pImpl->toAbsolutePath(u8Path);
     path.make_preferred();
 
-    if(std::filesystem::is_directory(path) == false) {
+    std::error_code errorCode;
+    if(std::filesystem::is_directory(path, errorCode) == false) {
         path = path.parent_path();
     }
 
@@ -332,10 +341,10 @@ config::ProjectType config::projectType()
     };
 
     auto projectPath = gameProjectPath();
-    if(std::filesystem::is_directory(projectPath))
+    std::error_code errorCode;
+    if(std::filesystem::is_directory(projectPath, errorCode))
     {
-        std::filesystem::directory_iterator it(projectPath);
-        for(auto& file : it) {
+        for(const auto& file : utility::ListDirectory(projectPath)) {
             auto type = checkFile(file.path());
             if(type != config::ProjectType::None) {
                 pImpl->projectType = type;
