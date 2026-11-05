@@ -11,6 +11,23 @@
 #include "converter/to_patch_csv.h"
 
 #if defined(_MSC_VER)
+#define NOMINMAX
+#include <Windows.h>
+//ログは UTF-8 で出す。コンソールから直接実行したときに日本語が化けないよう、その間だけコンソールの文字コードを UTF-8 にする。
+//アプリから実行するときは出力がパイプなので変えない
+struct ScopedUtf8Console
+{
+    UINT previous = 0;
+    ScopedUtf8Console() {
+        if(GetFileType(GetStdHandle(STD_OUTPUT_HANDLE)) != FILE_TYPE_CHAR) { return; }
+        previous = GetConsoleOutputCP();
+        SetConsoleOutputCP(CP_UTF8);
+    }
+    ~ScopedUtf8Console() {
+        if(previous != 0) { SetConsoleOutputCP(previous); }
+    }
+};
+
 // MSVC (VS2022) 用: C++23 の std::stacktrace を利用
 #include <stacktrace>
 void print_stacktrace() {
@@ -184,6 +201,9 @@ int main(int argc, const char* argv[])
 #endif
 {
     setup_crash_handlers();
+#if defined(_MSC_VER)
+    ScopedUtf8Console utf8Console;
+#endif
 	std::cout << "Langscore Divisi Version " << VER_FILEVERSION_STR << std::endl;
 	std::cout << "Build on " << __DATE__ << " " << __TIME__ << std::endl;
 	if(argc < 2){

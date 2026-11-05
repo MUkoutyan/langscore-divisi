@@ -174,6 +174,8 @@ ErrorStatus langscore::invoker::reanalysis(std::filesystem::path updateDir)
 }
 
 ErrorStatus langscore::invoker::recompressVXAce(){
+    //rvcnv は Data/Scripts.rvdata2 を書き換える。読み取り専用だと書き込めずに失敗するため、先に外す
+    utility::removeReadOnly(_projectPath / "Data" / "Scripts.rvdata2");
     return exec({"-i", _projectPath, "-c"});
 }
 
@@ -246,6 +248,11 @@ ErrorStatus langscore::invoker::exec(std::vector<std::filesystem::path> args)
         auto ret = execProcess(ToCommandLine(args));
         if(ret == -1){
             return ErrorStatus(ErrorStatus::Module::INVOKER, 4);
+        }
+        //rvcnv が失敗した（ファイルに書き込めないなど）のに成功として扱うと、プラグインが書き込まれないまま完了してしまう
+        if(ret != 0){
+            std::cout << "rvcnv failed. exit code : " << ret << std::endl;
+            return ErrorStatus(ErrorStatus::Module::INVOKER, 10);
         }
     }
     else //if(currentProjectType == None)
