@@ -418,7 +418,9 @@ bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, uti
         auto header = plainTexts.front();
         plainTexts.erase(plainTexts.begin());
         if(isEnablePachMode == false) {
-            if(header.size() != useLanguages.size() + 1) {
+            //typeは言語の列としては数えないこと。
+            const auto numTypeColumns = static_cast<size_t>(std::ranges::count(header, u8"type"s));
+            if(header.size() - numTypeColumns != useLanguages.size() + 1) {
                 OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
                 result = false;
             }
