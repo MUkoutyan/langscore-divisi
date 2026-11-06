@@ -1,7 +1,7 @@
 #---------------------------------------------------------------
 # 
 # Langscore CoreScript "Unison" 
-# Version 1.1.1
+# Version 1.1.2
 # Written by BreezeSinfonia 來奈津
 # 
 # 注意：このスクリプトは自動生成されました。編集は非推奨です。
@@ -76,7 +76,7 @@ module Langscore
       
     # 初回のみフォルダを読み込み
     if @@available_languages.nil?
-      @@available_languages = []
+      @@available_languages = Langscore::SUPPORT_LANGUAGE.dup
       begin
         Dir.entries(Langscore::TRANSLATE_FOLDER).each do |entry|
           path = File.join(Langscore::TRANSLATE_FOLDER, entry)
@@ -85,7 +85,7 @@ module Langscore
               ls_output_log "Warning: Not Support Language: #{entry}", 3
               next
             end
-            @@available_languages << entry
+            @@available_languages << entry unless @@available_languages.include?(entry)
           end
         end
 
