@@ -21,6 +21,8 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <thread>
+#include <chrono>
 
 #include "test_config.h"
 
@@ -57,21 +59,32 @@ public:
 	}
 	std::vector<TranslateText>& getTexts() { return this->texts; }
 };
+//生成物の削除。
+//テストがクラッシュしてファイルハンドルを漏らすと削除に失敗するが、
+//ここで例外を投げると後続のテストが全部「使用中」で失敗し、
+//本来の失敗原因が見えなくなる。そこで例外にせず、警告だけを出す。
+static void DeleteGeneratedPath(const std::filesystem::path& path)
+{
+	std::error_code ec;
+	if(fs::exists(path, ec) == false) { return; }
+
+	//ハンドルが閉じるまで少し待つ。
+	for(int i = 0; i < 10; ++i)
+	{
+		ec.clear();
+		if(fs::is_directory(path, ec)) { fs::remove_all(path, ec); }
+		else                           { fs::remove(path, ec); }
+		if(ec == std::error_code{}) { return; }
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
+
+	std::cerr << "Warning: 生成ファイルを削除できません: "
+	          << path.string() << " (" << ec.message() << ")" << std::endl;
+}
 
 void ClearGenerateFiles()
 {
-	const auto Delete = [](auto path)
-		{
-			if(fs::exists(path))
-			{
-				if(fs::is_directory(path)) {
-					fs::remove_all(path);
-				}
-				else {
-					fs::remove(path);
-				}
-			}
-		};
+	const auto Delete = [](const auto& path) { DeleteGeneratedPath(path); };
 	Delete(".\\data\\mv\\LangscoreTest\\data\\translate");
 	Delete(".\\data\\mv\\LangscoreTest\\js\\plugins\\Langscore.js");
 	Delete(".\\data\\mv\\LangscoreTest_langscore\\analyze");
@@ -90,18 +103,7 @@ void ClearGenerateFiles()
 
 void ClearGenerateFiles(langscore::config& config)
 {
-	const auto Delete = [](auto path) 
-	{
-		if(fs::exists(path))
-		{
-			if(fs::is_directory(path)) {
-				fs::remove_all(path);
-			}
-			else {
-				fs::remove(path);
-			}
-		}
-	};
+	const auto Delete = [](const auto& path) { DeleteGeneratedPath(path); };
 	ClearGenerateFiles();
 
 	Delete(config.langscoreAnalyzeDirectorty());
@@ -110,27 +112,44 @@ void ClearGenerateFiles(langscore::config& config)
 
 static void checkAndCreateConfigFile(fs::path config_path, std::filesystem::path gameProjectFilename = "Game.rvproj2")
 {
-    if(fs::exists(fs::path(BINARY_DIRECTORY) / config_path) == false)
-    {
-        std::string suffix = "_langscore";
+    std::string suffix = "_langscore";
 
-        // パスを分割
-        std::filesystem::path parentPath = config_path.parent_path();
+    // パスを分割
+    std::filesystem::path parentPath = config_path.parent_path();
 
-        // フォルダ名からサフィックスを削除
-        std::filesystem::path gamePath;
-        for(auto& part : parentPath) {
-            std::string partStr = part.string();
-            if(partStr.size() >= suffix.size() && partStr.compare(partStr.size() - suffix.size(), suffix.size(), suffix) == 0) {
-                partStr = partStr.substr(0, partStr.size() - suffix.size());
-            }
-            gamePath /= partStr;
+    // フォルダ名からサフィックスを削除
+    std::filesystem::path gamePath;
+    for(auto& part : parentPath) {
+        std::string partStr = part.string();
+        if(partStr.size() >= suffix.size() && partStr.compare(partStr.size() - suffix.size(), suffix.size(), suffix) == 0) {
+            partStr = partStr.substr(0, partStr.size() - suffix.size());
         }
+        gamePath /= partStr;
+    }
 
-        gamePath /= gameProjectFilename;
-
+    const auto configFullPath = fs::path(BINARY_DIRECTORY) / config_path;
+    if(fs::exists(configFullPath) == false)
+    {
         langscore::divisi divisi("", "");
-        divisi.createConfig(fs::path(BINARY_DIRECTORY) / gamePath);
+        divisi.createConfig(fs::path(BINARY_DIRECTORY) / gamePath / gameProjectFilename);
+        return;
+    }
+
+    //テストデータに同梱されているconfigは、作成した時のビルドディレクトリを絶対パスで持っている。
+    //そのままだと別のビルドディレクトリのゲームプロジェクトを読んでしまうため、
+    //今のビルドディレクトリの外を指している場合は書き換える。
+    nlohmann::json json;
+    {
+        std::ifstream file(configFullPath);
+        file >> json;
+    }
+    const auto project = fs::path(utility::cnvStr<std::u8string>(json.value("Project", ""s)));
+    const auto relative = project.lexically_relative(fs::path(BINARY_DIRECTORY));
+    if(relative.empty() || *relative.begin() == "..")
+    {
+        json["Project"] = utility::cnvStr<std::string>((fs::path(BINARY_DIRECTORY) / gamePath).generic_u8string());
+        std::ofstream outFile(configFullPath);
+        outFile << json.dump(2);
     }
 }
 

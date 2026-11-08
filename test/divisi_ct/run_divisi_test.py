@@ -1,432 +1,101 @@
-import subprocess
-import io
+"""
+Langscore Divisi Test Suite
+
+bin/divisi.exe を起動して、divisi.exe でしか確認できない動作をテストする。
+- 引数の解釈（引数なし・不明なオプション・ANSI コードページ外の文字を含むパス）
+- 終了コード（失敗時に abort せず -1 で終わること）
+- バージョン情報の表示
+
+各コマンド（--createConfigFile / --analyze / --reanalysis / --updatePlugin / --exportCSV /
+--validate / --packing / --convertPatchCSV / --convertBoundCSV）の処理は、
+gtest（test/test_commands.cpp・test/test_core.cpp）で langscore::divisi を直接呼んで確認する。
+
+使用方法:
+python run_divisi_test.py
+"""
+
 import os
-import re
 import sys
 import shutil
 import stat
 import unittest
-import json
-import pprint
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# rootディレクトリのパスを取得してsys.pathに追加
 test_root_dir = os.path.abspath(os.path.join(current_dir, '../'))
 sys.path.append(test_root_dir)
 divisi_root_dir = os.path.abspath(os.path.join(current_dir, '../../'))
-sys.path.append(divisi_root_dir)
 from internal import test_core as core
 
-from resource import lscsv
+sys.stdout.reconfigure(encoding='utf-8')
 
-def copy_folder(src, dest):
-    ret = shutil.copytree(src, dest)
-    core.remove_read_only(dest)
-    return ret
+DIVISI_PATH = os.path.join(divisi_root_dir, 'bin', 'divisi.exe')
+work_dir = os.path.join(current_dir, 'work')
+
 
 def force_remove_readonly(func, path, _):
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
 
-def run_divisi(project_path, option):
-    DIVISI_PATH = divisi_root_dir + '\\bin\\divisi.exe'
-    if option == "create":
-        args = [
-            '--createConfigFile', project_path,
-        ]
-    else:
-        args = [
-            '-c', project_path,
-            f'--{option}'
-        ]
-    return core.run_command(DIVISI_PATH, args)
-
-mv_work_path                = os.path.join(current_dir, 'work\\LangscoreTestMV')
-mz_work_path                = os.path.join(current_dir, 'work\\LangscoreTestMZ')
-vxace_work_path             = os.path.join(current_dir, 'work\\LangscoreTestVXAce')
-include_empty_work_path     = os.path.join(current_dir, 'work\\Include WhiteSpacePath Project')
-mv_work_ls_path             = os.path.join(current_dir, 'work\\LangscoreTestMV_langscore')
-mz_work_ls_path             = os.path.join(current_dir, 'work\\LangscoreTestMZ_langscore')
-vxace_work_ls_path          = os.path.join(current_dir, 'work\\LangscoreTestVXAce_langscore')
-include_empty_work_ls_path  = os.path.join(current_dir, 'work\\Include WhiteSpacePath Project_langscore')
+def run_divisi(args):
+    return core._run([DIVISI_PATH] + args, default_encoding='utf-8')
 
 
-source_mv_work_path            = os.path.join(test_root_dir, 'data\\LangscoreTestMV')
-source_mz_work_path            = os.path.join(test_root_dir, 'data\\LangscoreTestMZ')
-source_vxace_work_path         = os.path.join(test_root_dir, 'data\\LangscoreTestVXAce')
-source_include_empty_work_path = os.path.join(test_root_dir, 'data\\vxace\\Include WhiteSpacePath Project')
-source_update_mv_work_path            = os.path.join(test_root_dir, 'data\\LangscoreTestMV_updated')
-source_update_mz_work_path            = os.path.join(test_root_dir, 'data\\LangscoreTestMZ_updated')
-source_update_vxace_work_path         = os.path.join(test_root_dir, 'data\\LangscoreTestVXAce_updated')
-source_update_include_empty_work_path = os.path.join(test_root_dir, 'data\\vxace\\Include WhiteSpacePath Project_updated')
+class TestErrorHandling(unittest.TestCase):
+    """エラーハンドリングのテスト"""
 
-analyze_expected_files = [
-    "System.lsjson","Troops.lsjson","Weapons.lsjson","Actors.lsjson",
-    "Armors.lsjson","Classes.lsjson","CommonEvents.lsjson",
-    "Enemies.lsjson","Items.lsjson","Map001.lsjson","Map002.lsjson","Map003.lsjson",
-    "Skills.lsjson","States.lsjson"
-]
-write_expected_files = [
-    "System.csv","Troops.csv","Weapons.csv","Actors.csv",
-    "Armors.csv","Classes.csv","CommonEvents.csv",
-    "Enemies.csv","Items.csv","Map001.csv","Map002.csv","Map003.csv",
-    "Skills.csv","States.csv"
-]
+    def test_invalid_config_file(self):
+        """存在しない設定ファイルではエラー終了すること"""
+        result = run_divisi(['-c', os.path.join(work_dir, 'invalid_config.json'), '--analyze'])
+        self.assertNotEqual(result.returncode, 0, "Should fail with invalid config file")
 
-def setup_projects():
-    if os.path.exists(mv_work_path):
-        shutil.rmtree(mv_work_path, onerror=force_remove_readonly)
-    if os.path.exists(mz_work_path):
-        shutil.rmtree(mz_work_path, onerror=force_remove_readonly)
-    if os.path.exists(vxace_work_path):
-        shutil.rmtree(vxace_work_path, onerror=force_remove_readonly)
-    if os.path.exists(include_empty_work_path):
-        shutil.rmtree(include_empty_work_path, onerror=force_remove_readonly)
+    def test_no_arguments(self):
+        """引数なしではエラー終了すること"""
+        result = run_divisi([])
+        self.assertNotEqual(result.returncode, 0, "Should fail with no arguments")
 
-    copy_folder(source_mv_work_path, mv_work_path)
-    copy_folder(source_mz_work_path, mz_work_path)
-    copy_folder(source_vxace_work_path, vxace_work_path)
-    copy_folder(source_include_empty_work_path, include_empty_work_path)
-    print("copy projects")
+    def test_invalid_option(self):
+        """不明なオプションだけではエラー終了すること（-c が無いため）"""
+        result = run_divisi(['--invalidoption'])
+        self.assertNotEqual(result.returncode, 0, "Should fail with invalid option")
 
-def remove_projects():
-    if os.path.exists(mv_work_path):
-        shutil.rmtree(mv_work_path, onerror=force_remove_readonly)
-    if os.path.exists(mz_work_path):
-        shutil.rmtree(mz_work_path, onerror=force_remove_readonly)
-    if os.path.exists(vxace_work_path):
-        shutil.rmtree(vxace_work_path, onerror=force_remove_readonly)
-    if os.path.exists(include_empty_work_path):
-        shutil.rmtree(include_empty_work_path, onerror=force_remove_readonly)
-    if os.path.exists(mv_work_ls_path):
-        shutil.rmtree(mv_work_ls_path, onerror=force_remove_readonly)
-    if os.path.exists(mz_work_ls_path):
-        shutil.rmtree(mz_work_ls_path, onerror=force_remove_readonly)
-    if os.path.exists(vxace_work_ls_path):
-        shutil.rmtree(vxace_work_ls_path, onerror=force_remove_readonly)
-    if os.path.exists(include_empty_work_ls_path):
-        shutil.rmtree(include_empty_work_ls_path, onerror=force_remove_readonly)
-    print("remove projects")
+    def test_config_path_outside_ansi_codepage(self):
+        """ANSI コードページで表せない文字を含むパスの config.json を読めること"""
+        config_dir = os.path.join(work_dir, '한글_é')
+        os.makedirs(config_dir, exist_ok=True)
+        try:
+            config_file = os.path.join(config_dir, 'config.json')
+            with open(config_file, 'w', encoding='utf-8') as f:
+                f.write('{}')
+            #langscore-app (invoker.cpp) と同じく、パスを " で括って渡す。処理のオプションは付けない
+            result = run_divisi(['-c', f'"{config_file}"'])
+            self.assertEqual(result.returncode, 0, f"config.json を開けませんでした: {result.stderr}")
+        finally:
+            shutil.rmtree(config_dir, onerror=force_remove_readonly)
 
-def edit_config_file(data):
-    data['DefaultLanguage'] = "ja"
-
-    for language in data['Languages']:
-        if language['LanguageName'] == 'en':
-            language['Enable'] = True
-
-def create_config_file(work_path):
-    run_divisi(work_path, "create")
-    core.edit_ls_config(work_path+"_langscore\config.json", edit_config_file)
+    def test_csv_conversion_invalid_folder(self):
+        """存在しないフォルダを変換しようとしたら、abort せずにエラー終了（-1）すること"""
+        invalid_dir = os.path.join(work_dir, 'nonexistent_csv_dir')
+        for option in ['--convertPatchCSV', '--convertBoundCSV']:
+            with self.subTest(option=option):
+                result = run_divisi([option, invalid_dir])
+                #abort でも失敗になるため、標準エラー出力で abort していないことを確かめる
+                self.assertNotIn("terminate", result.stderr, f"{option} が abort しました: {result.stderr}")
+                #Windows の終了コードは符号なしで返るため、-1 は 0xFFFFFFFF になる
+                self.assertEqual(result.returncode & 0xFFFFFFFF, 0xFFFFFFFF,
+                    f"{option} がエラー終了（-1）しませんでした: {result.stderr}")
 
 
-class TestCreateProject(unittest.TestCase):
+class TestVersionInfo(unittest.TestCase):
+    """バージョン情報の表示テスト"""
 
-    @classmethod
-    def setUpClass(self):
-        setup_projects()
-
-    @classmethod
-    def tearDownClass(self):
-        remove_projects()
-
-    def test_createConfig(self):
-        create_config_file(mv_work_path)
-        self.assertTrue(os.path.exists(mv_work_ls_path))
-        self.assertTrue(os.path.exists(mv_work_ls_path + "\\config.json"))
-        create_config_file(mz_work_path)
-        self.assertTrue(os.path.exists(mz_work_ls_path))
-        self.assertTrue(os.path.exists(mz_work_ls_path + "\\config.json"))
-        create_config_file(vxace_work_path)
-        self.assertTrue(os.path.exists(vxace_work_ls_path))
-        self.assertTrue(os.path.exists(vxace_work_ls_path + "\\config.json"))
-        create_config_file(include_empty_work_path)
-        self.assertTrue(os.path.exists(include_empty_work_ls_path))
-        self.assertTrue(os.path.exists(include_empty_work_ls_path + "\\config.json"))
-
-        
-class TestWrite(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        setup_projects()
-
-        create_config_file(mv_work_path)
-        create_config_file(mz_work_path)
-        create_config_file(vxace_work_path)
-        create_config_file(include_empty_work_path)
-        
-        run_divisi(mv_work_ls_path + "\\config.json", "analyze")
-        run_divisi(mz_work_ls_path + "\\config.json", "analyze")
-        run_divisi(vxace_work_ls_path + "\\config.json", "analyze")
-        run_divisi(include_empty_work_ls_path + "\\config.json", "analyze")
-
-    @classmethod
-    def tearDownClass(self):
-        remove_projects()
-
-        
-    def test_write(self):
-        # MV =====================================
-        run_divisi(mv_work_ls_path + "\\config.json", "exportCSV")
-        self.assertTrue(os.path.exists(mv_work_ls_path + "\\data\\translate"))
-        begin_exported_file_size = []
-        for file in write_expected_files:
-            file_path = os.path.join(mv_work_ls_path + "\\data\\translate", file)
-            begin_exported_file_size.append(os.path.getsize(file_path))
-            self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {mv_work_ls_path}")
-            
-        run_divisi(mv_work_ls_path + "\\config.json", "exportCSV")
-        for i in range(len(write_expected_files)):
-            file_path = os.path.join(mv_work_ls_path + "\\data\\translate", write_expected_files[i])
-            after_filesize = os.path.getsize(file_path)
-            self.assertTrue(begin_exported_file_size[i] == after_filesize, f"{file} does not exist in {mv_work_ls_path}")
+    def test_version_output(self):
+        """引数に関係なく、最初にバージョン情報を表示すること"""
+        result = run_divisi([])
+        self.assertIn("Langscore Divisi Version", result.stdout)
+        self.assertIn("Build on", result.stdout)
 
 
-        # MZ =====================================
-        run_divisi(mz_work_ls_path + "\\config.json", "exportCSV")
-        self.assertTrue(os.path.exists(mz_work_ls_path + "\\data\\translate"))
-        begin_exported_file_size = []
-        for file in write_expected_files:
-            file_path = os.path.join(mz_work_ls_path + "\\data\\translate", file)
-            begin_exported_file_size.append(os.path.getsize(file_path))
-            self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {mz_work_ls_path}")
-            
-        run_divisi(mz_work_ls_path + "\\config.json", "exportCSV")
-        for i in range(len(write_expected_files)):
-            file_path = os.path.join(mz_work_ls_path + "\\data\\translate", write_expected_files[i])
-            after_filesize = os.path.getsize(file_path)
-            self.assertTrue(begin_exported_file_size[i] == after_filesize, f"{file} does not exist in {mz_work_ls_path}")
-
-        
-        # Vxace =====================================
-        run_divisi(vxace_work_ls_path + "\\config.json", "exportCSV")
-        actual_files = os.listdir(os.path.join(vxace_work_ls_path, "Data", "Translate"))
-        self.assertTrue(os.path.exists(vxace_work_ls_path + "\\Data\\Translate"))
-        begin_exported_file_size = []
-        for file in write_expected_files:
-            file_path = os.path.join(vxace_work_ls_path + "\\data\\translate", file)
-            self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {vxace_work_ls_path}")
-            begin_exported_file_size.append(os.path.getsize(file_path))
-            
-        run_divisi(vxace_work_ls_path + "\\config.json", "exportCSV")
-        for i in range(len(write_expected_files)):
-            file_path = os.path.join(vxace_work_ls_path + "\\data\\translate", write_expected_files[i])
-            after_filesize = os.path.getsize(file_path)
-            self.assertTrue(begin_exported_file_size[i] == after_filesize, f"{file} does not exist in {vxace_work_ls_path}")
-
-        # Include Empty =====================================
-        run_divisi(include_empty_work_ls_path + "\\config.json", "exportCSV")
-        self.assertTrue(os.path.exists(include_empty_work_ls_path + "\\data\\translate"))
-        begin_exported_file_size = []
-        for file in write_expected_files:
-            file_path = os.path.join(include_empty_work_ls_path + "\\data\\translate", file)
-            begin_exported_file_size.append(os.path.getsize(file_path))
-            self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {include_empty_work_ls_path}")
-            
-        run_divisi(include_empty_work_ls_path + "\\config.json", "exportCSV")
-        for i in range(len(write_expected_files)):
-            file_path = os.path.join(include_empty_work_ls_path + "\\data\\translate", write_expected_files[i])
-            after_filesize = os.path.getsize(file_path)
-            self.assertTrue(begin_exported_file_size[i] == after_filesize, f"{file} does not exist in {include_empty_work_ls_path}")
-
-
-    
-class TestUpdate(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        setup_projects()
-
-        create_config_file(mv_work_path)
-        create_config_file(mz_work_path)
-        create_config_file(vxace_work_path)
-        create_config_file(include_empty_work_path)
-        
-        run_divisi(mv_work_ls_path + "\\config.json", "analyze")
-        run_divisi(mz_work_ls_path + "\\config.json", "analyze")
-        run_divisi(vxace_work_ls_path + "\\config.json", "analyze")
-        run_divisi(include_empty_work_ls_path + "\\config.json", "analyze")
-        
-        run_divisi(mv_work_ls_path + "\\config.json", "exportCSV")
-        run_divisi(mz_work_ls_path + "\\config.json", "exportCSV")
-        run_divisi(vxace_work_ls_path + "\\config.json", "exportCSV")
-        run_divisi(include_empty_work_ls_path + "\\config.json", "exportCSV")
-
-    @classmethod
-    def tearDownClass(self):
-        remove_projects()
-
-    def test_update(self):
-
-        check_keys = [
-            "通常のテキストです2", "改行を含む\nテキストです2", 
-            "\"タ\"フ\"ルクォーテーションを含むテキストです2\"",
-            "\"\"\"Hello, World\"\",\nそれはプログラムを書く際の\",\"\"\"謎の呪文\"\"(Mystery spell)―――2\"",
-            "複合させます\n\\{\\C[2]\\N[2]\\I[22]\n2"
-        ]
-
-        def check_mvmz_function(work_path, work_ls_path, source_path):
-            run_divisi(work_ls_path + "\\config.json", "analyze")
-            if os.path.exists(work_path):
-                shutil.rmtree(work_path, onerror=force_remove_readonly)
-            copy_folder(source_path, work_path)
-
-            run_divisi(work_ls_path + "\\config.json", "reanalysis")
-            self.assertTrue(os.path.exists(work_ls_path + "\\update"))
-
-            for file in write_expected_files:
-                file_path = os.path.join(work_ls_path + "\\data\\translate", file)
-                self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {work_ls_path}")
-            
-            with open(work_ls_path + "\\update\\Map001.lsjson", 'r', encoding='utf-8') as json_file:
-                contents = json.load(json_file)
-                for key in check_keys:
-                    found = False
-                    for item in contents:
-                        if isinstance(item, dict) and 'original' in item:
-                            if key in item['original']:
-                                found = True
-                                break
-                    self.assertTrue(found, f"not found key \"{key}\" in updated lsjson {work_ls_path}")
-            
-        check_mvmz_function(mv_work_path, mv_work_ls_path, source_update_mv_work_path)
-        check_mvmz_function(mz_work_path, mz_work_ls_path, source_update_mz_work_path)
-        
-        def check_vxace_function(work_path, work_ls_path, source_path):
-            run_divisi(work_ls_path + "\\config.json", "analyze")
-            if os.path.exists(work_path):
-                shutil.rmtree(work_path, onerror=force_remove_readonly)
-            copy_folder(source_path, work_path)
-            actual_files = os.listdir(os.path.join(work_ls_path, "Data", "Translate"))
-            run_divisi(work_ls_path + "\\config.json", "reanalysis")
-            self.assertTrue(os.path.exists(work_ls_path + "\\update"))
-            for file in write_expected_files:
-                self.assertIn(file, actual_files, f"{file} does not exist in {work_ls_path}")
-
-            with open(work_ls_path + "\\update\\Map001.lsjson", 'r', encoding='utf-8') as json_file:
-                contents = json.load(json_file)
-                for key in check_keys:
-                    found = False
-                    for item in contents:
-                        if isinstance(item, dict) and 'original' in item:
-                            if key in item['original']:
-                                found = True
-                                break
-                    self.assertTrue(found, f"not found key \"{key}\" in updated lsjson {work_ls_path}")
-
-        check_vxace_function(vxace_work_path, vxace_work_ls_path, source_update_vxace_work_path)
-        check_vxace_function(include_empty_work_path, include_empty_work_ls_path, source_update_include_empty_work_path)
-
-
-
-class TestAnalyze(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(self):
-        setup_projects()
-
-        create_config_file(mv_work_path)
-        create_config_file(mz_work_path)
-        create_config_file(vxace_work_path)
-        create_config_file(include_empty_work_path)
-        print("copy projects")
-
-    @classmethod
-    def tearDownClass(self):
-        remove_projects()
-
-    def test_analyze(self):
-        
-        out, err, result = run_divisi(mv_work_ls_path + "\\config.json", "analyze")
-        self.assertTrue(result, err)
-        self.assertTrue(os.path.exists(mv_work_ls_path + "\\analyze"))
-        for file in analyze_expected_files:
-            file_path = os.path.join(mv_work_ls_path + "\\analyze", file)
-            self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {mv_work_ls_path}")
-
-        out, err, result = run_divisi(mz_work_ls_path + "\\config.json", "analyze")
-        self.assertTrue(result, err)
-        self.assertTrue(os.path.exists(mz_work_ls_path + "\\analyze"))
-        for file in analyze_expected_files:
-            file_path = os.path.join(mz_work_ls_path + "\\analyze", file)
-            self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {mz_work_ls_path}")
-
-        out, err, result = run_divisi(vxace_work_ls_path + "\\config.json", "analyze")
-        self.assertTrue(result, err)
-        self.assertTrue(os.path.exists(vxace_work_ls_path + "\\analyze"))
-        for file in analyze_expected_files:
-            file_path = os.path.join(vxace_work_ls_path + "\\analyze", file)
-            self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {vxace_work_ls_path}")
-
-        out, err, result = run_divisi(include_empty_work_ls_path + "\\config.json", "analyze")
-        self.assertTrue(result, err)
-        self.assertTrue(os.path.exists(include_empty_work_ls_path + "\\analyze"))
-        for file in analyze_expected_files:
-            file_path = os.path.join(include_empty_work_ls_path + "\\analyze", file)
-            self.assertTrue(os.path.exists(file_path), f"{file} does not exist in {include_empty_work_ls_path}")
-
-def run_createProjectTest():
-
-
-    return output, result.wasSuccessful()
-
-def run_analyzeTest():
-    # 標準出力をキャプチャするためのStringIOオブジェクトを作成
-    captured_output = io.StringIO()
-
-    # テストスイートを作成
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestAnalyze)
-    
-    # テストランナーを作成して実行
-    runner = unittest.TextTestRunner(stream=captured_output, verbosity=2)
-    result = runner.run(suite)
-    
-    # 標準出力の内容を取得
-    output = captured_output.getvalue()
-    
-    # StringIOオブジェクトを明示的に閉じる
-    captured_output.close()
-
-    return output, result.wasSuccessful()
-
-# 実行例
 if __name__ == '__main__':
-    # 標準出力をキャプチャするためのStringIOオブジェクトを作成
-    captured_output = io.StringIO()
-    sys.stdout = captured_output
-    test_results = []
-
-    try:
-        # テストスイートを作成
-        test_cases = [TestCreateProject, TestAnalyze, TestWrite, TestUpdate]
-        for test_case in test_cases:
-            suite = unittest.TestLoader().loadTestsFromTestCase(test_case)
-            
-            # テストランナーを作成して実行
-            runner = unittest.TextTestRunner(stream=sys.stdout, verbosity=2)
-            result = runner.run(suite)
-            
-            # 標準出力の内容を取得
-            output:str = captured_output.getvalue()
-            captured_output.truncate(0)
-            captured_output.seek(0)
-            
-            # 結果をリストに保存
-            test_results.append({
-                'test_case': test_case.__name__,
-                'output': output,
-                'was_successful': result.wasSuccessful()
-            })
-    finally:
-        sys.stdout = sys.__stdout__
-    
-    for test_result in test_results:
-        if not test_result['was_successful']:
-            print(f"Test Case: {test_result['test_case']}")
-            print(f"Was Successful: {test_result['was_successful']}")
-            print("Output:")
-            print(test_result['output'])
-            print("=" * 40)
-
-    if not result.wasSuccessful():
-        exit(1)
+    os.makedirs(work_dir, exist_ok=True)
+    unittest.main(verbosity=2)

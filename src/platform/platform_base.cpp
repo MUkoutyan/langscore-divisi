@@ -38,7 +38,7 @@ static std::u32string utf8ToUtf32(const std::u8string& utf8Text) {
     return utf32String;
 }
 
-static void OutputError(auto path, auto type, auto errorSummary, auto lang, auto str, size_t row) 
+static void OutputError(auto path, auto type, auto errorSummary, auto lang, auto str, int64_t row) 
 {
     nlohmann::json j;
     j["Type"] = type;             
@@ -51,7 +51,7 @@ static void OutputError(auto path, auto type, auto errorSummary, auto lang, auto
     std::cout << j.dump() << std::endl;
 }
 
-static void OutputErrorWithWidth(auto path, auto type, auto errorSummary, auto lang, auto str, auto width, size_t row)
+static void OutputErrorWithWidth(auto path, auto type, auto errorSummary, auto lang, auto str, auto width, int64_t row)
 {
     nlohmann::json j;
     j["Type"] = type;
@@ -117,17 +117,16 @@ std::vector<std::filesystem::path> langscore::platform_base::exportFolderPath(st
     std::u8string exportPath;
     auto pathList = config.exportDirectory(exportPath);
 
-    if(std::filesystem::exists(exportPath) == false) {
-        std::filesystem::create_directories(exportPath);
-    }
+    std::error_code errorCode;
+    std::filesystem::create_directories(exportPath, errorCode);
+    utility::FileSystemFailed(errorCode, "create_directories", exportPath);
 
     std::vector<std::filesystem::path> result;
     for(auto& path : pathList)
     {
         result.emplace_back(path / fileName);
-        if(std::filesystem::exists(path) == false) {
-            std::filesystem::create_directories(path);
-        }
+        std::filesystem::create_directories(path, errorCode);
+        utility::FileSystemFailed(errorCode, "create_directories", path);
     }
 
     return result;
@@ -142,9 +141,9 @@ void langscore::platform_base::copyFonts(fs::path fontDestPath)
     auto globalFonts = config.globalFontList();
     auto localFonts = config.localFontList();
 
-    if(fs::exists(fontDestPath) == false) {
-        fs::create_directory(fontDestPath);
-    }
+    std::error_code errorCode;
+    fs::create_directory(fontDestPath, errorCode);
+    if(utility::FileSystemFailed(errorCode, "create_directory", fontDestPath)) { return; }
 
     if(globalFonts.empty() == false || localFonts.empty() == false)
     {
@@ -153,21 +152,23 @@ void langscore::platform_base::copyFonts(fs::path fontDestPath)
         for(auto& relativePath : globalFonts)
         {
             auto path = globalFontFolder / relativePath;
-            if(fs::exists(path) == false) {
-                std::cerr << "Warning! : not found global font file : " << path << std::endl;
+            if(fs::exists(path, errorCode) == false) {
+                std::cerr << "Warning! : not found global font file : " << utility::toUtf8(path) << std::endl;
                 continue;
             }
-            fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
+            fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing, errorCode);
+            utility::FileSystemFailed(errorCode, "copy_file", path);
         }
         auto localFontFolder = lsProjectPath / "Fonts";
         for(auto& relativePath : localFonts)
         {
             auto path = localFontFolder / relativePath;
-            if(fs::exists(path) == false) {
-                std::cerr << "Warning! : not found local font file : " << path << std::endl;
+            if(fs::exists(path, errorCode) == false) {
+                std::cerr << "Warning! : not found local font file : " << utility::toUtf8(path) << std::endl;
                 continue;
             }
-            fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing);
+            fs::copy_file(path, fontDestPath / relativePath, fs::copy_options::skip_existing, errorCode);
+            utility::FileSystemFailed(errorCode, "copy_file", path);
         }
     }
     else
@@ -184,11 +185,13 @@ void langscore::platform_base::copyFonts(fs::path fontDestPath)
             //2つ階層を上に上げるとLangscore.exeと同階層になり、resourceフォルダが存在する。
             //そのため素のデバッグ実行では正しく確認できない。
             auto global = this->appPath.parent_path().parent_path() / language.font.file;
-            if(fs::exists(global)) {
-                fs::copy_file(global, destPath, fs::copy_options::skip_existing);
+            if(fs::exists(global, errorCode)) {
+                fs::copy_file(global, destPath, fs::copy_options::skip_existing, errorCode);
+                utility::FileSystemFailed(errorCode, "copy_file", global);
             }
-            else if(fs::exists(lsProjectPath / language.font.file)) {
-                fs::copy_file(lsProjectPath / language.font.file, destPath, fs::copy_options::skip_existing);
+            else if(fs::exists(lsProjectPath / language.font.file, errorCode)) {
+                fs::copy_file(lsProjectPath / language.font.file, destPath, fs::copy_options::skip_existing, errorCode);
+                utility::FileSystemFailed(errorCode, "copy_file", lsProjectPath / language.font.file);
             }
         }
     }
@@ -245,7 +248,7 @@ void platform_base::writeFixedGraphFileNameData()
         for(auto& [lang, translateFolder] : pair)
         {
             auto outputPath = fs::path(translateFolder) / "Graphics.csv";
-            std::cout << "Write Graphics : " << outputPath << std::endl;
+            std::cout << "Write Graphics : " << utility::toUtf8(outputPath) << std::endl;
 
             // 言語ごとの翻訳テキストを作成
             speciftranstext transText{transTextList};
@@ -266,7 +269,7 @@ void platform_base::writeFixedGraphFileNameData()
         speciftranstext transText{std::move(transTextList)};
 
         for(auto& csvPath : csvPathList) {
-            std::cout << "Write Graphics : " << csvPath << std::endl;
+            std::cout << "Write Graphics : " << utility::toUtf8(csvPath) << std::endl;
             WriteOptions options = {
                 .defaultLanguage = this->defaultLanguage,
                 .supportLangs = {this->supportLangs},
@@ -343,7 +346,7 @@ bool platform_base::validateTranslateFileList(std::vector<ValidateFileInfo> csvP
     for(auto& fileInfo : csvPathList)
     {
         auto _path = fileInfo.csvPath;
-        const auto fileName = _path.filename().stem().string();
+        const auto fileName = utility::toUtf8(_path.filename().stem());
         auto wroteCsvReader = csvreader{{_path}};
         
         //翻訳CSVのフォーマットが正しいかどうかのチェック。
@@ -373,7 +376,7 @@ bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, uti
 {
     bool result = true;
     const auto& _path = fileInfo.csvPath;
-    const auto fileName = _path.filename().stem().string();
+    const auto fileName = utility::toUtf8(_path.filename().stem());
     //マップは\r\nだとバグるのでチェックする。
     if(fileName.find("Map") != std::string::npos && FindNewlineCR(_path)) {
         OutputError(_path, ValidateErrorType::Warning, IncludeCR, ""s, ""s, 0);
@@ -415,13 +418,15 @@ bool langscore::platform_base::validateCsvFormat(ValidateFileInfo& fileInfo, uti
         auto header = plainTexts.front();
         plainTexts.erase(plainTexts.begin());
         if(isEnablePachMode == false) {
-            if(header.size() != useLanguages.size() + 1) {
+            //typeは言語の列としては数えないこと。
+            const auto numTypeColumns = static_cast<size_t>(std::ranges::count(header, u8"type"s));
+            if(header.size() - numTypeColumns != useLanguages.size() + 1) {
                 OutputError(_path, ValidateErrorType::Warning, NotEQLang, ""s, ""s, 0);
                 result = false;
             }
         }
 
-        int rowCount = 0;
+        int64_t rowCount = 0;
         for(auto& row : plainTexts)
         {
             if(rowCount == plainTexts.size() - 1) {
@@ -457,19 +462,23 @@ bool platform_base::validateTextFormat(const std::vector<ValidateTextInfo>& text
     //    auto result = utility::join({type, std::to_string(errorSummary), lang, str, path.string(), std::to_string(row)}, ","s);
     //    std::cout << result << std::endl;
     //};
-    size_t row = 1;
+    size_t id = 1;
     bool result = true;
     for(auto& textInfo : textsInfos)
     {
         //原文が空の場合はエラー(かなりやばい)
         if(textInfo.origin.original.empty()) {
-            OutputError(path, ValidateErrorType::Error, EmptyCol, "original"s, ""s, row);
+            OutputError(path, ValidateErrorType::Error, EmptyCol, "original"s, ""s, -1);
             result = false;
         }
 
         std::vector<std::string> emptyTextLangs;
         for(const auto& [lang, translatedText] : textInfo.origin.translates)
         {
+            if(std::ranges::find(this->supportLangs, lang) == this->supportLangs.end()) {
+                continue;
+            }
+
             if(translatedText.empty()) {
                 emptyTextLangs.emplace_back(utility::cnvStr<std::string>(lang));
                 result = false;
@@ -493,20 +502,20 @@ bool platform_base::validateTextFormat(const std::vector<ValidateTextInfo>& text
 
             //原文と比較したとき、制御文字が不足している文章はエラー
             if(escStr.empty() == false) {
-                OutputError(path, ValidateErrorType::Error, NotFoundEsc, utility::cnvStr<std::string>(lang), escStr, row);
+                OutputError(path, ValidateErrorType::Error, NotFoundEsc, utility::cnvStr<std::string>(lang), escStr, id);
             }
         }
 
         //翻訳文が空の言語がある場合は警告
         if(emptyTextLangs.empty() == false) {
-            OutputError(path, ValidateErrorType::Warning, EmptyCol, utility::join(emptyTextLangs, " "s), ""s, row);
+            OutputError(path, ValidateErrorType::Warning, EmptyCol, utility::join(emptyTextLangs, " "s), ""s, id);
         }
-        row++;
+        id++;
     }
 
     //Map以外はここで結果を返す
     const auto fileName = path.filename().stem();
-    if(fileName.string().find("Map") != 0) {
+    if(fileName.u8string().find(u8"Map") != 0) {
         return result;
     }
 
@@ -696,6 +705,35 @@ void langscore::platform_base::detectConstrolChar(ValidateTextInfo& validateInfo
     }
 }
 
+std::vector<platform_base::ValidateFileInfo> platform_base::collectValidateCsvList(
+    const utility::u8stringlist& targets, const std::vector<config::BasicData>& basicData) const
+{
+    std::vector<ValidateFileInfo> result;
+    const auto Add = [&basicData, &result](const fs::path& csvPath)
+    {
+        auto info = std::ranges::find_if(basicData, [stem = csvPath.stem()](const auto& x) {
+            return fs::path(x.filename).stem() == stem;
+        });
+        result.emplace_back(ValidateFileInfo{csvPath, info != basicData.cend() ? info->textValidateInfos : config::TextValidateTypeMap{}});
+    };
+
+    std::error_code errorCode;
+    for(const auto& target : targets)
+    {
+        const fs::path targetPath(target);
+        if(fs::is_directory(targetPath, errorCode))
+        {
+            for(const auto& entry : utility::ListDirectory<fs::recursive_directory_iterator>(targetPath)) {
+                if(entry.path().extension() == ".csv") { Add(entry.path()); }
+            }
+        }
+        else if(fs::exists(targetPath, errorCode)) {
+            Add(targetPath);
+        }
+    }
+    return result;
+}
+
 std::uint64_t langscore::platform_base::countNumTexts(const std::u8string& multilineText) const
 {
     auto texts = utility::split(multilineText, u8"\n"s);
@@ -772,7 +810,7 @@ bool langscore::platform_base::validateTexts(const std::vector<ValidateTextInfo>
                 {
                     auto& lang = langMap[langText];
                     auto fontName = lang.font.file.filename();
-                    auto textInfos = measureTextWidth(textLines, (fontDir / fontName).u8string(), lang.font.size);
+                    auto textInfos = measureTextWidth(textLines, fontDir / fontName, lang.font.size);
                     if(textInfos.empty()) {
                         continue;
                     }
@@ -798,7 +836,7 @@ bool langscore::platform_base::validateTexts(const std::vector<ValidateTextInfo>
 }
 
 //freeTypeを使用して、文字の横幅を計測する。
-std::vector<std::pair<std::u8string, platform_base::TextHorizontalLength>> platform_base::measureTextWidth(std::u8string baseText, std::u8string fontPath, int fontSize) const
+std::vector<std::pair<std::u8string, platform_base::TextHorizontalLength>> platform_base::measureTextWidth(std::u8string baseText, const std::filesystem::path& fontPath, int fontSize) const
 {
     FT_Library library;
     FT_Face face;
@@ -810,8 +848,10 @@ std::vector<std::pair<std::u8string, platform_base::TextHorizontalLength>> platf
     }
 
     // フォントファイルをロード (例: Arial.ttf)
-    auto pathStr = utility::cnvStr<std::string>(fontPath);
-    if(FT_New_Face(library, pathStr.c_str(), 0, &face)) {
+    //FT_New_Face は Windows ではパスを ANSI コードページとして開くため、ファイルはパスのまま読み、メモリから渡す。
+    //fontData は FT_Done_Face まで残す
+    const auto fontData = utility::getFileData(fontPath);
+    if(fontData.empty() || FT_New_Memory_Face(library, fontData.data(), static_cast<FT_Long>(fontData.size()), 0, &face)) {
         std::cerr << "Could not load font" << std::endl;
         FT_Done_FreeType(library);
         return {};

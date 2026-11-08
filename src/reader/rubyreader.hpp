@@ -84,13 +84,15 @@ namespace langscore
                     {
                         if(textInfo.disable) { continue; }
                         if(textInfo.ignore) { continue; }
-                        auto name = fileName + utility::cnvStr<std::u8string>(":" + std::to_string(textInfo.row) + ":" + std::to_string(textInfo.col));
+                        auto name = textInfo.parameterName.empty()
+                                  ? fileName + utility::cnvStr<std::u8string>(":" + std::to_string(textInfo.row) + ":" + std::to_string(textInfo.col))
+                                  : fileName + u8":" + textInfo.parameterName;
                         ignoreRowName.emplace_back(std::move(name));
                     }
                 }
                 else {
-                    std::erase_if(this->texts, [&fileName](const auto& x) {
-                        return x.original.find(fileName) != std::remove_const_t<std::remove_reference_t<decltype(x.original)>>::npos;
+                    std::erase_if(this->texts, [prefix = fileName + u8":"](const auto& x) {
+                        return x.original.starts_with(prefix);
                     });
                 }
             }
@@ -481,7 +483,7 @@ namespace langscore
             // Rubyファイルを読み込む
             std::ifstream input_file(path);
             if(!input_file.is_open()) {
-                std::cerr << "Could not open the file - '" << path << "'" << std::endl;
+                std::cerr << "Could not open the file - '" << utility::toUtf8(path) << "'" << std::endl;
                 return {};
             }
 
@@ -502,7 +504,7 @@ namespace langscore
                     }
 #ifdef _DEBUG
                     else {
-                        std::cout << filename << " Ignore Row : " << row << std::endl;
+                        std::cout << utility::toUtf8(filename) << " Ignore Row : " << row << std::endl;
                     }
 #endif
                     row++;

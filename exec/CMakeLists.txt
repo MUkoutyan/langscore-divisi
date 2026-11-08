@@ -23,6 +23,8 @@ if(MSVC)
   add_executable (divisi "main.cpp" ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 	set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "-std:c++latest")
 	set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++latest")
+    
+    add_compile_options(/MP)
 
     # リリースビルドでもデバッグ情報を生成してバックトレースでシンボル名を表示
 	target_compile_options(divisi PRIVATE 
@@ -48,12 +50,23 @@ target_include_directories(divisi PUBLIC
 
 target_link_libraries(divisi divisi_lib)
 
-install(FILES ${PROJECT_BINARY_DIR}/divisi.exe
-        DESTINATION ${PROJECT_SOURCE_DIR}/bin/)
-install(FILES ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe DESTINATION ${PROJECT_SOURCE_DIR}/bin/)
+add_custom_command(
+    TARGET divisi POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:divisi>/bin"
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe $<TARGET_FILE_DIR:divisi>/bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe ${PROJECT_SOURCE_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy  $<TARGET_FILE:divisi> ${PROJECT_SOURCE_DIR}/bin
+)
 
-file(COPY ${PROJECT_SOURCE_DIR}/rvcnv/rvcnv.exe DESTINATION ${PROJECT_BINARY_DIR}/)
-file(COPY ${PROJECT_SOURCE_DIR}/resource/ DESTINATION ${PROJECT_BINARY_DIR}/resource/)
+add_custom_command(TARGET divisi POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${PROJECT_SOURCE_DIR}/resource"
+    "$<TARGET_FILE_DIR:divisi>/resource"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${PROJECT_SOURCE_DIR}/resource"
+    "${PROJECT_SOURCE_DIR}/bin/resource"
+    COMMENT "Copying resource directory to output directory"
+)
 
 
 
@@ -63,9 +76,14 @@ file(GLOB ICU_DLL_FILES "${PROJECT_SOURCE_DIR}/3rdparty/icu/bin/*.dll")
 
 foreach(DLL_FILE ${ICU_DLL_FILES})
     add_custom_command(TARGET divisi POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${DLL_FILE}"
-        "${CMAKE_BINARY_DIR}"
+        $<TARGET_FILE_DIR:divisi>
+        # bin/ にも配置する。bin/divisi.exe は test/divisi_ct 等がそのまま実行するため、
+        # ICUのランタイムDLLが揃っていないと起動できない。
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${DLL_FILE}"
+        "${PROJECT_SOURCE_DIR}/bin"
     )
 endforeach()
 

@@ -75,7 +75,7 @@ public:
 			loadFile >> json;
 		}
 		else{
-			std::cerr << "Can't Open  config File : " << this->path;
+			std::cerr << "Can't Open  config File : " << utility::toUtf8(this->path);
 			throw "Can't Open File";
 		}
 	}
@@ -84,7 +84,11 @@ public:
 	{
 		if(p.is_relative()){
 			auto joinPath = this->path.parent_path() / p;
-			p = std::filesystem::weakly_canonical(joinPath);
+			std::error_code errorCode;
+			p = std::filesystem::weakly_canonical(joinPath, errorCode);
+			if(utility::FileSystemFailed(errorCode, "weakly_canonical", joinPath)) {
+				p = joinPath.lexically_normal();
+			}
 		}
 		return p;
 	}
@@ -92,7 +96,11 @@ public:
 	{
 		if(p.is_relative()){
 			auto joinPath = this->path.parent_path() / p;
-			p = std::filesystem::canonical(joinPath);
+			std::error_code errorCode;
+			p = std::filesystem::canonical(joinPath, errorCode);
+			if(utility::FileSystemFailed(errorCode, "canonical", joinPath)) {
+				p = joinPath.lexically_normal();
+			}
 		}
 		return p;
 	}
@@ -161,7 +169,7 @@ std::vector<config::Language> config::allLanguages()
             pImpl->get(lang, key(JsonKey::LanguageName), "ja"s),
             FontData{
                 utility::cnvStr<std::u8string>(pImpl->get(lang, key(JsonKey::FontName), fontFamily)),
-                pImpl->get(lang, key(JsonKey::FontPath), fontFileName),
+                std::filesystem::path(utility::cnvStr<std::u8string>(pImpl->get(lang, key(JsonKey::FontPath), fontFileName))),
                 pImpl->get(lang, key(JsonKey::FontSize), 22)
             }
         );
@@ -189,7 +197,8 @@ std::u8string config::gameProjectPath()
     auto path = pImpl->toAbsolutePath(u8Path);
     path.make_preferred();
 
-    if(std::filesystem::is_directory(path) == false) {
+    std::error_code errorCode;
+    if(std::filesystem::is_directory(path, errorCode) == false) {
         path = path.parent_path();
     }
 
@@ -332,10 +341,10 @@ config::ProjectType config::projectType()
     };
 
     auto projectPath = gameProjectPath();
-    if(std::filesystem::is_directory(projectPath))
+    std::error_code errorCode;
+    if(std::filesystem::is_directory(projectPath, errorCode))
     {
-        std::filesystem::directory_iterator it(projectPath);
-        for(auto& file : it) {
+        for(const auto& file : utility::ListDirectory(projectPath)) {
             auto type = checkFile(file.path());
             if(type != config::ProjectType::None) {
                 pImpl->projectType = type;
@@ -438,15 +447,17 @@ std::vector<config::ScriptData> config::rpgMakerScripts()
         auto ignorePoints = pImpl->get(script, key(JsonKey::IgnorePoints), nlohmann::json::array());
         for(auto i = ignorePoints.begin(); i != ignorePoints.end(); ++i) {
             auto& rc = i.value();
-            data.texts.emplace_back(
+            auto point = ScriptData::TextPoint{
                 pImpl->get(rc, key(JsonKey::Row), 0),
                 pImpl->get(rc, key(JsonKey::Col), 0),
                 pImpl->get(rc, key(JsonKey::Disable), false),
                 pImpl->get(rc, key(JsonKey::Ignore), false),
-                pImpl->get(rc, key(JsonKey::WriteType), -1),
+                (char)pImpl->get(rc, key(JsonKey::WriteType), -1),
                 pImpl->get(script, key(JsonKey::AttachLsTransType), 0),
-                utility::cnvStr<std::u8string>(pImpl->get(rc, key(JsonKey::Text), ""s))
-            );
+                utility::cnvStr<std::u8string>(pImpl->get(rc, key(JsonKey::Text), ""s)),
+                utility::cnvStr<std::u8string>(pImpl->get(rc, key(JsonKey::ParameterText), ""s))
+            };
+            data.texts.emplace_back(std::move(point));
         }
 
         if(data.filename.empty() == false) {
@@ -498,6 +509,17 @@ utility::u8stringlist config::extendControlCharList()
     utility::u8stringlist result;
     for(auto s = controlChars.begin(); s != controlChars.end(); ++s) {
         result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value(), ""s)));
+    }
+    return result;
+}
+
+utility::u8stringlist config::validateCSVList()
+{
+    auto validate = pImpl->get(pImpl->json, key(JsonKey::Validate), nlohmann::json::object());
+    auto list = pImpl->get(validate, key(JsonKey::ValidateCSVNameList), nlohmann::json::array());
+    utility::u8stringlist result;
+    for(auto s = list.begin(); s != list.end(); ++s) {
+        result.emplace_back(utility::cnvStr<std::u8string>(pImpl->get(s.value() , ""s)));
     }
     return result;
 }

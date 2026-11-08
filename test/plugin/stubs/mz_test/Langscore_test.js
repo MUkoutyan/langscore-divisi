@@ -37,11 +37,15 @@ class IntervalTicker {
   }
 
 Graphics.printError = function(name, message){
+    // 起動中の例外はテスト側 (initializeRPGMaker) が検知して失敗させる。
+    window.langscoreBootError = `${name} ${message}`;
     console.log(`Error : ${name} ${message}`);
 }
 Graphics.showRetryButton = function(){}
 
 FontManager.load = function(){}
+// ウィンドウスキン未ロードのため文字色は固定値を返す
+ColorManager.textColor = function(){ return "#ffffff"; }
 
 const intervalTicker = new IntervalTicker(16); // 60fps相当
 class LangscoreTestEvent {
@@ -82,6 +86,8 @@ SceneManager.initialize = function() {
 SceneManager.checkBrowser = function(){};
 SceneManager.initGraphics = function(){};
 SceneManager.initAudio = function(){};
+// 効果音 (Window_Selectable.processOk 等) は再生しない
+AudioManager.playStaticSe = function(){};
 SceneManager.initNwjs = function() {};
 SceneManager.onSceneCreate = function(){};
 SceneManager.onSceneStart = function(){};
@@ -107,7 +113,6 @@ SceneManager.updateMain = function() {
     {
         if(this._scene && this._scene.isReady()){  
             DataManager.setupNewGame();
-            console.log("stop");
             window.langscoreFinishTickEnd = new LangscoreTestEvent;
             this._stopped = true;
             intervalTicker.stop();

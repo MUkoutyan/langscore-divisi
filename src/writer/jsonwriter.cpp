@@ -21,7 +21,7 @@ bool jsonwriter::merge(std::filesystem::path sourceFilePath)
     // ソースファイルからJSONを読み込む
     std::ifstream sourceFile(sourceFilePath);
     if(!sourceFile.good()) {
-        std::cout << "Failed to open source file: " << sourceFilePath << std::endl;
+        std::cout << "Failed to open source file: " << utility::toUtf8(sourceFilePath) << std::endl;
         return false;
     }
 
@@ -163,7 +163,7 @@ bool jsonwriter::merge(std::filesystem::path sourceFilePath)
         std::move(textTobeAdded.begin(), textTobeAdded.end(), std::back_inserter(this->texts));
     }
 
-    std::cout << "Merge completed: " << sourceFilePath.filename() << std::endl;
+    std::cout << "Merge completed: " << utility::toUtf8(sourceFilePath.filename()) << std::endl;
     return true;
 }
 
@@ -222,6 +222,7 @@ ErrorStatus jsonwriter::writeForAnalyze(fs::path path, std::u8string defaultLang
         item["original"] = utility::cnvStr<std::string>(text.original);
         
         item["type"] = utility::cnvStr<std::string>(text.textType);
+        item["eventName"] = utility::cnvStr<std::string>(text.eventLabel);
         if(text.code != 0) {
             item["code"] = text.code;
         }

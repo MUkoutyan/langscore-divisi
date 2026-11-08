@@ -17,6 +17,11 @@ public:
         return textInfo;
     }
 
+    //validateTextFormatはsupportLangsに含まれる言語しか検査しないため、テスト側で設定する。
+    void setSupportLangs(utility::u8stringlist langs) {
+        this->supportLangs = std::move(langs);
+    }
+
     bool testValidateTranslateFileList(std::vector<ValidateFileInfo> csvPathList) const {
         return this->validateTranslateFileList(std::move(csvPathList));
     }
@@ -606,6 +611,7 @@ TEST_F(Langscore_VXAce_Divisi, VXAce_Validate)
 {
 	langscore::config config;
 	DummyPlatformBase divisi_vxace;
+	divisi_vxace.setSupportLangs({u8"en", u8"ja", u8"zh-tw", u8"zh-cn"});
 
 	{
 		langscore::TranslateText text;

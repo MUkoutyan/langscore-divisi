@@ -50,7 +50,7 @@ public:
             case Module::DIVISI_VXACE:
                 return errorDivisiVxAce();
             case Module::DIVISI_MVMZ:
-                return errorDivisiVxAce();
+                return errorDivisiMVMZ();
             case Module::READERBASE:
                 return errorReaderBase();
             case Module::CSVREADER:
@@ -109,6 +109,7 @@ private:
             case 6: return "error code 6 : Failed Create Output File.";
             case 7: return "error code 7 : Failed Create Output File.";
             case 8: return "error code 8 : Failed Create Output File.";
+            case 9: return "error code 9 : Failed to list the packing directory.";
             case 255: return this->specMsg;
         }
         return "";
@@ -120,6 +121,9 @@ private:
         {
         case NoError: return base;
         case 1: base = "error code 1 : \"analyze\" has not been executed";
+                break;
+        case 2: base = "error code 2 : File system operation failed.";
+                break;
         }
 
         if(false == specMsg.empty()) {
@@ -132,14 +136,17 @@ private:
         std::string base = "";
         switch(_code)
         {
-        case NoError: return "";
+        case NoError: return base;
         case 1: base = "error code 1 : validate error. Not Found Packing Input Directory.";
+                break;
+        case 2: base = "error code 2 : File system operation failed.";
+                break;
         }
 
         if(false == specMsg.empty()) {
             return std::format("{} ({})", base, specMsg);
         }
-        return "";
+        return base;
     }
     std::string errorReaderBase()
     {

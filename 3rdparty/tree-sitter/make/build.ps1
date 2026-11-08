@@ -3,35 +3,36 @@ Param(
 )
 
 if( "force" -eq $Arg1 ) {
-    Remove-Item -Recurse -Force .\tree-sitter, .\tree-sitter-ruby, .\tree-sitter-javascript, .\lib
+    Remove-Item -Recurse -Force .\tree-sitter, .\tree-sitter-ruby, .\tree-sitter-javascript, .\lib -ErrorAction SilentlyContinue
 }
 
 if( !(Test-Path -Path .\tree-sitter) ){
-    & git clone https://github.com/tree-sitter/tree-sitter
+    & git clone https://github.com/tree-sitter/tree-sitter -b v0.20.7
 }
 if( !(Test-Path -Path .\tree-sitter-ruby) ){
-    & git clone https://github.com/tree-sitter/tree-sitter-ruby
+    & git clone https://github.com/tree-sitter/tree-sitter-ruby -b v0.19.0
 }
 if( !(Test-Path -Path .\tree-sitter-javascript) ){
-    & git clone https://github.com/tree-sitter/tree-sitter-javascript
+    & git clone https://github.com/tree-sitter/tree-sitter-javascript -b v0.21.0
 }
 
 if( !(Test-Path -Path .\lib) ){
     Copy-Item -Path .\tree-sitter\lib -Destination .\ -Recurse
 
-    Get-Content -Path .\lib\include\tree_sitter\api.h -Encoding UTF8 | Set-Content -Path .\lib\include\tree_sitter\api.h -Encoding utf8BOM
-    Copy-Item -Path .\tree-sitter-javascript\src\tree_sitter\parser.h -Destination lib\include\tree_sitter\parser.h
+    # バージョンによってはあったりなかったりするので調整する。
+    # Get-Content -Path .\lib\include\tree_sitter\api.h -Encoding UTF8 | Set-Content -Path .\lib\include\tree_sitter\api.h -Encoding utf8BOM
+    # Copy-Item -Path .\tree-sitter\lib\include\tree_sitter\parser.h -Destination lib\include\tree_sitter\parser.h
     Copy-Item -Path .\tree-sitter-javascript\src\tree_sitter\alloc.h -Destination lib\include\tree_sitter\alloc.h
     Copy-Item -Path .\tree-sitter-javascript\src\tree_sitter\array.h -Destination lib\include\tree_sitter\array.h
 
     Copy-Item -Path .\tree-sitter-ruby\src\parser.c -Destination lib\src\parser_rb.c
-    Copy-Item -Path .\tree-sitter-ruby\src\scanner.c -Destination lib\src\scanner_rb.c
+    Copy-Item -Path .\tree-sitter-ruby\src\scanner.cc -Destination lib\src\scanner_rb.cc
     Copy-Item -Path .\tree-sitter-javascript\src\parser.c -Destination lib\src\parser_js.c
     Copy-Item -Path .\tree-sitter-javascript\src\scanner.c -Destination lib\src\scanner_js.c
 }
 
-Copy-Item -Path ..\Makefile -Destination .\
-Copy-Item -Path ..\tree-sitter.pc.in -Destination .\
+Copy-Item -Path .\tree-sitter\Makefile -Destination .\
+Copy-Item -Path .\tree-sitter\tree-sitter.pc.in -Destination .\
 
 Remove-Item -Recurse -Force .\CMakeFiles, .\build-debug, .\build-release, .\build-linux-debug, .\build-linux-release -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path "build-debug", "build-release", "build-linux-debug", "build-linux-release"

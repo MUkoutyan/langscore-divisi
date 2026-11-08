@@ -1,5 +1,4 @@
-﻿# CMakeList.txt : divisi の CMake プロジェクト。ソースを含めて、次を定義します:
-# プロジェクト専用ロジックはこちらです。
+﻿# CMakeList.txt : divisi の CMake プロジェクト。
 #
 cmake_minimum_required (VERSION 3.28)
 set(CMAKE_CXX_STANDARD 23)
@@ -14,20 +13,16 @@ set(DIVISI_TARGET_NAME              ${PROJECT_NAME})
 
 set(DIVISI_RESOURCE rvcnv/ resource/)
 
+# テスト一式 (C++/Ruby/JavaScript/Python) を CTest に登録する。
+# 独自ビルドタイプ (Test / Test_Debug) は廃止し、通常の Debug / Release に
+# このオプションを組み合わせる。CMakePresets.json の *-test プリセット参照。
+option(DIVISI_BUILD_TESTS "テストをビルドし CTest に登録する" OFF)
+
 add_subdirectory(src)
 add_subdirectory(exec)
 
-message(${CMAKE_BUILD_TYPE})
-if(CMAKE_BUILD_TYPE MATCHES "Test" OR CMAKE_BUILD_TYPE MATCHES "Test_Debug")
-    # Debugモードのフラグを設定
-    set(CMAKE_C_FLAGS_TEST_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
-    set(CMAKE_CXX_FLAGS_TEST_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-    set(CMAKE_EXE_LINKER_FLAGS_TEST_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
-    set(CMAKE_SHARED_LINKER_FLAGS_TEST_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG}")
-    
-	message("Enable Test")
-	add_subdirectory(test)
+if(DIVISI_BUILD_TESTS)
+    # enable_testing() はトップレベルで呼ぶ必要がある (ビルドルートで ctest を実行するため)
+    enable_testing()
+    add_subdirectory(test)
 endif()
-
-
-# TODO: テストを追加し、必要な場合は、ターゲットをインストールします。

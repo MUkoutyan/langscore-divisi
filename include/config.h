@@ -104,6 +104,7 @@ namespace langscore
                 char writeMode = 0;
 				int ignoreContext = 0;
 				std::u8string text;
+                std::u8string parameterName;    //(MV,MZ)プラグインのパラメータ名。空なら row,col で指定する
 			};
 			std::vector<TextPoint> texts;
 		};
@@ -144,6 +145,7 @@ namespace langscore
 		utility::u8stringlist globalFontList();
 		utility::u8stringlist localFontList();
         utility::u8stringlist extendControlCharList();
+        utility::u8stringlist validateCSVList();
         char globalWriteMode();
         bool enableLanguagePatch();
         bool fillDefaultLanguageColumn();

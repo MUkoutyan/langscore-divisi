@@ -32,7 +32,8 @@ private:
     std::filesystem::path _projectPath;
     std::vector<std::u8string> langs;
 
-    ErrorStatus exec(std::vector<std::string> args);
+    //引数はパスのまま受け取り、起動の直前に OS のコマンドラインの文字列にする
+    ErrorStatus exec(std::vector<std::filesystem::path> args);
 };
 
 

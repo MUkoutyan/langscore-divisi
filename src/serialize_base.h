@@ -39,13 +39,14 @@ namespace langscore
         constexpr static const char8_t* battleName = u8"battleName";
         constexpr static const char8_t* battleMessage = u8"battleMessage";
         constexpr static const char8_t* message = u8"message";
+        constexpr static const char8_t* event_Name = u8"eventName";
         constexpr static const char8_t* note = u8"note";
         constexpr static const char8_t* other = u8"other";
 
         TranslateText():TranslateText(u8"", {}) {}
         TranslateText(std::u8string origin, std::vector<std::u8string> langs)
             : original(std::move(origin)), translates(), scriptLineInfo(), scriptParamType()
-            , code(0), textType({})
+            , eventLabel(), code(0), textType({})
         {
             for(auto& lang : langs){
                 this->translates[lang] = u8"";
@@ -55,15 +56,18 @@ namespace langscore
         std::unordered_map<std::u8string, std::u8string> translates;  //各言語毎の文章。[言語コード, 文章]のマップ
         std::u8string scriptLineInfo;   //スクリプトでのオリジナルの文章の行情報
         std::u8string scriptParamType;  //(MV,MZ)プラグインのパラメータの型
-        int code;   //RPGツクールでコマンドを検出した際に使用
+        std::u8string eventLabel;       //(MV,MZ)テキストが属するイベント名
         std::vector<std::u8string> textType; //ツクール内での種類(名前、説明、アイコン付きテキスト、テキスト等)
+        int64_t row = -1;   //csvreaderで読み込んだ際に使用
+        int code;   //RPGツクールでコマンドを検出した際に使用
         bool isNewText = false; //マージ時に使用。新規に追加される文章と判定されたらtrue
 
         bool operator==(const TranslateText& obj) const {
             return this->original == obj.original
                 && this->translates == obj.translates
                 && this->scriptLineInfo == obj.scriptLineInfo
-                && this->scriptParamType == obj.scriptParamType;
+                && this->scriptParamType == obj.scriptParamType
+                && this->eventLabel == obj.eventLabel;
         }
 
     };

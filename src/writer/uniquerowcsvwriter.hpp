@@ -28,9 +28,6 @@ namespace langscore
             }
 
 
-            std::vector<TranslateText> result;
-            result.reserve(std::max(sourceTranslates.size(), this->texts.size()));
-
             utility::u8stringlist enableLanguages;
             {
                 auto& list = this->texts.size() < sourceTranslates.size() ? sourceTranslates : this->texts;
@@ -41,27 +38,8 @@ namespace langscore
                 }
             }
 
-            auto source_i = sourceTranslates.begin();
-            auto target_i = this->texts.begin();
-            std::u8string source_origin;
-            std::u8string target_origin;
-
-            const auto AddForSource = [&](){
-                if(source_i == sourceTranslates.end()){ return false; }
-                result.emplace_back(*source_i);
-                source_origin.clear();
-                ++source_i;
-                return true;
-            };
-            const auto AddForTarget = [&]()
-            {
-                if(target_i == this->texts.end()){ return false; }
-                result.emplace_back(*target_i);
-                target_origin.clear();
-                ++target_i;
-                return true;
-            };
-
+            //Graphics.csv等の行 (原文) は解析側で一意に決まるため、行の増減は行わない。
+            //マージ先の行を維持したまま、空欄の翻訳だけをソースから補完する。
             for(auto& source : sourceTranslates){
                 auto find_result = std::find_if(this->texts.begin(), this->texts.end(), [&source](const auto& t){
                     return t.original == source.original;
@@ -79,8 +57,6 @@ namespace langscore
                     }
                 }
             }
-
-            this->texts = std::move(result);
 
             return true;
         }

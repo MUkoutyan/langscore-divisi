@@ -2,6 +2,7 @@ import subprocess
 import re
 import os
 import stat
+import sys
 import locale
 import json
 
@@ -32,24 +33,123 @@ def edit_ls_config(config_path, edit_function):
     with open(config_path, 'w') as file:
         json.dump(data, file, indent=4)  
     
+TEST_DATA_DIR_NAME = "langscore-divisi-test-data"
+
+def test_data_root():
+    """テストデータ (ツクールのゲームプロジェクト) の置き場所を返す。
+
+    サイズと再配布の都合でリポジトリには含めないため、既定ではリポジトリと同階層の
+    langscore-divisi-test-data を参照する。環境変数 LANGSCORE_TEST_DATA で上書きできる。
+    """
+    env_path = os.environ.get("LANGSCORE_TEST_DATA")
+    if env_path:
+        return os.path.abspath(env_path)
+
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+    return os.path.abspath(os.path.join(repo_root, "..", TEST_DATA_DIR_NAME))
+
+
+def require_test_data(*sub_paths):
+    """テストデータ内のパスを返す。見つからない場合は理由を示して終了する。"""
+    root = test_data_root()
+    path = os.path.join(root, *sub_paths) if sub_paths else root
+    if not os.path.exists(root):
+        print(f"テストデータが見つかりません: {root}")
+        print(f"  リポジトリと同階層に {TEST_DATA_DIR_NAME} を配置するか、")
+        print(f"  環境変数 LANGSCORE_TEST_DATA で場所を指定してください。")
+        sys.exit(1)
+    return path
+
+
+def find_vcvars():
+    """Visual Studio の vcvars64.bat を探す。バージョンは決め打ちにしない。"""
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
+    vswhere = os.path.join(program_files_x86, "Microsoft Visual Studio", "Installer", "vswhere.exe")
+    if os.path.exists(vswhere):
+        result = subprocess.run(
+            [vswhere, "-latest", "-products", "*",
+             "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+             "-property", "installationPath"],
+            capture_output=True, text=True, errors='replace'
+        )
+        for install_path in result.stdout.splitlines():
+            vcvars = os.path.join(install_path.strip(), "VC", "Auxiliary", "Build", "vcvars64.bat")
+            if os.path.exists(vcvars):
+                return vcvars
+
+    # vswhere が無い場合は既定の配置を新しいものから探す
+    program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+    for root in [program_files, program_files_x86]:
+        base = os.path.join(root, "Microsoft Visual Studio")
+        if not os.path.isdir(base):
+            continue
+        for version in sorted(os.listdir(base), reverse=True):
+            for edition in ("Community", "Professional", "Enterprise", "BuildTools"):
+                vcvars = os.path.join(base, version, edition, "VC", "Auxiliary", "Build", "vcvars64.bat")
+                if os.path.exists(vcvars):
+                    return vcvars
+    return None
+
+
+_vs_environment_cache = None
+
+def vs_environment():
+    """cl.exe / ninja を実行できる環境変数を返す。
+    開発者コマンドプロンプトから実行されている場合や、VSが見つからない場合はNone
+    (= 現在の環境をそのまま使う) を返す。"""
+    global _vs_environment_cache
+
+    if os.environ.get("VSCMD_ARG_TGT_ARCH"):
+        return None
+    if _vs_environment_cache is not None:
+        return _vs_environment_cache
+
+    vcvars = find_vcvars()
+    if vcvars is None:
+        print("Warning: vcvars64.bat not found. Run from a Developer Command Prompt if the build fails.")
+        return None
+
+    result = subprocess.run(f'"{vcvars}" >nul && set', shell=True,
+                            capture_output=True, text=True,
+                            encoding=locale.getpreferredencoding(), errors='replace')
+    if result.returncode != 0:
+        print(f"Warning: failed to run {vcvars}")
+        return None
+
+    env = dict(os.environ)
+    for line in result.stdout.splitlines():
+        if "=" in line:
+            key, value = line.split("=", 1)
+            env[key] = value
+    _vs_environment_cache = env
+    return env
+
+
+def _run(command, default_encoding=None, **option):
+    """subprocess.run の共通ラッパー。
+    encoding と timeout は呼び出し側で上書きできる。(二重指定でTypeErrorにならないようpopする)
+    復号できない文字があってもテストを落とさないよう errors='replace' を使う。"""
+    encoding = option.pop('encoding', default_encoding or locale.getpreferredencoding())
+    # ビルドやテストデータのコピーは既定の180秒では収まらないため、呼び出し側で上書きできる。
+    timeout = option.pop('timeout', 180)
+    return subprocess.run(command,
+        capture_output=True, text=True,
+        encoding=encoding, errors='replace', timeout=timeout, **option
+    )
+
 def run_command(command_path, args=None, **option):
     try:
-        system_encoding = locale.getpreferredencoding()
         command = []
         command.append(command_path)
         if args: command += args
-        result = subprocess.run(command, 
-            capture_output=True, text=True, shell=True, 
-            encoding=system_encoding, timeout=180, **option
-        )
+        result = _run(command, shell=True, **option)
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run command: {e}")
-        return str(e), str(e.stdout), False
+        return str(e), str(e), False
 
 def run_powershell_script(script_path, args=None, **option):
     try:
-        system_encoding = locale.getpreferredencoding()
         command = [
             'powershell.exe',
             '-ExecutionPolicy', 'Bypass',  # 一時的に実行ポリシーをバイパス
@@ -60,9 +160,7 @@ def run_powershell_script(script_path, args=None, **option):
             command += [
                 '-Args', args
             ]
-        result = subprocess.run(command, capture_output=True, text=True, 
-            encoding=system_encoding, timeout=180, **option
-        )
+        result = _run(command, **option)
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run PowerShell script: {e}")
@@ -74,11 +172,7 @@ def run_wsl_script(script_path, args=None, **option):
         command = ['wsl']
         command.append(wsl_path)
         if args: command += args
-        result = subprocess.run(
-            command,  # WSL上でスクリプトを直接実行
-            capture_output=True, text=True, 
-            encoding='utf-8', timeout=180, **option
-        )
+        result = _run(command, default_encoding='utf-8', **option)
         # print(f"WSL Bash Output: {result.stdout}")
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
@@ -91,11 +185,7 @@ def run_python_script(script_path, args=None, _timeout=180, **option):
         command.append(script_path)
         if args: command += args
         command.append('-v')
-        result = subprocess.run(
-            command,
-            capture_output=True, text=True,
-            encoding='utf-8', timeout=_timeout, **option
-        )
+        result = _run(command, default_encoding='utf-8', timeout=option.pop('timeout', _timeout), **option)
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run `Python` script: {e}")
@@ -107,11 +197,7 @@ def run_ruby_script(script_path, args=None, **option):
         command = ['ruby']
         command.append(script_path)
         if args: command += args
-        result = subprocess.run(
-            command,
-            capture_output=True, text=True,
-            encoding='utf-8', timeout=180, **option
-        )
+        result = _run(command, default_encoding='utf-8', **option)
         return result.stdout, result.stderr, result.returncode == 0
     except Exception as e:
         print(f"Failed to run `Ruby` script: {e}")
@@ -150,19 +236,11 @@ def analyze_python_test_result(output):
 
     return list(success_tests), failed_tests
 
-def analyze_ruby19_test_result(output):
-    # Ruby1.9.2でのテスト結果を解析
-    match = re.search(r'(\d+) tests, (\d+) assertions, (\d+) failures, (\d+) errors, (\d+) skips', output)
-    failures = []
-    if match:
-        failure_count = int(match.group(3))
-        error_count = int(match.group(4))
-        if failure_count > 0 or error_count > 0:
-            # 失敗したテストケースを抽出
-            failure_matches = re.findall(r'(\d+)\) Failure:\n(.+?) \[(.+?)\]:\n<.+?> expected but was\n<.+?>\.', output, re.DOTALL)
-            for index, test_case, location in failure_matches:
-                failures.append(f"{index}) {test_case.strip()} [{location.strip()}]")
-    return failures
+def analyze_vxace_test_result(output):
+    # run_vxace_test.py の出力から失敗したテストを抽出する
+    pattern = r'(\d+)\) Failure:\n(.+?) \[(.+?)\]:\n(.+)'
+    matches = re.findall(pattern, output)
+    return [f"{i}) {name} [{suite}] {message}" for i, name, suite, message in matches]
 
 def analyze_ruby_test_result(output):
     # Rubyのテスト結果を解析
@@ -200,10 +278,11 @@ def analyze_ruby_test_result(output):
 
 
 def analyze_jest_test_result(output, is_nwjs):
-    # Jestのテスト結果を解析
+    # mocha の出力から失敗したテストケースを抽出する。
+    # 末尾の "N failing" 以降はスイート名付きの再掲なので、それより前 (テスト一覧) だけを見る。
     failures = []
-    # 失敗したテストケースを抽出する正規表現
-    failing_tests = re.findall(r'^\s*\d+\) (.+)\n', output, re.MULTILINE)
+    listing = re.split(r'^\s*\d+ failing', output or '', maxsplit=1, flags=re.MULTILINE)[0]
+    failing_tests = re.findall(r'^\s*\d+\) (.+)$', listing, re.MULTILINE)
     for test_case in failing_tests:
         failures.append((test_case.strip(), is_nwjs))
     return [], failures, []

@@ -1,0 +1,40 @@
+# フィクスチャ (test_data.zip: RPGツクールのランタイムを含む) が git 管理外のため、
+# CI で回せるのはゲームプロジェクトに依存しないテストのみ。
+#   - lscsv: resource/lscsv.{js,py} の CSV パーサ
+#     (lscsv_test.rb は Skills.csv / CommonEvents.csv を読むため、それらを追加するまで除外)
+#   - plugin: Langscore_mvmz.test.js の構文チェック
+#     (sync_plugin.js は gitignore 対象の mv_test / mz_test へ書き出すため除外)
+name: test
+on: [push, pull_request]
+
+jobs:
+  lscsv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: npm ci
+        working-directory: test/lscsv
+      - run: npm test
+        working-directory: test/lscsv
+      - run: python lscsv_test.py
+        working-directory: test/lscsv
+
+  plugin-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check Langscore_mvmz.test.js
+        working-directory: test/plugin
+      - run: node --check sync_plugin.js
+        working-directory: test/plugin
+      - run: node --check sync_vxace.js
+        working-directory: test/plugin

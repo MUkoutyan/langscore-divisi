@@ -1,86 +1,42 @@
-Encoding.default_external = Encoding::UTF_8
-Encoding.default_internal = Encoding::UTF_8
+require 'fileutils'
+# encoding: UTF-8
+Encoding.default_external = 'UTF-8'
+
+require 'zlib'
 require 'csv'
-require 'rbconfig'
-require 'Win32API'
+require 'optparse'
+require 'json'
+
 
 module RPG
+  module ToJson
+    def to_json(*a)
+      result = {'class' => self.class.name}
+      self.instance_variables.each do |var|
+        result[var] = self.instance_variable_get var
+      end
+      result.to_json(*a)
+    end
+  end
 end
 
+class Table
+  include RPG::ToJson
+  attr_accessor :xsize 
+  attr_accessor :ysize 
+  attr_accessor :zsize 
 
-class Rect
-  attr_accessor :x, :y, :width, :height
-  @x = 0
-  @y = 0
-  @width = 0
-  @height = 0
-
-  def initialize(x = 0, y = 0, width = 0, height = 0)
-    @x = x
-    @y = y
-    @width = width
-    @height = height
-  end
-
-  def set(x = 0, y = 0, width = 0, height = 0)
-    @x = x
-    @y = y
-    @width = width
-    @height = height
+  def initialize(d)
   end
   
-  def empty
-    @x = 0
-    @y = 0
-    @width = 0
-    @height = 0
-  end
-
-end
-
-class Graphics
-  @x = 0
-  @y = 0
-  @width = 1
-  @height = 1
-
-  class << self
-    attr_accessor :x, :y, :width, :height
-    def initialize()
-    end
-
-    def transition(frame, path = "", x = 0)
-    end
-
-    def width
-      @width
-    end
-
-    def height
-      @height
-    end
-
-    def fadeout(time)
-    end
-
-    def update
-    end
-
-    def frame_count=(f)
-    end
-
-    def frame_count()
-    end
-    def frame_rate()
-      1
-    end
-    def frame_reset
-    end
+  def self._load(obj)
+    Table.new(obj.unpack("VVVVVv*"))
   end
 end
 
 class Tone  
-  def initialize()
+  include RPG::ToJson
+  def initialize(d)
   end
 
   attr_accessor :ref 
@@ -88,16 +44,14 @@ class Tone
   attr_accessor :blue 
   attr_accessor :gray 
 
-  def set(t, t2=0, t3=0)
-  end
-
   def self._load(obj)
-    Tone.new()
+    Tone.new(obj.unpack("ssss"))
   end
 end
 
 class Color  
-  def initialize(r = 0,g = 0,b = 0,a = 0)
+  include RPG::ToJson
+  def initialize(d)
   end
 
   attr_accessor :ref 
@@ -106,425 +60,10 @@ class Color
   attr_accessor :alpha 
 
   def self._load(obj)
-  end
-
-  def set(r = 0,g = 0,b = 0,a = 0)
+    Color.new(obj.unpack("ssss"))
   end
 end
 
-class Font
-  def initialize()
-    @size = 1
-    @default_bold = 1
-    @default_italic = 1
-    @default_size = 1
-  end
-  
-  def size
-    @size = 1
-  end
-  def size=(s)
-    @size = s
-  end
-  
-  def bold
-  end
-  def bold=(s)
-  end
-
-  def italic
-  end
-  def italic=(s)
-  end
-
-  def self.default_bold
-    @default_bold = 1
-  end
-  def self.default_bold=(v)
-  end
-  def self.default_italic
-    @default_italic = 1
-  end
-  def self.default_italic=(v)
-  end
-  def self.default_size
-    @default_size = 1
-  end
-  def self.default_size=(v)
-  end
-  def self.default_name
-    "VL Gothic"
-  end
-  def self.default_name=(f)
-  end
-
-  def color
-    Color.new
-  end
-end
-
-
-class Bitmap
-  attr_accessor :image
-  attr_accessor :width
-  attr_accessor :height
-
-  def initialize(w, h = 0)
-    @font = Font.new
-    if h == 0
-      @image = image
-      @width = 1
-      @height = 1
-    else
-      @image = image
-      @width = w
-      @height = h
-    end
-  end
-
-  def font
-    @font
-  end
-  
-  def draw_text(r, tr, s)
-  end
-
-  def disposed?
-    false
-  end
-
-  def fill_rect(a,b,c=0,d=0,e=0)
-  end
-
-  def rect
-    Rect.new
-  end
-
-  def gradient_fill_rect(r, c1, c2, f)
-  end
-  
-end
-
-class Object
-  def dispose
-  end
-  def clear 
-  end
-  def font
-    Font.new
-  end
-
-  def width
-    1
-  end
-  def height
-    1
-  end
-
-  def draw_text(*args)
-  end
-  def text_size(str)
-  end
-
-  def blt(*args)
-  end
-end
-
-class Viewport
-    
-  attr_accessor :z
-  attr_accessor :rect
-
-  def initialize(rect = Rect.new)
-    @rect = rect
-  end
-
-  def tone
-    Tone.new
-  end
-  def oy=(y)
-  end
-  def oy
-    1
-  end
-  def ox=(x)
-  end
-  def ox
-    1
-  end
-  def color
-    Color.new
-  end
-  def update
-  end
-end
-
-class Sprite
-  attr_accessor :bitmap
-  attr_accessor :ox
-  attr_accessor :oy
-  attr_accessor :x
-  attr_accessor :y
-  attr_accessor :z
-  
-  def initialize(viewport = nil)
-      @bitmap = Bitmap.new(1,1)
-      @ox = 0
-      @oy = 0
-      @x = 0
-      @y = 0
-      @z = 0
-  end
-
-  def oy=(y)
-  end
-  def oy
-    1
-  end
-  def ox=(x)
-  end
-  def ox
-    1
-  end
-
-  def update
-  end
-
-  def src_rect
-    Rect.new
-  end
-
-  def opacity=(v)
-  end
-  def blend_type=(v)
-  end
-  def bush_depth=(v)
-  end
-  def visible=(v)
-  end
-  def color
-    Color.new
-  end
-end
-
-class Tilemap
-  attr_accessor :bitmaps
-  attr_accessor :ox
-  attr_accessor :oy
-  def initialize(viewport)
-    @bitmaps = Array.new
-  end
-
-  def map_data=(f)
-  end
-
-  def flags=(f)
-  end
-
-  def dispose
-  end
-
-  def oy=(y)
-  end
-  def oy
-    1
-  end
-  def ox=(x)
-  end
-  def ox
-    1
-  end
-
-  def update
-  end
-end
-
-class Table
-  attr_accessor :xsize 
-  attr_accessor :ysize 
-  attr_accessor :zsize 
-
-  def initialize(d)
-    @data = Hash.new()
-  end
-  
-  def self._load(obj)
-    Table.new(obj.unpack("VVVVVv*"))
-  end
-
-  def [](x, y, z)
-    @data[[x, y, z]]
-  end
-
-  def []=(x, y, z, value)
-    @data[[x, y, z]] = value
-  end
-end
-
-class Plane < Viewport
-  def initialize(viewport)
-  end
-
-  def bitmap
-    Bitmap.new(1,1)
-  end
-  def bitmap=(b)
-  end
-
-  def ox=(x)
-  end
-  def oy=(x)
-  end
-  def ox
-    1
-  end
-  def oy
-    2
-  end
-end
-
-class WindowSkin
-  def get_pixel(w, x)
-    Color.new(0,0,0)
-  end
-end
-
-class Window < Sprite
-
-  attr_accessor :x
-  attr_accessor :y
-
-  def initialize(x, y, width, height)
-    @x = 0
-    @y = 0
-    @height = 1
-    @width = 1
-    @padding = 1
-  end
-
-  def windowskin=(w)
-  end
-  def windowskin
-    WindowSkin.new
-  end
-
-  def contents
-    Object.new
-  end
-
-  def active=(active)
-  end
-  def active
-    true
-  end
-
-  def update
-  end
-
-  def cursor_rect
-    Rect.new
-  end
-
-  def tone=(s)
-  end
-  def tone
-    Tone.new
-  end
-  def padding=(s)
-  end
-  def contents=(s)
-  end
-
-  def x=(_x)
-    @x = _x
-  end
-  def x
-    @x
-  end
-
-  def y=(_y)
-    @y = _y
-  end
-  def y
-    @y
-  end
-
-  def height=(h)
-    @height = h
-  end
-  def height
-    @height
-  end
-  def width=(v)
-    @width = v
-  end
-  def width
-    @width
-  end
-
-  def padding=(p)
-    @padding = p
-  end
-  def padding()
-    @padding
-  end
-
-  def padding_bottom=(p)
-    @padding = p
-  end
-  def padding_bottom()
-    @padding
-  end
-
-  def openness=(x)
-  end
-  def openness
-    1
-  end
-
-  def arrows_visible=(f)
-  end
-  def contents_opacity=(f)
-  end
-
-  def open?
-    true
-  end
-
-  def disposed?
-    true
-  end
-  
-  def close
-  end
-  
-  def close?
-    true
-  end
-
-  def viewport=(v)
-  end
-  def viewport
-    Viewport.new
-  end
-end
-
-
-class Input
-  class << self
-    def update
-    end
-    def trigger?(k)
-      false
-    end
-    def repeat?(k)
-      false
-    end
-    def press?(k)
-      false
-    end
-  end
-end
 
 class RPG::Event
   attr_accessor :id
@@ -532,10 +71,6 @@ class RPG::Event
   attr_accessor :x
   attr_accessor :y
   attr_accessor :pages
-
-  def parallel?
-    false
-  end
 end
 
 class RPG::Event::Page
@@ -584,14 +119,6 @@ class RPG::CommonEvent
   attr_accessor :trigger
   attr_accessor :switch_id
   attr_accessor :list
-
-  def parallel?
-    false
-  end
-
-  def autorun?
-    true
-  end
 end
 
 class RPG::EventCommand
@@ -621,27 +148,10 @@ class RPG::BaseItem
   attr_accessor :note
 end
 
-class Params
-  
-  def [](x, y)
-    0
-  end
-
-  def []=(x, y, value)
-  end
-end
-
 class RPG::Class < RPG::BaseItem
   attr_accessor :exp_params
   attr_accessor :params
   attr_accessor :learnings
-
-  def exp_for_level(l)
-  end
-  
-  def params
-    Params.new
-  end
 end
 
 class RPG::Class::Learning
@@ -804,18 +314,6 @@ class RPG::Map
   attr_accessor :note
   attr_accessor :data
   attr_accessor :events
-
-  def initialize
-    @data = Hash.new(0)
-  end
-
-  def [](x, y, z)
-    @data[[x, y, z]]
-  end
-
-  def []=(x, y, z, value)
-    @data[[x, y, z]] = value
-  end
 end
 
 class RPG::Map::Encounter
@@ -893,10 +391,6 @@ class RPG::Tileset
   attr_accessor :tileset_names
   attr_accessor :flags
   attr_accessor :note
-
-  def flags
-    Hash.new
-  end
 end
 
 
@@ -972,17 +466,6 @@ class RPG::AudioFile
   attr_accessor :name
   attr_accessor :volume
   attr_accessor :pitch
-  
-  def play
-  end
-  def stop
-  end
-  def self.play
-  end
-  def self.stop
-  end
-  def self.fade(t)
-  end
 end
 
 class RPG::BGM < RPG::AudioFile
@@ -1005,42 +488,84 @@ class ScriptData
   attr_accessor :data
 end
 
-  
 
-def load_data(filename)
-    File.open(Dir.pwd + "/vxace_test/" + filename, "rb") do |file|
-        return Marshal.load(file)
-    end
-end
-  
-def rgss_main
-    yield
-    rescue RGSSReset
-    retry
-end
 
-# CSVファイルのパス
-csv_file_path = './vxace_test/Scripts/_list.csv'
 
-# CSVファイルを読み込み、1列目のスクリプトファイル名を取得
-script_files = []
-CSV.foreach(csv_file_path, headers: false) do |row|
-  if row[1].strip != "Main"
-    path = ("./vxace_test/Scripts/" + row[1].strip + ".rb")
-    script_files << path
-  end
-end
-
-# スクリプトファイルを順番に読み込み
-script_files.each do |file_path|
+# Marshalファイルを読み込む
+def load_marshal_file(file_path)
   begin
-    # ファイルを読み込みUTF-8として評価する
-    file_content = File.read(file_path, encoding: 'UTF-8')
-    eval(file_content, binding, file_path)
+    # ファイルが存在するかを確認
+    unless File.exist?(file_path)
+      puts "エラー: ファイルが見つかりません。"
+      return nil
+    end
+
+    # ファイルを読み込んでMarshalから復元
+    File.open(file_path, 'rb') do |file|
+      data = Marshal.load(file)
+      return data
+    end
   rescue => e
-    # エラーが発生した場合の処理
-    puts "Error in file: #{file_path}"
-    puts "Error: #{e.message}"
-    puts e.backtrace
+    puts "エラーが発生しました: #{e.message}"
+    return nil
   end
+end
+
+# 2つのオブジェクトを再帰的に比較し、差異が文字列だけか確認
+def compare_objects(obj1, obj2, path = '')
+  if obj1.is_a?(String) && obj2.is_a?(String)
+    # 文字列の場合は単純な比較
+    if obj1 != obj2
+    #   puts "差異発見 (文字列): #{path}: '#{obj1}' -> '#{obj2}'"
+    end
+  elsif obj1.is_a?(Array) && obj2.is_a?(Array)
+    # 配列の場合は要素ごとに比較
+    [obj1.size, obj2.size].min.times do |i|
+      compare_objects(obj1[i], obj2[i], "#{path}[#{i}]")
+    end
+    if obj1.size != obj2.size
+      puts "差異発見 (配列のサイズ): #{path}"
+    end
+  elsif obj1.is_a?(Hash) && obj2.is_a?(Hash)
+    # ハッシュの場合はキーごとに比較
+    (obj1.keys | obj2.keys).each do |key|
+      compare_objects(obj1[key], obj2[key], "#{path}[#{key.inspect}]")
+    end
+  elsif obj1.is_a?(Object) && obj2.is_a?(Object)
+    # オブジェクトの場合はインスタンス変数ごとに比較
+    (obj1.instance_variables | obj2.instance_variables).each do |var|
+      compare_objects(
+        obj1.instance_variable_get(var), 
+        obj2.instance_variable_get(var), 
+        "#{path}.#{var}"
+      )
+    end
+  else
+    # 文字列以外で異なる場合はエラー
+    if obj1 != obj2
+      puts "エラー: 文字列以外の差異が見つかりました: #{path}"
+    end
+  end
+end
+
+# メイン処理
+if ARGV.size != 2
+  puts "使用法: ruby script_name.rb 置換前ファイル 置換後ファイル"
+  exit
+end
+
+# コマンドライン引数からファイルパスを取得
+original_file = ARGV[0]
+modified_file = ARGV[1]
+
+# 置換前と置換後のデータを読み込む
+original_data = load_marshal_file(original_file)
+modified_data = load_marshal_file(modified_file)
+
+# データが両方とも読み込めた場合、比較を開始
+if original_data && modified_data
+  puts "データの比較を開始します..."
+  compare_objects(original_data, modified_data)
+else
+  puts "データの読み込みに失敗しました。"
 end

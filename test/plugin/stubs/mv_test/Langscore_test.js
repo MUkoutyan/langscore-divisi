@@ -5,6 +5,8 @@ Utils.isNwjs = function()
 };
 
 Graphics.printError = function(name, message){
+    // 起動中の例外はテスト側 (initializeRPGMaker) が検知して失敗させる。
+    window.langscoreBootError = `${name} ${message}`;
     console.log(`Error : ${name} ${message}`);
 }
 Graphics.setLoadingImage = function(){
@@ -37,6 +39,8 @@ Window_Base.prototype.loadWindowskin = function() {
 };
 
 SceneManager.initAudio = function(){};
+// 効果音 (Window_Selectable.processOk 等) は再生しない
+AudioManager.playStaticSe = function(){};
 SceneManager.initNwjs = function() {};
 SceneManager.onSceneCreate = function(){};
 SceneManager.onSceneStart = function(){};

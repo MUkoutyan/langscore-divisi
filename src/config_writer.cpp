@@ -18,7 +18,8 @@ namespace
 
     config::ProjectType getProjectType(std::filesystem::path filePath)
     {
-        if(fs::is_regular_file(filePath)) {
+        std::error_code errorCode;
+        if(fs::is_regular_file(filePath, errorCode)) {
             auto extension = filePath.extension().u8string();
             if(extension.empty()) { return config::None; }
             if(extension[0] == u8'.') {
@@ -28,8 +29,8 @@ namespace
                 return projectExtensionAndType.at(extension);
             }
         }
-        else if(fs::is_directory(filePath)) {
-            for(const auto& entry : fs::directory_iterator(filePath)) {
+        else if(fs::is_directory(filePath, errorCode)) {
+            for(const auto& entry : utility::ListDirectory(filePath)) {
                 auto extension = entry.path().extension().u8string();
                 if(extension.empty()) { continue; }
                 if(extension[0] == u8'.') {
@@ -55,9 +56,10 @@ namespace
 
     std::vector<config::BasicData> fetchBasicDataInfo(fs::path analyzeDir)
     {
-        if(fs::exists(analyzeDir) == false) { return {}; }
+        std::error_code errorCode;
+        if(fs::exists(analyzeDir, errorCode) == false) { return {}; }
         std::vector<config::BasicData> result;
-        for(auto& file : fs::directory_iterator{analyzeDir}) 
+        for(auto& file : utility::ListDirectory(analyzeDir))
         {
             auto filePath = file.path();
             if(filePath.extension() != ".json") { continue; }
@@ -76,7 +78,8 @@ namespace
     }
     std::vector<config::ScriptData> fetchScriptDataInfo(fs::path analyzeDir)
     {
-        if(fs::exists(analyzeDir) == false) { return {}; }
+        std::error_code errorCode;
+        if(fs::exists(analyzeDir, errorCode) == false) { return {}; }
 
         auto scriptDir = analyzeDir / "Scripts";
         auto csv = scriptDir / "_list.csv";
@@ -89,7 +92,7 @@ namespace
 
             auto fileName = (row[0] + u8".rb");
             auto filePath = scriptDir / fileName;
-            if(fs::exists(filePath) == false) { continue; }
+            if(fs::exists(filePath, errorCode) == false) { continue; }
 
             config::ScriptData data{};
             data.filename = fileName;
@@ -126,7 +129,12 @@ config_writer::config_writer(std::filesystem::path gameProjpath)
     auto folderName = gameProjectPath.u8string().substr(lastSlashPos + 1);
 
     fs::path langscoreProj = gameProjpath.parent_path() / (folderName + u8"_langscore"s);
-    auto u8Path = fs::absolute(langscoreProj).u8string();
+    std::error_code errorCode;
+    auto absolutePath = fs::absolute(langscoreProj, errorCode);
+    if(utility::FileSystemFailed(errorCode, "absolute", langscoreProj)) {
+        absolutePath = langscoreProj;
+    }
+    auto u8Path = absolutePath.u8string();
     std::replace(u8Path.begin(), u8Path.end(), '\\', '/');
     this->langscoreProjectPath = u8Path;
 
@@ -142,8 +150,9 @@ bool langscore::config_writer::write()
         return false;
     }
 
+    std::error_code errorCode;
     fs::path gameFolderPath;
-    if(fs::is_regular_file(this->gameProjectPath)) {
+    if(fs::is_regular_file(this->gameProjectPath, errorCode)) {
         gameFolderPath = this->gameProjectPath.parent_path();
     }
     else {
@@ -151,9 +160,9 @@ bool langscore::config_writer::write()
     }
 
     this->langscoreProjectPath = gameFolderPath.u8string() + u8"_langscore"s;
-    if(fs::exists(this->langscoreProjectPath) == false)
-    {
-        fs::create_directory(this->langscoreProjectPath);
+    fs::create_directory(this->langscoreProjectPath, errorCode);
+    if(utility::FileSystemFailed(errorCode, "create_directory", this->langscoreProjectPath)) {
+        return false;
     }
 
     this->langscoreAnalyzeDirectorty = "./analyze";
@@ -161,7 +170,7 @@ bool langscore::config_writer::write()
     this->rpgMakerBasicData = ::fetchBasicDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
     this->rpgMakerScripts = ::fetchScriptDataInfo(this->langscoreProjectPath / this->langscoreAnalyzeDirectorty);
 
-    std::cout << "output folder " << this->langscoreProjectPath << std::endl;
+    std::cout << "output folder " << utility::toUtf8(this->langscoreProjectPath) << std::endl;
     std::vector<std::string> enableLanguages = {
         "ja","en","zh-cn","zh-tw","ko","es","de","fr","it","ru"
     };

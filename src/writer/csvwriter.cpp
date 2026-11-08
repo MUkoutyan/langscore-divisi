@@ -125,7 +125,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
 
 	if(mergeInfo.empty() == false)
 	{
-		std::cout << "Merge : " << sourceFilePath.filename() << std::endl;
+		std::cout << "Merge : " << utility::toUtf8(sourceFilePath.filename()) << std::endl;
 
 		std::for_each(mergeInfo.begin(), mergeInfo.end(), [](const auto& x)
 		{
@@ -186,16 +186,18 @@ ErrorStatus csvwriter::write(fs::path path, std::u8string defaultLanguage, Merge
 			outputCSVFile << "\n";
 			utility::u8stringlist rowtext = {convertCsvText(text.original)};
 			//ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
-			for(const auto& lang : text.translates)
+			for(const auto& lang : this->useLangs)
 			{
-                if(std::ranges::find(this->useLangs, lang.first) == this->useLangs.cend()) {
-                    continue;
-                }
-				if(defaultLanguage == lang.first && lang.second.empty()){
+				auto find_result = text.translates.find(lang);
+				if(find_result == text.translates.end()){
+                    rowtext.emplace_back(std::u8string{});
+					continue;
+				}
+				if(defaultLanguage == lang && (*find_result).second.empty()){
 					rowtext.emplace_back(convertCsvText(text.original));
 				}
 				else {
-					rowtext.emplace_back(convertCsvText(lang.second));
+					rowtext.emplace_back(convertCsvText((*find_result).second));
 				}
 			}
 
@@ -211,12 +213,14 @@ ErrorStatus csvwriter::write(fs::path path, std::u8string defaultLanguage, Merge
 			outputCSVFile << "\n";
 			utility::u8stringlist rowtext = {convertCsvText(text.original)};
 			//ヘッダーの作成方法がTranslateText依存なので、追加もそれに倣う
-			for(const auto& lang : text.translates)
+			for(const auto& lang : this->useLangs)
 			{
-                if(std::ranges::find(this->useLangs, lang.first) == this->useLangs.cend()) {
-                    continue;
-                }
-				rowtext.emplace_back(convertCsvText(lang.second));
+				auto find_result = text.translates.find(lang);
+				if(find_result == text.translates.end()){
+                    rowtext.emplace_back(std::u8string{});
+					continue;
+				}
+				rowtext.emplace_back(convertCsvText((*find_result).second));
 			}
 
 			writeU8String(outputCSVFile, utility::join(rowtext, delimiter));
