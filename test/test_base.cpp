@@ -343,6 +343,31 @@ TEST(Langscore_Csv, merge)
 	}
 }
 
+//改行コードが違っても同じ原文として扱い、同じ原文が複数あれば先頭の行に翻訳を入れる
+TEST(Langscore_Csv, mergeMatchesNormalizedOriginal)
+{
+	std::vector<std::u8string> langs{u8"ja"s};
+	test_reader reader(langs);
+	for(auto original : {u8"A\r\nB"s, u8"dup"s, u8"dup"s, u8"C"s}) {
+		reader.addTexts(TranslateText{original, langs});
+	}
+
+	auto sourcePath = fs::temp_directory_path() / "ls_merge_normalized.csv";
+	csvwriter::writePlain(sourcePath, {{u8"original"s, u8"ja"s}, {u8"A\nB"s, u8"訳AB"s}, {u8"dup"s, u8"訳dup"s}});
+
+	csvwriter writer(reader);
+	writer.setOverwriteMode(MergeTextMode::MergeKeepSource);
+	ASSERT_TRUE(writer.merge(sourcePath));
+	fs::remove(sourcePath);
+
+	auto& merged = writer.currentTexts();
+	ASSERT_EQ(merged.size(), 4);
+	EXPECT_EQ(merged[0].translates[u8"ja"], u8"訳AB"s);
+	EXPECT_EQ(merged[1].translates[u8"ja"], u8"訳dup"s);
+	EXPECT_EQ(merged[2].translates[u8"ja"], u8""s);
+	EXPECT_EQ(merged[3].translates[u8"ja"], u8""s);
+}
+
 // テスト用のヘルパー関数: 一時的なJSONファイルを作成する
 // テスト用のヘルパー関数: 一時的なJSONファイルを作成する
 std::filesystem::path createTempJsonFile(const nlohmann::json& jsonData, const std::string& filename) {

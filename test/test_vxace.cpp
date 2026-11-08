@@ -332,6 +332,294 @@ TEST_F(Langscore_VXAce_Divisi, WriteVXAceProject)
 	GTEST_SUCCEED();
 }
 
+//デバッグ用スクリプト Langscore_RemoteHub が、設定に合わせてプラグインの更新で langscore の下に追加・削除されるかを検証する
+TEST_F(Langscore_VXAce_Divisi, WriteRemoteHubScript)
+{
+	ClearGenerateFiles();
+	const fs::path configPath = "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json";
+	langscore::config::detachConfigFile();
+	langscore::divisi divisi("./", configPath);
+
+	fs::path scriptDataSrc("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts.rvdata2");
+	fs::path scriptDataDest("data/vxace/ソポァゼゾタダＡボマミ\\Data\\Scripts_backup.rvdata2");
+	if(fs::exists(scriptDataDest) == false) {
+		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
+	}
+
+	const auto SetEnableRemoteHub = [&configPath](bool enable) {
+		nlohmann::json json;
+		{
+			std::ifstream file(configPath);
+			file >> json;
+		}
+		json["Write"]["EnableRemoteHub"] = enable;
+		std::ofstream outFile(configPath);
+		outFile << json.dump(2);
+		outFile.close();
+		langscore::config::detachConfigFile();
+		langscore::config::attachConfigFile(configPath);
+	};
+	const auto FindScript = [](const std::vector<utility::u8stringlist>& list, std::u8string_view name) {
+		return std::find_if(list.cbegin(), list.cend(), [name](const auto& x) { return 1 < x.size() && x[1] == name; });
+	};
+
+	ASSERT_TRUE(divisi.analyze().valid());
+	SetEnableRemoteHub(true);
+	ASSERT_TRUE(divisi.updatePlugin().valid());
+	ASSERT_TRUE(divisi.updatePlugin().valid());
+
+	langscore::config config;
+	const auto scriptsPath = fs::path(config.langscoreAnalyzeDirectorty()) / "Scripts";
+	{
+		// langscore の直後に1つだけ入り、スクリプトのファイルが置かれる
+		auto scriptList = plaincsvreader{scriptsPath / "_list.csv"}.getPlainCsvTexts();
+		auto langscore = FindScript(scriptList, platform_base::Script_File_Name);
+		ASSERT_TRUE(langscore != scriptList.cend());
+		ASSERT_TRUE(langscore + 1 != scriptList.cend());
+		EXPECT_EQ((*(langscore + 1))[1], std::u8string{platform_base::RemoteHub_Script_File_Name});
+		EXPECT_EQ(std::count_if(scriptList.cbegin(), scriptList.cend(), [](const auto& x) { return 1 < x.size() && x[1] == platform_base::RemoteHub_Script_File_Name; }), 1);
+		EXPECT_TRUE(fs::exists(scriptsPath / ((*(langscore + 1))[0] + u8".rb"s)));
+	}
+
+	SetEnableRemoteHub(false);
+	ASSERT_TRUE(divisi.updatePlugin().valid());
+	{
+		auto scriptList = plaincsvreader{scriptsPath / "_list.csv"}.getPlainCsvTexts();
+		EXPECT_TRUE(FindScript(scriptList, platform_base::RemoteHub_Script_File_Name) == scriptList.cend());
+	}
+
+	fs::copy(scriptDataDest, scriptDataSrc, fs::copy_options::overwrite_existing);
+}
+
+//Langscore_RemoteHub の追加・削除で、ゲームのスクリプト (Data/Scripts.rvdata2) を壊さないかを検証する。
+//Scripts.rvdata2 を解析し直して、ゲームに書き込まれた内容を確かめる。
+// 1. 有効にすると、増えるのは Langscore_RemoteHub だけ。他のスクリプトの順番・ID・内容はそのまま
+// 2. ゲームのフォルダで変わるのは Data/Scripts.rvdata2 だけ
+// 3. 無効にすると、スクリプトは追加する前と同じになる
+TEST_F(Langscore_VXAce_Divisi, RemoteHub_KeepsGameScripts)
+{
+	ClearGenerateFiles();
+	const fs::path configPath = "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json";
+	const fs::path gameDir = "data/vxace/ソポァゼゾタダＡボマミ";
+	langscore::config::detachConfigFile();
+	langscore::divisi divisi("./", configPath);
+
+	fs::path scriptDataSrc = gameDir / "Data/Scripts.rvdata2";
+	fs::path scriptDataDest = gameDir / "Data/Scripts_backup.rvdata2";
+	if(fs::exists(scriptDataDest) == false) {
+		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
+	}
+	fs::copy(scriptDataDest, scriptDataSrc, fs::copy_options::overwrite_existing);
+
+	const auto IsRemoteHub = [](const auto& x) { return 1 < x.size() && x[1] == platform_base::RemoteHub_Script_File_Name; };
+	const auto ReadText = [](const fs::path& path) {
+		std::ifstream file(path, std::ios::binary);
+		std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+		std::erase(text, '\r');
+		return text;
+	};
+
+	SetEnableRemoteHubConfig(configPath, false);
+	ASSERT_TRUE(divisi.analyze().valid());
+	ASSERT_TRUE(divisi.updatePlugin().valid());
+	ASSERT_TRUE(divisi.analyze().valid());
+	langscore::config config;
+	const auto scriptsPath = fs::path(config.langscoreAnalyzeDirectorty()) / "Scripts";
+	const auto beforeScripts = SnapshotDirectory(scriptsPath);
+	const auto beforeList = plaincsvreader{scriptsPath / "_list.csv"}.getPlainCsvTexts();
+	const auto beforeGame = SnapshotDirectory(gameDir);
+	ASSERT_TRUE(std::none_of(beforeList.cbegin(), beforeList.cend(), IsRemoteHub));
+
+	// 1. 2.
+	SetEnableRemoteHubConfig(configPath, true);
+	ASSERT_TRUE(divisi.updatePlugin().valid());
+	EXPECT_EQ(DiffSnapshot(beforeGame, SnapshotDirectory(gameDir)), (std::set<std::u8string>{u8"Data/Scripts.rvdata2"}));
+	ASSERT_TRUE(divisi.analyze().valid());
+	{
+		auto list = plaincsvreader{scriptsPath / "_list.csv"}.getPlainCsvTexts();
+		auto hub = std::find_if(list.cbegin(), list.cend(), IsRemoteHub);
+		ASSERT_TRUE(hub != list.cend()) << "Langscore_RemoteHub is not written to Scripts.rvdata2";
+		ASSERT_TRUE(hub != list.cbegin());
+		EXPECT_EQ((*(hub - 1))[1], std::u8string{platform_base::Script_File_Name});
+		const auto hubFile = (*hub)[0] + u8".rb"s;
+		EXPECT_EQ(ReadText(scriptsPath / hubFile), ReadText("./resource/Langscore_RemoteHub.rb"));
+
+		auto listWithoutHub = list;
+		std::erase_if(listWithoutHub, IsRemoteHub);
+		EXPECT_EQ(listWithoutHub, beforeList) << "the other scripts were reordered or renamed";
+
+		auto scripts = SnapshotDirectory(scriptsPath);
+		scripts.erase(hubFile);
+		scripts.erase(u8"_list.csv");
+		auto expected = beforeScripts;
+		expected.erase(u8"_list.csv");
+		EXPECT_EQ(DiffSnapshot(expected, scripts), std::set<std::u8string>{}) << "the other scripts were modified";
+	}
+
+	// 3.
+	SetEnableRemoteHubConfig(configPath, false);
+	ASSERT_TRUE(divisi.updatePlugin().valid());
+	ASSERT_TRUE(divisi.analyze().valid());
+	EXPECT_EQ(DiffSnapshot(beforeScripts, SnapshotDirectory(scriptsPath)), std::set<std::u8string>{});
+
+	fs::copy(scriptDataDest, scriptDataSrc, fs::copy_options::overwrite_existing);
+}
+
+//スクリプトの一覧 (_list.csv) を書き換えてから Scripts.rvdata2 を作り直しても、先頭のスクリプトの中身が残ること。
+//_list.csv に BOM が付くと、rvcnv が先頭のスクリプトのIDを読み違え、中身の無いスクリプトとして圧縮していた
+TEST_F(Langscore_VXAce_Divisi, ScriptList_KeepsFirstScriptContent)
+{
+	ClearGenerateFiles();
+	const fs::path configPath = "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json";
+	const fs::path gameDir = "data/vxace/ソポァゼゾタダＡボマミ";
+	langscore::config::detachConfigFile();
+	langscore::divisi divisi("./", configPath);
+
+	fs::path scriptDataSrc = gameDir / "Data/Scripts.rvdata2";
+	fs::path scriptDataDest = gameDir / "Data/Scripts_backup.rvdata2";
+	if(fs::exists(scriptDataDest) == false) {
+		fs::copy(scriptDataSrc, scriptDataDest, fs::copy_options::overwrite_existing);
+	}
+	fs::copy(scriptDataDest, scriptDataSrc, fs::copy_options::overwrite_existing);
+
+	SetEnableRemoteHubConfig(configPath, false);
+	ASSERT_TRUE(divisi.analyze().valid());
+	langscore::config config;
+	const auto scriptsPath = fs::path(config.langscoreAnalyzeDirectorty()) / "Scripts";
+	const auto list = plaincsvreader{scriptsPath / "_list.csv"}.getPlainCsvTexts();
+	ASSERT_FALSE(list.empty());
+	const auto firstScript = scriptsPath / (list[0][0] + u8".rb"s);
+	{
+		std::ofstream file(firstScript, std::ios::binary);
+		file << "# first script\n";
+	}
+
+	//一覧を書き換える処理 (langscore と Langscore_RemoteHub の追加)
+	SetEnableRemoteHubConfig(configPath, true);
+	ASSERT_TRUE(divisi.updatePlugin().valid());
+	{
+		std::ifstream file(scriptsPath / "_list.csv", std::ios::binary);
+		char head[3] = {};
+		file.read(head, 3);
+		EXPECT_FALSE(head[0] == '\xEF' && head[1] == '\xBB' && head[2] == '\xBF') << "_list.csv has BOM";
+	}
+
+	ASSERT_TRUE(divisi.analyze().valid());
+	const auto scripts = SnapshotDirectory(scriptsPath);
+	EXPECT_EQ(std::count_if(scripts.begin(), scripts.end(), [](const auto& x) { return x.first.starts_with(u8"﻿"); }), 0);
+	ASSERT_TRUE(scripts.contains(list[0][0] + u8".rb"s));
+	EXPECT_EQ(scripts.at(list[0][0] + u8".rb"s), "# first script\n");
+
+	SetEnableRemoteHubConfig(configPath, false);
+	fs::copy(scriptDataDest, scriptDataSrc, fs::copy_options::overwrite_existing);
+}
+
+//言語パッチの書き出しが、通常の書き出しの各言語の列と同じ内容になるか
+//(CSVの調整とアクター名の追加を、全ファイルを書き終えてから行っても結果が変わらないこと)
+TEST_F(Langscore_VXAce_Divisi, LanguagePatch_MatchesNormalExport)
+{
+	const fs::path configPath = "data/vxace/ソポァゼゾタダＡボマミ_langscore/config.json";
+	const auto SetLanguagePatch = [&configPath](bool enable) {
+		nlohmann::json json;
+		{
+			std::ifstream file(configPath);
+			file >> json;
+		}
+		json["Write"]["EnableLanguagePatch"] = enable;
+		std::ofstream outFile(configPath);
+		outFile << json.dump(2);
+		outFile.close();
+		langscore::config::detachConfigFile();
+		langscore::config::attachConfigFile(configPath);
+	};
+	struct Restore { std::function<void()> f; ~Restore() { f(); } } restore{[&] { SetLanguagePatch(false); }};
+	const auto Export = [&configPath] {
+		langscore::config::detachConfigFile();
+		langscore::divisi divisi("./", configPath);
+		return divisi.analyze().valid() && divisi.exportCSV().valid();
+	};
+	const auto Count = [](const std::string& text, const std::string& word) {
+		size_t count = 0;
+		for(auto pos = text.find(word); pos != text.npos; pos = text.find(word, pos + word.size())) { ++count; }
+		return count;
+	};
+
+	ClearGenerateFiles();
+	SetLanguagePatch(false);
+	ASSERT_TRUE(Export());
+	std::u8string root;
+	const auto normalFolder = fs::path(langscore::config{}.exportDirectory(root)[0]);
+	const auto normal = SnapshotDirectory(normalFolder);
+	ASSERT_FALSE(normal.empty());
+	std::map<std::u8string, std::vector<utility::u8stringlist>> normalCsv;
+	for(const auto& [name, content] : normal) {
+		normalCsv[name] = plaincsvreader{normalFolder / name}.getPlainCsvTexts();
+	}
+	const auto defaultLanguage = utility::cnvStr<std::u8string>(langscore::config{}.defaultLanguage());
+	ASSERT_EQ(defaultLanguage, u8"ja"s);
+
+	//Vocab.rbの文字列は、既定言語の列に原文、他の言語の列にvocab.csvの翻訳が入る
+	{
+		const auto& scripts = normalCsv.at(u8"Scripts.csv");
+		ASSERT_FALSE(scripts.empty());
+		const auto Column = [&scripts](std::u8string lang) { return std::ranges::find(scripts[0], lang) - scripts[0].begin(); };
+		const auto ja = Column(u8"ja"), en = Column(u8"en");
+		ASSERT_LT(ja, scripts[0].size());
+		ASSERT_LT(en, scripts[0].size());
+		auto shopBuy = std::ranges::find_if(scripts, [ja](const auto& row) { return ja < row.size() && row[ja] == u8"購入する"; });
+		ASSERT_NE(shopBuy, scripts.end());
+		EXPECT_EQ((*shopBuy)[en], u8"Buy"s);
+		EXPECT_EQ(std::ranges::count_if(scripts, [ja](const auto& row) { return ja < row.size() && row[ja] == u8"Buy"; }), 0);
+	}
+
+	ClearGenerateFiles();
+	SetLanguagePatch(true);
+	ASSERT_TRUE(Export());
+	const auto langFolders = langscore::config{}.exportDirectoryWithLang(root);
+	ASSERT_EQ(langFolders.size(), 2);
+	std::map<fs::path, std::map<std::u8string, std::string>> patched;
+	for(const auto& [lang, folder] : langFolders) { patched[folder] = SnapshotDirectory(folder); }
+
+	size_t numMultiLine = 0;
+	for(const auto& [lang, folder] : langFolders)
+	{
+		const auto& files = patched[folder];
+		for(const auto& [name, content] : normal)
+		{
+			if(fs::path(name).extension() != ".csv") { continue; }
+			ASSERT_TRUE(files.contains(name)) << utility::toUtf8(fs::path(name)) << " / " << utility::toUtf8(lang);
+			const auto& normalRows = normalCsv.at(name);
+			const auto patchRows = plaincsvreader{fs::path(folder) / name}.getPlainCsvTexts();
+			ASSERT_FALSE(normalRows.empty());
+			ASSERT_EQ(patchRows.size(), normalRows.size()) << utility::toUtf8(fs::path(name));
+			const auto langColumn = std::ranges::find(normalRows[0], lang) - normalRows[0].begin();
+			ASSERT_LT(langColumn, normalRows[0].size());
+			EXPECT_EQ(patchRows[0], (utility::u8stringlist{u8"original"s, lang}));
+			for(size_t i = 1; i < normalRows.size(); ++i)
+			{
+				ASSERT_FALSE(patchRows[i].empty());
+				EXPECT_EQ(patchRows[i][0], normalRows[i][0]) << utility::toUtf8(fs::path(name)) << " row " << i;
+				//言語パッチのScripts.csvは、既定言語以外の列にも原文が入るため、通常の書き出しで空の箇所は比べない
+				if(langColumn >= normalRows[i].size() || normalRows[i].size() != normalRows[0].size()) { continue; }
+				const bool isPrefilledScript = name == u8"Scripts.csv" && lang != defaultLanguage && normalRows[i][langColumn].empty();
+				if(isPrefilledScript == false) {
+					EXPECT_EQ(patchRows[i][1], normalRows[i][langColumn]) << utility::toUtf8(fs::path(name)) << " / " << utility::toUtf8(lang) << " row " << i;
+				}
+			}
+			//読み込み時に\rは除かれるため、改行コードの調整はファイルの中身で比べる
+			EXPECT_EQ(Count(files.at(name), "\r\n"), Count(content, "\r\n")) << utility::toUtf8(fs::path(name)) << " / " << utility::toUtf8(lang);
+			numMultiLine += Count(content, "\r\n");
+		}
+	}
+	EXPECT_GT(numMultiLine, 0u) << "test data has no multi-line text";
+
+	//既存のCSVとのマージを通しても、内容が変わらないこと
+	ASSERT_TRUE(Export());
+	for(const auto& [lang, folder] : langFolders) {
+		EXPECT_TRUE(DiffSnapshot(patched[folder], SnapshotDirectory(folder)).empty()) << utility::toUtf8(lang);
+	}
+}
+
 TEST_F(Langscore_VXAce_Divisi, WriteVocab)
 {
 	ClearGenerateFiles();

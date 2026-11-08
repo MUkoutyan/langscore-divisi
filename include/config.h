@@ -135,6 +135,8 @@ namespace langscore
         bool enableTranslationDefLang();
 		bool overwriteLangscore();
 		bool overwriteLangscoreCustom();
+		//デバッグ用プラグイン Langscore_RemoteHub をゲームに入れるか
+		bool enableRemoteHub();
 		std::u8string outputTranslateFilePathForRPGMaker();
 		std::u8string packingInputDirectory();
         bool packingEnablePerLang();

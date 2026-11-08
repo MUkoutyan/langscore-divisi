@@ -1,5 +1,6 @@
 ﻿#include "csvreader.h"
 #include <fstream>
+#include <sstream>
 #include <ranges>
 #include <algorithm>
 
@@ -73,8 +74,10 @@ plaincsvreader::~plaincsvreader()
 
 std::vector<utility::u8stringlist> plaincsvreader::parse(std::filesystem::path path)
 {
-	std::ifstream file(path, std::ios::binary);
-	if(!file){ return {};  }
+	std::ifstream inputFile(path, std::ios::binary);
+	if(!inputFile){ return {};  }
+	//1文字ずつの読み取りと先読みの巻き戻しが多いため、メモリ上で解析する。
+	std::istringstream file(std::string{std::istreambuf_iterator<char>(inputFile), {}});
     // BOMチェックとスキップ
     if(file.peek() == 0xEF) {
         unsigned char bom[3];

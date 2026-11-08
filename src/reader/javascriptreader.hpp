@@ -110,6 +110,8 @@ public:
         //更新時の場合はここでlangscoreスクリプトが含まれている可能性がある
         if(fileName == u8"Langscore"){ return {}; }
         else if(fileName == u8"Langscore_Custom"){ return {}; }
+        //デバッグ用のプラグインは翻訳しない
+        else if(fileName == u8"Langscore_RemoteHub"){ return {}; }
 
         auto transTextList = convertScriptToCSV(path);
 

@@ -60,6 +60,7 @@ namespace langscore
 
         FillDefaultLanguageColumn,
         AddNewContentToEnd,
+        EnableRemoteHub,
 
         //=========================
         //必ず末尾に追加すること
@@ -121,7 +122,8 @@ namespace langscore
         MAKE_KEYVALUE(EnableTranslationDefLang),
         MAKE_KEYVALUE(ParameterText),
         MAKE_KEYVALUE(FillDefaultLanguageColumn),
-        MAKE_KEYVALUE(AddNewContentToEnd)
+        MAKE_KEYVALUE(AddNewContentToEnd),
+        MAKE_KEYVALUE(EnableRemoteHub)
     };
 
     static const char* configKey(JsonKey key)

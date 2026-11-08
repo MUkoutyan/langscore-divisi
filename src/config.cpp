@@ -301,6 +301,12 @@ bool config::overwriteLangscoreCustom()
         {key(JsonKey::Write), key(JsonKey::OverwriteLangscoreCustom)}, false);
 }
 
+bool config::enableRemoteHub()
+{
+    return pImpl->getNested(pImpl->json,
+        {key(JsonKey::Write), key(JsonKey::EnableRemoteHub)}, false);
+}
+
 config::ProjectType config::projectType()
 {
     if(pImpl->projectType != ProjectType::None) {

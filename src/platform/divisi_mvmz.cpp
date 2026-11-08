@@ -31,6 +31,7 @@ const static std::u8string tab = u8"\t"s;
 
 const static std::u8string langscorePluginDescription = u8"翻訳アプリLangscoreのRPGツクールMV/MZ用プラグインです。";
 const static std::u8string langscoreObserverPluginDescription = u8"翻訳アプリLangscoreの補助プラグインです。必ず全てのプラグインの先頭に配置して下さい。";
+const static std::u8string langscoreRemoteHubPluginDescription = u8"翻訳アプリLangscoreのデバッグ用プラグインです。テストプレイ中に翻訳ファイルの変更を反映します。";
 
 // JSONオブジェクトの中のテキストを再帰的に置換する関数
 static void replaceJsonValues(nlohmann::json& j, const std::vector<TranslateText>& replacementMap) 
@@ -302,6 +303,19 @@ ErrorStatus langscore::divisi_mvmz::updatePlugin()
             replaceLs = config.overwriteLangscore();
         }
         writeLangscorePlugin("Langscore_ObserverBridge.js", replaceLs);
+    }
+    {
+        //デバッグ用のプラグインは設定に合わせて置く・消す。置くときは常に最新にする
+        auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore_RemoteHub.js"s;
+        if(config.enableRemoteHub()) {
+            writeLangscorePlugin("Langscore_RemoteHub.js", true);
+        }
+        else if(fs::exists(outputScriptFilePath, errorCode)) {
+            std::cout << "remove Langscore_RemoteHub.js" << std::endl;
+            utility::removeReadOnly(outputScriptFilePath);
+            fs::remove(outputScriptFilePath, errorCode);
+            utility::FileSystemFailed(errorCode, "remove", outputScriptFilePath);
+        }
     }
     std::cout << "Update plugin done." << std::endl;
 
@@ -620,6 +634,7 @@ std::tuple<filelist, filelist, filelist> divisi_mvmz::fetchFilePathList(std::u8s
                 if((*itr)[1] == std::u8string_view{Script_File_Name}) { continue; }
                 else if((*itr)[1] == std::u8string_view{Custom_Script_File_Name}){ continue; }
             }
+            if(1 < itr->size() && (*itr)[1] == std::u8string_view{RemoteHub_Script_File_Name}) { continue; }
         }
 
         auto pos = std::distance(scriptCsv.cbegin(), itr);
@@ -714,18 +729,25 @@ void langscore::divisi_mvmz::writeFixedBasicData()
     if(config.exportByLanguage())
     {        
         const auto pair = config.exportDirectoryWithLang(root);
+        //書き出し側は読み取り結果をコピーして使うため、JSONの読み取りは全言語で1回だけ行う
+        //※fetchActorTextFromMapは.json(dataFileListと同じ内容)を期待するため
+        //  .jsonとなるpath.filenameを使用すること。
+        std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
+        for(auto& path : dataFileList)
+        {
+            std::ifstream loadFile(path);
+            nlohmann::json json;
+            loadFile >> json;
+            jsonreader_map[path.filename()] = std::make_unique<mvmz_jsonreader>(path, this->supportLangs, std::move(json));
+        }
+
         for(auto& [lang, translateFolder] : pair)
         {
-            std::unordered_map<fs::path, std::unique_ptr<readerbase>> jsonreader_map;
             for(auto& path : dataFileList)
             {
-                std::ifstream loadFile(path);
-                nlohmann::json json;
-                loadFile >> json;
-
                 auto csvFileName = path.filename();
                 csvFileName.make_preferred().replace_extension(".csv");
-                std::unique_ptr<readerbase> reader = std::make_unique<mvmz_jsonreader>(path, this->supportLangs, json);
+                const auto& reader = jsonreader_map.at(path.filename());
 
                 auto outputPath = translateFolder / csvFileName;
                 std::cout << "Write Fix Data CSV : " << utility::toUtf8(outputPath) << std::endl;
@@ -738,10 +760,6 @@ void langscore::divisi_mvmz::writeFixedBasicData()
                     .fillDefaultLanguageColumn = fillDefaultLanguageColumn
                 };
                 writeFixedTranslateText<csvwriter>(outputPath, reader, std::move(options));
-
-                //※fetchActorTextFromMapは.json(dataFileListと同じ内容)を期待するため
-                //  .jsonとなるpath.filenameを使用すること。
-                jsonreader_map[path.filename()] = std::move(reader);
             }
 
             this->fetchActorTextFromMap(translateFolder, dataFileList, jsonreader_map);
@@ -968,6 +986,8 @@ void divisi_mvmz::updatePluginInfo()
     std::vector<nlohmann::ordered_json> pluginList;
     bool findLangscorePluginInfo = false;
     bool findLangscoreObserverPluginInfo = false;
+    //Langscoreの位置が決まってから、その後ろに置き直す
+    nlohmann::ordered_json remoteHubPlugin;
     config config;
     const bool enableLangPatch = config.enableLanguagePatch();
     const bool enableTransDefLang = config.enableTranslationDefLang();
@@ -1029,6 +1049,10 @@ void divisi_mvmz::updatePluginInfo()
 
             findLangscoreObserverPluginInfo = true;
         }
+        else if(pluginName == "Langscore_RemoteHub") {
+            remoteHubPlugin = plugin;
+            continue;
+        }
         pluginList.emplace_back(plugin);
     }
 
@@ -1064,6 +1088,23 @@ void divisi_mvmz::updatePluginInfo()
             {"parameters", {}}
         };
         pluginList.insert(pluginList.begin(), std::move(newPlugin));
+    }
+
+    if(config.enableRemoteHub())
+    {
+        //Langscoreの翻訳を読み直すプラグインのため、Langscoreの後ろに置く。
+        //導入済みならユーザーが変えた内容（ON/OFFなど）は残す
+        if(remoteHubPlugin.is_null()) {
+            remoteHubPlugin = {
+                {"name", "Langscore_RemoteHub"},
+                {"status", true},
+                {"description", cnvStr<std::string>(langscoreRemoteHubPluginDescription)},
+                {"parameters", {}}
+            };
+        }
+        auto langscorePos = std::find_if(pluginList.begin(), pluginList.end(), [](const auto& p) { return p.value("name", ""s) == "Langscore"; });
+        if(langscorePos != pluginList.end()) { ++langscorePos; }
+        pluginList.insert(langscorePos, std::move(remoteHubPlugin));
     }
 
     std::stringstream formattedJson;

@@ -158,6 +158,27 @@ TEST_F(PlatformBaseTest, MeasureTextWidth_Emojis) {
     }
 }
 
+//読み込んだフォントを使い回しても、フォントやサイズを切り替えた結果が混ざらないこと
+TEST_F(PlatformBaseTest, MeasureTextWidth_SwitchFont) {
+    const auto otherFontPath = std::filesystem::path(TEST_DATA_SRC) / u8"LangscoreTestMV/fonts/mplus-1m-regular.ttf";
+    ASSERT_TRUE(std::filesystem::exists(otherFontPath));
+    const auto Widths = [](const auto& result) {
+        std::vector<int> widths;
+        for(const auto& pair : result) { widths.emplace_back(pair.second.right); }
+        return widths;
+    };
+    const std::u8string text = u8"AWiあ";
+
+    const auto first = Widths(this->measureTextWidth(text, kTestFontPath, 12));
+    ASSERT_EQ(first.size(), 4u);
+    EXPECT_EQ(Widths(this->measureTextWidth(text, otherFontPath, 12)).size(), 4u);
+    EXPECT_TRUE(this->measureTextWidth(text, u8"not_found.ttf", 12).empty());
+    const auto large = Widths(this->measureTextWidth(text, kTestFontPath, 24));
+    ASSERT_EQ(large.size(), 4u);
+    EXPECT_GT(large.back(), first.back());
+    EXPECT_EQ(Widths(this->measureTextWidth(text, kTestFontPath, 12)), first);
+}
+
 TEST_F(PlatformBaseTest, MeasureTextWidth_ControlCharacters) {
     std::u8string text = u8"Line1\nLine2\tEnd";
     int fontSize = 12;

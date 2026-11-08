@@ -13,6 +13,8 @@ namespace langscore
 	public:
 		constexpr static char8_t Script_File_Name[] = u8"langscore";
 		constexpr static char8_t Custom_Script_File_Name[] = u8"langscore_custom";
+		//デバッグ用のスクリプト。翻訳の対象にしない
+		constexpr static char8_t RemoteHub_Script_File_Name[] = u8"Langscore_RemoteHub";
 
         enum ValidateErrorType { Error, Warning };
 

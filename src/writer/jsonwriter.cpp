@@ -1,5 +1,6 @@
-// src/writer/jsonwriter.cpp
+ï»¿// src/writer/jsonwriter.cpp
 #include "jsonwriter.h"
+#include <unordered_map>
 #include "config.h"
 #include "utility.hpp"
 #include "../reader/csvreader.h"
@@ -18,7 +19,7 @@ bool jsonwriter::merge(std::filesystem::path sourceFilePath)
         return true;
     }
 
-    // ƒ\[ƒXƒtƒ@ƒCƒ‹‚©‚çJSON‚ğ“Ç‚İ‚Ş
+    // ã‚½ãƒ¼ã‚¹ãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰JSONã‚’èª­ã¿è¾¼ã‚€
     std::ifstream sourceFile(sourceFilePath);
     if(!sourceFile.good()) {
         std::cout << "Failed to open source file: " << utility::toUtf8(sourceFilePath) << std::endl;
@@ -34,13 +35,13 @@ bool jsonwriter::merge(std::filesystem::path sourceFilePath)
         return false;
     }
 
-    // JSON”z—ñ‚Å‚È‚¢ê‡‚ÍƒGƒ‰[
+    // JSONé…åˆ—ã§ãªã„å ´åˆã¯ã‚¨ãƒ©ãƒ¼
     if(!sourceJson.is_array()) {
         std::cout << "Source JSON is not an array" << std::endl;
         return false;
     }
 
-    // ƒ\[ƒXJSON‚©‚çTranslateTextƒIƒuƒWƒFƒNƒg‚É•ÏŠ·
+    // ã‚½ãƒ¼ã‚¹JSONã‹ã‚‰TranslateTextã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã«å¤‰æ›
     std::vector<TranslateText> sourceTranslates;
     for(const auto& item : sourceJson) {
         std::u8string original;
@@ -48,7 +49,7 @@ bool jsonwriter::merge(std::filesystem::path sourceFilePath)
             original = utility::cnvStr<std::u8string>(item["original"].get<std::string>());
         }
         else {
-            continue; // original‚ª‚È‚¢€–Ú‚ÍƒXƒLƒbƒv
+            continue; // originalãŒãªã„é …ç›®ã¯ã‚¹ã‚­ãƒƒãƒ—
         }
 
         TranslateText text(original, this->useLangs);
@@ -73,17 +74,17 @@ bool jsonwriter::merge(std::filesystem::path sourceFilePath)
         sourceTranslates.emplace_back(std::move(text));
     }
 
-    // ƒ\[ƒX‘¤‚ğ“K—p‚·‚éê‡‚Í’Pƒ‚Éã‘‚«
+    // ã‚½ãƒ¼ã‚¹å´ã‚’é©ç”¨ã™ã‚‹å ´åˆã¯å˜ç´”ã«ä¸Šæ›¸ã
     if(this->overwriteMode == MergeTextMode::AcceptSource) {
         this->texts = sourceTranslates;
         std::cout << "\tAcceptSource : " << std::endl;
         return true;
     }
 
-    // Œ¾ŒêƒŠƒXƒg‚Ìƒ}[ƒW
+    // è¨€èªãƒªã‚¹ãƒˆã®ãƒãƒ¼ã‚¸
     utility::u8stringlist enableLanguages;
     {
-        // AcceptSource,AcceptTargetˆÈŠO‚Ìê‡AŒ¾Œê‚Íí‚Éƒ}[ƒW‚·‚é
+        // AcceptSource,AcceptTargetä»¥å¤–ã®å ´åˆã€è¨€èªã¯å¸¸ã«ãƒãƒ¼ã‚¸ã™ã‚‹
         for(auto& pair : sourceTranslates.empty() ? this->texts[0].translates : sourceTranslates[0].translates) {
             enableLanguages.emplace_back(pair.first);
         }
@@ -98,68 +99,76 @@ bool jsonwriter::merge(std::filesystem::path sourceFilePath)
         std::ranges::sort(enableLanguages);
     }
 
-    // MergeKeepSource‚Ìê‡Aƒ\[ƒX‚ÌƒeƒLƒXƒg‚ğ—Dæ
+    //textså´ã®åŸæ–‡ã‹ã‚‰ä½ç½®ã‚’å¼•ã‘ã‚‹ã‚ˆã†ã«ã™ã‚‹ã€‚åŒã˜åŸæ–‡ãŒè¤‡æ•°ã‚ã‚Œã°å…ˆé ­ã‚’ä½¿ã†ã€‚
+    std::unordered_map<std::u8string, size_t> textIndex;
+    textIndex.reserve(this->texts.size());
+    for(size_t i = 0; i < this->texts.size(); ++i) {
+        textIndex.try_emplace(this->texts[i].original, i);
+    }
+    const auto FindText = [&](const auto& sourceText) {
+        auto it = textIndex.find(sourceText.original);
+        return it == textIndex.end() ? this->texts.end() : this->texts.begin() + it->second;
+    };
+
+    // MergeKeepSourceã®å ´åˆã€ã‚½ãƒ¼ã‚¹ã®ãƒ†ã‚­ã‚¹ãƒˆã‚’å„ªå…ˆ
     if(this->overwriteMode == MergeTextMode::MergeKeepSource) {
         for(auto& sourceText : sourceTranslates) {
-            auto r = std::find_if(this->texts.begin(), this->texts.end(), [&](const auto& x) {
-                return x.original == sourceText.original;
-                });
+            auto r = FindText(sourceText);
 
             if(r == this->texts.end()) {
-                // Œ»İ‚ÌƒeƒLƒXƒg‚É‘¶İ‚µ‚È‚¢ê‡‚Í’Ç‰Á
+                // ç¾åœ¨ã®ãƒ†ã‚­ã‚¹ãƒˆã«å­˜åœ¨ã—ãªã„å ´åˆã¯è¿½åŠ 
+                textIndex.try_emplace(sourceText.original, this->texts.size());
                 this->texts.emplace_back(sourceText);
                 continue;
             }
 
-            // Šù‘¶‚ÌƒeƒLƒXƒg‚ğã‘‚«
+            // æ—¢å­˜ã®ãƒ†ã‚­ã‚¹ãƒˆã‚’ä¸Šæ›¸ã
             *r = sourceText;
         }
     }
-    // ‚»‚êˆÈŠO‚Ìê‡iMergeKeepTarget, Bothj
+    // ãã‚Œä»¥å¤–ã®å ´åˆï¼ˆMergeKeepTarget, Bothï¼‰
     else {
         std::vector<TranslateText> textTobeAdded;
         for(auto& sourceText : sourceTranslates) {
-            auto r = std::find_if(this->texts.begin(), this->texts.end(), [&](const auto& x) {
-                return x.original == sourceText.original;
-                });
+            auto r = FindText(sourceText);
 
             if(r == this->texts.end()) {
-                // Œ»İ‚ÌƒeƒLƒXƒg‚É‘¶İ‚µ‚È‚¢ê‡‚Í’Ç‰ÁƒŠƒXƒg‚É“ü‚ê‚é
+                // ç¾åœ¨ã®ãƒ†ã‚­ã‚¹ãƒˆã«å­˜åœ¨ã—ãªã„å ´åˆã¯è¿½åŠ ãƒªã‚¹ãƒˆã«å…¥ã‚Œã‚‹
                 textTobeAdded.emplace_back(sourceText);
             }
-            // MergeKeepTarget‚Ìê‡‚ÍŠù‘¶ƒeƒLƒXƒg‚ğ—Dæ‚·‚é‚Ì‚Å‰½‚à‚µ‚È‚¢
-            // Both‚Ìê‡‚Í—¼•û‚ÌƒeƒLƒXƒg‚ğƒ}[ƒW‚·‚éˆ—‚ğ‚±‚±‚É’Ç‰Á
+            // MergeKeepTargetã®å ´åˆã¯æ—¢å­˜ãƒ†ã‚­ã‚¹ãƒˆã‚’å„ªå…ˆã™ã‚‹ã®ã§ä½•ã‚‚ã—ãªã„
+            // Bothã®å ´åˆã¯ä¸¡æ–¹ã®ãƒ†ã‚­ã‚¹ãƒˆã‚’ãƒãƒ¼ã‚¸ã™ã‚‹å‡¦ç†ã‚’ã“ã“ã«è¿½åŠ 
             else if(this->overwriteMode == MergeTextMode::Both) {
-                // Œ¾Œê‚²‚Æ‚Éƒ}[ƒW
+                // è¨€èªã”ã¨ã«ãƒãƒ¼ã‚¸
                 for(const auto& lang : enableLanguages) {
                     if(sourceText.translates.find(lang) != sourceText.translates.end() &&
                         !sourceText.translates.at(lang).empty()) {
 
                         if(r->translates.find(lang) != r->translates.end() &&
                             !r->translates.at(lang).empty()) {
-                            // —¼•û‚É–|–ó‚ª‚ ‚éê‡‚ÍA—¼•û•Û
+                            // ä¸¡æ–¹ã«ç¿»è¨³ãŒã‚ã‚‹å ´åˆã¯ã€ä¸¡æ–¹ä¿æŒ
                             r->translates[lang] = r->translates.at(lang) + u8"\n===\n" + sourceText.translates.at(lang);
                         }
                         else {
-                            // ƒ^[ƒQƒbƒg‚É–|–ó‚ª‚È‚¢ê‡‚Íƒ\[ƒX‚Ì–|–ó‚ğg—p
+                            // ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã«ç¿»è¨³ãŒãªã„å ´åˆã¯ã‚½ãƒ¼ã‚¹ã®ç¿»è¨³ã‚’ä½¿ç”¨
                             r->translates[lang] = sourceText.translates.at(lang);
                         }
                     }
                 }
 
-                // textType‚ª‹ó‚Ìê‡‚Ì‚İAƒ\[ƒX‚©‚ç•âŠ®
+                // textTypeãŒç©ºã®å ´åˆã®ã¿ã€ã‚½ãƒ¼ã‚¹ã‹ã‚‰è£œå®Œ
                 if(r->textType.empty() == false && sourceText.textType.empty() == false){
                     r->textType = sourceText.textType;
                 }
 
-                // code‚ª0‚Ìê‡‚Ì‚İAƒ\[ƒX‚©‚ç•âŠ®
+                // codeãŒ0ã®å ´åˆã®ã¿ã€ã‚½ãƒ¼ã‚¹ã‹ã‚‰è£œå®Œ
                 if(r->code == 0 && sourceText.code != 0) {
                     r->code = sourceText.code;
                 }
             }
         }
 
-        // ’Ç‰Á‘ÎÛ‚ÌƒeƒLƒXƒg‚ğƒ}[ƒW
+        // è¿½åŠ å¯¾è±¡ã®ãƒ†ã‚­ã‚¹ãƒˆã‚’ãƒãƒ¼ã‚¸
         std::move(textTobeAdded.begin(), textTobeAdded.end(), std::back_inserter(this->texts));
     }
 
@@ -286,10 +295,10 @@ ErrorStatus jsonwriter::writePlain(std::filesystem::path path, std::vector<utili
     nlohmann::json outputJson = nlohmann::json::array();
     
     if(textList.size() > 1) {
-        // ƒwƒbƒ_[s‚ğæ“¾
+        // ãƒ˜ãƒƒãƒ€ãƒ¼è¡Œã‚’å–å¾—
         auto headers = textList[0];
         
-        // ƒf[ƒ^s‚ğˆ—
+        // ãƒ‡ãƒ¼ã‚¿è¡Œã‚’å‡¦ç†
         for(size_t i = 1; i < textList.size(); i++) {
             nlohmann::json row = nlohmann::json::object();
             for(size_t j = 0; j < headers.size() && j < textList[i].size(); j++) {
@@ -298,7 +307,7 @@ ErrorStatus jsonwriter::writePlain(std::filesystem::path path, std::vector<utili
             outputJson.push_back(row);
         }
     } else if(textList.size() == 1) {
-        // 1s‚Ì‚İ‚Ìê‡‚Ìˆ—
+        // 1è¡Œã®ã¿ã®å ´åˆã®å‡¦ç†
         nlohmann::json row = nlohmann::json::object();
         for(const auto& item : textList[0]) {
             row.push_back(utility::cnvStr<std::string>(item));

@@ -9,7 +9,9 @@
         "test-mv-nwjs": "cross-env IS_MV=true IS_NWJS=true  PROJ_NAME=mv_test mocha Langscore_mvmz.test.js",
         "test-mv-browser": "cross-env IS_MV=true IS_NWJS=false PROJ_NAME=mv_test mocha Langscore_mvmz.test.js",
         "test-mz-nwjs": "cross-env IS_MZ=true IS_NWJS=true  PROJ_NAME=mz_test mocha Langscore_mvmz.test.js",
-        "test-mz-browser": "cross-env IS_MZ=true IS_NWJS=false PROJ_NAME=mz_test mocha Langscore_mvmz.test.js"
+        "test-mz-browser": "cross-env IS_MZ=true IS_NWJS=false PROJ_NAME=mz_test mocha Langscore_mvmz.test.js",
+        "test-remotehub-mv": "cross-env IS_MV=true PROJ_NAME=mv_test mocha --no-config --timeout 30000 --exit Langscore_RemoteHub.test.js",
+        "test-remotehub-mz": "cross-env IS_MZ=true PROJ_NAME=mz_test mocha --no-config --timeout 30000 --exit Langscore_RemoteHub.test.js"
     },
     "license": "ISC",
     "devDependencies": {

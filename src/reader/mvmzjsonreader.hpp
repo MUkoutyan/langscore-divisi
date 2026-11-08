@@ -236,6 +236,8 @@ namespace langscore
 		bool stackText;
 		std::u8string stackTextStr;
         std::u8string currentEventName;
+        //重複チェック用。原文 → textsの位置
+        std::unordered_map<std::u8string, size_t> textIndex;
 		DataType currentDataType;
 
 		void addText(const nlohmann::json& json, int code = 0)
@@ -283,13 +285,13 @@ namespace langscore
             t.textType.emplace_back(textTypeForMaker);
             textTypeForMaker = TranslateText::other;
 
-			auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
-				return x.original == t.original;
-			});
-			if(result == texts.end()){
+			auto [index, isNewText] = textIndex.try_emplace(t.original, texts.size());
+			if(isNewText){
 				texts.emplace_back(std::move(t));
+				return;
 			}
-            else if((code == mvmz_eventcode::ChangeActorName || code == mvmz_eventcode::ChangeActorNickname) && result->code == mvmz_eventcode::ShowChoices) {
+            auto result = texts.begin() + index->second;
+            if((code == mvmz_eventcode::ChangeActorName || code == mvmz_eventcode::ChangeActorNickname) && result->code == mvmz_eventcode::ShowChoices) {
                 //名前の変更・二つ名の変更の場合、選択肢の文章がある場合はcodeを上書きする。
                 result->code = code;
                 result->textType = t.textType;

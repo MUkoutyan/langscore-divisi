@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
 
 using namespace langscore;
 namespace fs = std::filesystem;
@@ -58,11 +59,15 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
         return replaced;
     };
 
-    const auto CompareText = [](const auto& x, const auto& y) 
-    {
-        auto x1 = utility::split(x, u8"\n"s);
-        auto y1 = utility::split(y, u8"\n"s);
-        return x1 == y1;
+    //texts側の原文を一度だけ正規化して索引にする。同じ原文が複数あれば先頭を使う。
+    std::unordered_map<std::u8string, size_t> textIndex;
+    textIndex.reserve(this->texts.size());
+    for(size_t i = 0; i < this->texts.size(); ++i) {
+        textIndex.try_emplace(AdjustText(this->texts[i].original), i);
+    }
+    const auto FindText = [&](const auto& sourceText) {
+        auto it = textIndex.find(AdjustText(sourceText.original));
+        return it == textIndex.end() ? this->texts.end() : this->texts.begin() + it->second;
     };
 
     std::vector<TranslateText> textTobeAdded;
@@ -77,9 +82,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
         for(auto& sourceText : sourceTranslates)
         {
             //source側に翻訳文があるケースが有るため、texts側をsourceで上書きする。
-            auto r = std::find_if(this->texts.begin(), this->texts.end(), [&](const auto& x) {
-                return CompareText(AdjustText(x.original), AdjustText(sourceText.original));
-            });
+            auto r = FindText(sourceText);
             if(r == this->texts.end())
             {
                 sourceText.isNewText = true;
@@ -94,9 +97,7 @@ bool csvwriter::merge(std::filesystem::path sourceFilePath)
     else {
         for(auto& sourceText : sourceTranslates)
         {
-            auto r = std::find_if(this->texts.begin(), this->texts.end(), [&](const auto& x) {
-                return CompareText(AdjustText(x.original), AdjustText(sourceText.original));
-            });
+            auto r = FindText(sourceText);
             if(r == this->texts.end()){
                 sourceText.isNewText = true;
                 textTobeAdded.emplace_back(sourceText);
@@ -230,14 +231,16 @@ ErrorStatus csvwriter::write(fs::path path, std::u8string defaultLanguage, Merge
 	return Status_Success;
 }
 
-ErrorStatus csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, MergeTextMode overwriteMode)
+ErrorStatus csvwriter::writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> textList, MergeTextMode overwriteMode, bool withBom)
 {
 	std::ofstream outputCSVFile(path, std::ios::binary);
 	if(outputCSVFile.bad()){ return ErrorStatus(ErrorStatus::Module::CSVWRITER, 1); }
 
     // ここでBOMを書き込む
-    const unsigned char bom[] = {0xEF, 0xBB, 0xBF};
-    outputCSVFile.write(reinterpret_cast<const char*>(bom), sizeof(bom));
+    if(withBom) {
+        const unsigned char bom[] = {0xEF, 0xBB, 0xBF};
+        outputCSVFile.write(reinterpret_cast<const char*>(bom), sizeof(bom));
+    }
 
 	for(auto& text : textList)
 	{
