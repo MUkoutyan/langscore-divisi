@@ -22,6 +22,8 @@
 #include <filesystem>
 #include <fstream>
 #include <thread>
+#include <map>
+#include <set>
 #include <chrono>
 
 #include "test_config.h"
@@ -159,4 +161,45 @@ static void attachConfigFile(fs::path config_path)
 
     langscore::config::detachConfigFile();
     langscore::config::attachConfigFile(fs::path(BINARY_DIRECTORY) / config_path);
+}
+
+//フォルダ以下の全ファイルの内容。キーはフォルダからの相対パス
+static std::map<std::u8string, std::string> SnapshotDirectory(const fs::path& root)
+{
+    std::map<std::u8string, std::string> result;
+    for(const auto& entry : fs::recursive_directory_iterator(root)) {
+        if(entry.is_regular_file() == false) { continue; }
+        std::ifstream file(entry.path(), std::ios::binary);
+        result[fs::relative(entry.path(), root).generic_u8string()] = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    }
+    return result;
+}
+
+//内容が違う、または片方にしか無いファイルの相対パス
+static std::set<std::u8string> DiffSnapshot(const std::map<std::u8string, std::string>& a, const std::map<std::u8string, std::string>& b)
+{
+    std::set<std::u8string> result;
+    for(const auto& [path, content] : a) {
+        auto other = b.find(path);
+        if(other == b.end() || other->second != content) { result.insert(path); }
+    }
+    for(const auto& [path, content] : b) {
+        if(a.contains(path) == false) { result.insert(path); }
+    }
+    return result;
+}
+
+static void SetEnableRemoteHubConfig(const fs::path& configPath, bool enable)
+{
+    nlohmann::json json;
+    {
+        std::ifstream file(configPath);
+        file >> json;
+    }
+    json["Write"]["EnableRemoteHub"] = enable;
+    std::ofstream outFile(configPath);
+    outFile << json.dump(2);
+    outFile.close();
+    langscore::config::detachConfigFile();
+    langscore::config::attachConfigFile(configPath);
 }

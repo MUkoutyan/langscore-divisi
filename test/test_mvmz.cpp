@@ -502,6 +502,182 @@ TEST(Langscore_MV_Divisi_Write, WritePluginJS_PreservesOtherPlugins)
     fs::copy(originJs, pluginJs, fs::copy_options::overwrite_existing);
 }
 
+//デバッグ用プラグイン Langscore_RemoteHub が、設定に合わせてプラグインの更新で追加・削除されるかを検証する。
+// 1. 有効にすると js/plugins に置かれ、plugins.js の Langscore の直後に入る
+// 2. 無効にするとファイルも plugins.js の項目も消え、他のプラグインは元に戻る
+TEST(Langscore_MV_Divisi_Write, WritePluginJS_RemoteHub)
+{
+    ClearGenerateFiles();
+    const auto jsDir = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins/js";
+    const auto pluginJs = jsDir / "plugins.js";
+    const auto originJs = jsDir / "plugins_origin.js";
+    const auto remoteHubJs = jsDir / "plugins/Langscore_RemoteHub.js";
+    if(fs::exists(originJs) == false) {
+        fs::copy(pluginJs, originJs);
+    }
+    fs::copy(originJs, pluginJs, fs::copy_options::overwrite_existing);
+
+    const auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins_langscore/config.json";
+    langscore::config::detachConfigFile();
+    checkAndCreateConfigFile("data/mv/LangscoreTest_ManyPlugins_langscore/config.json", "Game.rpgproject");
+    const auto SetEnableRemoteHub = [&configPath](bool enable) {
+        nlohmann::json json;
+        {
+            std::ifstream file(configPath);
+            file >> json;
+        }
+        json["Write"]["EnableRemoteHub"] = enable;
+        std::ofstream outFile(configPath);
+        outFile << json.dump(2);
+        outFile.close();
+        langscore::config::detachConfigFile();
+        langscore::config::attachConfigFile(configPath);
+    };
+
+    langscore::divisi divisi("./", configPath);
+    ASSERT_TRUE(divisi.analyze().valid());
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    const auto withoutRemoteHub = LoadPluginList(pluginJs);
+    ASSERT_FALSE(fs::exists(remoteHubJs));
+
+    // 1. 有効にすると Langscore の直後に入る。再実行しても重複しない
+    SetEnableRemoteHub(true);
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    EXPECT_TRUE(fs::exists(remoteHubJs));
+    const auto withRemoteHub = LoadPluginList(pluginJs);
+    ASSERT_EQ(withRemoteHub.size(), withoutRemoteHub.size() + 1);
+    size_t langscoreIndex = 0;
+    for(size_t i = 0; i < withRemoteHub.size(); ++i) {
+        if(withRemoteHub[i]["name"] == "Langscore") { langscoreIndex = i; }
+    }
+    ASSERT_LT(langscoreIndex + 1, withRemoteHub.size());
+    EXPECT_EQ(withRemoteHub[langscoreIndex + 1]["name"], "Langscore_RemoteHub");
+    EXPECT_EQ(withRemoteHub[langscoreIndex + 1]["status"], true);
+
+    // 2. 無効にすると消える
+    SetEnableRemoteHub(false);
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    EXPECT_FALSE(fs::exists(remoteHubJs));
+    EXPECT_EQ(LoadPluginList(pluginJs), withoutRemoteHub);
+
+    fs::copy(originJs, pluginJs, fs::copy_options::overwrite_existing);
+}
+
+//Langscore_RemoteHub の追加・削除で、ゲームプロジェクトの他のファイルを壊さないかを検証する。
+// 1. 有効にしたとき、変わるのは plugins.js と、置かれる Langscore_RemoteHub.js だけ。他のプラグインの項目もそのまま
+// 2. Langscore_RemoteHub.js は resource の内容と同じ
+// 3. ユーザーが Langscore_RemoteHub を OFF にしていたら、更新しても OFF のまま
+// 4. 無効にすると、ゲームプロジェクトは追加する前とバイト単位で同じになる
+TEST(Langscore_MV_Divisi_Write, RemoteHub_KeepsGameProject)
+{
+    ClearGenerateFiles();
+    const auto gameDir = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins";
+    const auto pluginJs = gameDir / "js/plugins.js";
+    const auto originJs = gameDir / "js/plugins_origin.js";
+    if(fs::exists(originJs) == false) {
+        fs::copy(pluginJs, originJs);
+    }
+    fs::copy(originJs, pluginJs, fs::copy_options::overwrite_existing);
+
+    const auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins_langscore/config.json";
+    langscore::config::detachConfigFile();
+    checkAndCreateConfigFile("data/mv/LangscoreTest_ManyPlugins_langscore/config.json", "Game.rpgproject");
+    SetEnableRemoteHubConfig(configPath, false);
+
+    langscore::divisi divisi("./", configPath);
+    ASSERT_TRUE(divisi.analyze().valid());
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    const auto before = SnapshotDirectory(gameDir);
+    const auto beforePlugins = LoadPluginList(pluginJs);
+
+    // 1. 2.
+    SetEnableRemoteHubConfig(configPath, true);
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    const auto enabled = SnapshotDirectory(gameDir);
+    EXPECT_EQ(DiffSnapshot(before, enabled), (std::set<std::u8string>{u8"js/plugins.js", u8"js/plugins/Langscore_RemoteHub.js"}));
+    {
+        std::ifstream resource(fs::path(BINARY_DIRECTORY) / "resource/Langscore_RemoteHub.js", std::ios::binary);
+        const std::string expected((std::istreambuf_iterator<char>(resource)), std::istreambuf_iterator<char>());
+        ASSERT_FALSE(expected.empty());
+        EXPECT_EQ(enabled.at(u8"js/plugins/Langscore_RemoteHub.js"), expected);
+    }
+    auto plugins = LoadPluginList(pluginJs);
+    ASSERT_FALSE(plugins.is_discarded()) << "plugins.js is broken";
+    auto withoutHub = plugins;
+    withoutHub.erase(std::remove_if(withoutHub.begin(), withoutHub.end(), [](const auto& p) { return p["name"] == "Langscore_RemoteHub"; }), withoutHub.end());
+    EXPECT_EQ(withoutHub, beforePlugins) << "other plugins were modified";
+
+    // 4. (ユーザーが plugins.js を触る前に) 無効にすると、バイト単位で元に戻る
+    SetEnableRemoteHubConfig(configPath, false);
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    EXPECT_EQ(DiffSnapshot(before, SnapshotDirectory(gameDir)), std::set<std::u8string>{});
+
+    // 3. ユーザーが OFF にした状態を再現する。plugins.js はテストが書き直すため、項目の内容で比べる
+    SetEnableRemoteHubConfig(configPath, true);
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    plugins = LoadPluginList(pluginJs);
+    for(auto& p : plugins) {
+        if(p["name"] == "Langscore_RemoteHub") { p["status"] = false; }
+    }
+    SavePluginList(pluginJs, plugins);
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    {
+        const auto updated = LoadPluginList(pluginJs);
+        auto hub = std::find_if(updated.begin(), updated.end(), [](const auto& p) { return p["name"] == "Langscore_RemoteHub"; });
+        ASSERT_TRUE(hub != updated.end());
+        EXPECT_EQ((*hub)["status"], false);
+        EXPECT_EQ(std::count_if(updated.begin(), updated.end(), [](const auto& p) { return p["name"] == "Langscore_RemoteHub"; }), 1);
+    }
+    SetEnableRemoteHubConfig(configPath, false);
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    EXPECT_EQ(LoadPluginList(pluginJs), beforePlugins);
+    EXPECT_FALSE(fs::exists(gameDir / "js/plugins/Langscore_RemoteHub.js"));
+
+    fs::copy(originJs, pluginJs, fs::copy_options::overwrite_existing);
+}
+
+//Langscore_RemoteHub.js が js/plugins にあっても、解析の対象にしない。
+//デバッグ用のプラグインのため、文章が翻訳ファイルに入ってはいけない
+TEST(Langscore_MV_Divisi_Analyze, RemoteHub_IsNotAnalyzed)
+{
+    ClearGenerateFiles();
+    const auto gameDir = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins";
+    const auto pluginJs = gameDir / "js/plugins.js";
+    const auto originJs = gameDir / "js/plugins_origin.js";
+    if(fs::exists(originJs) == false) {
+        fs::copy(pluginJs, originJs);
+    }
+    fs::copy(originJs, pluginJs, fs::copy_options::overwrite_existing);
+
+    const auto configPath = fs::path(BINARY_DIRECTORY) / "data/mv/LangscoreTest_ManyPlugins_langscore/config.json";
+    langscore::config::detachConfigFile();
+    checkAndCreateConfigFile("data/mv/LangscoreTest_ManyPlugins_langscore/config.json", "Game.rpgproject");
+    SetEnableRemoteHubConfig(configPath, true);
+
+    langscore::divisi divisi("./", configPath);
+    ASSERT_TRUE(divisi.analyze().valid());
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    ASSERT_TRUE(fs::exists(gameDir / "js/plugins/Langscore_RemoteHub.js"));
+
+    //プラグインが入った状態で解析し直す
+    ASSERT_TRUE(divisi.analyze().valid());
+    langscore::config config;
+    const auto analyzeDir = fs::path(config.langscoreAnalyzeDirectorty());
+    const auto scripts = SnapshotDirectory(analyzeDir);
+    bool foundScriptsJson = false;
+    for(const auto& [path, content] : scripts) {
+        if(path.ends_with(u8".lsjson") == false) { continue; }
+        foundScriptsJson |= path == u8"Scripts.lsjson";
+        EXPECT_EQ(content.find("Langscore_RemoteHub"), std::string::npos) << "Langscore_RemoteHub is analyzed in " << utility::toUtf8(path);
+    }
+    EXPECT_TRUE(foundScriptsJson);
+
+    SetEnableRemoteHubConfig(configPath, false);
+    ASSERT_TRUE(divisi.updatePlugin().valid());
+    fs::copy(originJs, pluginJs, fs::copy_options::overwrite_existing);
+}
+
 TEST(Langscore_MV_Divisi_Write, Multiple_Export)
 {
     ClearGenerateFiles();

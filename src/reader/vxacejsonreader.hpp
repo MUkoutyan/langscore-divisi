@@ -93,11 +93,7 @@ namespace langscore
             
             t.textType.emplace_back(textTypeForMaker);
             textTypeForMaker = TranslateText::other;
-			auto result = std::find_if(texts.begin(), texts.end(), [&t](const auto& x){
-				return x.original == t.original;
-			});
-
-			if(result == texts.end()){
+			if(textIndex.try_emplace(t.original, texts.size()).second){
 				texts.emplace_back(std::move(t));
 			}
 		}
@@ -322,6 +318,8 @@ namespace langscore
 		bool stackText;
         std::u8string textTypeForMaker = TranslateText::other;
 		std::u8string stackTextStr;
+        //重複チェック用。原文 → textsの位置
+        std::unordered_map<std::u8string, size_t> textIndex;
 
 	};
 }

@@ -44,6 +44,21 @@ namespace
     {
         return {ErrorStatus::Module::DIVISI_VXACE, 2, utility::toUtf8(path)};
     }
+
+    //_list.csv の他のスクリプトと重ならないIDを作る
+    size_t GenerateScriptID(const std::vector<utility::u8stringlist>& scriptListCsv)
+    {
+        std::vector<size_t> idList;
+        idList.reserve(scriptListCsv.size());
+        for(auto& row : scriptListCsv){ idList.emplace_back(std::stoll(utility::cnvStr<std::string>(row[0]))); }
+
+        std::mt19937 mt(std::random_device{}());
+        size_t num = 0;
+        do{
+            num = 10000ll + size_t(double(mt()) * double(99999999 - 10000) + 1.0) / (1.0 + double(mt.max()));
+        } while(std::find(idList.cbegin(), idList.cend(), num) != idList.cend());
+        return num;
+    }
 }
 
 const static std::u8string nl = u8"\n"s;
@@ -262,6 +277,7 @@ ErrorStatus langscore::divisi_vxace::updatePlugin()
     config config;
     std::tie(this->scriptFileList, std::ignore, std::ignore) = fetchFilePathList(config.langscoreAnalyzeDirectorty());
     rewriteScriptList(replaceScript);
+    rewriteRemoteHubScript(replaceScript);
     std::cout << "Done." << std::endl;
 
     if(replaceScript) {
@@ -482,6 +498,7 @@ std::tuple<utility::filelist, utility::filelist, utility::filelist> langscore::d
                     if((*itr)[1] == Script_File_Name) { continue; }
                     else if((*itr)[1] == Custom_Script_File_Name){ continue; }
                 }
+                if(1 < itr->size() && (*itr)[1] == RemoteHub_Script_File_Name) { continue; }
             }
 
             auto pos = std::distance(scriptCsv.cbegin(), itr);
@@ -564,7 +581,8 @@ void divisi_vxace::writeAnalyzedRvScript(std::u8string baseDirectory)
     {
         auto scriptFileName = x.stem().u8string();
         auto scriptName = GetScriptName(std::move(scriptFileName));
-        return scriptName == std::u8string_view{Script_File_Name} || scriptName == std::u8string_view{Custom_Script_File_Name};
+        return scriptName == std::u8string_view{Script_File_Name} || scriptName == std::u8string_view{Custom_Script_File_Name}
+            || scriptName == std::u8string_view{RemoteHub_Script_File_Name};
     });
     if(scriptList.end() != result_without_langscore_scripts) {
         scriptList.erase(result_without_langscore_scripts, scriptList.end());
@@ -640,11 +658,12 @@ void langscore::divisi_vxace::writeFixedBasicData()
 
             auto csvFilePath = path.filename();
             csvFilePath.make_preferred().replace_extension(".csv");
+            //書き出し側は読み取り結果をコピーして使うため、全言語で同じreaderを使う
+            std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, std::move(json));
             for(auto& [lang, translateFolder] : pair)
             {
                 auto outputPath = translateFolder / csvFilePath;
                 std::cout << "Write Fix Data CSV : " << utility::toUtf8(outputPath) << std::endl;
-                std::unique_ptr<readerbase> reader = std::make_unique<vxace_jsonreader>(this->supportLangs, json);
 
                 WriteOptions options = {
                     .defaultLanguage = this->defaultLanguage,
@@ -654,14 +673,17 @@ void langscore::divisi_vxace::writeFixedBasicData()
                     .fillDefaultLanguageColumn = false
                 };
                 writeFixedTranslateText<csvwriter>(outputPath, reader, std::move(options));
-                jsonreader_map[path.filename()] = std::move(reader);
-
-                // 言語ごとのフォルダに対して処理を行うため、u8stringlistに変換
-                utility::u8stringlist folderList = {translateFolder};
-                this->fetchActorTextFromMap(folderList, dataFileList, jsonreader_map);
-                this->adjustCSV(folderList, dataFileList);
             }
+            jsonreader_map[path.filename()] = std::move(reader);
         }
+
+        //全てのCSVを書き終えてから、言語フォルダ毎に1回だけ行う
+        utility::u8stringlist folderList;
+        for(auto& [lang, translateFolder] : pair) {
+            folderList.emplace_back(translateFolder);
+        }
+        this->fetchActorTextFromMap(folderList, dataFileList, jsonreader_map);
+        this->adjustCSV(folderList, dataFileList);
     }
     else
     {
@@ -732,7 +754,10 @@ void langscore::divisi_vxace::writeFixedRvScript()
             return u8""s;
         };
 
-    const auto ApplyVocabText = [&](rubyreader& reader)
+    //Vocab.rbの文字列は、予めvocab.csvの翻訳を入れておく。
+    //言語パッチでは後で原文がその言語の列に入るため、原文を翻訳に置き換える。
+    //通常の書き出しでは原文が既定言語の列に入るため、原文は残して各言語の列に翻訳を入れる。
+    const auto ApplyVocabText = [&](rubyreader& reader, bool replaceOriginal)
     {
         auto& scriptTrans = reader.curerntScriptTransMap();
         auto& transTexts = reader.currentTexts();
@@ -759,12 +784,17 @@ void langscore::divisi_vxace::writeFixedRvScript()
                     return x.original == texts.original;
                 });
                 if(result == vocabs.end()) { return; }
-                for(const auto& pair : texts.translates) {
+                for(auto& pair : texts.translates) {
                     if(pair.first == u8"ja") {
                         continue;
                     }
-                    if(result->translates.find(pair.first) != result->translates.end()) {
-                        texts.original = result->translates[pair.first];
+                    auto vocab = result->translates.find(pair.first);
+                    if(vocab == result->translates.end()) { continue; }
+                    if(replaceOriginal) {
+                        texts.original = vocab->second;
+                    }
+                    else {
+                        pair.second = vocab->second;
                     }
                 }
             });
@@ -784,7 +814,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
         {
             // 各言語向けのreaderを作成
             rubyreader reader({lang}, scriptList);
-            ApplyVocabText(reader);
+            ApplyVocabText(reader, true);
             reader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList, lang);
 
             auto outputPath = translateFolder / fs::path{"Scripts.csv"};
@@ -807,7 +837,7 @@ void langscore::divisi_vxace::writeFixedRvScript()
 
         // スクリプトの翻訳を書き込むCSVの書き出し
         rubyreader reader(this->supportLangs, scriptList);
-        ApplyVocabText(reader);
+        ApplyVocabText(reader, false);
 
         auto def_lang = utility::cnvStr<std::u8string>(config.defaultLanguage());
         reader.applyIgnoreScriptsAndSwapLineInfo(scriptInfoList, def_lang);
@@ -947,19 +977,7 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
     const auto lsAnalyzePath = fs::path(config.langscoreAnalyzeDirectorty());
 
     auto scriptListCsv = plaincsvreader{lsAnalyzePath / "Scripts/_list.csv"}.getPlainCsvTexts();
-    const auto GetID = [&scriptListCsv]()
-    {
-        std::vector<size_t> idList;
-        idList.reserve(scriptListCsv.size());
-        for(auto& row : scriptListCsv){ idList.emplace_back(std::stoll(utility::cnvStr<std::string>(row[0]))); }
-
-        std::mt19937 mt(std::random_device{}());
-        size_t num = 0;
-        do{
-            num = 10000ll + size_t(double(mt()) * double(99999999 - 10000) + 1.0) / (1.0 + double(mt.max()));
-        } while(std::find(idList.cbegin(), idList.cend(), num) != idList.cend());
-        return num;
-    };
+    const auto GetID = [&scriptListCsv]() { return GenerateScriptID(scriptListCsv); };
 
     //_list.csvの編集　追加する位置を見つける
     const auto FindInsertPos = [&](const utility::u8stringlist& scriptList){
@@ -1007,7 +1025,8 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
     }
 
     if(updateScriptCsv){
-        csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", std::move(scriptListCsv), MergeTextMode::AcceptTarget);
+        //BOM を付けると、rvcnv が最初のスクリプトのIDを読み違え、中身の無いスクリプトとして圧縮する
+        csvwriter::writePlain(lsAnalyzePath / "Scripts/_list.csv", std::move(scriptListCsv), MergeTextMode::AcceptTarget, false);
     }
 
     auto outputPath = lsAnalyzePath / "Scripts";
@@ -1087,6 +1106,48 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
         std::cout << "not replace langscore.rb. replace flag is false" << std::endl;
     }
 
+}
+
+//デバッグ用の Langscore_RemoteHub を、設定に合わせて langscore の下に入れる・外す。入れるときは常に最新にする
+void divisi_vxace::rewriteRemoteHubScript(bool& replaceScript)
+{
+    config config;
+    const auto scriptsPath = fs::path(config.langscoreAnalyzeDirectorty()) / "Scripts";
+    auto scriptListCsv = plaincsvreader{scriptsPath / "_list.csv"}.getPlainCsvTexts();
+    const auto IsScript = [](std::u8string_view name) {
+        return [name](const auto& x) { return 1 < x.size() && x[1] == name; };
+    };
+    auto remoteHub = std::find_if(scriptListCsv.begin(), scriptListCsv.end(), IsScript(RemoteHub_Script_File_Name));
+    std::error_code errorCode;
+
+    if(config.enableRemoteHub() == false)
+    {
+        if(remoteHub == scriptListCsv.end()) { return; }
+        std::cout << "Remove Langscore_RemoteHub" << std::endl;
+        const auto scriptPath = scriptsPath / ((*remoteHub)[0] + u8".rb"s);
+        fs::remove(scriptPath, errorCode);
+        utility::FileSystemFailed(errorCode, "remove", scriptPath);
+        scriptListCsv.erase(remoteHub);
+    }
+    else
+    {
+        if(remoteHub == scriptListCsv.end()) {
+            //langscore の翻訳を読み直すスクリプトのため、langscore の下に置く
+            auto pos = std::find_if(scriptListCsv.begin(), scriptListCsv.end(), IsScript(Script_File_Name));
+            if(pos != scriptListCsv.end()) { ++pos; }
+            auto id = utility::cnvStr<std::u8string>(std::to_string(GenerateScriptID(scriptListCsv)));
+            remoteHub = scriptListCsv.insert(pos, {std::move(id), RemoteHub_Script_File_Name});
+        }
+        const auto resourcePath = this->appPath.parent_path() / "resource" / u8"Langscore_RemoteHub.rb"s;
+        const auto scriptPath = scriptsPath / ((*remoteHub)[0] + u8".rb"s);
+        std::cout << "Copy Langscore_RemoteHub : From " << utility::toUtf8(resourcePath) << " To : " << utility::toUtf8(scriptPath) << std::endl;
+        fs::copy(resourcePath, scriptPath, fs::copy_options::overwrite_existing, errorCode);
+        utility::FileSystemFailed(errorCode, "copy", resourcePath);
+    }
+
+    //BOM を付けると、rvcnv が最初のスクリプトのIDを読み違え、中身の無いスクリプトとして圧縮する
+    csvwriter::writePlain(scriptsPath / "_list.csv", std::move(scriptListCsv), MergeTextMode::AcceptTarget, false);
+    replaceScript = true;
 }
 
 void divisi_vxace::fetchActorTextFromMap(const utility::u8stringlist& rewriteCSVFolder, const utility::filelist& list, const std::unordered_map<fs::path, std::unique_ptr<readerbase>>& jsonreader_map)

@@ -16,7 +16,8 @@ namespace langscore
         //現在のインスタンス内のテキストをベースとして、指定したCSVとマージする。
         bool merge(std::filesystem::path sourceFilePath) override;
         ErrorStatus write(std::filesystem::path path, std::u8string defaultLanguage, MergeTextMode overwriteMode = MergeTextMode::AcceptSource) override;
-        static ErrorStatus writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> text, MergeTextMode overwriteMode = MergeTextMode::AcceptSource);
+        //withBom: VXAce のスクリプト一覧 (Scripts/_list.csv) は rvcnv が BOM 無しで読み書きするため false にする
+        static ErrorStatus writePlain(std::filesystem::path path, std::vector<utility::u8stringlist> text, MergeTextMode overwriteMode = MergeTextMode::AcceptSource, bool withBom = true);
 
         static std::u8string convertCsvText(std::u8string_view text);
     protected:

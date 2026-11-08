@@ -182,7 +182,8 @@ endif()
 
 # --- VXAce (Game.exe / RGSS3 を起動して実機上で実行する) --------------------
 if(Python3_Interpreter_FOUND AND HAVE_TEST_DATA)
-    foreach(VARIANT default deflang patch)
+    # remotehub は Langscore_RemoteHub のテスト。一時フォルダへコピーしたプロジェクトで実行する
+    foreach(VARIANT default deflang patch remotehub)
         add_test(NAME vxace_${VARIANT}
             COMMAND ${Python3_EXECUTABLE} run_vxace_test.py ${VARIANT}
             WORKING_DIRECTORY ${PLUGIN_DIR})
@@ -217,6 +218,16 @@ if(NPM_EXECUTABLE AND HAVE_TEST_DATA)
                 TIMEOUT 600)
             list(APPEND DATA_TESTS ${T})
         endforeach()
+
+        # Langscore_RemoteHub は NW.js のテストプレイ専用。テスト用プロジェクトを一時フォルダへコピーして使う
+        set(T plugin_${PROJ}_remotehub)
+        add_test(NAME ${T} COMMAND ${NPM_EXECUTABLE} run test-remotehub-${PROJ}
+            WORKING_DIRECTORY ${PLUGIN_DIR})
+        set_tests_properties(${T} PROPERTIES
+            FIXTURES_REQUIRED plugin_sync
+            RESOURCE_LOCK ${PROJ}_test_project
+            TIMEOUT 600)
+        list(APPEND DATA_TESTS ${T})
     endforeach()
 endif()
 

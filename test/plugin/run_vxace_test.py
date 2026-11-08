@@ -9,11 +9,14 @@ langscore.rb の設定値はスクリプト内の定数のため、設定ごと�
 
     python run_vxace_test.py            全設定
     python run_vxace_test.py default    既定設定のみ (default / deflang / patch)
+    python run_vxace_test.py remotehub  Langscore_RemoteHub のテスト (一時フォルダへコピーしたプロジェクトで実行)
 """
+import hashlib
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
 from internal import test_core
@@ -28,6 +31,8 @@ for stream in (sys.stdout, sys.stderr):
 PLUGIN_DIR   = os.path.dirname(os.path.abspath(__file__))
 TEST_SCRIPT  = os.path.join(PLUGIN_DIR, "vxace", "ls_realtest.rb")
 COMPRESS_RB  = os.path.join(PLUGIN_DIR, "vxace", "compress.rb")
+REMOTEHUB_RB   = os.path.join(PLUGIN_DIR, "..", "..", "resource", "Langscore_RemoteHub.rb")
+REMOTEHUB_TEST = os.path.join(PLUGIN_DIR, "vxace", "ls_remotehub_test.rb")
 RESULT_NAME  = "ls_test_result.txt"
 GAME_TIMEOUT = 120
 
@@ -118,6 +123,68 @@ def run_variant(project, name, sync_args, needs_patch_folders):
             os.remove(result_path)
 
 
+def snapshot(root):
+    """フォルダ以下の全ファイルの内容のハッシュ。キーはフォルダからの相対パス"""
+    result = {}
+    for folder, _, files in os.walk(root):
+        for name in files:
+            path = os.path.join(folder, name)
+            with open(path, "rb") as f:
+                result[os.path.relpath(path, root).replace(os.sep, "/")] = hashlib.sha1(f.read()).hexdigest()
+    return result
+
+
+def changed_files(before, after):
+    return sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+
+
+def run_remotehub(project):
+    """Langscore_RemoteHub.rb をテストプレイで動かす。
+    翻訳ファイルを書き換えるテストがあるため、ゲームと Langscore のプロジェクトを一時フォルダへコピーして使う。
+    実行後、ゲームのプロジェクトと Langscore のプロジェクトの内容が変わっていないかを確かめる。"""
+    print("[remotehub]")
+    sync = run(["node", os.path.join(PLUGIN_DIR, "sync_vxace.js")], cwd=PLUGIN_DIR)
+    if sync.returncode != 0:
+        raise RuntimeError(f"sync_vxace.js failed: {sync.stderr.strip()}")
+
+    temp = tempfile.mkdtemp(prefix="ls_remotehub_")
+    try:
+        name = os.path.basename(project)
+        game = os.path.join(temp, name)
+        langscore = os.path.join(temp, name + "_langscore")
+        shutil.copytree(project, game)
+        os.makedirs(langscore)
+        shutil.copy(os.path.join(os.path.dirname(project), name + "_langscore", "config.json"), langscore)
+
+        # Langscore_RemoteHub は langscore の下に置くスクリプトのため、テストと一緒に Main の直前へ入れる
+        inject = os.path.join(temp, "inject.rb")
+        with open(inject, "wb") as out:
+            for path in (REMOTEHUB_RB, REMOTEHUB_TEST):
+                with open(path, "rb") as f:
+                    out.write(f.read() + b"\n")
+        build_scripts(game, inject)
+
+        before_game, before_langscore = snapshot(game), snapshot(langscore)
+        run([os.path.join(game, "Game.exe"), "test"], cwd=game, timeout=GAME_TIMEOUT)
+        results = read_results(game)
+        os.remove(os.path.join(game, RESULT_NAME))
+
+        # Game.ini には langscore.rb が選んだ言語を書き戻すため除く (Langscore_RemoteHub の処理ではない)
+        changed = [f for f in changed_files(before_game, snapshot(game)) if f != "Game.ini"]
+        results.append(("NG" if changed else "OK", "プロジェクトを書き換えないこと",
+                        "ゲームのプロジェクトの内容が変わらないこと", ", ".join(changed)))
+
+        changed = changed_files(before_langscore, snapshot(langscore))
+        outside = [f for f in changed if not f.startswith("Langscore_RemoteHub/")]
+        ok = not outside and "Langscore_RemoteHub/pid" in changed
+        results.append(("OK" if ok else "NG", "プロジェクトを書き換えないこと",
+                        "Langscore のプロジェクトでは Langscore_RemoteHub フォルダ以外を書き換えないこと",
+                        "" if ok else f"changed: {', '.join(changed)}"))
+        return results
+    finally:
+        shutil.rmtree(temp, ignore_errors=True)
+
+
 def restore_project(project, game_ini_backup):
     """Game.ini (言語設定が書き戻される) とテスト用セーブを元に戻す。"""
     if game_ini_backup is not None:
@@ -154,7 +221,8 @@ def print_summary(results):
 def main():
     selection = [a for a in sys.argv[1:] if not a.startswith("-")]
     variants = [v for v in VARIANTS if not selection or v[0] in selection]
-    if not variants:
+    with_remotehub = not selection or "remotehub" in selection
+    if not variants and not with_remotehub:
         print(f"unknown variant: {selection}")
         return False
 
@@ -166,6 +234,8 @@ def main():
     try:
         for name, args, patch in variants:
             results += run_variant(project, name, args, patch)
+        if with_remotehub:
+            results += run_remotehub(project)
     except Exception as e:
         print(f"Error: {e}")
         results.append(("NG", "runner", "(setup)", str(e)))
