@@ -835,27 +835,57 @@ bool langscore::platform_base::validateTexts(const std::vector<ValidateTextInfo>
     return true;
 }
 
+namespace
+{
+    //文章ごとにフォントを読み直すと遅いため、直前に使ったフォントを残しておく。
+    //FreeTypeはスレッド間で共有できないため、スレッド毎に持つ。
+    struct FontCache
+    {
+        FT_Library library = nullptr;
+        FT_Face face = nullptr;
+        fs::path path;
+        std::vector<std::uint8_t> data; //faceが使うため、FT_Done_Faceまで残す
+
+        ~FontCache() {
+            if(face) { FT_Done_Face(face); }
+            if(library) { FT_Done_FreeType(library); }
+        }
+
+        FT_Face load(const fs::path& fontPath)
+        {
+            if(face && path == fontPath) { return face; }
+            if(face) {
+                FT_Done_Face(face);
+                face = nullptr;
+            }
+            path.clear();
+
+            // FreeTypeライブラリを初期化
+            if(library == nullptr && FT_Init_FreeType(&library)) {
+                library = nullptr;
+                std::cerr << "Could not initialize FreeType library" << std::endl;
+                return nullptr;
+            }
+
+            //FT_New_Face は Windows ではパスを ANSI コードページとして開くため、ファイルはパスのまま読み、メモリから渡す。
+            data = utility::getFileData(fontPath);
+            if(data.empty() || FT_New_Memory_Face(library, data.data(), static_cast<FT_Long>(data.size()), 0, &face)) {
+                face = nullptr;
+                std::cerr << "Could not load font" << std::endl;
+                return nullptr;
+            }
+            path = fontPath;
+            return face;
+        }
+    };
+}
+
 //freeTypeを使用して、文字の横幅を計測する。
 std::vector<std::pair<std::u8string, platform_base::TextHorizontalLength>> platform_base::measureTextWidth(std::u8string baseText, const std::filesystem::path& fontPath, int fontSize) const
 {
-    FT_Library library;
-    FT_Face face;
-
-    // FreeTypeライブラリを初期化
-    if(FT_Init_FreeType(&library)) {
-        std::cerr << "Could not initialize FreeType library" << std::endl;
-        return {};
-    }
-
-    // フォントファイルをロード (例: Arial.ttf)
-    //FT_New_Face は Windows ではパスを ANSI コードページとして開くため、ファイルはパスのまま読み、メモリから渡す。
-    //fontData は FT_Done_Face まで残す
-    const auto fontData = utility::getFileData(fontPath);
-    if(fontData.empty() || FT_New_Memory_Face(library, fontData.data(), static_cast<FT_Long>(fontData.size()), 0, &face)) {
-        std::cerr << "Could not load font" << std::endl;
-        FT_Done_FreeType(library);
-        return {};
-    }
+    thread_local FontCache fontCache;
+    FT_Face face = fontCache.load(fontPath);
+    if(face == nullptr) { return {}; }
 
     // フォントサイズを設定 (単位: 1/64ピクセル)
     FT_Set_Pixel_Sizes(face, 0, fontSize); // 高さ48ピクセルに設定
@@ -880,7 +910,8 @@ std::vector<std::pair<std::u8string, platform_base::TextHorizontalLength>> platf
             icu::UnicodeString charStr(cp);
 
             //std::u32string utf32Text = utf8ToUtf32(utf8Char);
-            if(FT_Load_Char(face, charStr.char32At(0), FT_LOAD_RENDER)) {
+            //横幅(advance)だけを使うため、描画(FT_LOAD_RENDER)は行わない。advanceの値は変わらない。
+            if(FT_Load_Char(face, charStr.char32At(0), FT_LOAD_DEFAULT)) {
                 std::cerr << "Could not load character " << int(cp) << std::endl;
                 continue;
             }
@@ -896,10 +927,6 @@ std::vector<std::pair<std::u8string, platform_base::TextHorizontalLength>> platf
             left = right;
         }
     }
-
-    // リソースを解放
-    FT_Done_Face(face);
-    FT_Done_FreeType(library);
 
     return characters;
 }
