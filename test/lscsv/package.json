@@ -12,5 +12,9 @@
     "scripts": {
         "test": "mocha lscsv.test.js"
     },
-    "private": true
+    "private": true,
+    "overrides": {
+        "glob": "^14.0.4",
+        "minimatch": "^11.0.5"
+    }
 }
