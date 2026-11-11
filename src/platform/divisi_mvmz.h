@@ -34,8 +34,8 @@ namespace langscore
 		void adjustCSV(const std::u8string& rewriteCSVFolder, const utility::filelist& list);
 		bool adjustCSVCore(std::vector<utility::u8stringlist>& plain_csv);
 
-        void writeLangscorePlugin(std::filesystem::path fileName, bool replaceLs);
-		void updatePluginInfo();
+        bool writeLangscorePlugin(std::filesystem::path fileName, bool replaceLs);
+		bool updatePluginInfo();
 		utility::u8stringlist formatSystemVariable(std::filesystem::path path);
 
         std::filesystem::path getGameProjectFontDirectory() const override;

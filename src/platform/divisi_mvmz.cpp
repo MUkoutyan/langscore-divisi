@@ -294,7 +294,9 @@ ErrorStatus langscore::divisi_mvmz::updatePlugin()
         if(replaceLs == false) {
             replaceLs = config.overwriteLangscore();
         }
-        writeLangscorePlugin("Langscore.js", replaceLs);
+        if(writeLangscorePlugin("Langscore.js", replaceLs) == false) { 
+            return FileSystemError(this->currentGameProjectPath / u8"js/plugins.js"s); 
+        }
     }
     {
         auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore_ObserverBridge.js"s;
@@ -302,13 +304,17 @@ ErrorStatus langscore::divisi_mvmz::updatePlugin()
         if(replaceLs == false) {
             replaceLs = config.overwriteLangscore();
         }
-        writeLangscorePlugin("Langscore_ObserverBridge.js", replaceLs);
+        if(writeLangscorePlugin("Langscore_ObserverBridge.js", replaceLs) == false) { 
+            return FileSystemError(this->currentGameProjectPath / u8"js/plugins.js"s); 
+        }
     }
     {
         //デバッグ用のプラグインは設定に合わせて置く・消す。置くときは常に最新にする
         auto outputScriptFilePath = this->currentGameProjectPath / u8"js/plugins/Langscore_RemoteHub.js"s;
         if(config.enableRemoteHub()) {
-            writeLangscorePlugin("Langscore_RemoteHub.js", true);
+            if(writeLangscorePlugin("Langscore_RemoteHub.js", true) == false) { 
+                return FileSystemError(this->currentGameProjectPath / u8"js/plugins.js"s); 
+            }
         }
         else if(fs::exists(outputScriptFilePath, errorCode)) {
             std::cout << "remove Langscore_RemoteHub.js" << std::endl;
@@ -886,7 +892,7 @@ void langscore::divisi_mvmz::writeFixedScript()
 
 
 
-void langscore::divisi_mvmz::writeLangscorePlugin(std::filesystem::path fileName, bool replaceLs)
+bool langscore::divisi_mvmz::writeLangscorePlugin(std::filesystem::path fileName, bool replaceLs)
 {
     config config;
     //Langscore.jsの出力
@@ -925,10 +931,10 @@ void langscore::divisi_mvmz::writeLangscorePlugin(std::filesystem::path fileName
     }
 
     //plugin.jsの更新
-    updatePluginInfo();
+    return updatePluginInfo();
 }
 
-void divisi_mvmz::updatePluginInfo()
+bool divisi_mvmz::updatePluginInfo()
 {
     std::cout << "update plugin info" << std::endl;
     
@@ -940,7 +946,7 @@ void divisi_mvmz::updatePluginInfo()
 
     if(content.empty()){
         std::cout << "plugins.js was empty" << std::endl;
-        return;
+        return true;
     }
 
     std::size_t startPos = content.find('[');
@@ -1121,10 +1127,18 @@ var $plugins =
     }
     formattedJson << "\n];\n";
 
-    // ファイルに書き戻す
-    std::ofstream outFile(this->currentGameProjectPath / u8"js/plugins.js"s);
+    //上書きしてよいかはアプリが確認済みのため、読み取り専用でも上書きする
+    utility::removeReadOnly(pluginsPath);
+    std::ofstream outFile(pluginsPath, std::ios_base::trunc);
     outFile << formattedJson.str();
     outFile.close();
+    
+    //Langscoreをプラグイン一覧に書き出せない場合、ゲームで翻訳が使われないため失敗として返す。
+    if(outFile.fail()) {
+        std::cout << "Error : cannot write " << utility::toUtf8(pluginsPath) << std::endl;
+        return false;
+    }
+    return true;
 }
 
 utility::u8stringlist divisi_mvmz::formatSystemVariable(std::filesystem::path path)

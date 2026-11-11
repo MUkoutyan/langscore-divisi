@@ -997,19 +997,6 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
     auto scriptFileNameList = GetScriptFileName(config, {Script_File_Name, Custom_Script_File_Name});
 
     bool updateScriptCsv = false;
-    if(scriptFileNameList[1] == u8""){
-        auto lsCustomScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
-        scriptFileNameList[1] = lsCustomScriptID;
-        auto itr = FindInsertPos({u8"( ここに追加 )"s, u8"▼ メイン"s, u8"Main"s});
-        if(itr == scriptListCsv.cend()){
-            itr = scriptListCsv.cbegin();
-        }
-        else{
-            itr--;  //ヒットした位置の一つ手前に挿入
-        }
-        scriptListCsv.insert(itr, {lsCustomScriptID, Custom_Script_File_Name});
-        updateScriptCsv = true;
-    }
     if(scriptFileNameList[0] == u8""){
         auto lsScriptID = utility::cnvStr<std::u8string>(std::to_string(GetID()));
         scriptFileNameList[0] = lsScriptID;
@@ -1022,6 +1009,33 @@ void divisi_vxace::rewriteScriptList(bool& replaceScript, bool forceUpdate)
         }
         scriptListCsv.insert(itr, {lsScriptID, Script_File_Name});
         updateScriptCsv = true;
+    }
+
+    //langscore_custom は langscore の Langscore モジュールに定義を足すため、langscore のすぐ下に置く。
+    //上にあるとゲームの起動時に NameError になる。以前の divisi が上に入れたものもここで入れ替える
+    const auto IsScript = [](std::u8string_view name) {
+        return [name](const auto& x) { return 1 < x.size() && x[1] == name; };
+    };
+    {
+        auto langscorePos = std::find_if(scriptListCsv.begin(), scriptListCsv.end(), IsScript(Script_File_Name));
+        auto customPos = std::find_if(scriptListCsv.begin(), scriptListCsv.end(), IsScript(Custom_Script_File_Name));
+        const bool isPlacedBelowLangscore = langscorePos != scriptListCsv.end() && customPos == langscorePos + 1;
+        if(isPlacedBelowLangscore == false)
+        {
+            utility::u8stringlist customRow;
+            if(customPos == scriptListCsv.end()) {
+                scriptFileNameList[1] = utility::cnvStr<std::u8string>(std::to_string(GetID()));
+                customRow = {scriptFileNameList[1], Custom_Script_File_Name};
+            }
+            else {
+                customRow = std::move(*customPos);
+                scriptListCsv.erase(customPos);
+            }
+            langscorePos = std::find_if(scriptListCsv.begin(), scriptListCsv.end(), IsScript(Script_File_Name));
+            if(langscorePos != scriptListCsv.end()) { ++langscorePos; }
+            scriptListCsv.insert(langscorePos, std::move(customRow));
+            updateScriptCsv = true;
+        }
     }
 
     if(updateScriptCsv){
