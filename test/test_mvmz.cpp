@@ -1071,6 +1071,32 @@ TEST(Langscore_MZ_MVMZJsonReader, StackTextProcessing)
     EXPECT_TRUE(foundChoices) << "Choices not found";
 }
 
+TEST(Langscore_MZ_MVMZJsonReader, SpeakerName)
+{
+    //文章 → 名前ボックス付きの文章 の順で、名前ボックスが直前の文章の後に抽出されるかを確認する。
+    std::u8string jsonText = u8R"({"events":[null,{"name":"EV001","pages":[{"list":[
+        {"code":101,"indent":0,"parameters":["",0,0,2,""]},
+        {"code":401,"indent":0,"parameters":["前の文章"]},
+        {"code":101,"indent":0,"parameters":["",0,0,2,"ディル"]},
+        {"code":401,"indent":0,"parameters":["ディルの文章"]},
+        {"code":0,"indent":0,"parameters":[]}
+    ]}]}]})";
+    auto jsonData = nlohmann::json::parse(std::string(jsonText.begin(), jsonText.end()));
+
+    std::vector<std::u8string> useLangs = {u8"en", u8"ja"};
+    langscore::mvmz_jsonreader reader("Map001.json", useLangs, jsonData);
+    const auto& texts = reader.currentTexts();
+
+    ASSERT_EQ(texts.size(), 3);
+    EXPECT_TRUE(texts[0].original == u8"前の文章");
+    EXPECT_TRUE(texts[0].textType[0] == langscore::TranslateText::message);
+    EXPECT_TRUE(texts[1].original == u8"ディル");
+    EXPECT_EQ(texts[1].code, 101);
+    EXPECT_TRUE(texts[1].textType[0] == langscore::TranslateText::nameType);
+    EXPECT_TRUE(texts[2].original == u8"ディルの文章");
+    EXPECT_TRUE(texts[2].textType[0] == langscore::TranslateText::message);
+}
+
 TEST(Langscore_MZ_MVMZJsonReader, TextTypeValidation)
 {
     // 各種JSONファイルを読み込んでtextTypeを検証する

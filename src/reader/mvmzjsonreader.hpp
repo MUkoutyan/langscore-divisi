@@ -471,6 +471,7 @@ namespace langscore
 					if(checkKey == u8"code")
                     {
                         std::u8string textTypeForMakerTmp;
+                        std::u8string speakerName;
 						auto [isCheckParameters, _code] = checkEventCommandCode(node);
 						code = _code;
 
@@ -493,6 +494,10 @@ namespace langscore
                                     }
                                     else {
                                         textTypeForMakerTmp = TranslateText::messageWithGraphic;
+                                    }
+                                    //MZでは第五要素に名前ボックスの文字列が入る。
+                                    if(4 < arrayData.size() && arrayData[4].is_string()) {
+                                        speakerName = utility::cnvStr<std::u8string>(arrayData[4].get<std::string>());
                                     }
                                     isCheckParameters = false;
                                     break;
@@ -550,14 +555,14 @@ namespace langscore
 							stackText = false;
 							addText(stackTextStr, mvmz_eventcode::ShowText);
 							stackTextStr.clear();
-                            //401 -> 401 -> MessageParameter等で先にtextTypeForMakerを設定すると
-                            //先の文章のタイプが埋められてしまうためここで設定する。
-                            if(textTypeForMakerTmp.empty() == false) {
-                                textTypeForMaker = std::move(textTypeForMakerTmp);
-                            }
 						}
 
 						if(isCheckParameters == false){
+                            //名前ボックスは直前の文章を追加した後に追加する。
+                            if(speakerName.empty() == false) {
+                                textTypeForMaker = TranslateText::nameType;
+                                addText(std::move(speakerName), code);
+                            }
                             //401 -> 401 -> MessageParameter等で先にtextTypeForMakerを設定すると
                             //先の文章のタイプが埋められてしまうためここで設定する。
                             if(textTypeForMakerTmp.empty() == false) {
